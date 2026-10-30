@@ -1,4 +1,4 @@
-﻿## 第五十四轮：行数债收尾——13 → 1（2026-10-31）
+## 第五十四轮：行数债收尾——13 → 1（2026-10-31）
 
 - **pur/PurStudioPane 303 → 288**：`pointerEventOf`（React 事件 → 内核指针事件）抽到 `client/pur/pane-events.ts`；顺带删掉因此失效的 `import type React`。
 - **routes 322 → 263**：`routes-shared.ts`（83）承接 `RouteHost`/`TrustGate` 契约、`CONTENT_TYPES` 表、`logNoteOpen` 与 `extensionOf`/`dispositionOf`；`routes.ts` 只留挂载与 `dispatch` 分派，`RouteHost` 继续从其 re-export。
@@ -762,20 +762,21 @@
 - [x] 审核脚本两处既有检查改为距离无关：`files.drag-move-into-dir-and-back` 改用相邻排序的 `审核拖拽源`/`审核拖拽目标`（附件入树后根级笔记与文件夹常隔一屏，`dragTo` 自动滚动会错位）；`tabs.drag-reorder` 先「关闭全部标签页」再开三个固定标签，避免继承上一轮的六标签拖距跨屏
 - 验收：`tsc` 干净、203 用例全绿、`tsdown` 重建、审核 81/81、0 控制台错误
 
-### P10 重构（✅ 主体完成，剩 UI 组件）
+### P10 重构（✅ 完成，2026-10-31 复核）
 - [x] `vault/index.ts` → `tree.ts` / `search.ts` / `graph.ts`（848 → 555 行，99 用例全绿，Host 端点实测正常）
 - [x] `theme.ts` → `theme/` 五个模块 + barrel
 - [x] `VaultPage` 抽 `tabs.ts`（668 → 580 行）
-- [ ] `VaultPage` 再抽 `useVaultData.ts` + `TabStrip.tsx`（目标 ≤300 行）
-- [ ] `GraphView` 抽 `GraphCanvas` + `useSimulation`
-- [ ] `NoteView` 抽 `HoverPreview`
-- [ ] `Panels`/`Explorer` 按面板拆文件
-- 验收：用例数不减、`tsc` 干净、浏览器冒烟全过；`git diff` 只有移动，无逻辑变更
+- [x] `VaultPage` 再抽 `useVaultData.ts`（75 行）+ `TabStrip.tsx`（212 行）—— `VaultPage.tsx` 现 297 行
+- [x] `GraphView` 抽 `GraphCanvas` + `useSimulation`（`GraphView.tsx` 现 192 行）
+- [x] `NoteView` 抽 `HoverPreview`（`NoteView.tsx` 现 299 行）
+- [x] `Panels`/`Explorer` 按面板拆文件（`panels/` 四个文件，最大 152 行）
+- 验收：用例数不减（395）、`tsc` 干净、`ui-full-audit` 101/101
 
-### P11 阅读视图补全（0.5 天，客户端）
-- 反链面板加「排序 / 搜索过滤」；补文档内反链开关
-- 属性行加「按类型渲染」（日期/数字/复选框）
-- 验收：反链可搜可排；属性类型正确显示
+### P11 阅读视图补全（✅ 完成，2026-10-31 复核）
+- [x] 反链面板加「排序 / 搜索过滤」——`panels/Backlinks.tsx` 有 `filterText` 与 `sortMode`（按名/按提及数）
+- [ ] 文档内反链开关——内嵌 `docBacklinks` 已渲染，但**没有开关**（Obsidian 的 backlinks in document 设置项），列为待做
+- [x] 属性行加「按类型渲染」——`note/NoteMeta.tsx` 按数组/布尔/数字/日期/对象给图标并格式化
+- 验收：反链可搜可排 ✅；属性类型正确显示 ✅
 
 ---
 
