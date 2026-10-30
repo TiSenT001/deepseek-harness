@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { after, beforeEach, test } from 'node:test'
@@ -69,4 +69,13 @@ test('write replaces a corrupt file with the patch', async () => {
   await writeFile(join(root, CONFIG_DIRECTORY, 'graph.json'), 'broken', 'utf8')
 
   assert.deepEqual(await writeObsidianConfig(root, 'graph', { search: 'x' }), { search: 'x' })
+})
+
+test('readObsidianConfig ignores a UTF-8 BOM written by a Windows editor', async () => {
+  // writeObsidianConfig creates `.obsidian`; the file is then rewritten with the
+  // BOM PowerShell and Windows editors prepend.
+  await writeObsidianConfig(root, 'plugins-bridge', [])
+  await writeFile(join(root, CONFIG_DIRECTORY, 'plugins-bridge.json'), '\uFEFF["pur-studio"]', 'utf8')
+  const value = await readObsidianConfig(root, 'plugins-bridge')
+  assert.deepEqual(value, ['pur-studio'])
 })

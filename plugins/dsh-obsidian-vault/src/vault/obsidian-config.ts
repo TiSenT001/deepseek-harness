@@ -1,4 +1,4 @@
-/**
+﻿/**
  * The `.obsidian` JSON files Obsidian itself maintains. Reads fall back to
  * `undefined` when a file is absent or unparsable; writes merge the patch into
  * whatever is already on disk, so keys this plugin does not model survive.
@@ -47,7 +47,9 @@ export async function readObsidianConfig(
     throw error
   }
   try {
-    return JSON.parse(text)
+    // Windows editors and PowerShell prepend a UTF-8 BOM; JSON.parse rejects it
+    // and every configuration file would silently fall back to its defaults.
+    return JSON.parse(text.charCodeAt(0) === 0xFEFF ? text.slice(1) : text)
   } catch {
     // A corrupt document is treated as absent: the caller uses its defaults
     // and the next write replaces the unparsable file.
