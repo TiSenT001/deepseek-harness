@@ -1,3 +1,11 @@
+## 第四十三轮：审核收口——101/101 全绿（2026-10-31）
+
+- **结论**：`ui-full-audit` 全量 **101 项全过、0 控制台错误**，第四十二轮遗留的「audit-1 待收」到此关闭。
+- **两条 FAIL 的真实性质**：`audit-r43.log` 里的 2 条不是代码缺陷，是环境性失败——`note.source-and-reading-roundtrip` 的 409 来自编辑器持有的过期 mtime（夹具在同一次长跑里被前序检查改动过）；`note.editor-conflict-bar` 与 `audit-r43-fix.log` 的定位超时，是复跑时 URL 里的 token 已随宿主重启轮换（401），页面根本没渲染出工作台，却先撞上 30 秒定位超时。
+- **证据**：`--only` 单跑两项通过；随后全量 `checks: 101, failed: 0`（新 token）；`tsc` 0 错误、395/395 不变。
+- **脚本加固**：工作台没渲染时先读页面标题并抛明确错误（提示用 `.dsh-home/dsh_web_token.txt` 里的完整 URL），不再用 30 秒定位超时掩盖真因。
+- 遗留：行数债 `controller.ts` 465 / `controller-edits.ts` 498 / `controller-commands.ts` 359 / `PurStudioPane.tsx` 303，均超 300 行约束。
+
 ## 第四十二轮：任务 4 收尾——双端 15 条命令注册 + 三处上游行为偏差修复
 
 - **裁决落地**（第四十一轮待裁决 ①-⑤）：①② 双端都补——Obsidian adapter 注册全部 16 条 addCommand；DSH 命令面板也加 pur 命令，但仅当活动文件是 `.purstudio` 时显示（避免全局面板里 15 条无视图静默命令的 UX 退步）；③④⑤ 三处偏差全修。

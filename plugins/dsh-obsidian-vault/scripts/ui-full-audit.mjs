@@ -378,7 +378,17 @@ try {
   await sleep(2500)
   const ovRoot = page.locator('.ov-root')
   if ((await ovRoot.count()) === 0 || !(await ovRoot.isVisible())) {
-    await page.locator('button', { hasText: '知识库' }).first().click()
+    const entry = page.locator('button', { hasText: '知识库' }).first()
+    // A rotated token leaves the page blank, which otherwise surfaces as a
+    // 30s locator timeout on every check and hides the real cause.
+    if ((await entry.count()) === 0) {
+      const title = await page.title()
+      throw new Error(
+        `workspace did not render (page title "${title}"): the URL token probably expired after a restart — `
+        + 'use the full URL in .dsh-home/dsh_web_token.txt',
+      )
+    }
+    await entry.click()
   }
   await page.locator('.ov-root').waitFor({ timeout: 15000 })
   // Refresh the index so the fixtures written to disk are picked up.
