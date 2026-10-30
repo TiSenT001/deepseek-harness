@@ -1,3 +1,14 @@
+## 第四十六轮：行数债第二刀——controller-edits 498 → 181（2026-10-31）
+
+- **切法**：按命令族拆成三个模块，原文件只留创建与编辑器提交——
+  - `controller-clipboard.ts`（135）：copy / paste / duplicate / group / ungroup + `clone`；
+  - `controller-pins.ts`（87）：`editableCode` + 增删输入/输出引脚；
+  - `controller-props.ts`（113）：`PurElementPatch` + `updateElementProps`（按元素类型分派的属性补丁）；
+  - `controller-edits.ts`（181）：`addTextBlock`、`addCodeNode`、`commitCodeNode`、`deleteElementWithLines`、`applyTextInput`、`commitTextEdit`。
+- **顺手去重**：本文件原先自带一份与 `controller-selection.ts` 完全相同的私有 `commit`，改为复用共享实现，行为不变。
+- **验证**：`tsc` 0 错误、**395/395**、`tsdown` 三 bundle 成功。
+- 剩余债：`controller.ts` 466、`PurStudioPane.tsx` 303。
+
 ## 第四十五轮：Obsidian 发行包——与上游并存（2026-10-31）
 
 - **上游基准冻结**：`upstream/pur-studio-2.4.0/`（6 文件 289 KB），`main.js` SHA-256 `B1C9F967…C2EF2`，与知识库运行时副本逐字节一致；`upstream/.gitattributes` 用 `-text -diff` 保证 blob 不被换行转换。知识库 `工具/Pur Studio/` 相应改成索引页（不再放源码），指向本仓库。

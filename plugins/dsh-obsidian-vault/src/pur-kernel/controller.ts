@@ -25,28 +25,28 @@ import {
 import { fitToView, selectAll } from './controller-view.ts'
 import {
   addCodeNode,
-  addInputPin,
-  addOutputPin,
   addTextBlock,
   commitCodeNode,
   commitTextEdit,
-  copySelected,
   deleteElementWithLines,
+} from './controller-edits.ts'
+import {
+  copySelected,
   duplicateSelected,
   groupSelected,
   pasteClipboard,
-  removeInputPin,
-  removeOutputPin,
   ungroupSelected,
-  updateElementProps,
-} from './controller-edits.ts'
+} from './controller-clipboard.ts'
+import { addInputPin, addOutputPin, removeInputPin, removeOutputPin } from './controller-pins.ts'
+import { updateElementProps } from './controller-props.ts'
 import { contextMenuModel } from './controller-menu.ts'
 import { momentumStep, pointerDown, pointerMove, pointerUp, wheel } from './controller-pointer.ts'
 import { applyNoteRaw } from './note-raw.ts'
 import { elementAt } from './hit-test.ts'
 import { createHistory, pushHistory, redoHistory, undoHistory } from './history.ts'
 import type { PurAlignMode } from './controller-commands.ts'
-import type { PurCodeNodeCommit, PurCodeNodeDraft, PurElementPatch } from './controller-edits.ts'
+import type { PurCodeNodeCommit, PurCodeNodeDraft } from './controller-edits.ts'
+import type { PurElementPatch } from './controller-props.ts'
 import type {
   PurControllerEffect,
   PurControllerEnv,
