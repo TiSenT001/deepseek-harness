@@ -10,13 +10,14 @@ import { fetchNote } from '../api.ts'
 import type { Translate } from '../i18n.ts'
 import { annotateBlocks, annotateImages, findBlock, sliceBlock, sliceSection } from '../markdown/blocks.ts'
 import { splitCallouts, type CalloutSegment } from '../markdown/callouts.ts'
-import { splitHighlights, stripComments } from '../markdown/inline.ts'
+import { stripComments } from '../markdown/inline.ts'
 import {
   assetUrlFor, newUrlFor, openUrlFor, parseSentinel, rewriteMarkdown, rewriteTags, tagUrlFor,
 } from '../markdown/rewrite.ts'
 import { MarkdownDelegateProvider, MarkdownText, type MarkdownLabels } from '../primitives.ts'
 import { HoverPreviewCard } from './HoverPreviewCard.tsx'
-import { DEFAULT_INLINE_BACKLINKS, INLINE_BACKLINKS_KEY, parseInlineBacklinks, serializeInlineBacklinks } from './notePrefs.ts'
+import { useInlineBacklinks } from './useInlineBacklinks.ts'
+import { enhanceHighlights } from './note/enhanceHighlights.ts'
 import { NoteHeader } from './note/NoteHeader.tsx'
 import { NoteMeta } from './note/NoteMeta.tsx'
 import { highlightDocument } from './files/highlight.ts'
@@ -68,25 +69,7 @@ export function NoteView({
   onMenu, onSource,
 }: NoteViewProps): JSX.Element {
   const [embeds, setEmbeds] = useState<ReadonlyMap<string, string>>(new Map())
-  const [inlineBacklinks, setInlineBacklinks] = useState<boolean>(() => {
-    try {
-      return parseInlineBacklinks(window.localStorage.getItem(INLINE_BACKLINKS_KEY))
-    } catch {
-      // Storage can be unavailable (private mode, disabled cookies).
-      return DEFAULT_INLINE_BACKLINKS
-    }
-  })
-  const toggleInlineBacklinks = useCallback((): void => {
-    setInlineBacklinks((previous) => {
-      const next = !previous
-      try {
-        window.localStorage.setItem(INLINE_BACKLINKS_KEY, serializeInlineBacklinks(next))
-      } catch {
-        // Persisting is best-effort; the toggle still works for this mount.
-      }
-      return next
-    })
-  }, [])
+  const [inlineBacklinks, toggleInlineBacklinks] = useInlineBacklinks()
   const bodyRef = useRef<HTMLDivElement>(null)
   const { preview, show: showPreview, hide: hidePreview } = useHoverPreview()
 
@@ -287,34 +270,4 @@ function Segments({
         )))}
     </>
   )
-}
-
-/** Wrap `==marked==` runs in this document in `<mark>`, leaving code alone. */
-function enhanceHighlights(container: HTMLElement | null): void {
-  if (container === null) return
-  const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT)
-  const targets: Text[] = []
-  for (let node = walker.nextNode(); node !== null; node = walker.nextNode()) {
-    const text = node as Text
-    if (!text.data.includes('==')) continue
-    const parent = text.parentElement
-    if (parent === null || parent.closest('code, pre')) continue
-    targets.push(text)
-  }
-  for (const text of targets) {
-    const runs = splitHighlights(text.data)
-    if (!runs.some(run => run.highlight)) continue
-    const fragment = document.createDocumentFragment()
-    for (const run of runs) {
-      if (!run.highlight) {
-        fragment.append(document.createTextNode(run.text))
-        continue
-      }
-      const mark = document.createElement('mark')
-      mark.className = css.highlight
-      mark.textContent = run.text
-      fragment.append(mark)
-    }
-    text.replaceWith(fragment)
-  }
 }
