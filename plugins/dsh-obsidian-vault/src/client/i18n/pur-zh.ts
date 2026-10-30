@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Simplified Chinese Pur Studio copy: the `pur.*` keys both adapters (the
  * real-Obsidian plugin shell and the DSH React pane) resolve through the
  * shared label builders. zh owns the key set; en must implement every key.
@@ -253,5 +253,7 @@ export const PUR_ZH = {
   'pur.showGrid': '显示网格',
   'pur.bgColorDesc': '十六进制颜色值，填 obsidian 跟随系统主题，填 transparent 为透明',
   'pur.lang': '语言',
+  'pur.ownExtension': '接管 .purstudio 文件',
+  'pur.ownExtensionDesc': '开启后由本插件打开 .PurStudio 文件；与上游 pur-studio 并存时保持关闭（改动需重载 Obsidian 生效）',
   'pur.unsupportedFeature': '当前环境不支持此功能',
 } as const

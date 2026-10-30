@@ -1,0 +1,8 @@
+/*
+ * The canvas view paints into its own <canvas> with inline styles, so the
+ * stylesheet only has to keep that surface filling the leaf.
+ */
+.workspace-leaf-content[data-type='dsh-pur-studio'] .view-content {
+  padding: 0;
+  overflow: hidden;
+}

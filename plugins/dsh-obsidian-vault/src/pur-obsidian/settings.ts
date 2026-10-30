@@ -26,6 +26,8 @@ export interface PurPreferences {
 export interface PurSettings {
   /** Appearance and language preferences. */
   preferences: PurPreferences
+  /** Whether this plugin claims the `.purstudio` extension itself. */
+  ownFileExtension: boolean
   /** Fileless canvas document, upstream's fallback persistence. */
   canvasData?: PurStudioDocument
 }
@@ -33,6 +35,9 @@ export interface PurSettings {
 /** Upstream defaults for a fresh install. */
 export const DEFAULT_PUR_SETTINGS: PurSettings = {
   preferences: { backgroundColor: 'obsidian', gridColor: '#333333', showGrid: true, lang: 'zh' },
+  // Off while upstream `pur-studio` is installed: two plugins cannot both own
+  // the extension, and load order would decide which one opens a canvas file.
+  ownFileExtension: false,
 }
 
 /** What the settings tab needs from the plugin. */
@@ -53,6 +58,7 @@ export function resolvePurSettings(data: unknown): PurSettings {
   const preferences = typeof root.preferences === 'object' && root.preferences !== null ? root.preferences : {}
   return {
     preferences: { ...DEFAULT_PUR_SETTINGS.preferences, ...preferences },
+    ownFileExtension: root.ownFileExtension === true,
     ...(root.canvasData === undefined ? {} : { canvasData: root.canvasData }),
   }
 }
@@ -116,6 +122,15 @@ export class PurStudioSettingTab extends PluginSettingTab {
       .addToggle((toggle) =>
         toggle.setValue(host.settings.preferences.showGrid).onChange((value) => {
           host.settings.preferences.showGrid = value
+          void persist()
+        }),
+      )
+    new Setting(containerEl)
+      .setName(read('pur.ownExtension'))
+      .setDesc(read('pur.ownExtensionDesc'))
+      .addToggle((toggle) =>
+        toggle.setValue(host.settings.ownFileExtension).onChange((value) => {
+          host.settings.ownFileExtension = value
           void persist()
         }),
       )

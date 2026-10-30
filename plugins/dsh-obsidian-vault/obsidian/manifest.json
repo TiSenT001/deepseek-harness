@@ -1,0 +1,10 @@
+{
+  "id": "dsh-pur-studio",
+  "name": "DSH Pur Studio",
+  "version": "0.1.0",
+  "minAppVersion": "1.5.0",
+  "description": "Pur Studio 画布复刻版：无限画布、引脚连线、代码节点、Markdown 导出。与上游 pur-studio 并存，暂不接管 .purstudio 扩展名。",
+  "author": "TiSenT001",
+  "authorUrl": "",
+  "isDesktopOnly": false
+}

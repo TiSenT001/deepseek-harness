@@ -1,4 +1,4 @@
-/**
+﻿/**
  * English Pur Studio copy, keyed by the Chinese dictionary so a missing
  * translation fails to compile instead of falling back at runtime.
  * @module dsh-obsidian-vault/client/i18n/pur-en
@@ -251,5 +251,7 @@ export const PUR_EN: Record<keyof typeof PUR_ZH, string> = {
   'pur.showGrid': 'Show Grid',
   'pur.bgColorDesc': 'Hex color value, or "obsidian" to follow theme, "transparent" for transparent',
   'pur.lang': 'Language',
+  'pur.ownExtension': 'Own .purstudio files',
+  'pur.ownExtensionDesc': 'Open .PurStudio files with this plugin; keep it off while upstream pur-studio is enabled (reload Obsidian to apply)',
   'pur.unsupportedFeature': 'Not supported in this environment',
 }

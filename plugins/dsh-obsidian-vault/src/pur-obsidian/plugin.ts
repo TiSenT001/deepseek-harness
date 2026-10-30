@@ -29,7 +29,10 @@ export class PurStudioPlugin extends Plugin implements PurStudioHost {
   public override async onload(): Promise<void> {
     this.settings = resolvePurSettings(await this.loadData())
     this.registerView(PUR_VIEW_TYPE, (leaf) => new PurStudioView(leaf, this))
-    this.registerExtensions(['PurStudio', 'purstudio'], PUR_VIEW_TYPE)
+    // Coexistence: upstream `pur-studio` owns the `.purstudio` extension while
+    // both plugins are enabled, so this one must not claim it as well. Claiming
+    // it would make load order decide which plugin opens a canvas file.
+    if (this.settings.ownFileExtension) this.registerExtensions(['PurStudio', 'purstudio'], PUR_VIEW_TYPE)
     this.addRibbonIcon('brain', 'Pur Studio', () => this.openCanvas())
     this.registerCommands()
     this.addSettingTab(new PurStudioSettingTab(this.app, this))

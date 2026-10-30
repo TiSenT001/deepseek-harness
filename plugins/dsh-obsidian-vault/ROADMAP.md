@@ -1,3 +1,11 @@
+## 第四十五轮：Obsidian 发行包——与上游并存（2026-10-31）
+
+- **上游基准冻结**：`upstream/pur-studio-2.4.0/`（6 文件 289 KB），`main.js` SHA-256 `B1C9F967…C2EF2`，与知识库运行时副本逐字节一致；`upstream/.gitattributes` 用 `-text -diff` 保证 blob 不被换行转换。知识库 `工具/Pur Studio/` 相应改成索引页（不再放源码），指向本仓库。
+- **发行包**：新增 `obsidian/`（`manifest.json` id `dsh-pur-studio` / `styles.css` / `README.md`），`main.js` 由 `lib/pur-obsidian.js` 复制；已装进 `.obsidian/plugins/dsh-pur-studio/`。
+- **并存改造**：视图类型 `pur-studio` → `dsh-pur-studio`，否则两个插件共用同一 leaf 类型、由加载顺序决定归属；`.purstudio` 扩展名改为 `ownFileExtension` 开关（默认关），并存期由上游继续接管。
+- **验证**：`tsc` 0 错误、395/395、tsdown 成功（pur-obsidian 296.82 kB）；用桩件 `obsidian` 模块跑通 `onload` —— 视图 `dsh-pur-studio`、扩展名未注册、ribbon 1、设置页 1、**命令 16 条齐全**。
+- **待办**：在真 Obsidian 里启用并目视验证（需要手动开第三方插件）。
+
 ## 第四十四轮：行数债第一刀——controller-commands 359 → 153（2026-10-31）
 
 - **切法**：按职责拆出三个纯模块，原文件只留元素编辑命令——

@@ -22,8 +22,12 @@ import type { PurExporterHost } from './exporter.ts'
 import { importFromUrl, importLocalImage, importStructuredFile, insertVaultNote } from './paste-drop.ts'
 import type { PurInsertHost } from './paste-drop.ts'
 
-/** View type id the plugin registers. */
-export const PUR_VIEW_TYPE = 'pur-studio'
+/**
+ * View type id the plugin registers. Distinct from upstream's `pur-studio` so
+ * both plugins can load at once; a shared id would let load order decide which
+ * one owns every open canvas leaf.
+ */
+export const PUR_VIEW_TYPE = 'dsh-pur-studio'
 
 /** Which element editor an open request targets. */
 export type PurViewEditorKind = 'text' | 'group' | 'line' | 'note-link'
