@@ -1,4 +1,12 @@
-﻿## 第五十五轮：文档内反链开关——P11 收口（2026-10-31）
+﻿## 第五十六轮：搜索面板开关（P8 收口，2026-10-31）
+
+- **功能**：快速切换面板的全文搜索模式加了两个开关——`Aa`（区分大小写）与 `.*`（正则）。开关状态存 `localStorage` 的 `ov.search.options.v1`，默认都关（对齐 Obsidian 默认）。
+- **实现**：`client/ui/searchPrefs.ts` 把开关组合成 Host 已有的查询语法——大小写用 `match-case:(…)`（括号保证多词整组被包裹），正则把输入变成 `/pattern/`；**服务端零改动**，不需要新参数。
+- **测试**：`tests/ui-prefs.test.ts` 增 2 例（五种组合的查询拼装、选项往返与坏数据回退）——用例数 **396 → 398**。
+- **审核**：扩展现有 `quick.ctrl-f-search-mode` 检查——点 `Aa` 断言 `aria-pressed` 翻转且 `localStorage` 落 `"matchCase":true`，点 `.*` 同理，再依次关回；单项通过，全量 **101/101、0 控制台错误**。
+- 至此 P8 剩余项（搜索面板开关与正则）完成；正则此前只能靠手写 `/…/`，现在有开关。
+
+## 第五十五轮：文档内反链开关——P11 收口（2026-10-31）
 
 - **功能**：笔记头部新增「显示反链 / 隐藏反链」按钮（`aria-pressed`），控制阅读视图底部的内嵌反链区。选择写入 `localStorage` 的 `ov.note.inlineBacklinks.v1`，默认开启（对齐 Obsidian 默认设置）。
 - **实现**：`client/ui/notePrefs.ts`（解析/序列化两个纯函数）、`NoteHeader` 新增可选 `onToggleBacklinks`/`backlinksVisible`（无参时不渲染按钮，其它调用方零改动）、`NoteView` 持有状态并在无存储时回退默认值。

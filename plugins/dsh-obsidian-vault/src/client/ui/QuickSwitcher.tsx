@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Command palette: fuzzy file switching by default; Tab or a leading `?`
  * switches to full-text search, and a leading `>` lists runnable commands.
  * Arrow keys navigate, Enter opens the hit or runs the command.
@@ -7,6 +7,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { SearchHitDto } from '../../protocol.ts'
 import { fetchSearch } from '../api.ts'
+import { buildSearchQuery, DEFAULT_SEARCH_OPTIONS, parseSearchOptions, SEARCH_OPTIONS_KEY, serializeSearchOptions, type SearchOptions } from './searchPrefs.ts'
 import type { Translate } from '../i18n.ts'
 import type { CommandEntry } from './commands.ts'
 import { css } from './theme.ts'
@@ -40,6 +41,14 @@ export function QuickSwitcher({
   const [query, setQuery] = useState(initialQuery)
   const [hits, setHits] = useState<readonly SearchHitDto[]>([])
   const [active, setActive] = useState(0)
+  const [options, setOptions] = useState<SearchOptions>(() => {
+    try {
+      return parseSearchOptions(window.localStorage.getItem(SEARCH_OPTIONS_KEY))
+    } catch {
+      // Storage can be unavailable (private mode, disabled cookies).
+      return DEFAULT_SEARCH_OPTIONS
+    }
+  })
   const input = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -54,7 +63,7 @@ export function QuickSwitcher({
     }
     let cancelled = false
     const timer = setTimeout(() => {
-      void fetchSearch(text).then(items => {
+      void fetchSearch(buildSearchQuery(text, options)).then(items => {
         if (cancelled) return
         setHits(items)
         setActive(0)
@@ -66,7 +75,7 @@ export function QuickSwitcher({
       cancelled = true
       clearTimeout(timer)
     }
-  }, [mode, query])
+  }, [mode, query, options])
 
   const visible = mode === 'files' ? hits.filter(hit => hit.kind !== 'content') : hits
   const needle = query.trim().toLowerCase()
@@ -91,6 +100,18 @@ export function QuickSwitcher({
       return
     }
     setQuery(value)
+  }
+
+  const toggleOption = (key: keyof SearchOptions): void => {
+    setOptions((previous) => {
+      const next = { ...previous, [key]: !previous[key] }
+      try {
+        window.localStorage.setItem(SEARCH_OPTIONS_KEY, serializeSearchOptions(next))
+      } catch {
+        // Persisting is best-effort; the toggle still works for this mount.
+      }
+      return next
+    })
   }
 
   const toggleMode = (): void => {
@@ -206,6 +227,30 @@ export function QuickSwitcher({
         </div>
         <div className={css.quickFoot}>
           <span className={css.quickMode}>{t(mode === 'search' ? 'quickModeSearch' : mode === 'commands' ? 'quickModeCommands' : 'quickModeFiles')}</span>
+          {mode === 'search'
+            ? (
+              <>
+                <button
+                  type='button'
+                  className={css.button}
+                  aria-pressed={options.matchCase}
+                  title={t('searchMatchCase')}
+                  onClick={() => toggleOption('matchCase')}
+                >
+                  Aa
+                </button>
+                <button
+                  type='button'
+                  className={css.button}
+                  aria-pressed={options.regex}
+                  title={t('searchRegex')}
+                  onClick={() => toggleOption('regex')}
+                >
+                  .*
+                </button>
+              </>
+            )
+            : null}
           {query.trim().length > 0 ? <span>{shown} {t('results')}</span> : null}
           <span className={css.quickHint}>
             <kbd className={css.pillKbd}>&gt;</kbd>

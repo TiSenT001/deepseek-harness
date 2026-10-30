@@ -12,6 +12,8 @@ export const ZH = {
   vault: '知识库',
   notes: '篇笔记',
   searchPlaceholder: '搜索笔记…',
+  searchMatchCase: '区分大小写',
+  searchRegex: '正则',
   filterPlaceholder: '过滤笔记',
   empty: '没有选中笔记',
   emptyHint: '从左侧选择一篇笔记，或按 Ctrl+O 快速切换。',

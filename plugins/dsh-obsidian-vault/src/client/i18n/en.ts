@@ -13,6 +13,8 @@ export const EN: Dict = {
   vault: 'Vault',
   notes: 'notes',
   searchPlaceholder: 'Search notes…',
+  searchMatchCase: 'Match case',
+  searchRegex: 'Regex',
   filterPlaceholder: 'Filter notes',
   empty: 'No note selected',
   emptyHint: 'Pick a note on the left, or press Ctrl+O to switch quickly.',

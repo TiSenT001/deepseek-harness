@@ -1,10 +1,11 @@
-import assert from 'node:assert/strict'
+﻿import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import {
   clampPane, DEFAULT_WIDTHS, parseWidths, serializeWidths,
 } from '../src/client/ui/layoutPrefs.ts'
 import { textStats, vaultName } from '../src/client/ui/stats.ts'
 import { DEFAULT_INLINE_BACKLINKS, parseInlineBacklinks, serializeInlineBacklinks } from '../src/client/ui/notePrefs.ts'
+import { buildSearchQuery, DEFAULT_SEARCH_OPTIONS, parseSearchOptions, serializeSearchOptions } from '../src/client/ui/searchPrefs.ts'
 
 test('clampPane keeps widths inside the docked range', () => {
   assert.equal(clampPane('left', 100), 220)
@@ -58,4 +59,19 @@ test('inline backlinks default on and survive a round-trip', () => {
   assert.equal(serializeInlineBacklinks(true), '1')
   assert.equal(serializeInlineBacklinks(false), '0')
   assert.equal(parseInlineBacklinks(serializeInlineBacklinks(false)), false)
+})
+
+test('buildSearchQuery composes the palette toggles into Host syntax', () => {
+  assert.equal(buildSearchQuery('  ', DEFAULT_SEARCH_OPTIONS), '')
+  assert.equal(buildSearchQuery('foo bar', DEFAULT_SEARCH_OPTIONS), 'foo bar')
+  assert.equal(buildSearchQuery('foo bar', { matchCase: true, regex: false }), 'match-case:(foo bar)')
+  assert.equal(buildSearchQuery('foo.*', { matchCase: false, regex: true }), '/foo.*/')
+  assert.equal(buildSearchQuery('foo.*', { matchCase: true, regex: true }), 'match-case:(/foo.*/)')
+})
+
+test('search options round-trip and fall back on a broken entry', () => {
+  assert.deepEqual(parseSearchOptions(null), DEFAULT_SEARCH_OPTIONS)
+  assert.deepEqual(parseSearchOptions('not json'), DEFAULT_SEARCH_OPTIONS)
+  const once = { matchCase: true, regex: false }
+  assert.deepEqual(parseSearchOptions(serializeSearchOptions(once)), once)
 })
