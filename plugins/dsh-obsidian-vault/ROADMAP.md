@@ -1,3 +1,13 @@
+## 第四十八轮：行数债第四刀——adapter 359 → 208（2026-10-31）
+
+- **切法**：这是一个「契约 + 执行器」文件，按角色拆成三份——
+  - `adapter-types.ts`（105）：`PurEffectSink`、`PurMenuHost`、`PurMenuAction`、`PurMenuPoint`、`PurOpenDestination`；
+  - `adapter-effects.ts`（58）：`executeEffects` + `assertNever` 穷尽守卫；
+  - `adapter.ts`（208）：`runMenuAction` 与四个私有解析器（`requireTarget`/`requireElement`/`openTarget`/`unlinkNote`）。
+- **对外 API 不变**：`index.ts` 三个模块全部 re-export，两端 adapter 的导入语句无需改动。
+- **验证**：`tsc` 0 错误、**395/395**、`tsdown` 三 bundle 成功。
+- 剩余债（`src` 内 >300 行）：`vault/index.ts` 524、`controller.ts` 466、`client/api.ts` 427、`kit/styles/workspace.ts` 419、`vault/query.ts` 384、`vault/syntax.ts` 359、`exporter.ts` 327、`graph/layout.ts` 324、`routes.ts` 322、`vault/registry.ts` 314、`PurStudioPane.tsx` 303。
+
 ## 第四十七轮：行数债第三刀——controller-pointer 411 → 260（2026-10-31）
 
 - **切法**：把三个指针入口之外的手势子程序抽到 `controller-gestures.ts`（177 行）：`local` 坐标投影、`finishPinDrag`（引脚拖拽收尾：重连 / 新建）、`reparentDragged`（落点归组）、`momentumStep`（惯性衰减）、`wheel`（指针锚定缩放）。
