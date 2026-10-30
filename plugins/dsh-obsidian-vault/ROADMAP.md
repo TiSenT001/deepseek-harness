@@ -1,3 +1,10 @@
+## 第四十九轮：行数债第五刀——query 384 → 103、syntax 359 → 71（2026-10-31）
+
+- **query**（`src/vault/`）：`query-tokenize.ts`（112，词法）、`query-match.ts`（153，求值器与字段分发）、`query-types.ts`（44，`QueryNode`/`QueryField`/`QueryDoc`/`ParsedQuery`/`Token`），`query.ts` 只留 `parseQuery`（103）。三者由 `query.ts` 全量 re-export，`tests/query.test.ts` 的 `import { matchesQuery, parseQuery, tokenize, type QueryDoc } from '../src/vault/query.ts'` 无需改动。
+- **syntax**：`syntax-shared.ts`（40，三个 token 形状 + `FENCE`）、`syntax-links.ts`（136，`parseWikiTarget`/`tokensOfLine`/`scanWikiLinks`）、`syntax-scan.ts`（153，块 ID / 标题 / 标签扫描），`syntax.ts` 只留 `headingAnchor` 与 `replaceWikiLinks`（71）。`FENCE` 下沉到 shared 是为了让三个模块**单向依赖、无环**。
+- **顺带修**：`headingAnchor` 前面的 JSDoc 与 `export` 挤在同一行（`*/export function …`），已拆开。
+- **验证**：`tsc` 0 错误、**395/395**、`tsdown` 三 bundle 成功。
+
 ## 第四十八轮：行数债第四刀——adapter 359 → 208（2026-10-31）
 
 - **切法**：这是一个「契约 + 执行器」文件，按角色拆成三份——
