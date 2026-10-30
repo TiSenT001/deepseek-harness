@@ -3,157 +3,23 @@
  * carry velocity and optional pin positions, `alpha` is the energy that decays
  * over ~300 ticks, and every data/force/drag change reheats instead of
  * restarting the layout. Deterministic: no randomness anywhere.
+ *
+ * Node/force vocabulary lives in `layout-types`, seeding in `layout-seed`.
  * @module dsh-obsidian-vault/client/graph/layout
  */
 import { collideForce, repelForce, repelForceNaive } from './quadtree.ts'
+import { jiggle } from './layout-seed.ts'
+import { ALPHA_DECAY, ALPHA_MIN, DEFAULT_FORCES, REHEAT_ALPHA, VELOCITY_DECAY } from './layout-types.ts'
+import type { GraphEdgeInput, LayoutForces, SimNode } from './layout-types.ts'
 
-/** One node as the Host reports it. */
-export interface GraphNodeInput {
-  readonly path: string
-  readonly title: string
-  readonly depth: number
-}
+export * from './layout-types.ts'
+export * from './layout-seed.ts'
 
-/** One undirected edge. */
-export interface GraphEdgeInput {
-  readonly source: string
-  readonly target: string
-}
-
-/** One live node. The simulation mutates x/y/vx/vy in place. */
-export interface SimNode extends GraphNodeInput {
-  x: number
-  y: number
-  vx: number
-  vy: number
-  /** Pin position: while set, the node ignores forces (d3 fx/fy). */
-  fx: number | null
-  fy: number | null
-  degree: number
-  radius: number
-}
-
-/** Reference box for seeding scale only; nothing is fitted into it. */
-export const WORLD = { width: 680, height: 600 } as const
-
-/**
- * Forces in Obsidian's own units (its graph defaults: center 0.1, repel 10,
- * link 1, distance 250).
- */
-export interface LayoutForces {
-  /** Pull toward the centre, 0.1 = Obsidian default. */
-  readonly center: number
-  /** Node repulsion, 10 = Obsidian default. */
-  readonly repel: number
-  /** Spring strength multiplier, 1 = Obsidian default. */
-  readonly link: number
-  /** Resting edge length in world units, 250 = Obsidian default. */
-  readonly linkDistance: number
-}
-
-/** Obsidian's graph defaults. */
-export const DEFAULT_FORCES: LayoutForces = { center: 0.1, repel: 10, link: 1, linkDistance: 250 }
-
-/** Positions to reuse when only part of the graph changed. */
-export type LayoutSeed = ReadonlyMap<string, { readonly x: number; readonly y: number }>
-
-/** Energy below which the simulation sleeps (d3 alphaMin). */
-export const ALPHA_MIN = 0.001
-/** Per-tick approach toward the target energy: cools in ~300 ticks (d3). */
-export const ALPHA_DECAY = 1 - Math.pow(ALPHA_MIN, 1 / 300)
-/** Velocity retention per tick (d3/Obsidian velocityDecay). */
-export const VELOCITY_DECAY = 0.6
-/** Energy injected by a force change or a drag (Obsidian posts alpha: .3). */
-export const REHEAT_ALPHA = 0.3
 /** Above this many nodes, repulsion switches to Barnes-Hut. */
 const QUADTREE_THRESHOLD = 300
 /** Collide disc radius and per-tick resolution strength (Obsidian sim.js). */
 const COLLIDE_RADIUS = 60
 const COLLIDE_STRENGTH = 0.5
-
-/**
- * Deterministic jitter for coincident points, replacing d3's jiggle(random).
- * @param seed - any stable number (loop index).
- * @returns a tiny offset in (-0.5e-6, 0.5e-6).
- */
-function jiggle(seed: number): number {
-  const value = Math.sin(seed * 12.9898 + 78.233) * 43758.5453
-  return (value - Math.floor(value) - 0.5) * 1e-6
-}
-
-/**
- * Reject a seed whose points are all in the same place: seeding every node at
- * the origin collapses the layout into a single point.
- * @param seed - candidate positions.
- * @returns the seed when it has real spread, otherwise undefined.
- */
-function spreadSeed(seed: LayoutSeed): LayoutSeed | undefined {
-  if (seed.size < 2) return undefined
-  let minX = Infinity
-  let maxX = -Infinity
-  let minY = Infinity
-  let maxY = -Infinity
-  for (const point of seed.values()) {
-    minX = Math.min(minX, point.x)
-    maxX = Math.max(maxX, point.x)
-    minY = Math.min(minY, point.y)
-    maxY = Math.max(maxY, point.y)
-  }
-  return maxX - minX + (maxY - minY) < 1 ? undefined : seed
-}
-
-/**
- * Initial positions, deterministic: existing nodes keep their seeded spot, new
- * nodes land beside already-placed neighbours, and the rest bloom on a
- * golden-angle ring scaled to the graph size.
- * @param nodes - nodes with their hop distance from the centre.
- * @param edges - edges between node paths.
- * @param seed - positions of nodes that already existed.
- * @returns live nodes with zero velocity, degree, and degree-derived radius.
- */
-export function seedPositions(
-  nodes: readonly GraphNodeInput[],
-  edges: readonly GraphEdgeInput[],
-  seed?: LayoutSeed,
-): SimNode[] {
-  const k = Math.sqrt((WORLD.width * WORLD.height) / Math.max(1, nodes.length)) * 0.62
-  const inbound = new Map<string, number>()
-  const neighbours = new Map<string, string[]>()
-  for (const edge of edges) {
-    inbound.set(edge.target, (inbound.get(edge.target) ?? 0) + 1)
-    neighbours.set(edge.source, [...(neighbours.get(edge.source) ?? []), edge.target])
-    neighbours.set(edge.target, [...(neighbours.get(edge.target) ?? []), edge.source])
-  }
-  const centers = nodes.filter(node => node.depth === 0)
-  const usableSeed = seed === undefined ? undefined : spreadSeed(seed)
-  const placed = new Map<string, { x: number; y: number }>()
-  return nodes.map((node, index) => {
-    const degree = inbound.get(node.path) ?? 0
-    // Radius grows with degree like Obsidian's hubs; tiny local graphs need
-    // bigger dots or they read as empty.
-    const radius = (nodes.length <= 10 ? 6.5 : 2.8) + Math.min(13, Math.sqrt(degree) * 2.1)
-    const place = (x: number, y: number): SimNode => {
-      placed.set(node.path, { x, y })
-      return { ...node, x, y, vx: 0, vy: 0, fx: null, fy: null, degree, radius }
-    }
-    const previous = usableSeed?.get(node.path)
-    if (previous !== undefined) return place(previous.x, previous.y)
-    // New nodes land beside the neighbours that are already placed.
-    const anchors = (neighbours.get(node.path) ?? [])
-      .map(path => placed.get(path))
-      .filter((point): point is { x: number; y: number } => point !== undefined)
-    if (anchors.length > 0) {
-      const x = anchors.reduce((sum, point) => sum + point.x, 0) / anchors.length
-      const y = anchors.reduce((sum, point) => sum + point.y, 0) / anchors.length
-      const angle = index * 2.399963229728653
-      return place(x + Math.cos(angle) * k * 0.35, y + Math.sin(angle) * k * 0.35)
-    }
-    if (centers.length === 1 && node.depth === 0) return place(0, 0)
-    const ring = centers.length === 1 ? k * (0.6 + node.depth * 0.8) : k
-    const angle = index * 2.399963229728653
-    return place(Math.cos(angle) * ring, Math.sin(angle) * ring)
-  })
-}
 
 interface Link {
   readonly source: SimNode

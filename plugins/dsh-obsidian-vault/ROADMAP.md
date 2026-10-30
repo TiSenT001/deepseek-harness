@@ -1,3 +1,10 @@
+﻿## 第五十二轮：graph/layout 324 → 190（2026-10-31）
+
+- 按「词汇 / 播种 / 模拟」三段拆：`layout-types.ts`（65，节点与边形状、`WORLD`、`LayoutForces`、`DEFAULT_FORCES`、`LayoutSeed` 与四个能量常数）、`layout-seed.ts`（92，`jiggle`/`spreadSeed`/`seedPositions`）、`layout.ts`（190，`Link` + `Simulation` 类）。
+- `jiggle` 放在 seed 模块并导出，因为模拟的零长连线分支也要用它；这样避免为 4 行函数再开一个文件。
+- `layout.ts` 继续 re-export 两个新模块，`ui/graph/*` 的导入不用改。
+- **验证**：`tsc` 0 错误、**395/395**、`tsdown` 三 bundle 成功。
+
 ## 第五十一轮：workspace 样式表 419 → 12（2026-10-31）
 
 - `workspace.ts` 原本是一个 419 行的单一 CSS 模板字符串。按区域切成三份：`workspace-shell.ts`（150，框架与资源管理器）、`workspace-note.ts`（154，笔记头/正文排版/标注）、`workspace-panel.ts`（127，大纲/反链/标签/分栏），`workspace.ts` 只剩 12 行的拼装。
