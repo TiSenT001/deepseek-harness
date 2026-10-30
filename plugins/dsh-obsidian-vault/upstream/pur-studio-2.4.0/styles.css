@@ -1,0 +1,23 @@
+/* Pur Studio — 无限画布样式 */
+
+.pur-canvas {
+  display: block;
+  cursor: default;
+}
+
+.pur-menu-anchor {
+  pointer-events: none;
+}
+
+/* 右键菜单增强 */
+.pur-canvas-context-menu {
+  min-width: 180px;
+}
+
+/* 弹出编辑框 */
+.pur-edit-overlay {
+  background: rgba(0, 0, 0, 0.6);
+  border-radius: 8px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+}
+

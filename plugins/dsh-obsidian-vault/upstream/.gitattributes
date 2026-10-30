@@ -1,0 +1,3 @@
+# Verbatim upstream assets: no end-of-line or encoding conversion, so the
+# committed blob keeps the exact bytes the golden vectors were recorded from.
+* -text -diff

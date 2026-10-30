@@ -1,0 +1,10 @@
+{
+  "id": "pur-studio",
+  "name": "Pur Studio",
+  "version": "2.4.0",
+  "minAppVersion": "1.5.0",
+  "description": "创作工作台——无限画布图片管理(导入/分类/嵌入笔记)、可视化编程(引脚+连线+代码生成)、导出归档",
+  "author": "涂盛祥",
+  "authorUrl": "",
+  "isDesktopOnly": false
+}
