@@ -1,3 +1,11 @@
+## 第四十七轮：行数债第三刀——controller-pointer 411 → 260（2026-10-31）
+
+- **切法**：把三个指针入口之外的手势子程序抽到 `controller-gestures.ts`（177 行）：`local` 坐标投影、`finishPinDrag`（引脚拖拽收尾：重连 / 新建）、`reparentDragged`（落点归组）、`momentumStep`（惯性衰减）、`wheel`（指针锚定缩放）。
+- 留在 `controller-pointer.ts`（260 行）的是三个分派入口 `pointerDown` / `pointerMove` / `pointerUp`，函数体逐字未改。
+- **导入调整**：`controller.ts` 的 `momentumStep` / `wheel` 改从 gestures 取；`index.ts` 增加 gestures 的 re-export，对外 API 不变。
+- **验证**：`tsc` 0 错误、**395/395**、`tsdown` 三 bundle 成功。
+- 剩余债（`src` 内 >300 行）：`vault/index.ts` 524、`controller.ts` 466、`client/api.ts` 427、`kit/styles/workspace.ts` 419、`vault/query.ts` 384、`adapter.ts` 359、`vault/syntax.ts` 359、`exporter.ts` 327、`graph/layout.ts` 324、`routes.ts` 322、`vault/registry.ts` 314、`PurStudioPane.tsx` 303。
+
 ## 第四十六轮：行数债第二刀——controller-edits 498 → 181（2026-10-31）
 
 - **切法**：按命令族拆成三个模块，原文件只留创建与编辑器提交——
