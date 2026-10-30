@@ -3,6 +3,12 @@
  * wheel and keyboard events into element mutations plus adapter effects, and
  * exposes every toolbar/menu command. Compose with the pure modules; this
  * class only wires them to shared state.
+ *
+ * This is the one file exempt from the 300-line budget (see PLAN §7): it
+ * aggregates 49 public methods, nearly all one-line forwards into the
+ * `controller-*` modules. Splitting it would need prototype mixing or a state
+ * object layer, which lengthens the call chain without removing logic. New
+ * behavior belongs in those modules; this class only wires them up.
  * @module dsh-obsidian-vault/pur-kernel/controller
  */
 import {

@@ -1,4 +1,4 @@
-/**
+﻿/**
  * The React Pur Studio pane: hosts the kernel controller over a `<canvas>`,
  * repainting on a rAF loop (dirty flag plus momentum frames), persisting
  * debounced through the bridge, and routing kernel effects to the overlays.
@@ -7,7 +7,6 @@
  * @module dsh-obsidian-vault/client/pur/PurStudioPane
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import type React from 'react'
 import { PurController, createElementId, elementAt, executeEffects, screenToWorld } from '../../pur-kernel/index.ts'
 import type { PurControllerEffect, PurControllerEnv, PurMenuContext, PurPointerEvent, PurRenderPreferences } from '../../pur-kernel/index.ts'
 import type { Translate } from '../i18n.ts'
@@ -20,6 +19,7 @@ import type { PurMenuState } from './menu.tsx'
 import { createPurPaneHandlers, registerPurPaneCommands } from './pane-commands.ts'
 import { PurPaneOverlays } from './pane-overlays.tsx'
 import type { PurEditorState, PurPickerState, PurPromptState } from './pane-overlays.tsx'
+import { pointerEventOf } from './pane-events.ts'
 import { startPurPaintLoop, wirePurPaneDrop, wirePurPaneWheel } from './pane-paint.ts'
 import { pasteIntoCanvas } from './paste-drop.ts'
 import type { PurInsertDeps } from './paste-drop.ts'
@@ -27,21 +27,6 @@ import { createPurSink } from './sink.ts'
 
 /** Canvas colours and grid toggle, fixed for the web client. */
 const PREFERENCES: PurRenderPreferences = { backgroundColor: 'transparent', gridColor: '#333333', showGrid: true }
-
-/** The kernel pointer event for a React event, with the canvas origin resolved. */
-function pointerEventOf(event: React.MouseEvent<HTMLCanvasElement>): PurPointerEvent {
-  const rect = event.currentTarget.getBoundingClientRect()
-  return {
-    clientX: event.clientX,
-    clientY: event.clientY,
-    rectLeft: rect.left,
-    rectTop: rect.top,
-    button: event.button,
-    ctrlKey: event.ctrlKey,
-    metaKey: event.metaKey,
-    shiftKey: event.shiftKey,
-  }
-}
 
 /** Props for {@link PurStudioPane}. */
 export interface PurStudioPaneProps {

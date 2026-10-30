@@ -1,4 +1,13 @@
-﻿## 第五十三轮：pur-obsidian/exporter 327 → 190（2026-10-31）
+﻿## 第五十四轮：行数债收尾——13 → 1（2026-10-31）
+
+- **pur/PurStudioPane 303 → 288**：`pointerEventOf`（React 事件 → 内核指针事件）抽到 `client/pur/pane-events.ts`；顺带删掉因此失效的 `import type React`。
+- **routes 322 → 263**：`routes-shared.ts`（83）承接 `RouteHost`/`TrustGate` 契约、`CONTENT_TYPES` 表、`logNoteOpen` 与 `extensionOf`/`dispositionOf`；`routes.ts` 只留挂载与 `dispatch` 分派，`RouteHost` 继续从其 re-export。
+- **client/api 427 → 10**：按领域拆成五个文件——`api-core.ts`（47，`ApiError` + `request`）、`api-vault.ts`（188，状态/树/笔记/文件/反链/标签/搜索/图 + 写操作）、`api-registry.ts`（86，库注册表 + 六个 Obsidian 配置）、`api-plugins.ts`（130，插件与桥），`api.ts` 变纯 barrel（10 行）。所有调用方的 `import ... from './api.ts'` 不变。
+- **controller.ts 登记例外**：467 行、49 个公开方法，几乎全是转发。写入 `PLAN.md §7 第 5 条` 与模块 JSDoc：新行为落 `controller-*`，门面只接线。
+- **验证**：`tsc` 0 错误、**395/395**、`tsdown` 三 bundle 成功。
+- **结果**：全插件超 300 行的文件从 **13 个降到 1 个（已登记例外）**。
+
+## 第五十三轮：pur-obsidian/exporter 327 → 190（2026-10-31）
 
 - 拆成「管道 + 流程」两半：`exporter-host.ts`（193，`PurExporterHost` 契约、`TextPrompt` 模态、`promptText`/`safeName`/`ensureFolder`/`uniquePath`/`writeText`/`dataURLToArrayBuffer`/`exportedNotice`、两个导出目录常量），`exporter.ts`（190，`savePur`/`createEmptyCanvas`/`exportMarkdown`/`exportImage`/`exportCanvasDocument`/`generateCode`）。
 - `exporter.ts` 继续 re-export `PurExporterHost` 与 `promptText`，`view-menu.ts` 等调用方不用改导入。

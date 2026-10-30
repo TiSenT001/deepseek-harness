@@ -16,36 +16,10 @@ import { servePluginRoute } from './plugin-endpoints.ts'
 import { serveVaultRoute } from './vault-endpoints.ts'
 import type { VaultIndex } from './vault/index.ts'
 import type { VaultRegistry } from './vault/registry.ts'
+import { CONTENT_TYPES, dispositionOf, extensionOf, logNoteOpen } from './routes-shared.ts'
+import type { RouteHost, TrustGate } from './routes-shared.ts'
+export type { RouteHost } from './routes-shared.ts'
 
-/** The Web carrier surface this module mounts on. */
-export interface RouteHost {
-  readonly webServer: {
-    register(route: {
-      readonly kind: 'prefix'
-      readonly path: string
-      readonly handler: (request: IncomingMessage, response: ServerResponse) => void | Promise<void>
-    }): () => void
-  }
-  get(name: string): unknown
-}
-
-interface TrustGate {
-  requestRejection?(request: { readonly headers: IncomingMessage['headers'] }): 401 | 403 | undefined
-}
-
-const CONTENT_TYPES: Readonly<Record<string, string>> = {
-  png: 'image/png',
-  jpg: 'image/jpeg',
-  jpeg: 'image/jpeg',
-  gif: 'image/gif',
-  webp: 'image/webp',
-  svg: 'image/svg+xml',
-  pdf: 'application/pdf',
-  mp4: 'video/mp4',
-  webm: 'video/webm',
-  mp3: 'audio/mpeg',
-  wav: 'audio/wav',
-}
 
 /**
  * Mount the vault API on the Web carrier.
@@ -94,27 +68,6 @@ async function serve(
     await dispatch(host, registry.vault, route, url, request, response)
   } catch (error) {
     send(response, 500, { error: error instanceof Error ? error.message : String(error) })
-  }
-}
-
-/** 写「笔记打开」事件到 DSH_HOME/logs/note-open.jsonl（统一骨架，brain 侧采集）。 */
-async function logNoteOpen(path: string): Promise<void> {
-  const home = process.env.DSH_HOME
-  if (!home) return
-  const logDir = join(home, 'logs')
-  const logPath = join(logDir, 'note-open.jsonl')
-  try {
-    await mkdir(logDir, { recursive: true })
-    const record = JSON.stringify({
-      ts: new Date().toISOString(),
-      source: 'dsh_note_open',
-      event: 'note_open',
-      level: 'info',
-      path,
-    })
-    await appendFile(logPath, record + '\n', 'utf8')
-  } catch {
-    // 日志失败不阻断主流程
   }
 }
 
@@ -307,16 +260,4 @@ async function dispatch(
     default:
       send(response, 404, { error: 'unknown route', route })
   }
-}
-
-function extensionOf(path: string): string {
-  const dot = path.lastIndexOf('.')
-  return dot === -1 ? '' : path.slice(dot + 1).toLowerCase()
-}
-
-/** Attachment download header: an ASCII fallback plus the RFC 5987 UTF-8 name. */
-function dispositionOf(path: string): string {
-  const name = path.slice(path.lastIndexOf('/') + 1)
-  const fallback = name.replace(/[^\x20-\x7e]/g, '_').replace(/["\\]/g, '_')
-  return `attachment; filename="${fallback}"; filename*=UTF-8''${encodeURIComponent(name)}`
 }

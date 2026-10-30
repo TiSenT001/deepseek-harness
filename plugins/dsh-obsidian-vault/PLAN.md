@@ -179,7 +179,7 @@ Canvas、Bases、Sync/Publish、社区插件**运行时**（只做目录与启�
 2. **统一接口**：Host 侧路由集中在 `src/routes.ts` 的注册表；Client 侧所有网络调用只经 `src/client/api.ts`；不允许组件直连 `fetch`。
 3. **统一出入口**：`VaultPage` 是唯一入口，`openPath` / `activate` / 保存 / 菜单动作都走同一个 action 分发器（`VaultActions`），便于日志与测试。
 4. **统一日志**：新增 `src/log.ts`，Host 与 Client 共用分级日志（`debug/info/warn/error`），每条带 `area` 与 `op`，写操作必须留痕（`审计日志`），默认 `info`。
-5. **模块化**：单文件 ≤300 行；新能力各占独立目录；复用优先于新增（先查 `ui/kit/` 与 `graph/render/`）。
+5. **模块化**：单文件 ≤300 行；新能力各占独立目录；复用优先于新增（先查 `ui/kit/` 与 `graph/render/`）。**唯一例外**：`src/pur-kernel/controller.ts`（`PurController` 门面）——它聚合 49 个公开方法（多数是一行转发到 `controller-*` 八个模块），拆分只能靠原型混入或状态对象间接层，两者都会把调用链拉长而不减少逻辑，因此登记为长期例外；新增方法仍应落在那八个模块里，门面只做接线。
 6. 每阶段结束：`tsc` 干净、`npm test` 全绿、`ui-full-audit.mjs` 通过，并给审核脚本补本阶段检查项。
 
 ### 7.1 P1 右键菜单统一 + 收纳
