@@ -1,0 +1,3 @@
+# dsh-better-sidebar-src 有自己的 .git 与 node_modules，是独立仓库，
+# 由 profiles/web/node_modules/dsh-better-sidebar 软链加载，不并入本仓库。
+dsh-better-sidebar-src/

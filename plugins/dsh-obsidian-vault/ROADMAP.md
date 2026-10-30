@@ -1,0 +1,687 @@
+## 第四十二轮：任务 4 收尾——双端 15 条命令注册 + 三处上游行为偏差修复
+
+- **裁决落地**（第四十一轮待裁决 ①-⑤）：①② 双端都补——Obsidian adapter 注册全部 16 条 addCommand；DSH 命令面板也加 pur 命令，但仅当活动文件是 `.purstudio` 时显示（避免全局面板里 15 条无视图静默命令的 UX 退步）；③④⑤ 三处偏差全修。
+- **字典**：pur-zh/pur-en 新增 19 键（15 条命令名 `pur.cmd*` + `pur.newCanvasName`/`pur.createdTo`/`pur.savedTo`/`pur.noOpenCanvas`/`pur.copySuffix`），zh 值用上游原命令名，en 自译；`PUR_EN: Record<keyof typeof PUR_ZH, string>` 编译期强制键对齐。
+- **Obsidian adapter**：`exporter.ts` 新增 `createEmptyCanvas`（ensureFolder + `_N` 递增 + 空文档写盘 + `pur.createdTo` Notice），`savePur` 默认名补 `_副本`（空 base 回退 `pur.newCanvasName`）、成功 Notice 改 `pur.savedTo`，`exportMarkdown` 加 `promptName`/`fixedName` 参数；`view-menu.ts` 的 newCanvasFlow 改回上游不 prompt 流程（创建后 `openFile`），菜单 `export-md` 补回名称 prompt；`plugin.ts` 全量重写注册 16 条（`pur-studio-open` 保留 + 15 新增），view 级命令经 `firstView()`（`getLeavesOfType(PUR_VIEW_TYPE)[0]`，对齐上游 `v()`）+ `dispatch` 助手（controller 空守卫后 `runEffects`），`save-pur-studio-as` 限定活动 leaf 是 Pur 视图否则 `pur.noOpenCanvas` Notice（上游语义），`pur-export-md` 固定名 `pur-studio-export` 无 prompt。
+- **DSH client**：`host-export.ts` 新增 `writeFreshDocument`（`Pur画布/` 下不 prompt 建空画布 + createdTo Notice + `openPath?.()`），`exportMarkdownFlow` 同步 `promptName`/`fixedName` 参数；`PurMenuHostDeps` 新增 `openPath?`（DSH 面板本无导航能力，由 MainPane 既有 `onOpen` 经 FileView 穿入 PurStudioPane）；`host.ts` 的 `newCanvas`/`savePur` 默认名/菜单 export-md prompt 与 Obsidian 侧对齐。新增 `pane-commands.ts`（React-free 注册表，仿 bridge-commands：`Map<path, PurPaneHandlers>` + 订阅 + 缓存快照；`createPurPaneHandlers` 把 14 动词接到 live controller/menuHost/hostDeps，controller 动词经 `run` 排 effects），PurStudioPane 挂载注册、卸载或换 path 注销（view 切走时命令自动消失）；`commands.ts` 新增 `buildPurPaneCommands`（15 条，两条 save 都调 `saveStudioAs`，对齐上游两 id 同一链路）；`useVaultCommands` 新增 `purPath` 输入（`notePath` 仅 Markdown 有值，故独立判断 `/\.purstudio$/i`）经 `useSyncExternalStore` 并入 extra。
+- **兼容性修复**：`api.ts` 的 `ApiError` 参数属性（`readonly status`）改显式字段赋值——`--experimental-strip-types` 不支持 parameter properties，此前无测试导入 api.ts 未暴露。
+- 测试 +15：`tests/pur-commands.test.ts`（zh/en 键对齐 + en 抽查；注册表注册/注销/订阅/快照身份/防误删守卫；`buildPurPaneCommands` 15 条 id 唯一、label 取自字典、逐条 dispatch、handlers undefined 为空；`savePur` 默认名 `_副本` 与空路径回退；`writeFreshDocument` 经 `globalThis.fetch` 打桩断言 `_N` 递增、createdTo Notice、`openPath`、无 `openPath` 降级；`exportMarkdownFlow` 菜单变体 prompt / 命令变体固定名无 prompt / 中止静默；`createPurPaneHandlers` 的 run 路由、controller null 静默、固定名导出）
+- 验证：`tsc` 0 错误、**395/395**、`tsdown` 五 bundle 成功（pur-obsidian 295.12 kB / client 805.89 kB）
+- 遗留：`audit-1` 全量审核后台结果待收（有回归则修）；行数债保留待拆分：controller.ts 463、controller-edits.ts 498、controller-commands.ts 359、PurStudioPane.tsx ≈301
+
+## 第四十一轮：任务 4——上游 16 条命令逐条完整性审核
+
+- **审核对象**：上游 main.js L4623-4641 的 16 个 `addCommand`（`v()` = `getLeavesOfType('pur-studio')[0]?.view`，即首个 Pur 视图；无视图时静默无操作），逐条对照内核与双 adapter。
+- **结论总览**：16/16 的行为在内核或 adapter 中存在（13 条 view 级全部经第四十/三十九轮黄金对照；3 条 plugin 级在 adapter）；差距集中在**命令面板注册面**（上游 16/16，Obsidian adapter 1/16，DSH 1/16）与一处内核 API 缺口。
+- 逐条（✅=完整 / ⚠️=行为可达但入口或细节偏 / ❌=缺口）：
+  1. `open-pur-studio`（→`activateView`：有 leaf 则 reveal，无则新 tab）——✅ 双端（adapter `pur-studio-open` + ribbon；DSH `plugin.purStudio`）
+  2. `new-pur-studio`（→`createNewStudio`：不 prompt、固定「新画布」`_N` 递增、Notice 已创建、openLinkText 打开）——⚠️ 双端只经菜单 `new-canvas`，且都**先 prompt 名称**（上游不 prompt）、无成功 Notice；命令未注册
+  3. `save-pur-studio-as`（→`saveCurrentStudioAs`：活动 leaf 非 Pur 视图时 Notice「没有打开的画布」，否则 `saveStudioAs` prompt，默认名 `<base>_副本`）——⚠️ 双端只经菜单 `save-pur`（exporter.ts `savePur` 有 prompt + `_N` + rebind），默认名缺 `_副本` 后缀；命令未注册
+  4. `pur-delete`——✅ 内核 `deleteSelection()`（黄金对照）+ Delete/Backspace + 元素菜单 `delete`；命令未注册
+  5. `pur-group`——✅ 内核 `group()` + Ctrl+G + 菜单；命令未注册
+  6. `pur-ungroup`——✅ 内核 `ungroup()` + 菜单；命令未注册
+  7. `pur-duplicate`——✅ 内核 `duplicate()` + 菜单；命令未注册
+  8. `pur-fit-view`——✅ 内核 `fitToView()` + F 键 + 菜单；命令未注册
+  9. `pur-export-md`（→`exportAsText()` 无 customName → 名 `pur-studio-export`）——⚠️ 内核 `buildExportOutline` 黄金对照过；菜单 `export-md` 上游走 `exportAsTextWithName`（**prompt**）而双端 adapter `exportMarkdown(false,false)` 不 prompt；命令未注册
+  10. `pur-select-all`——✅ 内核 `selectAll()` + Ctrl+A（上游无菜单项）；命令未注册
+  11. `pur-undo`——❌→✅ 内核实现此前只嵌在 keyDown，facade 无公开 `undo()`，命令无法接线；本轮已补（见下）
+  12. `pur-redo`——同上，facade 补 `redo()`
+  13. `pur-copy`——✅ 内核 `copy()` + Ctrl+C + 菜单；命令未注册
+  14. `pur-paste`——✅ 内核 `paste()`（无参 +50/+50）+ Ctrl+V + 原生 paste；命令未注册
+  15. `pur-popout`（→`popOutAndPin`：saveData + `workspace:move-to-new-window`）——⚠️ 双端按裁决降级为 `pur.unsupportedFeature` notice（菜单一致）；命令未注册
+  16. `pur-save-as`——与 3 同一 `savePur` 链路；命令未注册
+- **本轮修复**：内核 facade 补公开 `undo()`/`redo()`（keyDown 的 ctrl+z/y 改为调用它们，行为逐项不变）；测试 +1（facade 边界与选中清除）。验证：`tsc` 0 错误、**380/380**、`tsdown` 五 bundle 成功（pur-obsidian 289.23 kB）
+- **待裁决（①-⑤ 已落地于第四十二轮）**：① Obsidian adapter 补齐其余 15 条 `addCommand`（命令名进 pur-zh/pur-en 字典，view 级经首个 Pur 视图接线）；② DSH pur 命令进命令面板、仅活动文件为 `.purstudio` 时显示；③ `new-canvas` 双端改回上游「不 prompt + Notice」；④ 菜单 `export-md` 补回上游的 prompt；⑤ `savePur` 默认名补 `_副本`；⑥ 行数债保留：controller.ts 463 行、controller-edits.ts 498 行、controller-commands.ts 359 行已超 300 行约束，待拆分
+- 遗留：`audit-1` 全量审核后台结果待收（有回归则修）
+
+## 第四十轮：P9-5 收尾——Obsidian 与 DSH 双 adapter 接线
+
+- **Obsidian adapter**（`src/pur-obsidian/`，13 文件全部 ≤300 行）：`obsidian.d.ts`（`declare module 'obsidian'` 最小声明面：ItemView/Plugin/Menu/Modal/FuzzySuggestModal/Notice/TFile/Vault/Workspace/Setting 等）、`labels.ts`（`readerFor`/`labelsFor`/`PurLang`）、`settings.ts`（`PurSettings`/`resolvePurSettings`/`PurStudioSettingTab`）、`paste-drop.ts`（`handlePaste`/`handleDrop`/`insertVaultNote`/`readNoteRaw`）、`editors-dom.ts`+`editors.ts`（DOM 脚手架与五个编辑器弹层拆分）、`menu.ts`（`showPurMenu` 树形菜单 + 透明度滑块 overlay）、`exporter.ts`（save-as `.PurStudio`/Markdown 大纲/PNG/JPG/JSON Canvas/JS/PY 生成，落 `收件箱/` 与 `Pur画布/`，重名 `_N` 递增）、`view-menu.ts`（`PUR_VIEW_TYPE`、`createViewMenuHost`、`NotePicker` 模糊选笔记）、`view.ts`（`PurStudioView` 生命周期与 400ms 防抖持久化、自写保存旗标抑制重水合、无文件时回退 `settings.canvasData`）、`view-paint.ts`（ResizeObserver + rAF 绘制循环、DPR 同步、vault 图像走 object URL）、`view-hosts.ts`（sink 与菜单/导出/插入 deps 工厂）、`view-events.ts`（事件接线，wheel 非 passive）、`plugin.ts`+`index.ts`（`PurStudioPlugin` default export、`registerExtensions(['PurStudio','purstudio'])`、ribbon `brain`、命令与设置页）
+- **DSH client adapter**（`src/client/pur/`）：`sink.ts`（`createPurSink`：effects→React 状态/notice/光标/`noteOpen`）、`loader.ts`（桥读写文档、`PurImageCache`、`listMarkdownNotes`/`resolveNoteLink`）、`labels.ts`（`purReader`/`purBundles`）、`menu.tsx`（`PurContextMenu` 树 + 透明度滑块）、`editors.tsx`（四编辑器）、`picker.tsx`（`PurPrompt`/`PurNotePicker` 对话框）、`paste-drop.ts`（`pasteIntoCanvas`/`dropIntoCanvas`）、`host.ts`+`host-export.ts`（`createPurMenuHost`，popout/pin-top/embed 降级为 `pur.unsupportedFeature` notice，导出流经桥写盘）、`PurStudioPane.tsx`（控制器宿主：ref 袋延迟求值、`openMenuRef` 修复 sink 对 `openMenu` 的前向引用）、`pane-paint.ts`（rAF 绘制循环与非 passive wheel、原生 drop 接线）、`pane-overlays.tsx`（菜单/编辑器/prompt/picker/notice 覆盖层栈）
+- **路由**：`FileView.tsx` 对 `/\.purstudio$/i` 路径直渲 `PurStudioPane`，hooks 无条件执行、`isPur` 时 effect 跳过 `fetchFile`（`MainPane` 不给 key，path 切换不重挂载）
+- **打包**：tsdown 新增第五入口 `obsidian`（cjs/node、`obsidian` 外部化、`exports: 'default'`），产物 `lib/pur-obsidian.js` 尾为 `module.exports = pur_obsidian_default`，正合 Obsidian 插件加载器
+- 类型修正两处：`dblclick` 发 `MouseEvent` 而非 `PointerEvent`——`pointerEvent`/`pointerEventOf` 参数放宽到 `MouseEvent`/`React.MouseEvent`；`TextPrompt.onOpen/onClose` 补 `override`
+- 测试 +12（双 adapter 用例）；验证：`tsc` 0 错误、**379/379**、`tsdown` 五 bundle 成功（index 121.08 kB / client 797.23 kB / worker 19.53 kB / shim 51.70 kB / pur-obsidian 288.70 kB）
+- 遗留：`audit-1` 全量审核后台结果待收（有回归则修）；`pur-4` 16 条命令逐条完整性审核
+
+## 第三十九轮：P9-5 步 5——控制器层（`PurController` 与 40+9 场景 151 步黄金对照）
+
+- 内核新增 9 文件（全部 ≤300 行、零 `document`/`window`/`app`）：`controller-types.ts`（指针/滚轮/键盘事件、`PurControllerEnv`、`PurControllerLabels`、`PurControllerEffect` 副作用枚举、菜单模型、共享状态与 `PurHistory`）、`history.ts`（JSON 快照栈：栈顶去重、分支截断、上限 50）、`note-raw.ts`（笔记原文水合引脚与内容）、`paste-drop.ts`、`controller-commands.ts`（对齐/等比/重排/层序/锁定/透明度/连线/删除）、`controller-edits.ts`（增删元素与引脚、复制/粘贴/成组、编辑器提交）、`controller-pointer.ts`（引脚拖拽与重连、缩放手柄、元素拖拽与群组重挂、框选、平移）、`controller-menu.ts`（空白/元素两棵菜单树为纯数据）、`controller.ts`（`PurController` 门面：事件进、effects 出，状态与 history 只读暴露）
+- 副作用全部枚举化：`render`/`save`/`notice`/`cursor`/`open-link`/`edit-text|group|line|note-link`/`context-menu`/`export-text`；文案经 `PurControllerLabels` 注入（内核零中文），环境经 `PurControllerEnv`（画布尺寸、id 源、时钟、`hasOpenDialog`）注入
+- 黄金生成器（临时脚本，不在仓库）：从 main.js 切出 34 个方法跑真实上游码；切片器补上正则字面量识别与正确转义处理（此前把 `/...\/\//i` 结尾的 `//` 误判为行注释，`showContextMenu` 提前闭合到 L4133，修复后切到 L4031–L4372 全量）；录制桩件 `saveData`→`save`、`requestRender`/`draw`→`render`、`Notice`→`notice:<text>`、canvas style→`cursor:<v>`、编辑弹层四件→`edit-*:<id>`、`showAtMouseEvent`→`menu:x,y`、`Date.now` 固定 1000、id 计数 `id0001…`；三处场景坐标修正（`pin-relink-from` 按下点落在输出引脚容差内避免被 pin-first 分支吞掉、`dblclick-line` 与 `line-click-edit` 的 clientX 200→250 避开 t1 右边界）
+- 本轮两处忠实性修正：生成器 `buildView` 补 `hoveredLineId = null`（上游在构造函数初始化，此前缺失导致首次 move 的 `undefined !== null` 多记一个 render 伪影）；内核 `pointerUp` 平移分支末尾同步跑第一帧动量（对齐上游 `onMouseUp` 尾部同步调用 `_startMomentum()`，`up` 步 calls 由 `render,cursor:default,render` 逐项吻合，`momentumStep` 仍由 adapter 驱动后续帧），黄金 `skipCompare` 随之移除
+- 早前核对补丁：`_lockTime` 时间窗→`lockPulseIds` 由 `now()` 注入判定；`toggle-lock` 菜单图标按命中元素 `locked` 取 `unlock`/`lock`
+- 测试 +51：`tests/pur-kernel-controller.test.ts`（40 命令/指针场景逐步对拍 calls/elements/selected/view/historyIndex/historyLength/clipboard/zoomUntil/handled、9 菜单场景树形对拍——`t()` 键直等、`PRESET_TITLES`/`CATEGORY_TITLES`/`LITERAL_TITLES` 映射中文、引脚子菜单回退 `输入N`/`输出N`、`separatorAfter`↔`s`、`icon`↔`i`、`children`↔`c` 递归——以及 history 去重与 undo/redo 边界单测）
+- 验证：`tsc` 0 错误、**367/367**、`tsdown` 成功（index 121.08 kB / client 495.91 kB）
+- 遗留：P9-5 收尾 Obsidian 与 DSH 双 adapter 接线（`pur-58`）；`audit-1` 全量审核后台结果待收；`pur-4` 16 条命令逐条审核
+
+## 第三十八轮：P9-5 步 4——渲染层（`drawScene` 与录制式黄金对照）
+
+- 内核新增 10 文件（全部 ≤300 行、零 `document`/`window`/`app`/`Image`）：`render-types.ts`（`PurCanvasContext` 最小 2D 接口、`PurScene`、`PurRenderEffects`、`PurRenderLabels`、引脚 hover/拖拽描述）、`render-shared.ts`（`screenX`/`screenY`、`fillRoundedCard`/`roundedRectPath`/`pillPath` 的 `roundRect` 与 `arcTo` 双实现、`wrappedLines`）、`render-background.ts`、`render-lines.ts`、`render-groups.ts`、`render-text.ts`、`render-cards.ts`、`render-code-node.ts`、`render-overlays.ts`、`render-elements.ts`（展平群组、视口裁剪、旋转/翻转/透明度/选中框）、`render-scene.ts`（`drawScene` 顺序：背景→网格→连线→群组框→卡片→选择框→引脚拖拽→端点圆点→缩放徽章→预加载）
+- **绘制副作用外置**：图像解码不再在绘制层 `new Image()`，改为 `PurRenderEffects.loadImages`（键为 `dataURL || original`，顺序＝卡片请求序 + 视口外 2 倍范围预加载，每帧上限同上游 21 次）；`lockPulseIds` 取代上游 `_lockTime` 时间窗，`editingIds` 取代 `isEditing`，`zoomBadgeAlpha` 取代 `_showZoomUntil`
+- 黄金对照：新增临时脚本（不在仓库）从 main.js 切出 `draw()` 方法体（起止标记行）与 L412–491 的 `wrapText`/`findElementById`/`getWorldPos`/`getPinPosForElement`/`getPinWorldPos`，`new Function` 注入 `getComputedStyle`/`Image`/固定 `Date.now` 与假图像缓存，以录制 ctx（每次属性赋值与调用各记一条字符串，文本按 10 单位/字符测宽）跑真实上游码，产出 `tests/helpers/pur-render-golden.ts`（4 场景：基础绘制 484 条、交互叠加 207 条、引脚拖拽 174 条、群组/编辑/裁剪 353 条）
+- 逐条对齐的既有缺陷：text 引脚 hover 读 `hoverPin.isInput`（`getPinAt` 只回 `isOutput`，故文本输入引脚 hover 实际上永不放大）；文本引脚标签 `-pinR*scale` 双重缩放；note-link 标题 `titleSize + 10` 不随 scale；`.replace('.md','')` 只替换首个匹配；note-link 折行宽度 `screenW - 20` 不缩放；代码节点输出标签 `screenW - pinR - tw` 的 `pinR` 不缩放；group 框虚线 `[8,4]` 不随 scale
+- 与上游的三处有意差异（均在 JSDoc/本轮记录）：`relink-from` 拖拽的目标引脚不存在时上游把 `null` 传给 `bezierCurveTo`（真实 canvas 当 0 处理），内核回退到指针位置；背景 `obsidian`/`default` 的 `getComputedStyle` 读取由 adapter 解析为具体颜色（内核只认 `transparent` 与给定色值）；`worldRect` 对 line 不返回矩形（沿用几何层裁决）
+- 测试 +12：`tests/pur-kernel-render.test.ts`（4 场景逐调用 + 解码请求逐项对拍、无 `roundRect` 的 `rect` 回退、图像占位文案、编辑态跳过主体与引脚、旋转/翻转/透明度、锁定脉冲只在窗口内、缩放徽章按 alpha 显隐、群组标题在框描边之后）；录制器见 `tests/helpers/pur-render-recorder.ts`
+- 验证：`tsc` 0 错误、**316/316**、`tsdown` 成功（index 121.08 kB / client 495.91 kB / shim 51.70 kB）
+- 遗留：P9-5 步 5 控制器层（选中/拖拽/缩放/编辑弹层/命令接口）、Obsidian 与 DSH 双 adapter 接线；`audit-1`（全量审核后台结果）待收
+
+## 第三十七轮：P9-5 步 3——算法层（YAML/IR 导入、拓扑排序、JS/HTML/PY 生成）
+
+- 内核新增 8 文件：`yaml.ts`（`parseSimpleYAML`）、`ir.ts`（`irToElements(ir, baseX, baseY, {createId, formatLabel})`）、`pipeline.ts`（`buildPipeline`：扁平化群组 → 筛选代码节点 → 引脚连线 → Kahn 拓扑 → `safeName`/输入映射，失败区分 `no-code-nodes` | `cycle`）、`codegen-labels.ts`（四组 labels 接口）、`codegen-shared.ts`（`nameMapOf`/`outputsLookup`/`jsInputLine`）、`codegen-js.ts`、`codegen-html.ts`、`codegen-py.ts`；全部零 `document`/`window`/`app`，单文件 ≤200 行
+- 文案外置：生成的 JS/HTML/PY 里此前硬编码的中文与 `zh-CN` 全部改为 adapter 注入的 `PurCodegenCoreLabels`/`JavaScriptLabels`/`HtmlLabels`/`PythonLabels`；`ir.ts` 的群组标签也改为 `formatLabel` 注入（默认英文 `📦 name (n nodes, m links)`）
+- 黄金对照：新增临时脚本（不在仓库）从 main.js 切出 L495–L700（`parseValue`/`parseKV`/`parseSimpleYAML`/`irToElements`）与 `generateRunnableCode` 方法体，`new Function` 注入 `Notice`/`t`/`Date`（`toLocaleString` 固定为 `FIXED`）与假 `crypto.randomUUID`，以 `{elements, app}` 作 `this` 跑真实上游码，产出 `tests/helpers/pur-algo-golden.ts`（2 份 YAML、IR、元素夹具、循环图、JS/HTML/PY 全文、上游中文 labels）
+- 方法体提取方式修正：本文里有模板字符串与正则，按大括号配对切分必然错位（首次运行 `SyntaxError: missing ) after argument list`）；改为「起始标记行切片 + 结束标记行（`// 按格式生成并展示代码`）」，并去掉末尾 `}` 与空行
+- 逐字节对齐：JS 的节点闭包/`executePipeline`/`try-catch` 尾、HTML 的 20 行 CSS + 卡片 + `pretty`/`renderNode`/运行按钮、PY 的 `def *_process` + 缩进 4 空格的 `execute_pipeline` 全部与上游一致；`safeName` 仍为 `node_<i>_<title>`（`[^a-zA-Z0-9_\u4e00-\u9fa5]` 过滤）
+- 有意修的上游缺陷：
+  - `parseSimpleYAML` 的 `lines.indexOf(line)` 按首次出现定位后一行——重复裸键会把后一个键挂到错误的深层（用例 `a:/p:/…/b:/p:/keep:` 复现并断言不再产生空列表）
+  - `irToElements` 的 `baseX || 20`、`n.x || ni*320+20` 把坐标 0 替换为默认值（用例断言 `x=0`/`baseX=0` 原样保留，`y` 仍按上游 `Math.max(48, y)` 下限）
+  - 无 `title` 的 text / note-link 节点上游生成 `// [节点 1] undefined`；内核归一为 `''`（`safeName` 回落 `node_0_node`）
+  - HTML/PY 两个渲染器此前（上游）只读 `content || code`，忽略 note-link 解析出的代码，导致生成的浏览器页/Python 里塞进笔记原文；本轮三个渲染器统一为 `linkedCode || content || code`
+- 另两处语义偏差（记入本层）：表头「N 条连线」上游按全部带引脚的线计数（含端点不是代码节点的线），内核按真正进入流水线的边计数；输入映射上游对非代码节点的来源也建连（生成 `results['undefined']`），内核只建代码节点之间的边
+- 测试 +14：`tests/pur-kernel-algo.test.ts`（YAML 逐文档对拍、重复裸键用例、IR 逐字段对拍、0 坐标修正、无图/非对象、拓扑顺序与边/输入映射、无节点拒绝、循环拒绝、JS/HTML/PY 逐字节、链接笔记代码注入三格式、卡片已含 `function` 时不再读文件、无标题节点不再输出 `undefined`）
+- 验证：`tsc` 0 错误、**304/304**、`tsdown` 成功
+- 遗留：P9-5 步 4 渲染层（`draw(ctx, scene, viewport)`）、步 5 控制器层
+
+## 第三十六轮：P9-5 步 2——几何层（视图变换、引脚坐标、网格步进、命中检测）
+
+- 内核新增 3 文件：`wrap.ts`（`wrapText(text, maxWidth, measure)` 注入式测量，字符级折行）、`geometry.ts`（`screenToWorld`/`worldToScreen`/`worldViewport`/`findElement`/`worldRect`/`gridStep`/`rectsIntersect`/`pinPosition`/`pinWorldPosition`）、`hit-test.ts`（`elementAt`/`pinAt`/`lineEndpointAt`）；三文件均 ≤200 行，仍零 `document`/`window`/`app`
+- 黄金对照扩面：除上次的顶层纯函数外，本轮把上游**类的原型方法**也纳入——用 `extractMethod` 按大括号配对切出 `getElementAt`/`getPinAt`/`getLineEndpointAt` 的方法体，`new Function` 注入其依赖并以 `{elements, viewState}` 作 `this` 调用真实上游码；连同 `wrapText`（用 `measureText` 假上下文）、`getWorldPos`、`getPinPosForElement`、`getPinWorldPos` 一并产出 `tests/helpers/pur-geometry-golden.ts`
+- 语义对齐要点：连线命中按**两端中心的中点**、半径 `25/scale`（`scale||1`，与上游不对称地容忍 0）；引脚半径 `14/scale`，**输出先于输入**、只搜 code-node 与带引脚的 text/note-link；端点半径 `16/scale` 且只对带 `fromPin`/`toPin` 的连线生效；群组仅在 `!locked` 时递归、子元素优先于群组本身；`pinPosition` 行距 `(0.85h-0.15h)/(rows-1)`、单行取 `h/2`；`gridStep` 仍是 1/2/5×10ⁿ 吸附到 50 屏幕像素
+- 类型模型修正：`inputs`/`outputs` 从 note-link/code-node 上移到 `PurElementBase`——上游引脚检测对 text、note-link 同样生效，`getPinWorldPos` 也不限元素种类，原声明比上游窄；`PurPinHost` 仍是 `pinPosition` 的结构化入参
+- 唯一有意的偏离：`worldRect` 对 line 返回 `null`（上游对无坐标的连线会算出 `NaN`，没有调用方依赖该值），已在 JSDoc 标注
+- 测试 +9：`tests/pur-kernel-geometry.test.ts`（折行逐例、空段落折成空行、18 档缩放的网格步进、嵌套世界矩形、引脚偏移、引脚世界坐标、三类命中逐点对拍、屏幕/世界往返 + 视口、矩形相交含贴边不算）
+- 验证：`tsc` 0 错误、**290/290**、`tsdown` 成功
+- 遗留：P9-5 步 3 算法层（代码生成拓扑排序 + JS/HTML/PY 模板、`parseSimpleYAML` + `irToElements`）
+
+## 第三十五轮：P9-5 步 1——平台无关内核的数据层 + 上游黄金对照
+
+- 裁决落地方向（PLAN §8.9）：Pur 不再只以「main.js + shim」存在，纯逻辑抽成无 Obsidian 依赖的 `src/pur-kernel/`，Obsidian 与 DSH 各写 adapter；本轮只做**数据层**（表中第一层，宿主依赖为零）
+- 内核文件 13 个：`types.ts`（元素联合与 `PurViewState`/`PurStudioDocument`）、`canvas-types.ts`（JSON Canvas 与 `PUR_META`）、`errors.ts`、`guards.ts`（`asRecord`/`numberOr`/`nonZeroNumberOr`/`stringOr`/`sideOr`）、`ids.ts`、`nodes.ts`（`codeNodeHeight`）、`presets.ts`（58 条预设）、`merge.ts`、`pins.ts`、`canvas-export.ts`、`canvas-import.ts`（导出/导入各一文件，均在 300 行内）、`studio-file.ts`、`index.ts`；全部零 `document`/`window`/`app` 引用
+- 黄金对照做法：从上游 `main.js` L238-410 原样切出 `generateId`/`calcNodeHeight`/`CODE_NODE_PRESETS`/`elementsToJSONCanvas`/`elFromNode`/`jsonCanvasToElements`，用 `new Function` 执行真实上游码而非手抄期望值，产物落 `tests/helpers/pur-golden.ts`（`GOLDEN_ELEMENTS`/`GOLDEN_CANVAS`/`GOLDEN_IMPORTED`/`GOLDEN_LEGACY_ELEMENTS`），CI 无需访问 `G:\个人知识库` 的源码路径
+- 对齐要点：`__pur` sidecar 只装 wire 之外的字段（`id/x/y/w/h/children` 剔除，边装 `fromPin`/`toPin`/`style`/`arrow`/`arrowSize`）；导出时**省略**值为 undefined 的 `color`（写死 `color: undefined` 会与上游 JSON 化后的黄金不等）；群组子元素按绝对坐标 export、带 `parentGroupId`，import 先建 group map 再挂 children 并换算回相对坐标；`width||fallback` 保留「0 取默认」语义；`.PurStudio` 序列化仍是 `JSON.stringify({elements, viewState}, null, 2)` 字节一致
+- 修上游导出/导入两处缺陷：① 导入后子群组元素体残留 `parentGroupId`（新增 `withoutParent()` 在 merge 前删除）；② 元素模型未声明的字段（第三方或新版本写入的键）必须原样穿透保留，靠 `mergeExtras`（`Object.hasOwn` + `Reflect.set`）实现，不引入 `as unknown`
+- 内核不含中文：58 预设标题改消息键 `preset.<id>`、分类改 `presetCategory.<key>`，中文文案仍只在客户端 `zh.ts`
+- 测试 +16：`tests/pur-kernel-data.test.ts` 9 用例（id 后缀、节点高度 88/116、58 预设唯一且 classify 正确、math-add 逐字节、serialize 字面量、往返含 extras/pins、未知属性、line 无 `x`、5 类坏文档）与 `tests/pur-kernel-canvas.test.ts` 7 用例（导出=黄金、导入=黄金、未知属性穿透、无 `__pur` 的旧 canvas 默认值、0 尺寸回退、非对象拒绝、再导出语义等价）
+- 验证：`tsc` 0 错误、**281/281**、`tsdown` 成功（index 121.08 kB / client 495.91 kB / shim 51.70 kB）
+- 遗留：P9-5 步 2 几何层（`wrapText`/引脚坐标/视口裁剪/命中检测），之后算法、渲染、控制器与双 adapter；任务 4（16 条命令逐条审核）待内核/adapter 落地后执行
+
+## 第三十四轮：pur 桥接联调（一）——左栏图标 + shim 三处语义缺陷
+
+- 左栏图标：Pur 的 `addRibbonIcon('pur-icon', …)` 回调只做 `activateView()`，与宿主「打开插件视图」等价，故不新增 ribbon 注册通道，而在 `Ribbon.tsx` 的 `ENTRIES` 加 `plugin` 条目（`Icon name="plugin"`、`aria-label` 复用 `openPurStudio`）指向 `VaultPage.selectRibbon` 的 action 分支；顺手删掉 `pressed` 里 `search` 的特例（`active` 只可能是 `files`，其余条目自动恒 false）
+- **shim 缺陷①同步语义**：`workspace.getActiveFile()` 在 Obsidian 是同步 getter，shim 却返回 Promise，插件 L4164 直接读 `.extension` 永远拿到 undefined → 改为「宿主预取快照 + `file.open` 推送刷新」：`refreshActiveFile()` 在 `onload` 前拉一次，`setActiveFile()` 供 `file.open` 事件更新，`getActiveFile()` 同步返回
+- **shim 缺陷②元数据**：`getFileCache()` 恒 `null`，`tag:` 过滤（L3112-3119）永不命中 → 新增桥方法 `metadata.fileCache`（宿主用 `fetchNote` 取 tags 并补 `#` 前缀），shim 侧冷读启动后台拉取并答「未索引」，热读同步返回，与 vault 冷缓存同款
+- **shim 缺陷③命令门面**：`app.commands` 完全缺失，L1718 访问即 TypeError → 新增 `src/shim/commands.ts`（`commands` 空映射对应「无桌面命令」的降级分支，`executeCommandById` 抛 `UnsupportedObsidianApi`）
+- 夹具：`pur.frame-opens` 的 shim 操练新增 5 条记录（`getActiveFile-sync` 断言返回 TFile/null 而非 Promise、`commands-empty`、`executeCommandById-throws`、`fileCache-cold`/`fileCache-warm`）；该检查末尾在切回主库**前**关闭标签页，避免 `夹具打开链接` 留下的 vault B 路径在恢复后的库里 404
+- 审核 +1：`ui.ribbon-pur-icon`（图标唯一、action 语义恒 false、点击开出 `[data-plugin="pur-studio"]`、关闭后消失）
+- 验证：`tsc` 0 错误、**265/265**、`tsdown` 成功；**全量审核 101/101 通过、0 console error**（新增项已并入全量序列）
+
+## 第三十三轮：逆向直探官方 `app.js`——resolver 对齐 `getLinkpathDest`、附件解析缺口、嵌入尺寸、嵌套 Callout
+
+- 逆向方式：`obsidian.asar` 解包后直读压缩 `app.js`，围绕 `getLinkpathDest` / 嵌入尺寸正则 / Callout 折叠 / 图谱分组取色 / 搜索算子逐段定位，结论落 PLAN §3 对照表；types.json 与堆叠标签评估后**决定不做**（价值低/成本中大），别名解析保留为末位扩展（超集，文档标注）
+- resolver 对齐（`resolver.ts` 重写）：小写规范化 → 精确路径 → `./`/`../` 相对源目录 → 前导 `/` 根锚定（**无后缀回退**）→ 后缀/basename 候选按「源目录邻近 + 路径长度升序」永远确定取第一；`decide` 改为直白的「与胜者同桶且等长才平局」，仅此种情况报 ambiguous；`move.ts` 改写链接时闭包捕获被移动笔记自身路径作 `from`
+- **存量缺口修复①：附件不进 LinkResolver**——`![[img.png]]` 历史上永远解析失败、渲染成新建链接；`deriveIndex(notes, attachments)` 把附件加进 identities（title=basename、aliases=[]），但反链/邻接跳过附件（图谱附件节点本就走独立路径，不进 adjacency 是对的）
+- **存量缺口修复②：共享 Markdown 渲染器只画绝对 http(s) 图片**——`imageSource` 用 `new URL()` 拒绝相对路径，嵌入图片从未真正显示；`assetUrlFor` 在浏览器内改为 `new URL(relative, location.origin).href` 绝对化
+- 嵌入尺寸：对齐 `zx` 正则 `([0-9]+)(x([0-9]+))?` 按最后一个 `|` 切，width 恒设、height 仅 y≠0、整串是尺寸则 alt 置空；落地为 `SIZE_MARK='\uE000'` 编进 markdown 图片 alt 尾（rewrite 侧），DOM 增强 `annotateImages` 还原 width/height 并清标记（曾踩不可见字面量坑，一律用转义写法 + 测试导入常量拼期望值）
+- 嵌套 Callout：`NoteView` 的 `Rendered` 联合加 `callout` 分支带 `children`，`segments(source)` 递归 splitCallouts，模块级 `Segments` 组件按 prefix 路径作 key 递归渲染
+- NoteView 行数压回 300：合并 react 导入为单行
+- 单测：resolver +4（`../` 上跳、`./` 当前目录、源目录邻近优先、根锚定无回退）→ 10/10；vault +1（`![[pic.png]]` 解析到附件且无反链边）；rewrite +1（尺寸标记三态）→ 全套 **265/265**；`tsc` 0 错误、`tsdown` 成功（client 494.93 kB）
+- 审核 +3：`note.relative-links-resolve`（`[[../审核链接者]]`/`[[./审核大纲]]` 的 open 参数）、`note.embed-image-size`（`img[width=300][height=200]` 且 alt 无标记泄漏）、`note.nested-callout-renders`（`.ov-callout .ov-callout` 存在）
+- 首轮全量审核暴露 3 项失败，全部为夹具/断言设计问题而非产品回归：① 新夹具的相对链接指向主夹具，多挂一条反链污染 `note.inline-backlinks` 计数 → 改指 `审核大纲`；② `config.obsidian-roundtrip` 断言 vault B 的 graph.json 初始为 null，与第三十二轮 shim 夹具播种的 colorGroups 冲突（此前只跑增量从未暴露）→ 重写为「接受播种值，且每次 config/write 后断言 colorGroups 保留」，顺带把两处写 graph.json 的检查补 `ensureVaultB()` 自给切库（否则 `--only` 会误写真实库）；③ `graph.settings-persist-to-vault` 是 ② 的级联失败，并补自给播种未知键
+- 修 ② 时发现一处真实产品 bug：图谱设置面板每个颜色分组行的删除按钮也标 `aria-label="关闭"`，与面板关闭按钮撞名（playwright strict mode 报 2 个元素；对读屏用户同样是错误语义）→ i18n 新增 `removeGroup`（zh 删除分组 / en Remove group）并改用之
+- 验证：`tsc` 0 错误、**265/265**、`tsdown` 成功；增量 `--only=` 六项 6/6 通过、0 console error；**全量审核 100/100 通过、0 console error**
+
+## 第三十二轮：P9-3 obsidian shim v0——frame 内 `require('obsidian')` 真身、命令回环进宿主面板
+
+- Shim bundle：`tsdown` 第四入口 `src/shim/index.ts` → `lib/shim.js`（IIFE，48.85 kB），`routes.ts` 新增 `shim.js` 路由（ACAO:*，与 worker.js 同款）；`frameDocument` 删旧 `window.require` 桩，内嵌 `__OV_MANIFEST__`/`__OV_GRAPH_JSON__`（`</script>` 防注入转义），以 `<script crossorigin src="…/shim.js">` 引导
+- Shim 模块 13 个：`transport`（注入式 IO 可单测；request 相关 + `onEvent` 收宿主推送）、`obsidian.ts`（`createShim` 组装，app.workspace 用 getter 破循环引用，无断言）、`plugin.ts`（`Plugin`：loadData/saveData 走桥、addCommand 全量重发 `commands.register`、registerView 注进 ViewRegistry 并随插件卸载）、`views.ts`（Component/ItemView/WorkspaceLeaf.setViewState 挂载进 frame 自身 DOM）、`vault.ts`（warmup 预填缓存撑住同步 getter；create 先 exists 查重、process 读改写、写入即失效缓存；getResourcePath 走新 `bridge/raw` 路由保 canvas 读像素）、`metadata.ts`（getFirstLinkpathDest 精确→basename 小写）、`modals.ts`（Notice/Modal/FuzzySuggestModal/Menu 全部渲染进 frame DOM）、`setting.ts`（Setting 链式构建器 + 抽象 PluginSettingTab）、`node-stubs.ts`（path 真实现；crypto 给 randomUUID + 同步 sha256（`sha256.ts` 纯 JS 参考实现）；fs 只答内嵌 graph.json 的同步读，其余与 child_process/electron/os 全抛 `UnsupportedObsidianApi`；`installBuffer` 供 Buffer.from/toString base64|hex|utf8）、`files.ts`（TFile/TFolder + DTO 装配）、`errors.ts`、`normalize.ts`
+- Server：`VaultFiles.list()`（递归、跳 dot 目录、产 `BridgeFileDto`）；`bridge-endpoints` 新增 `bridge/read-text` / `bridge/write-text` / `bridge/list` / `bridge/exists` / `bridge/raw`（原始字节 + ACAO:* + 按扩展名的 content-type）；`plugins/frame` 404 于 community 清单缺失
+- 协议：`BridgeMethod` 4 → 10（新增 vault.readText/writeText/list/exists、workspace.getActiveFile/openLinkText）；新增 `HostEvent`（host→frame 通知，`HostMessage = BridgeResponse | HostEvent`）；dispatch 覆盖全部 10 方法，参数校验失败抛错且不达 vault
+- 命令回环：frame `addCommand` → `commands.register` 上行 → `bridge-commands.ts`（React-free store：registerBridgedCommands 全量替换 + setCommandRunner + useSyncExternalStore 三件套）→ `useVaultCommands` 的 extra 追加 `bridge.<plugin>.<id>`（label `Pur Studio: <名>`）→ 面板运行 → `handle.notify('command.run', {id})` 下行 → shim 调插件 callback
+- **本轮实锤的 effect 竞态**：MainPane 给 PluginView 传内联 `onOpenPath` → 每次渲染新引用 → bridge effect 反复销毁重建；`commands.register` 引发的 store 更新本身触发重渲染，cleanup 把刚注册的命令抹掉（面板里永远搜不到桥接命令）。修法与组件内既有 `activePathRef` 同款：`onOpenPathRef` 穿透，effect deps 收窄为 `[bridged, pluginId, title]`
+- 单测：`tests/bridge.test.ts` 的 recordingDeps 扩六字段并补 readText/writeText/list/exists/getActiveFile/openLinkText 的校验与调用断言；新建 `tests/shim.test.ts`（10 用例：normalizePath、sha256 已知向量、Node stubs 抛错面、transport 相关与事件、vault 门面冷缓存与写序列、Plugin 数据往返与命令重发、fileFromDto、metadataCache、ViewRegistry）——冷缓存 `getFiles()` 会触发后台 warmup 挤占请求序号，测试须按序应答两个 list 请求
+- 审核：pur-studio 夹具 main.js 换为真实 shim 操练（Plugin 子类 onload 依序：normalizePath、loadData/saveData 往返、getFiles/TFile instanceof、读 远端笔记、create+process 写回、addCommand×2、registerView+setViewState 挂载、child_process/electron 抛 UnsupportedObsidianApi、fs 读内嵌 graph.json、getResourcePath 加载 1×1 PNG、Notice），结果写进 frame DOM `#fixture-results`；`pur.frame-opens` 重写为：等 `#fixture-results` 含 `"done"` → 逐条断言全 ok → 无错误条 → 面板跑「夹具命令」断言 frame 内 `#fixture-command` 落字 → 跑「夹具打开链接」断言宿主导航到 远端笔记 且插件视图关闭 → 关白名单未桥接空态（保留）
+- 验证：`tsc` 0 错误、260/260、`tsdown` 成功（shim 48.85 kB / client 493.11 kB）、重启宿主后增量审核 `settings.dialog-plugins`+`plugins.bridge-toggle-persists`+`pur.frame-opens` **3/3 通过、0 console error**；面板回归 `note.daily-note-command`+`note.template-command` 2/2 通过（首次失败系调试探针把宿主留在一次性临时库所致，切回主库后转绿，非产品回归）
+
+## 第三十一轮：pur 插件方案启动——P9-2 桥接基础设施（白名单 + 沙箱 iframe + postMessage 桥）
+
+- Server：新建 `vault/bridge.ts`（白名单读写 / `plugins/<id>/data.json` 往返 / `main.js` 字节读取 / id 校验 `^[A-Za-z0-9][A-Za-z0-9._-]*$`），`VaultFiles` 补 `readBytes/writeBytes`（写自动 mkdir 父目录），`obsidian-config` 白名单加 `plugins-bridge`；路由新增 `plugins/bridge-toggle`（未安装 404）、`plugins/script`（未入白名单 403；200 带 `access-control-allow-origin: *`）、`plugins/frame`（内联 bootstrap 的 HTML 壳）、`bridge/read-binary` / `bridge/write-binary` / `bridge/data` GET/POST（越界 400、ENOENT 404）；`plugins.ts` 的 DSH 扫描重构为通用 `pluginManifests(folder)`，`PluginsDto` 加 `community`（只读）+ `bridge`
+- Client：`bridge-protocol.ts`（双向 source 标签 + request/event/response 三型 + `isFrameMessage` 守卫）；`bridge-dispatch.ts` 纯 dispatch（deps 注入可单测；`plugin.loadData/saveData` 锁挂载时的 pluginId 而非 params，防越权）；`bridge.ts` 收 API_DEPS + `attachPluginBridge`（按 `event.source === frame.contentWindow` 过滤，返回析构）
+- 关键拆分原因：`client/api.ts` 用 TS 参数属性，Node strip-only 模式跑不了，dispatch 必须独立成模块才能进单测
+- UI：`PluginView.tsx` 主视图容器（头部图标+标题+关闭；骨架 / 未桥接 EmptyState+「打开设置」action / 沙箱 iframe + `role="alert"` 错误条三态）；`view` 联合加 `'plugin'`，`onOpenSettings` 经 VaultPage→Workspace→MainColumn→PaneColumn→MainPane 下传；命令面板加「打开 Pur Studio」，状态栏视图标签加「插件」；设置对话框在 DSH 与核心两节之间插「可桥接插件」节（计数 + hint + 空态 + `BridgeRow` 开关写白名单）
+- 不透明 origin 报错细节：sandbox 禁 same-origin 后跨源脚本错误会被浏览器洗成 "Script error."，故 script 响应加 ACAO:*、frame 以 `<script crossorigin>` 加载；错误经 postMessage 转发后 handler 调 `preventDefault()`，不进控制台
+- 审核：新增 `plugins.bridge-toggle-persists`（community 含 pur-studio、白名单起始空、toggle 落盘、script 200+CORS 头、未入列 403、ghost toggle 404、对话框 UI 开关双向落盘）与 `pur.frame-opens`（命令开视图 → iframe `sandbox="allow-scripts"` → 夹具 `require('obsidian')` 抛错经桥回错误条含 'obsidian' → 关闭 → 白名单关 → 未桥接提示无 iframe）；两者经 `ensureVaultB`/`restoreBridgeVault` 自给切库——本轮实锤插件段检查此前依赖全量顺序里的切库，--only 模式下会误写真实库
+- 验证：`tsc` 0 错误、`node --test` 249/249、`tsdown` 成功（client 487.25 kB）、重启宿主后增量审核 `--only=plugins.bridge-toggle-persists,pur.frame-opens` **2/2 通过、0 console error**（同轮 `settings.dialog-plugins` 亦过；真实库被误改的 `core-plugins.json` 恢复待用户确认）
+
+## 第三十轮：ribbon 去重（只留右栏开关）、设置对话框集成插件开关与外观
+
+- ribbon 去重：「插件」入口与 spacer 下方每个 DSH 插件的拼图图标功能重复（都是开插件面板），两者全删，只保留「切换右侧边栏」；spacer 后固定一个设置齿轮按钮（action 语义，aria-pressed 恒 false）
+- 新增 `SettingsDialog.tsx`：外观区（舒适/紧凑两个变体按钮，选中态 primary 高亮 + aria-pressed，选择即写 localStorage `dsh.obsidian.variant` 并落根元素 `data-ov-variant`，无需刷新）+ 插件区（`PluginPanel` 整体迁入：DSH 插件列表、核心插件开关、刷新、打开文件夹均不变）
+- 右栏 `plugins` tab 删除：`RailId`/`RAIL_SURFACES`/`Panels.tsx` 同步移除，插件管理只进设置对话框；`Ribbon` 删 `fetchPlugins`/`PluginDto`/拼图区状态与 props（`pluginsOpen`/`root`）
+- `useVaultAppearance` 的 variant 从只读改为 state + `setVariant`；`useOverlayState` 加 `settingsOpen`/`openSettings`/`closeSettings`，`closeTransient` 一并关设置；命令面板 `plugins.open` → `settings.open`，`tests/commands.test.ts` 同步
+- 审核支持增量：`--only=name1,name2` 只跑指定检查（setup/teardown 照跑），汇总行报 skipped 数；`rail.plugins-panel` → `settings.dialog-plugins`（齿轮开对话框、变体切换落盘 + 根属性、两节断言、DSH 行展开/桥接占位、核心开关与 `plugins/list` 对齐、刷新不丢行、Escape 关闭）；`ui.ribbon-plugin-icons` → `ui.ribbon-settings-gear`（无插件入口/无拼图图标/恰一个 spacer/齿轮在 spacer 后/点击开关对话框）；`menu.panel-tabs` 加「菜单无插件项」反断言并补自给前置（开笔记 + 开右栏），增量模式可独立成立
+- 验证：`tsc` 0 错误、`node --test` 240/240、`tsdown` 成功（client 472.89 kB）、重启宿主后增量审核 `--only=menu.panel-tabs,settings.dialog-plugins,ui.ribbon-settings-gear` **3/3 通过、0 console error**（其余 92 项按用户要求跳过）
+
+## 第二十九轮：顶栏再瘦身、分屏分隔条、右键切分/关窗格、← → 根因修复、ribbon 收右栏
+
+- 顶栏：右上角快速切换 pill 删除（Ctrl+O、标签栏「+」、ribbon 搜索已覆盖）；「⋯」溢出按钮与 topbar 菜单场景整体删除，其唯一残留项「刷新索引」提成顶栏图标按钮（放在 ← → 之后）；`Icon` 删 `more` 图形（`moreActions` 键保留，它同时是 ContextMenu 的 aria-label）
+- ← → 根因修复：preview 复用分支此前用 `makeTab` 重建标签（历史重置为单条），资源管理器点文件永不积累历史导致按钮恒禁用；改为复用时 `pushHistory` 入栈，← → 可遍历整个点击链，回退后再点新文件自动丢前向分支
+- 分屏可调宽高：`PaneState` 新增 `size`（flex-grow 份额，切分对半分）；新组件 `PaneSplitter`（增量像素 delta、pointer capture、方向键步进 48px、双击均分），`MainColumn` 负责 px→grow 换算（钳制 `MIN_PANE_SIZE` 与 120px）；分屏白线规则 `.ov-pane-active:not(:only-child) .ov-tabbar` 整条删除（任何情况都不再画）
+- flex-grow 陷阱修复：关窗格带走份额后总份额 <1，CSS 规定 grow 总和 <1 时不归一化，窗格缩成实际份额宽度、长条剩余空间留空（审核实锤：0.125+0.125 时两窗格各 70px）；`MainColumn` 渲染前归一化（`share = size / Σsize`）再下发给 `PaneColumn`
+- 标签右键菜单新增「向右拆分/向下拆分/关闭窗格」（仅 1 窗格时关闭窗格禁用）；右键先经 `onPointerDownCapture` 聚焦所在窗格，关窗格作用域正确
+- ribbon 新增「切换右侧边栏」图标（panelRight），按压态跟随右栏可见性，切右栏不动主视图（关系图保持打开）
+- 审核同步：`rootMenu`/`menuLabels` 上移到 helpers 区供分屏段复用；`nav.quick-pill-opens`→`nav.topbar-refresh`（断言 pill/⋯ 不存在 + 刷新按钮可用）；新增 `panes.splitter-resize`（拖 120px 两窗格此消彼长、双击均分）、`tabs.context-menu-split-close-pane`（菜单三项、单窗格禁用、切分后关回）；`panes.split-down-and-close` 补横向分隔条 ×2 断言；`menu.topbar-and-panel`→`menu.panel-tabs`（删顶栏右键部分）；新增 `ui.ribbon-toggles-rail`（可见性与 aria-pressed 双翻转）；`tabs.select-and-history` 注释更新
+- 验证：`tsc` 0 错误、`node --test` 240/240、`tsdown` 成功（client 470.70 kB）、重启宿主后 `ui-full-audit` **95/95 通过、0 console error**
+
+## 第二十八轮：社区插件连根删（用户裁决）
+
+- 用户裁决「不要有社区插件了（连根删）」：插件面板只剩 **DSH 插件** 与 **核心插件** 两节，社区节（含全部/可桥接/仅元数据/原生专用过滤 chips、兼容徽章、API 标签、原生替代建议行）整节删除
+- 扫描器删除：`src/vault/plugin-compat.ts`（main.js 文本分析、三档判定）与其单测 `tests/plugin-compat.test.ts` 整文件移除；`PluginDto` 瘦身为 `{id,name,version?,author?,description?}`，`PluginsDto` 删 `configured/folder/folderExists/community/scanned`，`PluginCompatibility` 类型删除
+- `community-plugins.json` 读写路径整段移除：`setCommunityPluginEnabled`、`pluginsFolder`、`obsidian-config` 白名单与 `ObsidianConfigFile` 联合删 `community-plugins`；`plugins/toggle` 路由不再收 `core` 标志，永远写 `core-plugins.json`（`togglePlugin(id, enabled)` 同步去参）。**注意**：面板从此不能开关 Obsidian 社区插件，Obsidian 本体的启用列表不受影响
+- i18n 双语同删 15 键：`communityPlugins/pluginNotInstalled/pluginEnabled/pluginDisabled/pluginTier{All,Metadata,Bridgeable,Native}/pluginApiUsage/pluginScanHint/pluginAlt{PurStudio,Claudian,RemotelySave,Surfing,Generic}`；样式同删 `pluginTag/pluginFilters/pluginBadge/pluginApis/pluginAlt` 与 `[data-installed]`、`[data-active]` 规则
+- 审核同步：`plugins.list-scans-folder`/`plugins.toggle-persists` 删除，新增 `plugins.core-toggle-persists`（核心开关落盘 + DSH 夹具清单断言）；`rail.plugins-panel` 改写——断言**只剩两节**且「社区插件」标题不存在，DSH 行展开/收起、核心开关跟随 `core-plugins.json`、刷新不丢行、离开标签 ribbon 取消按压保留；DSH 夹具 `audit-dsh` 创建上移到脚本头部（92 项）
+- 验证：`tsc` 0 错误、`node --test` 237/237、`tsdown` 成功（client 466.14 kB）、重启宿主后 `ui-full-audit` **92/92 通过、0 console error**
+
+## 第二十七轮：插件面板删说明行、笔记头部去重合并行、编辑器只留「阅读」
+
+- 插件面板社区节删两行：`G:\…\plugins` 路径行与「只管理插件文件夹与启用状态」提示行（i18n `pluginsHint` 键双语同删）；「社区插件 · N」节标题保留以区分 DSH/核心两节
+- 笔记头部去重：「反链 · N」按钮删除（右栏反链标签、状态栏计数、文档底部反链区块已是其家），`onShowBacklinks`/`backlinkCount` props 链跨 7 个文件拆除；「源码」按钮移入面包屑行（新增 `.ov-note-head-row`：面包屑 `flex:1` 收折、按钮 `flex:0 0 auto` 钉在右端），头部从三行压到两行
+- 编辑器只留「阅读」：「保存」按钮删除（800ms 自动保存 + Ctrl+S + 退出刷写已是保存路径），i18n `saveNow` 键双语同删
+- 审核同步：`note.backlink-shortcut-opens-rail` 检查随头部反链按钮删除（93 项），rail 覆盖由 `rail.backlinks-panel` 保留；`button[title="源码"]`/`aria-label="阅读"` 选择器均不受位置影响
+- 验证：`tsc` 0 错误、`node --test` 246/246、`tsdown` 成功（client 473.92 kB）、重启宿主后 `ui-full-audit` **93/93 通过、0 console error**
+
+## 第二十六轮：⋯ 菜单再查重、白线根因修复、← → 点击级验证
+
+- ⋯ 菜单删「快速切换」：顶栏右侧 pill（带 Ctrl O 提示）已是它的家，菜单项是重复入口；`registry.ts` 的 `topbar` 场景只留「刷新索引」，审核 `menu.topbar-and-panel` 反转为「含刷新索引、不含快速切换/关系图/切换笔记树/切换右侧边栏」
+- 白线根因定位（浏览器探针实测）：不是 `.ov-tabbar` 的 `border-bottom`（深色下计算值仅 3% 白、不可见），而是 `.ov-pane-active .ov-tabbar` 的 `inset 0 -1px` 焦点阴影——宿主深色主题把 `--dsw-alias-brand-primary` 解析为 `#f9fafb` 近纯白，整条亮线横贯主区。修复：焦点边线改为 `.ov-pane-active:not(:only-child)`，只在分屏（2+ 窗格）时显示，单窗格不再有这条线；浅色主题下同位置原本是近黑线，一并消除
+- ← → 真机验证结论：审核 `tabs.select-and-history` 本就是点击驱动（真实点击 ← → 按钮并断言活动标签切换 + 四个 disabled 边界），本轮再补正文级断言——点 ← 后 `.ov-document` 必须渲染回退目标笔记标题、点 → 后必须渲染前进目标正文，证明导航驱动的是完整重渲染而非仅标签条变化
+- 验证：`tsc` 0 错误、`node --test` 246/246、`tsdown` 成功（client 475.13 kB）、`ui-full-audit` **94/94 通过、0 console error**；深色探针复核 `tabbarBoxShadow: none`，白线目视消失
+
+## 第二十五轮：VaultPage 瘦身至 ≤300 行（纯重构）
+
+- M4 残余收尾：`VaultPage.tsx` 从 420 行降到 **276 行**——DOM 结构、类名、aria-label、行为零改动，审核 94 项全过即为证明
+- 新增 `VaultWorkspace.tsx`（271 行）纯布局组合组件：TopBar/Ribbon/ExplorerColumn/MainColumn/RailColumn/scrim/StatusBar/VaultOverlays 全部 JSX 移入；props 用 `ComponentProps<typeof X>['field']` 索引签名，不重复声明子组件类型；hook 返回整体传入（`tabs`/`bookmarks`/`overlays`），`labels`/`vaultName`/`widthVars`/历史边界在组件内派生；`WidthVars` 类型随迁并导出
+- 新增 `useVaultCommands.ts`（62 行）：`useVaultNotes`（日记/模板）+ 窗格命令（split/close）+ `useCommandSurface` 三者收进一个 hook，`folders`/`bookmarkPaths`/`extra` 的 memo 一并迁入；`extra` 数组从此 memo 化，不再每次渲染重建
+- `VaultPage` 只保留：全部 state/hooks、`selectRibbon`/`onVaultSwitched`/`createTarget`、`openNewTab`/`openPlugins`/`openEdit`/`openReading`、根 div + 样式注入 + 一个 `<VaultWorkspace/>`
+- 验证：`tsc` 0 错误、`node --test` 246/246、`tsdown` 成功（client 475.06 kB）、`ui-full-audit` **94/94 通过、0 console error**
+
+## 第二十四轮：入口再查重、阅读视图文档内反链、导航按钮边界
+
+- 图一去重（用户裁决「只删空态按钮」）：空态的「快速切换」按钮删除——ribbon 搜索（全文模式）、顶栏 pill（文件模式）、Ctrl+O、标签栏「+」各有其职，空态保持被动；`MainPane`/`PaneColumn`/`MainColumn`/`VaultPage` 的 `onQuickSwitch` 链路整体拆除
+- M5 收尾：阅读视图文档底部新增反链区块（`ov-doc-backlinks`：标题「反链 · N」+ 行 = 源笔记标题 + 上下文摘录），点击直达源笔记，无反链不渲染；`NoteView` 的 `backlinks` prop 从「仅供头部计数」升级为文档内列表数据源
+- 图二：主区顶部白线调暗——`.ov-tabbar` 的 `border-bottom` 改 `color-mix(50% transparent)`，分割线仍在但不跳脱
+- 图三（前进后退验证补全）：顶栏 ← → 按钮本就接 `canBack/canForward`；审核新增 `nav.history-buttons-initial`（无历史时双禁用 + 空态无动作按钮），`tabs.select-and-history` 补四个边界断言（最新条目前进禁用、回退到底后退禁用、回退后前进可用、返回最新后前进再禁用）
+- 顺手修正：`protocol.ts` 的 `dsh` 字段注释还写着已废弃的 `.obsidian/plugins-dsh`，改为包内全局目录
+- 验证：`tsc` 0 错误、`node --test` 246/246、`tsdown` 成功（client 471.70 kB）、`ui-full-audit` **94/94 通过、0 console error**
+
+## 第二十三轮：DSH 插件目录迁至插件包内（全局共享）
+
+- 用户裁决：「只需要 dsh 内的 obsidian 插件内的插件文件夹，之后的插件位置都在这里面」——DSH 适配插件从每库的 `.obsidian/plugins-dsh/` 改为插件包内全局目录 `plugins/dsh-obsidian-vault/plugins/`，所有库共享同一份
+- 实现：新增 `src/package-root.ts`（源码入口 `src/` 与构建产物 `lib/` 都恰好在包根下一层，`import.meta.url` 上溯一级即包根）；`listPlugins(root, dshFolder)` 与 `revealPluginsFolder(folder)` 改为注入式，端点统一传 `DSH_PLUGINS_FOLDER`；vault 层不再知道目录位置；`plugins/` 加入包 .gitignore
+- 测试/审核：单测注入每轮临时目录；审核夹具落到真实包目录 `plugins/audit-dsh`（收尾清理），`dshFolder` 断言改为包路径；i18n 提示改为「全局插件文件夹」
+- 验证：`tsc` 0 错误、`node --test` 246/246、`tsdown` 成功（client 469.78 kB）、重启宿主后 `ui-full-audit` **92/92 通过、0 console error**
+
+## 第二十二轮：入口去重、搜索瞬时化、DSH 插件专区
+
+- 菜单去重：顶栏 ⋯ 菜单只留「快速切换 / 刷新索引」，删掉与 ribbon/面板右键菜单重复的「关系图 / 切换笔记树 / 切换右侧边栏」三项（命令面板保留全部命令，动作与 i18n 键不动）
+- 搜索瞬时化：ribbon「搜索」从粘滞按压改为纯动作（`aria-pressed` 恒 `false`，点击仅打开快速切换全文模式），修掉「搜索+关系图+插件三亮」的错误高亮；`VaultPage` 的 `ribbon` state 删除，文件项按压 = 资源管理器可见
+- ribbon 插件图标区：下半区（`ov-ribbon-spacer` 之下）列出 `.obsidian/plugins-dsh` 已安装插件的 puzzle 图标（`data-plugin` 属性），点击打开插件面板；Ribbon 自行 `plugins/list`，库切换或插件档开合时刷新；Icon 增 `puzzle` 字形
+- `.obsidian/plugins-dsh/` 专属目录（用户裁决：文件夹只放适配 DSH 的插件）：`PluginsDto` 增 `dsh: PluginDto[]`（仅 manifest 元数据、`enabled` 恒 `false`、不跑兼容扫描）与 `dshFolder`；「打开插件文件夹」改开 DSH 目录；面板顶部新增「DSH 插件」节（路径 + 引导文案 + 无启用开关的行，详情保留「在 DSH 中运行」桥接占位）
+- 审核脚本：`menu.topbar-and-panel` 反转为「含两项、不含三项」；`ui.ribbon-search-opens-quick` 断言搜索不再按压；`plugins.list-scans-folder` 增 `audit-dsh` 夹具与 `dsh`/`dshFolder` 断言；`rail.plugins-panel` 增 DSH 节断言（无启用开关 + 桥接占位详情）；新增 `ui.ribbon-plugin-icons`（图标出现 + 点击开面板）
+- 验证：`tsc` 0 错误、`node --test` 246/246（`tests/plugins.test.ts` 增 DSH 目录用例）、`tsdown` 成功（client 469.71 kB）、重启宿主后 `ui-full-audit` **92/92 通过、0 console error**
+
+## 第二十一轮：P9-1 插件面板迁入右栏
+
+- 注册表：`RAIL_SURFACES` 增 `plugins` 一档（与大纲/反链/书签同源），`RailId` 随之扩展；面板右键菜单的档位列举由硬编码三项改为从 `RAIL_SURFACES` 派生，新档自动出现在勾选菜单
+- 面板重组：`PluginPanel` 从 dialog 重写为右栏面板（`Panels.tsx` 渲染分支）——工具行（兼容层级过滤 chips + 刷新 + 打开插件文件夹图标按钮）、库内插件目录路径、提示行、社区/核心两节；行点击展开详情（ID、`main.js` 大小、「在 DSH 中运行」桥接占位开关〔禁用态，提示运行时开发中〕、native-only 行显示原生替代引导——`pur-studio`/`realclaudian`/`remotely-save`/`surfing` 按 id 映射，其余走通用文案）；行内信息（名称/版本/作者/描述/兼容徽章/API 标签/启用开关）不变
+- 入口改线：ribbon 与命令面板 `plugins.open` 改为 `setRail('plugins') + setRailOpen(true)`；ribbon 按压态跟随 `rail === 'plugins' && railOpen`；`showRail` 放宽为「有 Markdown 笔记」或「插件档」（无笔记时插件档仍可打开）；dialog 链路（`useOverlayState` 的 pluginOpen 与 `VaultOverlays` 的 PluginPanel 渲染）整体删除
+- 样式归位：`.ov-plugin-*` 从 dialog.ts 迁入 chrome.ts（面板 chrome 的家），行改纵向卡片（信息区为展开按钮 + 独立开关列，避免嵌套交互），新增 `pluginTools/pluginLine/pluginDetail/pluginAlt` 规则；顺手补上过滤 chips 激活态样式（原 `.ov-plugin-filter[data-active]` 选择器从不命中 `ov-dialog-button`，激活态只有属性没有视觉）
+- i18n：zh/en 增 `pluginDetail/pluginBridgeRun/pluginBridgePlanned/pluginAlt{PurStudio,Claudian,RemotelySave,Surfing,Generic}`
+- 审核脚本：`plugins.panel-ui` 重写为 `rail.plugins-panel`（rail 打开 + 徽章/API 标签/启用开关持久化 + 行展开详情与桥接占位开关 + native-only 引导 + 过滤 chips + 刷新 + 切档后 ribbon 取消按压）；`plugins.list-scans-folder` 增 native-only 夹具 `audit-native`（`require('fs')`），过滤芯片从此两个方向都有真行可验
+- 验证：`tsc` 0 错误、`node --test` 245/245、`tsdown` 成功、`ui-full-audit` **91/91 通过、0 console error**
+
+## 第二十轮：P8-5 分屏（split panes）
+
+- 纯模型层：新增 `ui/panes.ts`——`PanesState`（`panes[]` + `active` + 整组 `direction` + 稳定自增 `nextId` 供 React key），`splitPane` 把活动窗格的活动标签移入紧随其后的新窗格并聚焦（空窗格则原地加空窗格），`closePane` 丢弃活动窗格及其标签（最后一个拒绝），`mapPane` 关到空窗格自动坍缩；复用 `tabs.ts` 全部标签动词
+- hook 层：`useVaultTabs` 重写为多窗格版——内部 state 换 `PanesState`，原动词全部 `mapActive` 作用于活动窗格，移除 `setTabs` 改暴露 `mapTabs`（`useVaultActions` 的 rename/remove/move 随之改写）；新增 `activatePane`/`splitPane`/`closePane`
+- 组件层：新增 `PaneColumn.tsx`（每窗格独立 `useNoteBundle` 数据与 `useScrollMemory` 滚动记忆；活动窗格用页面共享 bundle，非活动窗格自拉；根节点 `onPointerDownCapture` 焦点跟随点击；`register` 向页面注册 `onHeading/clear` 处理器）；`MainColumn` 重写为窗格列表（`data-direction` 行列方向，稳定 `register` useCallback）
+- 页面层：`VaultPage` 的 `useScrollMemory`/`scrollRef` 迁入 PaneColumn，改 `paneHandlers: Map<paneId, handlers>` 注册表路由大纲跳转与清滚动；`note/backlinks/unlinked` 加 `note.path === path` 守卫防陈旧渲染；命令面板追加 `split.right`/`split.down`/`pane.close`（单窗格时隐藏后者）
+- 样式/i18n：`.ov-main-column[data-direction]` 行列布局、`.ov-pane` 均分 + 分隔线、`.ov-pane-active` 标签条品牌色下沿；zh/en 增 `splitRight`/`splitDown`/`closePane`
+- 审核脚本：新增 `panes.split-right`（拆分 → 活动标签迁入右窗格并聚焦）/`panes.independent-tabs`（右窗格开新笔记不影响左窗格）/`panes.focus-follows-click`（点击左窗格标签激活之）/`panes.split-down-and-close`（列向拆分 → 两次关闭回单窗格 → 单窗格时命令面板不再列出「关闭窗格」）；补 `runPalette` 助手
+- 验证：`tsc` 0 错误、`node --test` 245/245（新增 `tests/panes.test.ts` 8 例）、`tsdown` 成功、`ui-full-audit` **91/91 通过、0 console error**
+
+## 第十九轮：P8-4 大纲拖拽调整标题层级
+
+- 纯函数层：新增 `vault/heading-level.ts`——`shiftedHeadings`（目标标题 + 其后更深的子标题，遇到同级即止）、`clampHeadingShift`（钳制到全组 1..6 合法区间，动不了返回 0）、`shiftHeadingLevel`（在含 frontmatter 的原文上按正文行号改写 `#` 前缀；frontmatter 行数偏移由 `parseFrontmatter` 推导，围栏代码不触碰，行非标题/越界/no-op 一律返回 undefined）
+- 交互层：`panels/Outline.tsx` 从渲染函数改为组件，指针拖拽（`setPointerCapture`，24px/级，4px 点击容差，拖动后抑制 click 触发滚动跳转），拖动中实时预览缩进（子树行同步偏移）并显示 `H2→H3` 徽标（`.ov-outline-badge`）
+- 保存层：新增 `useHeadingShift` hook——`fetchFile` 取原文与 mtime → 纯函数改写 → `saveNote`（409 时重载索引并上报错误横幅）→ `reload`；VaultPage 只接线一行，Panels/RailColumn 透传 `onShiftHeading`
+- 审核脚本：新增夹具 `审核大纲.md`（H1/H2/H3/H2 嵌套）与 `rail.outline-drag-level` 检查（拖 30px 降级 → 断言徽标与子树改写 → 拖回升级复原；`finally` 保证断言失败也松开鼠标，收尾重开夹具笔记防级联）；首跑暴露 36px=2 级的步长误判与后续 3 项级联失败，修复后通过
+- 验证：`tsc` 0 错误、`node --test` 237/237（新增 `tests/heading-level.test.ts` 6 例）、`tsdown` 成功、`ui-full-audit` **87/87 通过、0 console error**
+
+## 第十八轮：组合根瘦身（i18n / tokenize / VaultPage 拆分）
+
+- i18n 拆分：`client/i18n.ts`（414 行字典）拆为 `i18n/zh.ts` 与 `i18n/en.ts`（EN 以 `Dict` 类型反向约束 ZH 的键集，缺键编译期报错），`i18n.ts` 只留 `Lang`/`Dict`/`Translate`/`createT`/`detectLang`（36 行）；所有既有 `from '../i18n.ts'` 导入不变
+- tokenize 拆分：`ui/files/tokenize.ts`（334 行）拆出 `files/lang-data.ts`（18 语言关键词表 + 注释/markup/属性/纯文本语言集合）与 `files/tokenize-markdown.ts`（Markdown 行级高亮 + 行内扫描），主文件剩类型、规则推导与通用/markup 扫描器
+- VaultPage 452→345 行：浮层状态（quick/menu/vault/plugin + newTabPending + 14 个开关回调）抽为 `useOverlayState.ts`；菜单分组与命令面板的 memo 装配抽为 `useCommandSurface.ts`（`buildMenu`/`buildCommands`/`runCommand` 一处）；TabStrip+MainPane 组合为 `MainColumn.tsx`（与 ExplorerColumn/RailColumn 对称）；`vaultNameOf`/`folderPaths` 移入 `ui/paths.ts`；两处重复的「标签 → 全文搜索」内联回调统一为 hook 的 `openTagSearch`
+- 验证：`tsc` 0 错误、`node --test` 231/231、`tsdown` 成功、`ui-full-audit` **86/86 通过、0 console error**
+
+## 第十七轮：模块化拆分与死代码清理
+
+- 样式层拆分：`kit/styles/layout.ts`（546 行 CSS）拆为 `styles/shell.ts`（SHELL_STYLE：根布局/滚动条/顶栏/按钮/图标按钮/pill/浮层遮罩/banner）与 `styles/workspace.ts`（WORKSPACE_STYLE：资源管理器/标签 chips/右键菜单/文件树/笔记区/右栏面板/快速切换/悬停预览/大纲/面包屑），`kit/index.ts` STYLE 数组原位替换，级联顺序不变
+- 死样式清理：删除 SVG 图谱时代的 `.ov-graph/.ov-edge*/.ov-node*/.ov-label*` 全部 CSS（图谱已改 Canvas 渲染，只渲染 `ov-graph-canvas`）与 classes.ts 对应 13 个键；删除无组件使用的 `.ov-props/.ov-prop/.ov-prop-key`（属性面板用 `ov-properties` 系列）及 classes.ts 4 个键；删除与 content.ts 重复的 `.ov-document a`、`.ov-unresolved`
+- 样式归位：`.ov-document` 最大宽度并入 content.ts 既有规则；`.ov-ambiguous`（改 `.ov-document a.ov-ambiguous`，与 unresolved 对称）、标签链接 `a[href*="/tag?"]`、`.ov-callout*` 整块迁入 content.ts
+- vault 第二层拆分：`vault/index.ts` 652→525 行；`move()` 抽到 `vault/move.ts`（`moveEntry(state, from, to)` 纯依赖注入：files/notes/backlinks/resolver，index.ts 留薄封装负责 refresh）；目录遍历抽到 `vault/scan.ts`（`scanVault()` 返回 ScanResult 含签名，isIgnored 随迁）；`readText` 复用 `resolveRelative` 去掉重复的分隔符拼接
+- 验证：`tsc` 0 错误、`node --test` 231/231、`tsdown` 成功、重启宿主后 `ui-full-audit` **86/86 通过、0 console error**
+
+## 第十六轮：P8-3 书签（面板整合）
+
+- 书签数据层：`ui/bookmarks.ts` 解析 `bookmarks.json` 的 `items[]`，只把 `file` 项作为展示条目并按路径去重，`folder`/`group` 项与其他键原样保留；`withBookmark()` 一次增删一条，重复添加幂等
+- 书签状态：`ui/useVaultBookmarks.ts` 随活动库读取配置，`toggle`/`remove` 写回后以 Host 返回的文档重算条目，失败经页面 `setError` 上报
+- UI 整合（按用户要求不新增浮层）：书签复用右栏面板注册表 `RAIL_SURFACES`（新增 `bookmarks` 一档）与既有 `.ov-item` 结构，只补 `.ov-bookmark-row` / `.ov-bookmark-remove` 两个类；入口合并到文件右键菜单「添加/移除书签」、命令面板 `bookmark.toggle` 与 `bookmarks.show`、面板右键菜单勾选项，全部经 `useVaultActions` / `buildCommands` 统一分发
+- Host 白名单：`ObsidianConfigFile` 与 `CONFIG_FILES` 增 `bookmarks`
+- 审核脚本：新增 `rail.bookmarks-toggle`（右键添加 → `bookmarks.json` 条目校验 → 右栏「书签」标签页出现行 → 点击打开 → × 移除 → 空态），`menu.tree-file-items` 补「书签」断言；夹具备份并恢复 `bookmarks.json`
+- 结果：审核首跑暴露「客户端 bundle 已更新、Host 仍用旧白名单」→ `config/read?file=bookmarks` 400；重启宿主后通过（Host 侧白名单在进程内，改 `CONFIG_FILES` 必须重启）
+- 验证：`tsc` 0 错误、`node --test` 231/231（新增 `tests/bookmarks.test.ts`，`tests/commands.test.ts` 补书签命令断言）、`tsdown` 成功、`ui-full-audit` **86/86 通过、0 console error**
+
+## 第十五轮：P8 命令面板 + 每日笔记/模板
+
+- 命令面板（P8-1）：新增 `ui/commands.ts` 注册表（`buildCommands`，含 Ctrl+O/Ctrl+F/Ctrl+E 提示与 `extra` 注入位），`QuickSwitcher` 增 `commands` 模式（`>` 前缀 / `Ctrl+P`），`useVaultShortcuts` 增 `onCommands`；命令统一经 `VaultPage.runCommand`（先关浮层再执行）分发，不新增第二条变更路径
+- 每日笔记与模板（P8-2）：`ui/daily-note.ts` 纯函数（`daily-notes.json` 的 folder/format/template 解析 + `YYYY/YY/MM/M/DD/D` 展开），`ui/useVaultNotes.ts` 把今日笔记与模板文件夹内的笔记注册为命令；`ObsidianConfigFile` 与 `CONFIG_FILES` 白名单增 `daily-notes`/`templates`
+- 修真实 bug：面板在输入过滤后高亮索引仍指向旧位置，Enter 命中空项导致浮层不关闭（每日笔记命令因此「无反应」）；`QuickSwitcher` 抽出 `cursor = min(active, shown-1)` 统一用于键盘导航、Enter 与高亮，并在每次输入时 `setActive(0)`
+- 审核脚本：新增 `note.daily-note-command`（写入临时 `daily-notes.json` → `Ctrl+P` 运行 → 断言 `审核每日/<YYYY-MM-DD>.md` 正文等于模板、标签页与阅读视图就位）与 `note.template-command`（`templates.json` → 命令 → prompt 命名 → 种子正文）；夹具在 `finally` 恢复原配置并清理目录
+- 验证：`tsc` 0 错误、`node --test` 224/224（新增 `tests/commands.test.ts`、`tests/daily-note.test.ts`）、`tsdown` 成功、`ui-full-audit` **85/85 通过、0 console error**
+
+## 第十四轮：P7 编辑器 + L1 插件兼容
+
+- P7 Live Preview 编辑（首版为全文源码编辑 + 防抖保存）：新增 `ui/editor/SourceEditor.tsx`，`.ov-editor-view/.ov-editor-area`，800ms 自动保存、`Ctrl+S` 立即保存、`Ctrl+E` 回阅读、卸载时兜底写入未落盘草稿
+- Host 写入通道：`VaultIndex.saveNote(path, content, baseMtime)` + `POST /obsidian/api/note`（`src/note-write.ts`）；陈旧 mtime 返回 409 与当前 mtime，客户端显示冲突条（重新载入 / 覆盖保存）；mtime 按毫秒取整比较，避免 JSON 浮点误差误报
+- 客户端 API：`saveNote()` 与 `ApiError`（带 `status`），`FileView → MainPane → VaultPage` 接线，保存成功后触发 `reload()` 重取索引
+- L1 插件兼容分析（对应的 PLAN §8.2 方案落地）：`vault/plugin-compat.ts` 只读扫描 `main.js`（2MB 上限、零执行），三档 `metadata-only / bridgeable / native-only` 与 API 标签；`PluginDto` 增 `compatible/apiUsage/mainSize`，`PluginsDto` 增 `scanned`
+- 面板：兼容徽章 + API 标签 chips + 全部/可桥接/仅元数据/原生专用 四档筛选（纯客户端过滤，不写盘）
+- 审核脚本：`note.source-and-reading-roundtrip` 改为编辑器往返（断言正文/围栏、自动保存经 API 校验、`Ctrl+S` 复原、回阅读）；新增 `note.editor-conflict-bar`（外部写入 → `Ctrl+S` → 409 → 冲突条 → 重新载入取磁盘文本 → 复原夹具）；`plugins.panel-ui` 补徽章、chips 与筛选断言；`plugins.list-scans-folder` 恢复 core 默认断言
+- 审核脚本放行「故意触发」的 409：仅 `note.editor-conflict-bar` 的 `/obsidian/api/note` 409 与 Chromium 资源错误不计入 console error
+- 验证：`tsc` 0 错误、`node --test` 215/215、`tsdown` 成功、`ui-full-audit` **82/82 通过、0 console error**
+
+## 第十三轮：UI 整合 + 模块化拆分
+
+- UI 去重：Ribbon 的「搜索」不再另做一套过滤逻辑，统一打开快速切换的全文搜索模式；标签 chip 同样进入全文搜索；`notesTree` 死键删除
+- 拆分：`GraphView` 811 → 182 行（`useGraphData` / `useGraphLayout` / `useGraphCamera` / `GraphToolbar` / `graph/TagPicker`）、`VaultPage` 489 → 385 行（组合根，保留）、`NoteView` 325 → 256 行（`note/NoteHeader` / `note/NoteMeta`）
+- 新增组合层：`useVaultAppearance`（语言 + 密度）、`useResponsivePanes`（窄屏抽屉）、`useVaultShortcuts`（快捷键）、`VaultOverlays`（快速切换/菜单/知识库/插件四个浮层）、`ExplorerColumn` / `RailColumn`（左右栏壳）
+- 修真实 bug：窄屏下关闭态的抽屉仍有可点击区域（`transform: translateX(-102%)` 后盒子仍覆盖 Ribbon），改 `.ov-explorer/.ov-rail:not(.ov-pane-open) { visibility: hidden }`
+- 审核脚本随行为同步：`ui.ribbon-search-opens-quick`（断言浮层 + 模式 + 焦点 + Esc）、`ui.narrow-drawers` 改用「文件」按钮并在 `finally` 恢复视口、`graph.culls-offscreen` 先等相机静止再放大 8 次
+- 验证：`tsc` 0 错误、`node --test` 203/203、`tsdown` 成功（client 404.02 kB）、`ui-full-audit` **81/81 通过、0 console error**
+
+## UI 精简（按用户要求）
+
+- 去掉文件列表的排序下拉、`.md` 扩展名开关、顶栏密度按钮
+- 连带清理：`ExplorerSort` 类型、sort/showExtension 状态与 props、7 条 i18n 文案、`.ov-explorer-toggle` 样式
+- 保留：右栏反链面板自己的排序（不在红框内），密度变体机制仍在 kit 内可编程使用
+- 验证：工具栏只剩 新建笔记/新建文件夹/全部折叠；顶栏无密度按钮；文件名不带 `.md`；0 报错
+
+## Canvas 渲染层拆分
+
+- `ui/GraphCanvas.tsx` 349 → **156 行**：只保留 React 宿主、rAF 循环、ResizeObserver
+- 绘制拆到 `graph/render/`：`scene`(111) / `input`(139) / `labels`(50) / `hit`(33) / `palette`(39)
+- 验证：缩放 1.000→1.098（pan 0,0→-13,11）；拖拽 dataset.drag 记录节点路径；0 控制台错误
+
+## G4 已完成（Canvas 2D 渲染）
+
+- 渲染从 SVG/React 迁到 Canvas 2D：`ui/GraphCanvas.tsx` 每帧直绘，React 只渲染外壳
+- 自带命中测试：悬停高亮邻居、按下拖拽、空白处平移、滚轮锚定光标缩放、点击打开笔记
+- 实测：400 节点 2778 边正常；zoom 1.000→1.098；拖拽 dataset.drag 有值；0 报错
+- 删除 `GraphElements.tsx`（SVG 版本），无重复实现
+
+## G3 已完成（稳定布局 + 相机）
+
+- 增量布局：`LayoutRun` 接受 seed，新节点落在邻居质心；节点集不变时跳过重排
+- 修复真实 bug：首次布局把全部节点堆在原点（seed 退化导致 fit 崩溃），已加 seed 展布校验
+- 首次布局改为内联、后续走 worker：实测 123/123、216/216 节点坐标正常
+- 缩放范围 0.125–8，滚轮光标锚点生效
+
+## UI kit 已完成（统一管理 + 风格切换）
+
+- 样式模块迁入 `ui/kit/`：tokens / classes / styles / variants / registry
+- 新增密度风格：宽松 / 紧凑，写 `data-ov-variant` 并持久化（实测 `.ov-item` 7px→3px，刷新后保持）
+- 右栏面板标签改由 `RAIL_SURFACES` 清单生成，增删面板 = 改清单一行
+- `theme.ts` 变为 re-export，业务组件不再直接依赖样式目录
+
+## G1/G2 已完成（图谱 Worker + 时间流逝动画）
+
+- 图谱仿真搬进真 Web Worker（第二个 bundle + Host 路由 + 单例复用 + 内联降级）
+- 主线程长任务从 50–60 ms 降到 **0**；400 节点全局图正常
+- 「重播」时间流逝动画：节点按度数依次显现（32/123 → 123/123）
+- 逆向结论见 `GRAPH.md`：Obsidian 用 PIXI(WebGL) 渲染 + alpha 驱动增量仿真 + 手动渲染调度
+
+> 本文件是进度日志；**唯一的执行计划见 [PLAN.md](PLAN.md)**。
+
+# 插件路线图 v2：完整性差距 · 代码拆分 · 落地计划
+
+> 依据：`REFERENCE.md`（本地 Obsidian 1.12.7 实测）+ 当前插件实测（559 篇库、99 个用例全绿）。
+
+## M4 已完成（UI 拆分）
+
+- `GraphView` 516 → 458：`GraphElements.tsx` 负责边/节点/标签与拖拽回调
+- `Explorer` 363 → 271：`explorer/Toolbar.tsx`（排序/扩展名/新建/折叠）+ `explorer/ContextMenu.tsx`
+- 文档内反链：`NoteView` 头部开关 + 底部区块，偏好存 localStorage
+- 验证：图谱 123 节点悬停/点击跳转正常；拖拽菜单正常；反链区块渲染 50 行；116 用例全绿
+
+## M4 进行中（UI 拆分）
+
+- `VaultPage` 590 → 452：抽出 `useVaultData.ts`（status/tree/tags/note/backlinks/轮询/重载）与 `TabStrip.tsx`（标签栏 + 右键菜单，菜单状态收进组件）
+- `Panels` 299 → 68：拆成 `panels/{Rail,Outline,Backlinks,Properties,Tags,shared}`
+- 验证：116 用例全绿；浏览器冒烟：预览/复用/固定/新标签/右键菜单全过；四个右栏面板渲染正常（大纲 22、反链 354、属性 5、标签 900）
+- `NoteView` 376 → 309：抽出 `useHoverPreview.ts`（防抖 + 缓存 + 坐标）与 `HoverPreviewCard.tsx`
+- 验证：悬停链接弹出 `个人知识库` 卡片，标题与摘要正常
+- 剩余：`GraphView` 516 → `GraphCanvas` + `useSimulation`；`Explorer` 361 → `{Tree,Toolbar,Menu}`
+
+## M5 已完成（视觉收尾，主体）
+
+- 标题 h4–h6 补齐官方比例；标题上间距 2.5rem、段落间距 1rem
+- 引用左边条改用强调色；圆角统一 4 / 8 / 12
+- 属性按类型渲染：日期取 `YYYY-MM-DD`、布尔 ✓/✗、数组逗号连接（仍可点击复制）
+- 验证：读页面实测 16px/24px、h4 1.188em；属性面板输出 `created 2026-07-09`
+- 未做：文档内反链
+
+## M3 已完成（搜索与反链尾项）
+
+- 查询解析器支持正则 `/pattern/flags`（大小写默认不敏感，`match-case:` 生效），新增 2 个用例
+- 搜索结果支持「相关度 / 名称」排序与「展开全部」（默认前 20 条）
+- 反链面板新增过滤输入 + 「名称 / 提及数」排序
+- 实测：正则 20 条、`tag:#work` 1 条、反链 138 → 8 组
+- 未做：文档内反链（留 M5）
+
+## M2 已完成（图谱量纲 + 大图性能）
+
+- 四力改用 Obsidian 量纲：中心 0.1 / 斥力 10 / 连线力 1 / 连线距离 250，滑杆范围与默认值同步
+- `layout.ts`：`simulate` 重写为可增量的 `LayoutRun`（`advance(n)` + `result()`），大图按帧切片
+- 新增「局部图 / 全库图」切换按钮（此前全库图不可达，属于功能缺口）
+- 大图标签按度数上限 60，避免全库图标签互相压盖
+- 验证：400 节点切换最长任务 60ms（原 267ms）；滑杆默认值实测 0.1/10/1/250
+
+## M1 已完成（拖拽移动 + 链接改写）
+
+- `vault/links.ts`：按解析结果改写链接，保留别名/标题锚点/块引用/嵌入前缀；唯一标题的裸链接保持原样
+- `VaultFiles`：新增 `readText`/`writeText`/`exists`/`move`/`backup`
+- `VaultIndex.move`：冲突检测 → 计算受影响笔记 → 预改写 → 写回（失败回滚）→ `.trash` 备份 → 移动 → 重建索引
+- `POST /move` 路由 + `moveEntry` 客户端 + Explorer 拖放（行可拖、目录/根可放、高亮、拖动变暗）
+- 验证：单测 15 个；真实库移动后反链仍解析；备份与清理正常
+
+## 本轮（第二次逆向）已完成
+
+- 阅读宽度对齐：`max-width: 700px`、页面留白 32px、正文字号 16px / 行高 1.5、标题 1.618/1.462/1.318em
+- 文件排序补齐为官方 4 项（名称 A→Z、Z→A、修改 新→旧、旧→新）
+- 图谱默认值对齐：附件默认关、局部图默认 1 跳
+- **搜索算子全量实现**：`src/vault/query.ts`（tokenizer + 解析 + 求值，12 种字段 + 布尔 + 括号 + 属性），搜索与图谱过滤共用
+- 代码拆分三刀：
+  1. `ui/tabs.ts`（纯模型 + 14 用例）
+  2. `client/theme/`（classes + layout/content/chrome/graph 五个模块，`theme.ts` 变 barrel）
+  3. **`vault/index.ts` 848 → 555 行**：抽出 `tree.ts`（72）、`search.ts`（123）、`graph.ts`（213），并删除随拆分失效的 `edgesWithin`/旧匹配器
+> 执行顺序按「用户可感知差距 ÷ 改动成本」排序，每阶段结束跑 `tsc` + `node --test` + Playwright 冒烟。
+
+---
+
+## 一、功能完整性矩阵
+
+图例：✅ 完成 · 🟡 部分 · ⬜ 未做
+
+### 图谱
+
+| 能力 | Obsidian | 我们 | 备注 |
+|---|---|---|---|
+| 局部/全局图、中心节点、跳数 | ✅ | ✅ | |
+| 未解析幽灵节点 / 仅存在文件 | ✅ | ✅ | 实测 31 个幽灵节点 |
+| 标签节点 / 附件节点 | ✅ | ✅ | 默认均关闭，与官方一致 |
+| 搜索过滤（含算子） | ✅ | 🟡 | 仅 `file:`/`path:`/`tag:` |
+| 分组着色 | ✅ | ✅ | 多组、首个匹配生效 |
+| 箭头 / 文字阈值 / 节点大小 / 连线粗细 | ✅ | ✅ | |
+| 力参数（中心/斥力/连线/距离） | ✅ | 🟡 | 我们是倍率，不是官方量纲 |
+| 拖拽、缩放、平移、键盘 | ✅ | ✅ | `+`/`-`、方向键 |
+| 时间流逝动画（Animate） | ✅ | ⬜ | 低优先 |
+| 大图性能（Worker 仿真） | ✅ | ⬜ | 全局图会掉帧 |
+
+### 文件列表
+
+| 能力 | Obsidian | 我们 | 备注 |
+|---|---|---|---|
+| 排序（名称 A→Z / Z→A / 修改新→旧 / 旧→新） | ✅ | ✅ | 本轮补齐 |
+| 显示扩展名、全部折叠 | ✅ | ✅ | |
+| 右键（打开/新标签/复制路径/重命名/删除） | ✅ | ✅ | |
+| 新建笔记 / 文件夹 | ✅ | ✅ | |
+| 删除进 `.trash` | ✅ | ✅ | |
+| 拖拽移动 + 链接自动改写 | ✅ | ⬜ | 最大剩余缺口，见 P9 |
+| 文件夹笔记（folder note） | ✅ | ⬜ | |
+| 定位当前文件（reveal） | ✅ | ✅ | 自动展开祖先 |
+
+### 标签页
+
+| 能力 | Obsidian | 我们 | 备注 |
+|---|---|---|---|
+| 预览标签 / 双击固定 | ✅ | ✅ | 本轮抽成纯模型 + 14 个用例 |
+| 每标签历史 / 滚动位置 | ✅ | ✅ | 900→900 实测 |
+| 右键关闭 / 关闭其他 / 关闭全部 | ✅ | ✅ | |
+| 拖拽排序 / 堆叠标签 | ✅ | ⬜ | |
+
+### 阅读视图
+
+| 能力 | Obsidian | 我们 | 备注 |
+|---|---|---|---|
+| Callout（27 类、可折叠） | ✅ | ✅ | |
+| `==高亮==` / `%%注释%%` / 任务清单 / 脚注 / 数学 | ✅ | ✅ | |
+| 属性表（类型图标） | ✅ | 🟡 | 只读 + 点击复制；不可编辑 |
+| 反链按来源分组 + 展开上下文 | ✅ | ✅ | |
+| 反链面板选项（排序/搜索过滤） | ✅ | ⬜ | |
+| 文档内反链 | ✅ | ⬜ | |
+| 块引用 `^id` 跳转高亮 | ✅ | ✅ | |
+| 嵌入到标题 / 段落 | ✅ | ✅ | |
+
+### 搜索
+
+| 能力 | Obsidian | 我们 | 备注 |
+|---|---|---|---|
+| 关键词 / 短语 | ✅ | ✅ | |
+| 布尔 `OR` `-` 括号 | ✅ | ✅ | 本轮实现 |
+| 字段算子 12 种 | ✅ | ✅ | 12 种全部实现（含 task/task-todo/task-done） |
+| 属性搜索 `[key:value]` | ✅ | ✅ | 本轮实现 |
+| 结果排序 / 折叠 | ✅ | 🟡 | 有分级排序，无折叠（P8 尾项） |
+
+**整体完成度估算**：阅读 + 导航面约 **82%**；文件管理面约 **70%**（缺拖拽与链接改写）；搜索面约 **88%**（缺结果折叠与正则）；图谱约 **88%**（缺量纲对齐与 Worker 性能）。
+
+---
+
+## 二、代码结构审计与拆分映射
+
+| 现状文件 | 行数 | 问题 | 目标模块 |
+|---|---|---|---|
+| ~~`src/vault/index.ts`~~ | 848 → **555** | 已完成：树/搜索/图各自独立模块 | 剩余：扫描与 refresh 仍偏长，可再拆 `scan.ts` |
+| ~~`src/client/ui/theme.ts`~~ | 840 → **5 个文件** | 已完成拆分：`theme/{classes,layout,content,chrome,graph}.ts` + barrel | 令牌仍在 CSS 中，后续单独提 `tokens.ts` |
+| `src/client/ui/VaultPage.tsx` | 580（原 668） | 数据拉取 + 标签模型 + 快捷键 + 布局 | **已抽 `tabs.ts`（-88 行）**；再抽 `useVaultData.ts`、`TabStrip.tsx` |
+| `src/client/ui/GraphView.tsx` | 485 | 状态机 + rAF 循环 + SVG 渲染耦合 | `graph/useSimulation.ts` + `GraphCanvas.tsx` |
+| `src/client/ui/NoteView.tsx` | 376 | 渲染 + DOM 增强 + 悬停预览 | `ui/HoverPreview.tsx` + `markdown/enhance.ts` |
+| `src/client/ui/Panels.tsx` | 268 | 四个面板同文件 | `panels/{Outline,Backlinks,Properties,Tags}.tsx` |
+| `src/client/ui/Explorer.tsx` | 310 | 树 + 工具栏 + 右键菜单 | `explorer/{Tree,Toolbar,ContextMenu}.tsx` |
+| `src/vault/syntax.ts` | 359 | 扫描 + 解析 + 替换 | 可拆 `syntax/{scan,parse,replace}.ts`（低优先） |
+| `src/routes.ts` | 220 | 单一分发器 | 保持（统一出入口，符合既定架构） |
+
+**已完成的第一刀**：`src/client/ui/tabs.ts`（纯函数模型，14 个用例），`VaultPage` 从 668 → 580 行，行为回归通过浏览器实测。
+
+**拆分原则**：纯逻辑（可单测）先抽 → 再抽纯展示组件 → 最后拆样式。每抽一步跑一次 `tsc` + 全量用例。
+
+---
+
+## 三、落地计划（P6–P11）
+
+### P6 图谱量纲对齐（0.5 天，客户端）
+- 把 `layout.ts` 的 `REST_LENGTH`、斥力、重力换成 Obsidian 量纲：`centerStrength .1` / `repel 10` / `link 1` / `linkDistance 250`
+- 设置面板的四个滑杆改为直接对应上述数值（删除「归一化倍率」语义）
+- 验收：局部图节点平均间距接近 Obsidian 截图；滑杆数值与官方默认一致（0.1 / 10 / 1 / 250）
+
+### P7 大图性能（0.5–1 天，客户端）
+- 把 rAF 力学循环搬进 Web Worker（`layout.worker.ts`），主线程只接收坐标
+- 全局图按帧分片，节点 ≥300 时降级为「只算 2 轮 + 缓存布局」
+- 验收：559 篇全局图悬停/拖拽 ≥45 FPS（DevTools Performance 采样）
+
+### P8 搜索算子（✅ 主体完成，剩尾项）
+- [x] `src/vault/query.ts`：tokenizer + 布尔/括号/取反 + 12 种字段算子 + 属性 `[k:v]`
+- [x] `search()` 走解析器；图谱过滤复用同一 parser（删除了旧的 `compileGraphQuery`）
+- [x] 16 个用例覆盖每个算子；真实库验证 `tag:#work` / `file:TiSenT` / `line:(GPU 优化)` / `task-todo:`
+- [ ] 搜索面板「排序 / 折叠」开关
+- [ ] 正则 `/.../` 支持（Obsidian 支持，优先级低）
+
+### P9 文件管理闭环（✅ 已完成，2026-10-26 审计修复）
+- [x] 拖拽移动文件/文件夹：HTML5 拖放 + 目标高亮 + 冲突提示（409）
+- [x] 移动后**自动改写**指向它的 `[[链接]]`（含 `#标题`、`![[嵌入]]`、别名、块引用）；文件夹移动逐子孙笔记改写
+- [x] 文件夹笔记：目录同名 `.md` 优先展示
+- [x] 审计修复：rename 走 move 管线（冲突检查 + 链接改写 + .trash 备份）；文件夹禁止移入自身子孙；空目录进索引签名；标签页 `remapPath` 跟随重命名/移动；`removePath` 活动索引与文件夹前缀；`.md.md` 双后缀；轮询副作用移出 updater
+- 验收：122 用例全绿；把一个被 197 条反链引用的笔记移动到新目录，所有链接仍可解析；`Alt+←` 不丢历史
+
+### P12 界面重设计（✅ 已完成，2026-10-26）
+- [x] 顶栏收纳：9 个文字按钮 → 品牌计数 + ←/→ 图标 + 「快速切换 Ctrl O」pill + 图谱/搜索图标 + ⋯ 溢出菜单（刷新索引）
+- [x] 内联 SVG 图标组件（feather 风格，stroke currentColor），替代 unicode 字符与 ⚙
+- [x] 按钮 ghost 化：透明底、hover 浮层、激活态品牌色
+- [x] 图谱工具栏两行并一行：重播/重置/阅读收成图标按钮
+- [x] 无笔记时隐藏右栏（两栏布局），不再显示空占位
+- [x] 右键菜单视口边界钳制
+- 验收：`tsc` 干净、122 用例全绿、浏览器冒烟（笔记/图谱/菜单/空态）无控制台错误
+
+第二轮·面板整合（✅ 2026-10-26）：
+- [x] 右栏 4→2：只留大纲/反链；属性由笔记头部属性表承担，标签移入左栏（`RAIL_SURFACES` 同步裁剪）
+- [x] 左栏底部加可折叠「标签」区：chip + 计数，点击即 `#tag` 过滤树，激活 chip 高亮
+- [x] 搜索入口 3→1：命令面板双模式（Ctrl+O 文件切换 / Tab 或 `?` 前缀切全文搜索，Ctrl+F 直接进全文模式），删除独立搜索视图与顶栏搜索按钮；面板底部加模式/结果数/Tab 提示条
+- [x] Explorer 工具行图标化（新建笔记/新建文件夹/折叠全部 SVG ghost 图标，与顶栏一致）
+- [x] 滚动条统一：`.ov-root` 作用域 6px、透明轨道、`--dsw-alias-border-l2` thumb，webkit 与 `scrollbar-width/color` 双写
+- [x] 查询语言支持裸 `#tag` 简写（`pushWord` 映射到 `tag:` 字段）——修复标签 chip 过滤零结果，顺带让图谱/笔记内点标签过滤生效
+- 验收：`tsc` 干净、123 用例全绿、`tsdown` 重建、浏览器冒烟（文件/全文双模式、标签过滤、右栏双 tab）无控制台错误
+
+第三轮·图谱对标 Obsidian（✅ 2026-10-26）：
+- [x] 修「0 节点·0 连线」幽灵图：refetch 失败保留旧数据 + 横幅提示（不再清空 graph）；空结果同步清空 positions（画布与统计一致）；索引 `version` 变化自动重取（VaultPage 传 prop，扫描中途的空结果自愈）
+- [x] 「全部标签」原生 select → 自定义 TagPicker popover：搜索输入过滤全量标签（不再截断 24 个）、计数徽标、↑↓/Enter/Esc 键盘导航、点击外部关闭、当前项品牌色标记
+- [x] 渲染对标（canvas）：普通节点中性灰、标签节点绿、附件节点琥珀、中心/hover 节点品牌色 + hover 亮环；hover 邻接边品牌色加粗、其余边压暗至 0.05、非邻接节点压暗至 0.15；`arrows` 设置补齐箭头绘制；`textFade` 接入标签显隐（阈值 0.3+0.55×textFade，下方只剩 hover 标签，上方 0.25 区间淡入）
+- [x] 节点大小随度数：半径 2.8 + min(13, √degree × 2.1)（小库基准 6.5），枢纽节点明显更大
+- [x] 加载动画：新节点从中心黄金角小环绽放（bloom）平滑落位，替代原 0.3× 目标点起步；删除 GraphView 死代码（positionOf/labels/labelOpacity/labelVisible/neighbors/hover 状态/panningRef）
+- 验收：`tsc` 干净、123 用例全绿、`tsdown` 重建、浏览器冒烟（局部图 3/6 一致、TagPicker 过滤 #研究、全库图 39/98 与计数吻合）无控制台错误
+
+第四轮·动画内核 + 设置面板对标（✅ 2026-10-26，GRAPH.md §10 G5/G6）：
+- [x] 新增 `graph/render/anim.ts`（damp/dampColor/settled/parseColor，等价 Obsidian `mQ`/`vQ`）与 `graph/render/stage.ts`（GraphStage：每节点 fade/dim/lift/tint、每边 alpha、两趟 hover passes，全部逐帧 damp 0.9）
+- [x] scene.ts 全面接入 stage：节点入场淡入（fade 0→1）、hover 压暗系数 0.15→0.2 且不再跳变、tint 逐帧 RGB 插值、hover 标签下移 15/zoom（lift damp）；边 ≤800 逐条 damp，>800 两趟 passes 的 fg/bg 强度 damp；箭头 alpha 乘 clamp(2×(zoom−0.3),0,1)
+- [x] 标签公式换 Obsidian 原版 clamp(log2(zoom)+1−textFade, 0, 1)；zoom<1 时标签反向缩放保持屏幕尺寸（labelScale 同时进避让盒与字号）
+- [x] 相机：zoom 缓动改逐帧 damp 0.85（对齐 `mQ(scale,targetScale,.85)`），缩放范围 1/128–8；pan 加惯性——拖动中速度 mQ 0.8 平滑，松手 100ms 窗口内保留速度滑行、每帧衰减 0.92；点击/拖拽以 5px 阈值区分
+- [x] 新增 `ui/kit/controls.tsx`：Toggle（隐藏原生 checkbox 的滑动开关）+ Slider（轨道/填充/滑块、拖动 tooltip、←→ 键盘、role=slider aria 完整），注册进 kit（styles/controls.ts）
+- [x] 设置面板：宽度 300→240px、`overflow-y:auto + overflow-x:hidden` + `box-sizing:border-box` 消灭横向滚动条（实测 sw=cw=240）；头部关闭改图标按钮；力参数滑杆接 SJ/MJ 非线性映射（`curveFor` 二分求解 t 使默认值落在滑杆中点，实测四个力默认值均 50%）；清掉 `t as unknown as` 强转（schema label/section title 改 `keyof Dict`）
+- [x] 新增 `tests/graph-anim.test.ts`：damp 收敛、parseColor/dampColor、stage 淡入/剪枝、log2 标签公式、SJ/MJ 往返 + curveFor 中点断言
+- 验收：`tsc` 干净、130 用例全绿、`tsdown` 重建、浏览器冒烟（图谱渲染、设置面板截图、滑杆拖动 tooltip）无控制台错误
+
+第五轮·拖拽释放与点击逻辑对标 Obsidian（✅ 2026-10-26）：
+- [x] 修复拖拽释放回弹：`GraphView` 新增 `liveRef`，`onDragEnd` 置 `targetRef=null` 并启动 120 tick 实时力学沉降（`step()` 无 fixed），节点在松手位置附近弹簧入新平衡，而非插值回初始布局；`onDragStart` 取消进行中的沉降
+- [x] 修复局部图谱点击：新增 `onCenter` prop（更新打开路径但不切视图）；`activate` 在 `center!==undefined` 时改为将点击节点设为新中心——先把相机平滑 glide 到该节点屏幕位置，再触发 refetch（新布局把中心节点放在世界原点，fetch 副作用把 panTarget 设回 {0,0}），全程停留在图谱视图；全局图仍走 `onOpen` 导航
+- [x] 相机加 `panTargetRef`：点击重定位、fetch 复位均走逐帧 damp（EASE 0.16）；手动 pan/缩放/拖拽开始时清空 panTarget，避免与用户手势冲突
+- [x] `VaultPage` 接线 `onCenter={(next)=>openPath(next)}`（不 `setView('note')`）
+- 验收：`tsc` 干净、130 用例全绿、`tsdown` 重建；浏览器探针确认拖拽后节点距原位 230px（noSnapBack=true）、局部图点击后仍在图谱视图（stillGraphView=true）、pan 从 156,100 平滑回归 0,0、节点数 4→17（refetch 新邻居生效）
+
+第六轮·G7 仿真语义对齐 d3（✅ 2026-10-27，GRAPH.md §10 G7）：
+- [x] `layout.ts` 重写为 d3 语义：`SimNode` 带 `vx/vy/fx/fy`，`velocityDecay 0.6`、alpha 冷却 `1-0.001^(1/300)`、reheat 0.3；力 = 向心 + 连线（bias `degS/(degS+degT)`、强度 `1/min(deg)`）+ 斥力 + collide(radius 60, 0.5)；jiggle 换确定性 sin hash（无 Math.random）
+- [x] 新增 `graph/quadtree.ts`：Barnes-Hut 斥力（>300 节点启用，theta²=0.81、distanceMin 30）+ collide 四叉树配对；纯函数可单测，O(n²) 版本留作测试 oracle
+- [x] worker 协议改持续运行：`start/forces/pin/movePin/unpin/stop` 消息、每 tick 平铺 `number[]` 位置回传、冷却自停、reheat 唤醒；<120 节点或无 Worker 走 rAF 内联；1500ms 首 tick 看门狗失败自动降级内联并保留已布局位置
+- [x] GraphView 集成：模拟器持有位置（`setPositions` 只在图变更时调一次）；相机改 zoom-to-fit（fit 到 onCooled 或用户接管；局部图居中 focus 节点）；拖拽 = pin/movePin/unpin（松开 `alphaTarget=0` 平滑回弹）；力滑杆 = `setForces` reheat 不重建；删除 fit-to-box、`targetRef` 插值、`liveRef`；GraphCanvas 诊断 dataset 补 `hover`
+- [x] 新增 `tests/graph-sim.test.ts` 9 用例：alpha 冷却节奏、收敛、link 距离 250、BH≈naive、pin/unpin、中心节点不钉死、setForces reheat、确定性、种子接受/拒绝
+- 验收：`tsc` 干净、139 用例全绿、`tsdown` 重建；浏览器探针（graph-click-drag-probe + graph-forces-probe）——拖拽松手无回弹（距原位 25px）、点击邻节点 refetch 且 focus-fit 居中（4→15 节点）、repel 滑杆 10→18.5 实时 reheat 无 refetch/无重建（冷却后像素 diff 0 → 1812）、400 节点全库图 worker 布局主线程长任务 0
+
+第六轮补·全库图塌缩修复（✅ 2026-10-27，用户报 bug「全库图一团灰」）：
+- 根因：`collideForce` 误按「直接改坐标」实现（且吃了 alpha），与连线速度对冲，把 400 节点全库图压成 ~211×281 的团；d3 的 forceCollide 是**调速度**、在**预测位置**（x+vx）上求值、**不吃 alpha**、等半径各分一半（k=0.5）
+- 修复：`quadtree.ts` collide 改回 d3 语义；顺带修正 BH 张角判断 `width²·theta² < dist²`（原写法比 d3 更严）
+- 验证：与真 d3-force 同数据对拍，400 tick 后 bbox 我们 2503×2420 vs d3 2336×2374（修复前 211×281）；新增回归用例（320 节点稠密图 400 tick 后 bbox 宽高 >1000），140 用例全绿；浏览器实测 zoom-to-fit 从锁死 1.000 变为 0.429→0.207 缩出全图、7s 收敛、截图可见多个聚簇；拖拽/点击/滑杆探针全过
+
+第七轮·G8 按需渲染 + 视口裁剪（✅ 2026-10-27，GRAPH.md §10 G8）：
+- [x] 全量 UI 审核修复至 49→53 全绿：修复真产品 bug「键盘接管相机不清 `panTargetRef`」（方向键平移后被残留的 fit 目标滑回；指针路径早已双清，属不对称遗漏）；审核脚本修复标签页历史探针（改走 QuickSwitcher 永久打开）与拖拽回程探针（根文件行在树滚动区底缘半裁剪，`boundingBox` 中心点实际命中标签区头，拖拽前 `scrollIntoViewIfNeeded` + dragstart 校验 + 重试）
+- [x] `stage.ts`：每帧变更追踪（`beginFrame`/`frameMoved`）——节点/边/通道的任何 damped 值变化都置位
+- [x] `scene.ts`：`drawScene` 返回 `SceneStats`；`worldViewport` 反推相机变换得世界坐标视口；边同侧 trivial-reject（批量 pass 与逐边路径一致剔除，被剔边动画暂停）、节点按半径剔除、标签按基线 y 剔除；canvas 暴露 `data-drawn-nodes/drawn-edges/frames`
+- [x] `GraphCanvas`：按需渲染循环——`stage.frameMoved()` 为假累计 60 帧后停 rAF 休眠，`wake()` 挂到全部指针回调/resize/主题切换，并经 `loop` prop 暴露给页面；标签布局前按视口 + 300px 屏幕余量预过滤
+- [x] `GraphView`：`loopRef` 唤醒接线——仿真 `onTick`、相机 tick 有运动（zoom 差/fling/fit/panTarget）、reveal 逐帧、settings/visible 变更、键盘方向键均 poke
+- 验收：`tsc` 干净、141 用例全绿、`tsdown` 重建；审核 53/53、0 控制台错误，新增 G8 专属检查全过——`graph.idle-sleeps`（静止后 data-frames 冻结）、`graph.culls-offscreen`（全局图放大后 drawn < positions，重置后恢复全绘）、`graph.drag-node`（中心命中拖拽改画面）、`graph.forces-slider-reheats`（力滑杆唤醒循环，检查后恢复原值）
+
+第八轮·P2 UI v2 框架迭代（✅ 2026-10-28，PLAN §7.2）：
+- [x] 三栏重排：`grid` → `flex` 外壳（`.ov-shell` = ribbon + `.ov-body`），左右 `Splitter`（拖拽 16px 步进、双击复位 248/288、键盘 ←→、`aria-valuenow`、宽度持久化到 `ov.layout.widths.v1`）
+- [x] Ribbon 入口：文件（开合文件树，`aria-pressed` 跟随 `treeOpen`）/搜索（开树并聚焦过滤框）/关系图（切换阅读↔图谱）
+- [x] 状态栏：库名、词/字符/行、反链/出链、笔记数·索引版本、阅读/图谱模式，窄屏隐藏次要指标
+- [x] 标签栏增强：拖拽重排（`reorderTabs`，选区跟随）、溢出 ▾ 菜单（打开/关闭，选中态）
+- [x] 空态统一为 `EmptyState`（`.ov-state`），替换旧 `.ov-empty`
+- [x] 响应式：≤1100px 右栏浮层 + scrim，≤860px 左栏抽屉，断点变化重置开合
+- [x] 修产品 bug（本阶段新增审核项暴露）：
+  - `.ov-main` 缺 `flex: 1 1 auto`——grid→flex 后打开关系图时 main 塌成 41px、canvas 0 高（此前 5 项 graph 检查连锁失败）
+  - `.ov-pane-hidden` 与 `.ov-explorer`/`.ov-rail` 同特异性且样式块在其后，`display:none` 被覆盖——点「文件」只改 `aria-pressed`、面板实际不隐藏；改为 `.ov-explorer.ov-pane-hidden, .ov-rail.ov-pane-hidden`
+  - zoom-to-fit 在仿真已冷却时不会终止（`onCooled` 早于 fit 请求）——画布循环永不休眠；改为「相机到达目标且布局已静止」时自清 `fitRef/panTarget`
+- [x] `scripts/ui-full-audit.mjs` 新增 9 项 P2 检查（ribbon 3 项、splitter 2 项、statusbar、标签重排/溢出、窄屏抽屉），check 总数 59 → 68；并修正 3 处旧断言（空态选择器、溢出触发器与 `scrollWidth` 测量一致、窄屏几何相对 `.ov-body`）
+- 验收：`tsc` 干净、154 用例全绿、`tsdown` 重建、审核 68/68、0 控制台错误
+
+第九轮·P3 多库注册表 + 切换器（✅ 2026-10-28，PLAN §7.3）：
+- [x] `src/vault/registry.ts`：`$DSH_HOME/obsidian-vault/vaults.json` 持久化（`.tmp` + rename 原子写）；`start/list/active/open/create/forget/close`；`inspect(path)` 只读预检（`exists`/`configured`/`registered`/`name`，不改状态）
+- [x] `VaultIndex.rebind(root)`：清空 notes/attachments/linkIndex/backlinks/tagCounts/adjacency 并 `revision += 1`，页面轮询据此自动重取
+- [x] `src/vault-endpoints.ts`：`vault/list`、`vault/inspect`、`vault/open`（`init` 建 `.obsidian`）、`vault/create`、`vault/forget`（遗忘当前库自动回退最近库，全空回退空库）
+- [x] 客户端 `ui/vaults/VaultManager.tsx`：最近库列表（当前库徽章、移除）、打开文件夹、新建知识库、未配置目录的内联确认卡（初始化并打开 / 直接打开 / 取消）、Escape 与遮罩关闭
+- [x] 顶栏 `.ov-vault-switch`（库名按钮）→ 发 `onSwitched`：清空 tabs/搜索/滚动位置并 `reload()`
+- [x] `src/client/ui/kit/styles/dialog.ts`：遮罩/对话框/按钮/错误/确认卡/库行样式
+- [x] 修真实接线 bug：`ctx.get('remote.directoryPicker')` 在 `apply` 时取不到——网关按 `inject` 顺序后挂载 `remote.*` 命名空间；改为调用时懒解析 + `hasPicker()` 每次渲染探测，弹窗打开即为最新可用性
+- [x] `tests/registry.test.ts` 9 用例：种子激活、inspect 不改状态、open 注册+激活+rebind、`init` 建配置目录、create、list 倒序且恰一 active、forget 回退、全空回退空库、跨重启恢复
+- [x] `scripts/ui-full-audit.mjs` 新增 3 项（`vaults.manager-lists-recent` / `vaults.inspect-unconfigured` / `vaults.switch-and-reload`，切库前先关标签避免旧路径 404 污染 consoleErrors），check 68 → 71；finally 补第二库兜底 `forget` + `rmSync`
+- 验收：`tsc` 干净、163 用例全绿、`tsdown` 重建、审核 71/71、0 控制台错误
+
+第十轮·P4 `.obsidian` 配置读写（✅ 2026-10-28，PLAN §7.4）：
+- [x] `src/vault/obsidian-config.ts`：六个文件白名单（`app`/`graph`/`appearance`/`community-plugins`/`core-plugins`/`hotkeys`）；缺失与坏 JSON 一律读作 `undefined`；写入先读旧文档 → 深合并（对象按键、数组整体替换）→ `.tmp` + rename 原子落盘，未知字段原样保留
+- [x] `src/config-endpoints.ts`：`config/read`（`?file=` 白名单校验，越界 400）、`config/write`（`{file, value}`，返回合并后的文档）；路由前缀 `config/`，目标根跟随当前激活库
+- [x] `src/client/graph/graph-json.ts`：`graph.json` ↔ 面板设置双向映射（`search`/`hideUnresolved`/`showTags`/`showAttachments`/`showOrphans`、`showArrow`/`textFadeMultiplier`/`nodeSizeMultiplier`/`lineSizeMultiplier`、`centerStrength`/`repelStrength`/`linkStrength`/`linkDistance`、`colorGroups`↔分组）；`centerStrength` 按 5.18713248970312 换算到 d3 `forceCenter`；`filters.tag` 在 graph.json 无对应键故不映射
+- [x] `src/client/graph/persist.ts`：首屏仍取 localStorage，挂载后读库内 `graph.json` 覆盖（`baselineRef` 防「加载即回写」、`touchedRef` 防迟到加载覆盖用户改动）；改动 400ms 防抖写回，卸载时 flush
+- [x] `GraphView`：三处设置写入统一走 `updateSettings` 标记用户改动；新增持久化副作用
+- [x] `tests/obsidian-config.test.ts`（6 用例）与 `tests/graph-json.test.ts`（7 用例）：缺文件/坏 JSON、未知键穿透磁盘、深合并与数组替换、默认与完整设置往返、`hideUnresolved` 反向、颜色整数 ↔ hex、非对象文档忽略
+- [x] `scripts/ui-full-audit.mjs` 新增 3 项：`config.obsidian-roundtrip`（缺文件→null、未知键穿透深合并、白名单拒绝越界）、`graph.settings-persist-to-vault`（面板改箭头/节点大小后 `graph.json` 真被改写且保留未知键）、`vaults.switch-back`（自 `vaults.switch-and-reload` 拆出）；并修 2 处旧断言：分组行改相对计数（真实库 graph.json 自带 13 个 Obsidian 分组）、设置面板检查补 `finally` 复原与关闭
+- 验收：`tsc` 干净、177 用例全绿、`tsdown` 重建、审核 74/74、0 控制台错误
+
+第十一轮·P5 插件面板（✅ 2026-10-28，PLAN §7.5）：
+- [x] `src/vault/plugins.ts`：扫描 `<激活库>/.obsidian/plugins` 下的目录，读 `manifest.json`（id/name/version/author/description，缺失或坏 JSON 回退目录名）；`community-plugins.json` 只取字符串数组；`core-plugins.json` 同时支持对象格式（每项布尔）与旧数组格式（只列启用项），缺文件时用 Obsidian 默认 31 项
+- [x] 写回：`setCommunityPluginEnabled` 增删 id 数组；`setCorePluginEnabled` 按原文件格式写回（数组仍写数组、对象/缺文件写对象），全程复用 P4 的深合并 + `.tmp` + rename；**不加载任何第三方 JS**
+- [x] 可见状态：`enabled` 但目录不存在的插件以「未安装」列出（真实库 `tisent-dashboard` 即此情形），安装的按名称排序在前
+- [x] `src/plugin-endpoints.ts`：`plugins/list`、`plugins/toggle`（`{id, enabled, core}`，返回刷新后清单）、`plugins/reveal`（建目录后交系统文件管理器打开，路径由 Host 计算不接受客户端输入）；`routes.ts` 挂 `plugins/` 前缀
+- [x] 客户端：`Ribbon` 新增「插件」入口（feather package 图标）；`ui/plugins/PluginPanel.tsx` 对话框分「社区插件 / 核心插件」两段，行内显示名称/版本/作者/描述 + 启用开关，顶部「打开插件文件夹」与「刷新」，底部固定显示 `.obsidian/plugins` 绝对路径与「不执行第三方脚本」说明
+- [x] `kit/controls.tsx`：`Toggle` 增加可选 `ariaLabel`（行内开关没有可见文案时仍可被读出）
+- [x] `tests/plugins.test.ts` 8 用例：未配置目录回退默认、扫描含未安装 id、排序、社区开关写盘、旧数组格式保持、缺文件时以默认值生成对象、未知 id 保留、坏 manifest 回退目录名
+- [x] `scripts/ui-full-audit.mjs` 新增 3 项：`plugins.list-scans-folder`、`plugins.toggle-persists`（社区与核心两路写盘断言）、`plugins.panel-ui`（对话框开合、开关往返、核心开关跟随 `core-plugins.json`、刷新不丢行）；check 74 → 77
+- 验收：`tsc` 干净、185 用例全绿、`tsdown` 重建、审核 77/77、0 控制台错误
+
+第十二轮·P6 代码预览（✅ 2026-10-28，PLAN §7.6）：
+- [x] `src/filetypes.ts` 扩展名注册表（Host/Client 共用，纯函数）：`kind: markdown|image|pdf|code|binary` + `language`/`mime`/`previewable`；`extensionOf`（点文件与无扩展名返回空）/ `fileTypeOf` / `isPreviewableFile` / `normalizeLanguage`（`ts`→`typescript`、`h`→`cpp`、`yml`→`yaml` 等别名）
+- [x] Host：`VaultIndex.file(path)` 返回 size/mtime + 文本前缀；`vault/files.ts` 新增 `info`/`readPrefix`（1 MB 上限，字节截断后去掉半个多字节序列的替换符），Markdown 与白名单文本带 `text`/`truncated`，图片/PDF/二进制只回元数据；`tree()` 开始列出库内附件（点目录仍忽略），空目录保留
+- [x] 客户端 `ui/files/FileView.tsx`：按注册表 kind 路由——图片预览（字节数徽标）、PDF `<iframe>`、二进制元信息卡 + `?download=1`、文本走 `CodeView`；Markdown 源码模式也在这里承载
+- [x] `ui/files/CodeView.tsx`：语言徽标、右侧行号、`tokenizeLines` 逐行高亮、`行数 · 体积`、复制按钮（1.2 s 后回落「复制」）、>1 MB 与 6000 行上限两条提示
+- [x] `ui/files/tokenize.ts`：零依赖 tokenizer，按语言族分派（clike/hash/markup/markdown/sql/lua/stylesheet/plain），识别注释/字符串/数字/关键字/字面量/调用/属性/标签/标点
+- [x] `ui/files/highlight.ts`：笔记内 `pre > code` 渲染后原地装饰，与代码视图共用同一 tokenizer；用 `WeakMap` 以源文本为签名，节点内容变化才重绘（幂等，React 复用节点也不会重复处理）
+- [x] `NoteView` 头部新增「源码」按钮；`VaultPage` 增加 `sourceMode`（切文件、切库复位），右栏只跟随阅读视图
+- [x] 测试：`tests/filetypes.test.ts`（4 用例：路由、未知扩展、`extensionOf` 边界、别名）、`tests/tokenize.test.ts`（7 用例：plain/JS/Python/CSS/HTML/Markdown/分行的行数与种类）、`tests/vault-file.test.ts`（5 用例，真实临时目录：附件与空目录进树、代码文件 text/language/size/mtime、图片与二进制无 text、目录/缺失/越界返回 undefined）、`tests/vault-files.test.ts` 补 `info`/`readPrefix`；同步改 `vault.test.ts` 里「附件不进树」的旧断言
+- [x] `scripts/ui-full-audit.mjs` 新增 4 项：`files.code-view-highlight`（徽标/行号/token 分类/复制内容，Windows 剪贴板 CRLF 归一）、`files.image-preview`（1×1 PNG 真解码 + `PNG` 徽标）、`files.binary-download-card`（下载链接带 `download=1`、元信息含「大小」）、`note.source-and-reading-roundtrip`（源码徽标 `markdown`、正文与 fence 可见、点「阅读」回到阅读视图）；check 77 → 81
+- [x] 审核脚本两处既有检查改为距离无关：`files.drag-move-into-dir-and-back` 改用相邻排序的 `审核拖拽源`/`审核拖拽目标`（附件入树后根级笔记与文件夹常隔一屏，`dragTo` 自动滚动会错位）；`tabs.drag-reorder` 先「关闭全部标签页」再开三个固定标签，避免继承上一轮的六标签拖距跨屏
+- 验收：`tsc` 干净、203 用例全绿、`tsdown` 重建、审核 81/81、0 控制台错误
+
+### P10 重构（✅ 主体完成，剩 UI 组件）
+- [x] `vault/index.ts` → `tree.ts` / `search.ts` / `graph.ts`（848 → 555 行，99 用例全绿，Host 端点实测正常）
+- [x] `theme.ts` → `theme/` 五个模块 + barrel
+- [x] `VaultPage` 抽 `tabs.ts`（668 → 580 行）
+- [ ] `VaultPage` 再抽 `useVaultData.ts` + `TabStrip.tsx`（目标 ≤300 行）
+- [ ] `GraphView` 抽 `GraphCanvas` + `useSimulation`
+- [ ] `NoteView` 抽 `HoverPreview`
+- [ ] `Panels`/`Explorer` 按面板拆文件
+- 验收：用例数不减、`tsc` 干净、浏览器冒烟全过；`git diff` 只有移动，无逻辑变更
+
+### P11 阅读视图补全（0.5 天，客户端）
+- 反链面板加「排序 / 搜索过滤」；补文档内反链开关
+- 属性行加「按类型渲染」（日期/数字/复选框）
+- 验收：反链可搜可排；属性类型正确显示
+
+---
+
+## 四、建议顺序与理由
+
+1. **P10 先做一半**（已完成 tabs 抽取）——重构越晚成本越高，但不要一次全拆。
+2. ~~**P9 优先于 P8**~~：P9 已完成（含审计修复），P8 剩搜索面板开关与正则。
+3. P6/P7 属于观感与性能，放在功能之后。
+4. P8 与 P11 可以并行（都依赖同一套 query 解析）。
+
+## 五、不做（复刻边界）
+
+- Live Preview 编辑器、Canvas、Bases、社区插件运行时、主题市场：这些是另一个产品面，接入成本远高于收益。

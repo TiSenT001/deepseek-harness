@@ -1,0 +1,296 @@
+/**
+ * One frame of the graph: clear, edges, nodes, labels. All animation state
+ * lives in the {@link GraphStage}; this module only advances and draws it.
+ * @module dsh-obsidian-vault/graph/render/scene
+ */
+import type { GraphNodeDto } from '../../../protocol.ts'
+import type { GraphEdgeInput, SimNode } from '../layout.ts'
+import { groupColorOf, type GraphSettings } from '../settings.ts'
+import { labelAlpha, type LabelBox } from './labels.ts'
+import { LABEL_FONT, labelFont, type Palette } from './palette.ts'
+import type { GraphStage } from './stage.ts'
+
+/** Above this many edges the hover highlight draws as two batched passes. */
+const BATCHED_EDGES = 800
+
+/** What one frame drew; the canvas exposes the counts for probes. */
+export interface SceneStats {
+  readonly drawnNodes: number
+  readonly drawnEdges: number
+}
+
+/** Everything one frame needs. */
+export interface SceneInput {
+  readonly ctx: CanvasRenderingContext2D
+  /** CSS-pixel size of the canvas. */
+  readonly width: number
+  readonly height: number
+  readonly zoom: number
+  readonly panX: number
+  readonly panY: number
+  readonly positions: readonly SimNode[]
+  readonly edges: readonly GraphEdgeInput[]
+  readonly hidden: ReadonlySet<string>
+  readonly nodeInfo: ReadonlyMap<string, GraphNodeDto>
+  readonly settings: GraphSettings
+  readonly labels: readonly LabelBox[]
+  /** Hovered node path, if any. */
+  readonly hover: string | undefined
+  readonly hasCenter: boolean
+  readonly palette: Palette
+  /** Damped animation state, advanced by this draw. */
+  readonly stage: GraphStage
+}
+
+/** The world-space rectangle the camera shows. */
+export interface WorldRect {
+  readonly left: number
+  readonly right: number
+  readonly top: number
+  readonly bottom: number
+}
+
+/**
+ * Invert the canvas camera transform: `translate(center + pan) * scale(zoom)`.
+ * @param width - CSS-pixel canvas width.
+ * @param height - CSS-pixel canvas height.
+ * @param zoom - camera zoom.
+ * @param panX - camera pan in screen px.
+ * @param panY - camera pan in screen px.
+ * @returns the visible world-space rectangle.
+ */
+export function worldViewport(width: number, height: number, zoom: number, panX: number, panY: number): WorldRect {
+  return {
+    left: (-width / 2 - panX) / zoom,
+    right: (width / 2 - panX) / zoom,
+    top: (-height / 2 - panY) / zoom,
+    bottom: (height / 2 - panY) / zoom,
+  }
+}
+
+/** Build the stage key for one edge. */
+export function edgeKey(source: string, target: string): string {
+  return `${source}\n${target}`
+}
+
+/**
+ * Draw one frame.
+ * @param scene - camera, data, palette, and animation stage for this frame.
+ * @returns how many nodes and edges survived viewport culling.
+ */
+export function drawScene(scene: SceneInput): SceneStats {
+  const { ctx, width, height, zoom, positions, edges, hidden, nodeInfo, settings, labels, hover, palette, stage } = scene
+  ctx.clearRect(0, 0, width, height)
+  const stats = { drawnNodes: 0, drawnEdges: 0 }
+  if (positions.length === 0) return stats
+
+  ctx.save()
+  ctx.translate(width / 2 + scene.panX, height / 2 + scene.panY)
+  ctx.scale(zoom, zoom)
+
+  // World-space viewport for culling: invert the camera transform.
+  const view = worldViewport(width, height, zoom, scene.panX, scene.panY)
+  // Trivial reject: both endpoints outside the same side of the viewport.
+  const edgeOffscreen = (from: SimNode, to: SimNode): boolean =>
+    (from.x < view.left && to.x < view.left)
+    || (from.x > view.right && to.x > view.right)
+    || (from.y < view.top && to.y < view.top)
+    || (from.y > view.bottom && to.y > view.bottom)
+
+  const index = new Map(positions.map(node => [node.path, node]))
+  const neighbours = hover === undefined ? undefined : neighbourSet(edges, hover)
+  const hovering = neighbours !== undefined
+  const batched = edges.length > BATCHED_EDGES
+  const scale = settings.display.nodeScale
+  const textFade = settings.display.textFade
+  const globalLabelAlpha = labelAlpha(zoom, textFade)
+  const labelScale = zoom < 1 ? 1 / zoom : 1
+  // Arrowheads fade out as the camera zooms out (Obsidian: 2*(zoom-0.3)).
+  const arrowAlpha = Math.max(0, Math.min(1, 2 * (zoom - 0.3)))
+
+  // --- edges ---
+  const baseEdgeWidth = Math.max(0.35, settings.display.linkWidth / zoom)
+  const activeEdgeWidth = baseEdgeWidth * 1.6
+  const edgeAlphas = new Map<string, number>()
+  if (batched) {
+    const passes = stage.passes(hovering)
+    const drawPass = (alpha: number, color: string, lineWidth: number, onlyNeighbours: boolean): void => {
+      if (alpha <= 0.01) return
+      ctx.strokeStyle = color
+      ctx.globalAlpha = alpha
+      ctx.lineWidth = lineWidth
+      ctx.beginPath()
+      for (const edge of edges) {
+        if (hidden.has(edge.source) || hidden.has(edge.target)) continue
+        const isNeighbour = hovering && neighbours.has(edge.source) && neighbours.has(edge.target)
+        if (onlyNeighbours !== isNeighbour) continue
+        const from = index.get(edge.source)
+        const to = index.get(edge.target)
+        if (from === undefined || to === undefined) continue
+        if (edgeOffscreen(from, to)) continue
+        stats.drawnEdges += 1
+        ctx.moveTo(from.x, from.y)
+        ctx.lineTo(to.x, to.y)
+        if (onlyNeighbours) edgeAlphas.set(edgeKey(edge.source, edge.target), alpha)
+      }
+      ctx.stroke()
+    }
+    drawPass(passes.bg, palette.edge, baseEdgeWidth, false)
+    drawPass(passes.fg, palette.edgeActive, activeEdgeWidth, true)
+  } else {
+    for (const edge of edges) {
+      if (hidden.has(edge.source) || hidden.has(edge.target)) continue
+      const from = index.get(edge.source)
+      const to = index.get(edge.target)
+      if (from === undefined || to === undefined) continue
+      if (edgeOffscreen(from, to)) continue
+      const isNeighbour = hovering && neighbours.has(edge.source) && neighbours.has(edge.target)
+      const target = hovering ? (isNeighbour ? 1 : 0.2) : 0.65
+      const alpha = stage.edge(edgeKey(edge.source, edge.target), target)
+      if (alpha <= 0.01) continue
+      stats.drawnEdges += 1
+      edgeAlphas.set(edgeKey(edge.source, edge.target), alpha)
+      ctx.strokeStyle = hovering && isNeighbour ? palette.edgeActive : palette.edge
+      ctx.globalAlpha = alpha
+      ctx.lineWidth = isNeighbour ? activeEdgeWidth : baseEdgeWidth
+      ctx.beginPath()
+      ctx.moveTo(from.x, from.y)
+      ctx.lineTo(to.x, to.y)
+      ctx.stroke()
+    }
+  }
+
+  // Arrowheads ride on the owning edge's alpha.
+  if (settings.display.arrows && arrowAlpha > 0.01) {
+    for (const edge of edges) {
+      if (hidden.has(edge.source) || hidden.has(edge.target)) continue
+      const alpha = edgeAlphas.get(edgeKey(edge.source, edge.target))
+      if (alpha === undefined || alpha <= 0.01) continue
+      const from = index.get(edge.source)
+      const to = index.get(edge.target)
+      if (from === undefined || to === undefined) continue
+      ctx.globalAlpha = alpha * arrowAlpha
+      drawArrow(ctx, from.x, from.y, to.x, to.y, to.radius * scale + 2.5, 3.8 / zoom, palette.edge)
+    }
+  }
+
+  // --- nodes ---
+  const anims = new Map<string, { fade: number; dim: number; lift: number }>()
+  for (const node of positions) {
+    if (hidden.has(node.path)) continue
+    const radius = node.radius * scale
+    if (
+      node.x + radius < view.left || node.x - radius > view.right
+      || node.y + radius < view.top || node.y - radius > view.bottom
+    ) continue
+    const info = nodeInfo.get(node.path)
+    const kind = info?.kind ?? 'note'
+    const active = hover === node.path
+    const faded = hovering && !neighbours.has(node.path)
+    const isCenter = scene.hasCenter && node.depth === 0
+    const group = groupColorOf(settings, node.title, node.path)
+    const tintTarget = group ?? kindFill(palette, kind, active, isCenter)
+    const anim = stage.node(node.path, {
+      dim: faded ? 0.2 : 1,
+      lift: active ? 15 / zoom : 0,
+      tint: tintTarget,
+    })
+    anims.set(node.path, anim)
+    const alpha = anim.fade * anim.dim * (active || isCenter ? 1 : 0.85)
+    if (alpha <= 0.02) continue
+    stats.drawnNodes += 1
+    ctx.globalAlpha = alpha
+    ctx.beginPath()
+    ctx.arc(node.x, node.y, radius, 0, Math.PI * 2)
+    if (kind === 'unresolved') {
+      ctx.strokeStyle = palette.node
+      ctx.lineWidth = 1.2 / zoom
+      ctx.stroke()
+    } else {
+      ctx.fillStyle = anim.tint
+      ctx.fill()
+      // Hover ring.
+      if (active) {
+        ctx.strokeStyle = palette.ring
+        ctx.lineWidth = 2.2 / zoom
+        ctx.globalAlpha = anim.fade
+        ctx.stroke()
+      }
+    }
+  }
+  ctx.globalAlpha = 1
+
+  // --- labels ---
+  if (labels.length > 0) {
+    ctx.font = labelScale === 1 ? LABEL_FONT : labelFont(11 * labelScale)
+    ctx.textAlign = 'center'
+    for (const label of labels) {
+      // Cheap viewport reject; the canvas pre-filters with a wide margin, so
+      // this only guards the labels that margin kept.
+      const y = label.y + label.radius * scale + 12 * labelScale
+      if (y < view.top - 20 * labelScale || y > view.bottom + 20 * labelScale) continue
+      const active = hover === label.path
+      const anim = anims.get(label.path)
+      const fade = anim?.fade ?? 1
+      const alpha = active ? fade : fade * (anim?.dim ?? 1) * globalLabelAlpha
+      if (alpha <= 0.02) continue
+      ctx.globalAlpha = alpha
+      ctx.fillStyle = active ? palette.labelActive : palette.label
+      ctx.fillText(label.title, label.x, y + (anim?.lift ?? 0))
+    }
+    ctx.globalAlpha = 1
+  }
+  ctx.restore()
+  return stats
+}
+
+function kindFill(
+  palette: Palette,
+  kind: GraphNodeDto['kind'],
+  active: boolean,
+  isCenter: boolean,
+): string {
+  if (active || isCenter) return palette.nodeActive
+  if (kind === 'tag') return palette.nodeTag
+  if (kind === 'attachment') return palette.nodeAttachment
+  return palette.node
+}
+
+function neighbourSet(edges: readonly GraphEdgeInput[], path: string): Set<string> {
+  const set = new Set<string>([path])
+  for (const edge of edges) {
+    if (edge.source === path) set.add(edge.target)
+    if (edge.target === path) set.add(edge.source)
+  }
+  return set
+}
+
+function drawArrow(
+  ctx: CanvasRenderingContext2D,
+  x1: number,
+  y1: number,
+  x2: number,
+  y2: number,
+  offset: number,
+  size: number,
+  color: string,
+): void {
+  const dx = x2 - x1
+  const dy = y2 - y1
+  const len = Math.hypot(dx, dy)
+  if (len < 1) return
+  const ux = dx / len
+  const uy = dy / len
+  const ax = x2 - ux * offset
+  const ay = y2 - uy * offset
+  const s = size
+  const ox = -uy * s
+  const oy = ux * s
+  ctx.beginPath()
+  ctx.moveTo(ax + ux * s, ay + uy * s)
+  ctx.lineTo(ax - ux * s + ox, ay - uy * s + oy)
+  ctx.lineTo(ax - ux * s - ox, ay - uy * s - oy)
+  ctx.closePath()
+  ctx.fillStyle = color
+  ctx.fill()
+}

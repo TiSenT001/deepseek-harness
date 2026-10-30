@@ -1,0 +1,9 @@
+# dsh-obsidian-vault bundle patch
+#
+# Mounts the Host half: the vault index and the /obsidian/api routes. The
+# client half is injected separately through package.json#dsh.client.
+- insert:
+    - id: obsidian-vault
+      name: dsh-obsidian-vault
+      config:
+        vault: 'G:\个人知识库'
