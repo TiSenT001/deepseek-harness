@@ -15,13 +15,17 @@ export interface NoteHeaderProps {
   readonly onPathFilter: (prefix: string) => void
   /** Switch the same Markdown file to its source view; absent without one. */
   readonly onSource?: () => void
+  /** Toggle the in-document backlinks section; absent when the note has none. */
+  readonly onToggleBacklinks?: () => void
+  /** Whether that section currently renders. */
+  readonly backlinksVisible?: boolean
 }
 
 /**
  * Render the note header.
  * @param props - the note and the header actions.
  */
-export function NoteHeader({ t, note, onPathFilter, onSource }: NoteHeaderProps): JSX.Element {
+export function NoteHeader({ t, note, onPathFilter, onSource, onToggleBacklinks, backlinksVisible = true }: NoteHeaderProps): JSX.Element {
   const folders = note.path.split('/').slice(0, -1)
 
   return (
@@ -43,6 +47,19 @@ export function NoteHeader({ t, note, onPathFilter, onSource }: NoteHeaderProps)
           {folders.length > 0 ? <span className={css.breadcrumbSep}>/</span> : null}
           <span className={css.path}>{note.path.slice(note.path.lastIndexOf('/') + 1)}</span>
         </nav>
+        {onToggleBacklinks === undefined
+          ? null
+          : (
+            <button
+              type="button"
+              className={css.button}
+              onClick={onToggleBacklinks}
+              aria-pressed={backlinksVisible}
+              title={t('backlinks')}
+            >
+              {backlinksVisible ? t('backlinksHide') : t('backlinksShow')}
+            </button>
+          )}
         {onSource === undefined ? null : (
           <button type="button" className={css.button} onClick={onSource} title={t('source')}>
             {t('source')}

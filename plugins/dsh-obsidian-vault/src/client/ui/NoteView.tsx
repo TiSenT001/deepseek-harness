@@ -1,10 +1,10 @@
-/**
+﻿/**
  * Reading view: note header, properties, tags, callouts, and the rewritten
  * Markdown document. Wikilinks, tags, embeds, and creation links all resolve
  * here, and a hovered note link shows a small preview card.
  * @module dsh-obsidian-vault/client/ui/NoteView
  */
-import { useEffect, useMemo, useRef, useState, type Ref } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type Ref } from 'react'
 import type { BacklinkDto, NoteDto } from '../../protocol.ts'
 import { fetchNote } from '../api.ts'
 import type { Translate } from '../i18n.ts'
@@ -16,6 +16,7 @@ import {
 } from '../markdown/rewrite.ts'
 import { MarkdownDelegateProvider, MarkdownText, type MarkdownLabels } from '../primitives.ts'
 import { HoverPreviewCard } from './HoverPreviewCard.tsx'
+import { DEFAULT_INLINE_BACKLINKS, INLINE_BACKLINKS_KEY, parseInlineBacklinks, serializeInlineBacklinks } from './notePrefs.ts'
 import { NoteHeader } from './note/NoteHeader.tsx'
 import { NoteMeta } from './note/NoteMeta.tsx'
 import { highlightDocument } from './files/highlight.ts'
@@ -67,6 +68,25 @@ export function NoteView({
   onMenu, onSource,
 }: NoteViewProps): JSX.Element {
   const [embeds, setEmbeds] = useState<ReadonlyMap<string, string>>(new Map())
+  const [inlineBacklinks, setInlineBacklinks] = useState<boolean>(() => {
+    try {
+      return parseInlineBacklinks(window.localStorage.getItem(INLINE_BACKLINKS_KEY))
+    } catch {
+      // Storage can be unavailable (private mode, disabled cookies).
+      return DEFAULT_INLINE_BACKLINKS
+    }
+  })
+  const toggleInlineBacklinks = useCallback((): void => {
+    setInlineBacklinks((previous) => {
+      const next = !previous
+      try {
+        window.localStorage.setItem(INLINE_BACKLINKS_KEY, serializeInlineBacklinks(next))
+      } catch {
+        // Persisting is best-effort; the toggle still works for this mount.
+      }
+      return next
+    })
+  }, [])
   const bodyRef = useRef<HTMLDivElement>(null)
   const { preview, show: showPreview, hide: hidePreview } = useHoverPreview()
 
@@ -186,6 +206,7 @@ export function NoteView({
         note={note}
         onPathFilter={onPathFilter}
         {...(onSource === undefined ? {} : { onSource })}
+        {...(backlinks.length === 0 ? {} : { backlinksVisible: inlineBacklinks, onToggleBacklinks: toggleInlineBacklinks })}
       />
       <div className={css.scroll} ref={scrollRef as unknown as Ref<HTMLDivElement>}>
         <div
@@ -220,7 +241,7 @@ export function NoteView({
           >
             <Segments items={rendered} labels={labels} prefix="" />
           </MarkdownDelegateProvider>
-          {backlinks.length === 0
+          {backlinks.length === 0 || !inlineBacklinks
             ? null
             : (
               <section className={css.docBacklinks}>

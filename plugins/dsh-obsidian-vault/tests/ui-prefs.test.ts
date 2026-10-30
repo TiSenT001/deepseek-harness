@@ -4,6 +4,7 @@ import {
   clampPane, DEFAULT_WIDTHS, parseWidths, serializeWidths,
 } from '../src/client/ui/layoutPrefs.ts'
 import { textStats, vaultName } from '../src/client/ui/stats.ts'
+import { DEFAULT_INLINE_BACKLINKS, parseInlineBacklinks, serializeInlineBacklinks } from '../src/client/ui/notePrefs.ts'
 
 test('clampPane keeps widths inside the docked range', () => {
   assert.equal(clampPane('left', 100), 220)
@@ -47,4 +48,14 @@ test('vaultName reads the last segment of either separator style', () => {
   assert.equal(vaultName('G:\\个人知识库'), '个人知识库')
   assert.equal(vaultName('/home/user/vault/'), 'vault')
   assert.equal(vaultName('vault'), 'vault')
+})
+
+test('inline backlinks default on and survive a round-trip', () => {
+  assert.equal(DEFAULT_INLINE_BACKLINKS, true)
+  assert.equal(parseInlineBacklinks(null), true)
+  assert.equal(parseInlineBacklinks('1'), true)
+  assert.equal(parseInlineBacklinks('0'), false)
+  assert.equal(serializeInlineBacklinks(true), '1')
+  assert.equal(serializeInlineBacklinks(false), '0')
+  assert.equal(parseInlineBacklinks(serializeInlineBacklinks(false)), false)
 })

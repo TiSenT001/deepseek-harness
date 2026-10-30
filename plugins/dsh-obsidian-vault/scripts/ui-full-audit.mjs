@@ -1007,6 +1007,16 @@ try {
     assert((await row.count()) === 1, `expected one 审核链接者 row, got ${await row.count()}`)
     const context = await row.first().locator('.ov-doc-backlink-context').textContent()
     assert(context?.includes('链接到'), `row context is ${context}`)
+    // The header toggle hides and restores the section; the choice is stored so
+    // a reload keeps it.
+    await page.locator('.ov-note-head button', { hasText: '隐藏反链' }).click()
+    await sleep(300)
+    assert((await page.locator('.ov-doc-backlinks').count()) === 0, 'toggle did not hide the section')
+    const stored = await page.evaluate(() => window.localStorage.getItem('ov.note.inlineBacklinks.v1'))
+    assert(stored === '0', `toggle did not persist: ${stored}`)
+    await page.locator('.ov-note-head button', { hasText: '显示反链' }).click()
+    await sleep(300)
+    assert(await page.locator('.ov-doc-backlinks').isVisible(), 'toggle did not restore the section')
     await row.first().click()
     await sleep(900)
     const active = await page.locator('.ov-doctab-active .ov-doctab-label').textContent()

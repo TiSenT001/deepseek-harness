@@ -1,4 +1,4 @@
-/**
+﻿/**
  * English copy for the vault workspace, keyed by the Chinese dictionary so a
  * missing translation fails to compile instead of falling back at runtime.
  * @module dsh-obsidian-vault/client/i18n/en
@@ -21,6 +21,8 @@ export const EN: Dict = {
   reading: 'Reading',
   outline: 'Outline',
   backlinks: 'Backlinks',
+  backlinksShow: 'Show backlinks',
+  backlinksHide: 'Hide backlinks',
   bookmarks: 'Bookmarks',
   noBookmarks: 'No bookmarks yet',
   bookmarkAdd: 'Add bookmark',

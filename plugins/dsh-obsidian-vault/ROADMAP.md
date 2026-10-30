@@ -1,3 +1,11 @@
+﻿## 第五十五轮：文档内反链开关——P11 收口（2026-10-31）
+
+- **功能**：笔记头部新增「显示反链 / 隐藏反链」按钮（`aria-pressed`），控制阅读视图底部的内嵌反链区。选择写入 `localStorage` 的 `ov.note.inlineBacklinks.v1`，默认开启（对齐 Obsidian 默认设置）。
+- **实现**：`client/ui/notePrefs.ts`（解析/序列化两个纯函数）、`NoteHeader` 新增可选 `onToggleBacklinks`/`backlinksVisible`（无参时不渲染按钮，其它调用方零改动）、`NoteView` 持有状态并在无存储时回退默认值。
+- **测试**：`tests/ui-prefs.test.ts` 增 1 例（默认值、`'1'`/`'0'` 解析、往返）—— 用例数 **395 → 396**。
+- **审核**：扩展现有 `note.inline-backlinks` 检查——点「隐藏反链」后断言区块消失且 `localStorage` 落 `'0'`，再点「显示反链」断言恢复。单项通过后全量复跑 **101/101、0 控制台错误**。
+- 至此 P11 两条验收（反链可搜可排、属性类型正确显示）与唯一缺口（文档内反链开关）全部完成。
+
 ## 第五十四轮：行数债收尾——13 → 1（2026-10-31）
 
 - **pur/PurStudioPane 303 → 288**：`pointerEventOf`（React 事件 → 内核指针事件）抽到 `client/pur/pane-events.ts`；顺带删掉因此失效的 `import type React`。

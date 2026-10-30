@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Simplified Chinese copy for the vault workspace. The key set of this
  * dictionary defines the shared {@link Dict} shape both languages implement.
  * @module dsh-obsidian-vault/client/i18n/zh
@@ -20,6 +20,8 @@ export const ZH = {
   reading: '阅读',
   outline: '大纲',
   backlinks: '反链',
+  backlinksShow: '显示反链',
+  backlinksHide: '隐藏反链',
   bookmarks: '书签',
   noBookmarks: '还没有书签',
   bookmarkAdd: '添加书签',
