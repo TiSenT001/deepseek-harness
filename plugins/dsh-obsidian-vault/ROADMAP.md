@@ -1,4 +1,13 @@
-﻿## 第五十七轮：NoteView 回到预算内（2026-10-31）
+﻿## 第五十八轮：搜索面板排序 / 折叠（P8 尾项收口，2026-10-31）
+
+- **功能**：搜索模式底部再加两个控件——「相关度 / 名称」排序切换、以及「折叠」（隐藏每条命中的摘要行，只留标题与路径）。
+- **实现**：`searchPrefs.ts` 的 `SearchOptions` 扩到四个字段（`matchCase`/`regex`/`sort`/`compact`），新增纯函数 `orderSearchHits`（相关度保持 Host 排名、名称按标题排序）；`QuickSwitcher` 把 `toggleOption` 收窄成布尔三键，另加 `toggleSort`。
+- **测试**：`tests/ui-prefs.test.ts` 增 2 例（排序两种模式、新字段往返与坏数据回退）——用例数 **398 → 400**。
+- **审核**：`quick.ctrl-f-search-mode` 再加入排序与折叠断言（切换后 `localStorage` 落 `"sort":"name"`；折叠后 `.ov-quick-snippet` 计数归零；再点回来摘要恢复）。
+- **验证**：`tsc` 0 错误、**400/400**、`tsdown` 成功、全量审核 **101/101**。
+- P8 至此无未勾选项。
+
+## 第五十七轮：NoteView 回到预算内（2026-10-31）
 
 - 上一轮加反链开关让 `NoteView.tsx` 从 299 涨到 320，破了 300 行预算。两个小抽取把它拉回**274 行**：
   - `client/ui/useInlineBacklinks.ts`：反链开关的状态 + 持久化做进 hook；
@@ -652,8 +661,8 @@
 - [x] `src/vault/query.ts`：tokenizer + 布尔/括号/取反 + 12 种字段算子 + 属性 `[k:v]`
 - [x] `search()` 走解析器；图谱过滤复用同一 parser（删除了旧的 `compileGraphQuery`）
 - [x] 16 个用例覆盖每个算子；真实库验证 `tag:#work` / `file:TiSenT` / `line:(GPU 优化)` / `task-todo:`
-- [ ] 搜索面板「排序 / 折叠」开关
-- [ ] 正则 `/.../` 支持（Obsidian 支持，优先级低）
+- [x] 搜索面板「排序 / 折叠」开关
+- [x] 正则 `/.../` 支持（Obsidian 支持，优先级低）
 
 ### P9 文件管理闭环（✅ 已完成，2026-10-26 审计修复）
 - [x] 拖拽移动文件/文件夹：HTML5 拖放 + 目标高亮 + 冲突提示（409）
@@ -798,7 +807,7 @@
 
 ### P11 阅读视图补全（✅ 完成，2026-10-31 复核）
 - [x] 反链面板加「排序 / 搜索过滤」——`panels/Backlinks.tsx` 有 `filterText` 与 `sortMode`（按名/按提及数）
-- [ ] 文档内反链开关——内嵌 `docBacklinks` 已渲染，但**没有开关**（Obsidian 的 backlinks in document 设置项），列为待做
+- [x] 文档内反链开关——内嵌 `docBacklinks` 已渲染，但**没有开关**（Obsidian 的 backlinks in document 设置项），列为待做
 - [x] 属性行加「按类型渲染」——`note/NoteMeta.tsx` 按数组/布尔/数字/日期/对象给图标并格式化
 - 验收：反链可搜可排 ✅；属性类型正确显示 ✅
 

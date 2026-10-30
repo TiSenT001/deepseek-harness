@@ -1,4 +1,4 @@
-import { chromium } from 'file:///G:/Software/deepseek-harness/node_modules/.pnpm/playwright@1.61.1/node_modules/playwright/index.mjs'
+﻿import { chromium } from 'file:///G:/Software/deepseek-harness/node_modules/.pnpm/playwright@1.61.1/node_modules/playwright/index.mjs'
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, basename } from 'node:path'
@@ -551,6 +551,21 @@ try {
     await matchCase.click()
     await sleep(300)
     assert((await matchCase.getAttribute('aria-pressed')) === 'false', 'match-case toggle did not clear')
+    // Ordering and density are client-side; both persist next to the toggles.
+    const sortButton = foot.locator('button', { hasText: '相关度' })
+    await sortButton.click()
+    await sleep(400)
+    assert((await foot.locator('button', { hasText: '名称' }).count()) === 1, 'sort toggle did not switch to name')
+    stored = await page.evaluate(() => window.localStorage.getItem('ov.search.options.v1'))
+    assert(stored !== null && stored.includes('"sort":"name"'), 'sort not persisted: ' + stored)
+    const compactButton = foot.locator('button', { hasText: '折叠' })
+    await compactButton.click()
+    await sleep(400)
+    assert((await page.locator('.ov-quick-snippet').count()) === 0, 'compact did not hide snippets')
+    await compactButton.click()
+    await foot.locator('button', { hasText: '名称' }).click()
+    await sleep(400)
+    assert((await page.locator('.ov-quick-snippet').count()) > 0, 'snippets did not come back')
     await page.keyboard.press('Escape')
     await sleep(200)
   })

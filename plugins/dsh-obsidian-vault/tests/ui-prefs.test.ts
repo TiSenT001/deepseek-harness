@@ -5,7 +5,7 @@ import {
 } from '../src/client/ui/layoutPrefs.ts'
 import { textStats, vaultName } from '../src/client/ui/stats.ts'
 import { DEFAULT_INLINE_BACKLINKS, parseInlineBacklinks, serializeInlineBacklinks } from '../src/client/ui/notePrefs.ts'
-import { buildSearchQuery, DEFAULT_SEARCH_OPTIONS, parseSearchOptions, serializeSearchOptions } from '../src/client/ui/searchPrefs.ts'
+import { buildSearchQuery, DEFAULT_SEARCH_OPTIONS, orderSearchHits, parseSearchOptions, serializeSearchOptions } from '../src/client/ui/searchPrefs.ts'
 
 test('clampPane keeps widths inside the docked range', () => {
   assert.equal(clampPane('left', 100), 220)
@@ -64,14 +64,30 @@ test('inline backlinks default on and survive a round-trip', () => {
 test('buildSearchQuery composes the palette toggles into Host syntax', () => {
   assert.equal(buildSearchQuery('  ', DEFAULT_SEARCH_OPTIONS), '')
   assert.equal(buildSearchQuery('foo bar', DEFAULT_SEARCH_OPTIONS), 'foo bar')
-  assert.equal(buildSearchQuery('foo bar', { matchCase: true, regex: false }), 'match-case:(foo bar)')
-  assert.equal(buildSearchQuery('foo.*', { matchCase: false, regex: true }), '/foo.*/')
-  assert.equal(buildSearchQuery('foo.*', { matchCase: true, regex: true }), 'match-case:(/foo.*/)')
+  assert.equal(buildSearchQuery('foo bar', { ...DEFAULT_SEARCH_OPTIONS, matchCase: true }), 'match-case:(foo bar)')
+  assert.equal(buildSearchQuery('foo.*', { ...DEFAULT_SEARCH_OPTIONS, regex: true }), '/foo.*/')
+  assert.equal(buildSearchQuery('foo.*', { ...DEFAULT_SEARCH_OPTIONS, matchCase: true, regex: true }), 'match-case:(/foo.*/)')
 })
 
 test('search options round-trip and fall back on a broken entry', () => {
   assert.deepEqual(parseSearchOptions(null), DEFAULT_SEARCH_OPTIONS)
   assert.deepEqual(parseSearchOptions('not json'), DEFAULT_SEARCH_OPTIONS)
-  const once = { matchCase: true, regex: false }
+  const once = { ...DEFAULT_SEARCH_OPTIONS, matchCase: true }
   assert.deepEqual(parseSearchOptions(serializeSearchOptions(once)), once)
+})
+
+test('orderSearchHits keeps ranking or sorts by title', () => {
+  const hits = [
+    { path: 'b.md', title: 'Bravo', kind: 'title' as const, score: 1 },
+    { path: 'a.md', title: 'Alpha', kind: 'title' as const, score: 0.5 },
+  ]
+  assert.deepEqual(orderSearchHits(hits, 'relevance').map(hit => hit.path), ['b.md', 'a.md'])
+  assert.deepEqual(orderSearchHits(hits, 'name').map(hit => hit.path), ['a.md', 'b.md'])
+})
+
+test('search options carry the new sort and compact fields', () => {
+  const options = { ...DEFAULT_SEARCH_OPTIONS, sort: 'name' as const, compact: true }
+  assert.deepEqual(parseSearchOptions(serializeSearchOptions(options)), options)
+  assert.equal(parseSearchOptions('{}').sort, 'relevance')
+  assert.equal(parseSearchOptions('{}').compact, false)
 })

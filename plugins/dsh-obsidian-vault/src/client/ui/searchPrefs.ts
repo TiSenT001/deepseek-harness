@@ -1,22 +1,32 @@
 /**
- * Search palette options: whether the query is matched case-sensitively or
- * treated as a regular expression, and the query text those options produce.
- * The options map onto the Host's own query syntax (`match-case:(…)`, `/…/`),
- * so the server needs no extra parameters.
+ * Search palette options: case sensitivity, regular-expression mode, result
+ * order and the compact (snippetless) list. The query toggles map onto the
+ * Host's own query syntax (`match-case:(…)`, `/…/`), so the server needs no
+ * extra parameters; ordering and density are client-side presentation.
  * @module dsh-obsidian-vault/client/ui/searchPrefs
  */
+import type { SearchHitDto } from '../../protocol.ts'
+
+/** How the palette orders hits. */
+export type SearchSort = 'relevance' | 'name'
 
 /** Stored options. */
 export interface SearchOptions {
+  /** Match case-sensitively. */
   readonly matchCase: boolean
+  /** Treat the input as a regular expression. */
   readonly regex: boolean
+  /** Result order: the Host's ranking, or alphabetical by title. */
+  readonly sort: SearchSort
+  /** Hide the context snippet under each hit. */
+  readonly compact: boolean
 }
 
 /** localStorage key holding the JSON options. */
 export const SEARCH_OPTIONS_KEY = 'ov.search.options.v1'
 
-/** Both off, matching Obsidian's default search. */
-export const DEFAULT_SEARCH_OPTIONS: SearchOptions = { matchCase: false, regex: false }
+/** Obsidian-like defaults: case-insensitive, no regex, ranked, snippets shown. */
+export const DEFAULT_SEARCH_OPTIONS: SearchOptions = { matchCase: false, regex: false, sort: 'relevance', compact: false }
 
 /**
  * Read the stored options.
@@ -26,10 +36,17 @@ export const DEFAULT_SEARCH_OPTIONS: SearchOptions = { matchCase: false, regex: 
 export function parseSearchOptions(raw: string | null): SearchOptions {
   if (raw === null) return DEFAULT_SEARCH_OPTIONS
   try {
-    const parsed = JSON.parse(raw) as { readonly matchCase?: unknown; readonly regex?: unknown }
+    const parsed = JSON.parse(raw) as {
+      readonly matchCase?: unknown
+      readonly regex?: unknown
+      readonly sort?: unknown
+      readonly compact?: unknown
+    }
     return {
       matchCase: parsed.matchCase === true,
       regex: parsed.regex === true,
+      sort: parsed.sort === 'name' ? 'name' : 'relevance',
+      compact: parsed.compact === true,
     }
   } catch {
     // A truncated or hand-edited entry must not break the palette.
@@ -43,7 +60,12 @@ export function parseSearchOptions(raw: string | null): SearchOptions {
  * @returns the stored form.
  */
 export function serializeSearchOptions(options: SearchOptions): string {
-  return JSON.stringify({ matchCase: options.matchCase, regex: options.regex })
+  return JSON.stringify({
+    matchCase: options.matchCase,
+    regex: options.regex,
+    sort: options.sort,
+    compact: options.compact,
+  })
 }
 
 /**
@@ -59,4 +81,15 @@ export function buildSearchQuery(text: string, options: SearchOptions): string {
   if (trimmed.length === 0) return ''
   const base = options.regex ? `/${trimmed}/` : trimmed
   return options.matchCase ? `match-case:(${base})` : base
+}
+
+/**
+ * Order hits for display.
+ * @param hits - the Host's ranked hits.
+ * @param sort - `relevance` keeps that order, `name` sorts by title.
+ * @returns the ordered hits.
+ */
+export function orderSearchHits(hits: readonly SearchHitDto[], sort: SearchSort): readonly SearchHitDto[] {
+  if (sort !== 'name') return hits
+  return [...hits].sort((left, right) => left.title.localeCompare(right.title, 'zh'))
 }

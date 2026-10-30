@@ -7,7 +7,8 @@
 import { useEffect, useRef, useState } from 'react'
 import type { SearchHitDto } from '../../protocol.ts'
 import { fetchSearch } from '../api.ts'
-import { buildSearchQuery, DEFAULT_SEARCH_OPTIONS, parseSearchOptions, SEARCH_OPTIONS_KEY, serializeSearchOptions, type SearchOptions } from './searchPrefs.ts'
+import { buildSearchQuery, DEFAULT_SEARCH_OPTIONS, orderSearchHits, parseSearchOptions, SEARCH_OPTIONS_KEY, serializeSearchOptions, type SearchOptions } from './searchPrefs.ts'
+import { QuickSearchControls } from './QuickSearchControls.tsx'
 import type { Translate } from '../i18n.ts'
 import type { CommandEntry } from './commands.ts'
 import { css } from './theme.ts'
@@ -77,7 +78,7 @@ export function QuickSwitcher({
     }
   }, [mode, query, options])
 
-  const visible = mode === 'files' ? hits.filter(hit => hit.kind !== 'content') : hits
+  const visible = orderSearchHits(mode === 'files' ? hits.filter(hit => hit.kind !== 'content') : hits, options.sort)
   const needle = query.trim().toLowerCase()
   const matched = mode === 'commands'
     ? commands.filter(entry => entry.label.toLowerCase().includes(needle))
@@ -102,14 +103,26 @@ export function QuickSwitcher({
     setQuery(value)
   }
 
-  const toggleOption = (key: keyof SearchOptions): void => {
+  const persistOptions = (next: SearchOptions): void => {
+    try {
+      window.localStorage.setItem(SEARCH_OPTIONS_KEY, serializeSearchOptions(next))
+    } catch {
+      // Persisting is best-effort; the toggle still works for this mount.
+    }
+  }
+
+  const toggleOption = (key: 'matchCase' | 'regex' | 'compact'): void => {
     setOptions((previous) => {
       const next = { ...previous, [key]: !previous[key] }
-      try {
-        window.localStorage.setItem(SEARCH_OPTIONS_KEY, serializeSearchOptions(next))
-      } catch {
-        // Persisting is best-effort; the toggle still works for this mount.
-      }
+      persistOptions(next)
+      return next
+    })
+  }
+
+  const toggleSort = (): void => {
+    setOptions((previous) => {
+      const next: SearchOptions = { ...previous, sort: previous.sort === 'name' ? 'relevance' : 'name' }
+      persistOptions(next)
       return next
     })
   }
@@ -204,7 +217,7 @@ export function QuickSwitcher({
                     <span>{hit.title}</span>
                     <span className={css.quickKind}>{hit.kind} · {hit.path}</span>
                   </span>
-                  {hit.snippet === undefined
+                  {hit.snippet === undefined || options.compact
                     ? null
                     : <span className={css.quickSnippet}>{highlight(hit.snippet, query)}</span>}
                 </button>
@@ -229,26 +242,12 @@ export function QuickSwitcher({
           <span className={css.quickMode}>{t(mode === 'search' ? 'quickModeSearch' : mode === 'commands' ? 'quickModeCommands' : 'quickModeFiles')}</span>
           {mode === 'search'
             ? (
-              <>
-                <button
-                  type='button'
-                  className={css.button}
-                  aria-pressed={options.matchCase}
-                  title={t('searchMatchCase')}
-                  onClick={() => toggleOption('matchCase')}
-                >
-                  Aa
-                </button>
-                <button
-                  type='button'
-                  className={css.button}
-                  aria-pressed={options.regex}
-                  title={t('searchRegex')}
-                  onClick={() => toggleOption('regex')}
-                >
-                  .*
-                </button>
-              </>
+              <QuickSearchControls
+                t={t}
+                options={options}
+                onToggle={toggleOption}
+                onToggleSort={toggleSort}
+              />
             )
             : null}
           {query.trim().length > 0 ? <span>{shown} {t('results')}</span> : null}
