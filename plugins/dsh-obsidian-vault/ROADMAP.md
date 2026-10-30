@@ -1,3 +1,14 @@
+## 第五十轮：行数债收尾（vault 全部达标）——index 524 → 289、registry 314 → 259（2026-10-31）
+
+- **index 拆分（状态 / 门面分离）**：这是全项目最大的一个文件，做法是把**状态**与**公开 API** 分开——
+  - `store.ts`（167）：`VaultStore` 持有全部集合、`rebind`、串行 `refresh`/`scan`、`parse`、`reindex`；
+  - `index.ts`（289）：`VaultIndex` 只剩门面，方法逐条转发；
+  - `projections.ts`（状态/树/标签三个纯投影）、`index-read.ts`（`fileOf`/`readAssetOf`/`resolveInVault`）、`index-write.ts`（`createNote`/`saveNoteTo` + `WriteContext`）、`index-ops.ts`（rename/remove/move/makeFolder + `OpsContext`）、`index-types.ts`（`FsLike`/`VaultOptions`/`SaveNoteResult`，仍从 `index.ts` re-export）。
+  - 关键约束：`VaultIndex` 的公开 API 一个字没变，`tests/` 与 `src/routes.ts` 的 `import { VaultIndex } from './vault/index.ts'` 全部照旧。
+- **registry 拆分**：持久化下沉到 `registry-file.ts`（97，`readRegistry`/`writeRegistry`/`VaultRecord`/`StoredRegistry`/`STORE_VERSION`），`registry.ts` 变 259，只留注册表状态机与索引绑定。
+- **验证**：`tsc` 0 错误、**395/395**、`tsdown` 三 bundle 成功。
+- **结果**：`src/vault/` 25 个文件全部 ≤300 行；全插件超限文件从 13 个降到 **7 个**（`controller.ts` 467、`client/api.ts` 427、`kit/styles/workspace.ts` 419、`exporter.ts` 327、`graph/layout.ts` 324、`routes.ts` 322、`PurStudioPane.tsx` 303）。
+
 ## 第四十九轮：行数债第五刀——query 384 → 103、syntax 359 → 71（2026-10-31）
 
 - **query**（`src/vault/`）：`query-tokenize.ts`（112，词法）、`query-match.ts`（153，求值器与字段分发）、`query-types.ts`（44，`QueryNode`/`QueryField`/`QueryDoc`/`ParsedQuery`/`Token`），`query.ts` 只留 `parseQuery`（103）。三者由 `query.ts` 全量 re-export，`tests/query.test.ts` 的 `import { matchesQuery, parseQuery, tokenize, type QueryDoc } from '../src/vault/query.ts'` 无需改动。
