@@ -8,20 +8,21 @@
 import {
   alignElements,
   arrangeElements,
-  bringForward,
-  bringToFront,
   connectSelected,
   deleteSelected,
-  fitToView,
-  resetTransform,
   scaleElements,
-  selectAll,
+} from './controller-commands.ts'
+import {
+  bringForward,
+  bringToFront,
+  resetTransform,
   sendBackward,
   sendToBack,
   setSelectionLocked,
   setSelectionOpacity,
   toggleLock,
-} from './controller-commands.ts'
+} from './controller-layers.ts'
+import { fitToView, selectAll } from './controller-view.ts'
 import {
   addCodeNode,
   addInputPin,

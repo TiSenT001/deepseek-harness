@@ -1,3 +1,15 @@
+## 第四十四轮：行数债第一刀——controller-commands 359 → 153（2026-10-31）
+
+- **切法**：按职责拆出三个纯模块，原文件只留元素编辑命令——
+  - `controller-selection.ts`（36 行）：`commit` 历史尾巴 + `getSelectedElements` 树序选择；
+  - `controller-view.ts`（53 行）：`selectAll`、`fitToView`；
+  - `controller-layers.ts`（141 行）：四个 z-order + `resetTransform` + `toggleLock`/`setSelectionLocked`/`setSelectionOpacity`；
+  - `controller-commands.ts`（153 行）：对齐 / 等比 / 重排 / 连线 / 删除。
+- **依赖单向**：`selection ← view ← commands`、`selection ← layers`，无环；`controller.ts` 与 `index.ts` 的导入同步拆分。
+- **零行为变更**：只搬函数与改 import，函数体逐字保留。
+- **验证**：`tsc` 0 错误、**395/395**、`tsdown` 三 bundle 成功（index 121.08 kB / pur-obsidian 295.88 kB / client 806.66 kB）。
+- 剩余债：`controller.ts` 466、`controller-edits.ts` 498、`PurStudioPane.tsx` 303。
+
 ## 第四十三轮：审核收口——101/101 全绿（2026-10-31）
 
 - **结论**：`ui-full-audit` 全量 **101 项全过、0 控制台错误**，第四十二轮遗留的「audit-1 待收」到此关闭。
