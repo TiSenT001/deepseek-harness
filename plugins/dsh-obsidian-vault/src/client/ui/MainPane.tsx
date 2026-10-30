@@ -1,17 +1,15 @@
-/**
+﻿/**
  * The main column: the error banner plus whichever surface owns the reading
  * area — graph, empty state, loading state, reading view, or the file viewer.
  * @module dsh-obsidian-vault/client/ui/MainPane
  */
 import type { BacklinkDto, NoteDto } from '../../protocol.ts'
-import { PUR_STUDIO_PLUGIN_ID } from '../../bridge-protocol.ts'
 import type { MarkdownLabels } from '../primitives.ts'
 import type { Translate } from '../i18n.ts'
 import { EmptyState, ErrorState, LoadingState } from './kit/index.ts'
 import { FileView } from './files/FileView.tsx'
 import { GraphView } from './GraphView.tsx'
 import { NoteView, type ElementRef } from './NoteView.tsx'
-import { PluginView } from './PluginView.tsx'
 import type { MenuScene } from './menu/registry.ts'
 import { css } from './theme.ts'
 
@@ -19,7 +17,7 @@ import { css } from './theme.ts'
 export interface MainPaneProps {
   readonly t: Translate
   readonly labels: MarkdownLabels
-  readonly view: 'note' | 'graph' | 'plugin'
+  readonly view: 'note' | 'graph'
   readonly path: string | undefined
   readonly isMarkdown: boolean
   readonly note: NoteDto | undefined
@@ -90,21 +88,6 @@ export function MainPane(props: MainPaneProps): JSX.Element {
               onTag={onTag}
               onClose={onCloseGraph}
               onMenu={onMenu}
-            />
-          )
-          : view === 'plugin'
-          ? (
-            <PluginView
-              t={t}
-              pluginId={PUR_STUDIO_PLUGIN_ID}
-              title="Pur Studio"
-              activePath={path}
-              onOpenPath={(target) => {
-                onSwitchToReading()
-                onOpen(target)
-              }}
-              onClose={onSwitchToReading}
-              onOpenSettings={onOpenSettings}
             />
           )
           : path === undefined

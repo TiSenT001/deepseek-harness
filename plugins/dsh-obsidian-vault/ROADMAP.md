@@ -1,4 +1,13 @@
-﻿## 第五十八轮：搜索面板排序 / 折叠（P8 尾项收口，2026-10-31）
+﻿## 第五十九轮：移除插件桥接 + 精简设置面板（2026-10-31）
+
+- **删除桥接子系统**：`src/shim/**`（19 文件，Obsidian API 垫片）、`client/bridge.ts`/`bridge-commands.ts`/`bridge-dispatch.ts`、`client/ui/PluginView.tsx`、`bridge-protocol.ts`、`vault/bridge.ts`、`plugins/bridge-toggle`/`plugins/frame`/`plugins/script` 路由、`bridge/data` 路由与 `shim.js` 路由；`tsdown` 去掉 shim 包（构建入口少一个）。`bridge-endpoints.ts` 保留文件读写路由，因为 **DSH 侧 Pur 面板自己用它们读写库文件**。
+- **设置面板**：移除「外观」（舒适/紧凑）整段与「可桥接插件」整段；DSH 插件行里那个「在 DSH 中运行」占位开关一并删掉。面板现在只剩 DSH 插件列表与核心插件开关。
+- **Pur Studio 入口改造**：原先点 ribbon 打开的是被桥接的插件 frame。改为**新建一个真实画布文件**（`Pur画布/<名>_N.PurStudio`）并打开——`client/ui/newCanvas.ts`。
+- **修掉一个真 bug**：打开任何 `.PurStudio` 文件都会让主视图崩溃（React #185 无限更新）。根因是 `PurStudioPane` 把「刷新 hostDeps」和「注册面板命令」写在同一个 effect 里，`t`/`onOpenPath` 等 prop 身份变化就会注销→注册→通知面板→重渲染→再注销…… 拆成两个 effect 后修复；`registerPurPaneCommands` 也改为同路径重复注册不再通知。
+- **审核**：删掉 `plugins.bridge-toggle-persists`、`pur.frame-opens` 两条桥接检查；`settings.dialog-plugins` 改为断言「外观/桥接段已消失、DSH 与核心段仍在」；`ui.ribbon-pur-icon` 改为断言新建画布并清理。
+- **验证**：`tsc` 0 错误、**381/381**（少掉的 20 条来自删除的 shim/bridge 测试）、`tsdown` 四入口构建成功、全量审核 **99/99、0 控制台错误**。
+
+## 第五十八轮：搜索面板排序 / 折叠（P8 尾项收口，2026-10-31）
 
 - **功能**：搜索模式底部再加两个控件——「相关度 / 名称」排序切换、以及「折叠」（隐藏每条命中的摘要行，只留标题与路径）。
 - **实现**：`searchPrefs.ts` 的 `SearchOptions` 扩到四个字段（`matchCase`/`regex`/`sort`/`compact`），新增纯函数 `orderSearchHits`（相关度保持 Host 排名、名称按标题排序）；`QuickSwitcher` 把 `toggleOption` 收窄成布尔三键，另加 `toggleSort`。

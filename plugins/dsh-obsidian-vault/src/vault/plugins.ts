@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Plugin inventory: the DSH-adapted plugin folder, which is global (inside the
  * plugin package) and injected by the caller, plus the built-in plugin
  * enablement Obsidian records in `core-plugins.json`. This module never loads
@@ -10,7 +10,6 @@ import { spawn } from 'node:child_process'
 import { mkdir, readdir, readFile, stat } from 'node:fs/promises'
 import { join } from 'node:path'
 import type { CorePluginDto, PluginDto, PluginsDto } from '../protocol.ts'
-import { readBridgeWhitelist } from './bridge.ts'
 import { CONFIG_DIRECTORY, readObsidianConfig, writeObsidianConfig } from './obsidian-config.ts'
 
 /** Obsidian's built-in plugin ids, in the order its settings list them, with the state a fresh vault starts from. */
@@ -69,7 +68,6 @@ export async function listPlugins(root: string, dshFolder: string): Promise<Plug
     dsh: await pluginManifests(dshFolder),
     dshFolder,
     community: await pluginManifests(join(root, CONFIG_DIRECTORY, 'plugins')),
-    bridge: await readBridgeWhitelist(root),
   }
 }
 

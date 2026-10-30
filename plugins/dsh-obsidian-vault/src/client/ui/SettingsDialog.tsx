@@ -1,34 +1,24 @@
 /**
- * The settings dialog: appearance (density variant) plus the plugin panel.
- * Plugin enablement and the DSH plugin folder moved here when the ribbon kept
- * only the gear.
+ * The settings dialog: the plugin panel. The appearance (density variant)
+ * section was removed by request.
  * @module dsh-obsidian-vault/client/ui/SettingsDialog
  */
 import type { Translate } from '../i18n.ts'
 import { Icon } from './Icon.tsx'
-import type { Variant } from './kit/index.ts'
 import { PluginPanel } from './plugins/PluginPanel.tsx'
 import { css } from './theme.ts'
 
 /** Props for {@link SettingsDialog}. */
 export interface SettingsDialogProps {
   readonly t: Translate
-  /** Active density variant. */
-  readonly variant: Variant
-  /** Apply and persist a variant choice. */
-  readonly onVariant: (variant: Variant) => void
   readonly onClose: () => void
 }
 
 /**
  * Render the settings dialog.
- * @param props - translator, the active variant, and the close callback.
+ * @param props - translator and the close callback.
  */
-export function SettingsDialog({ t, variant, onVariant, onClose }: SettingsDialogProps): JSX.Element {
-  const variants: readonly { readonly id: Variant; readonly label: Parameters<Translate>[0] }[] = [
-    { id: 'comfortable', label: 'variantComfortable' },
-    { id: 'compact', label: 'variantCompact' },
-  ]
+export function SettingsDialog({ t, onClose }: SettingsDialogProps): JSX.Element {
   return (
     <div
       className={css.dialogLayer}
@@ -60,20 +50,6 @@ export function SettingsDialog({ t, variant, onVariant, onClose }: SettingsDialo
           </button>
         </header>
         <div className={css.dialogBody}>
-          <div className={css.sectionTitle}>{t('appearance')}</div>
-          <div className={css.dialogActions}>
-            {variants.map(option => (
-              <button
-                key={option.id}
-                type="button"
-                className={`${css.dialogButton} ${option.id === variant ? css.dialogButtonPrimary : ''}`.trim()}
-                aria-pressed={option.id === variant}
-                onClick={() => onVariant(option.id)}
-              >
-                {t(option.label)}
-              </button>
-            ))}
-          </div>
           <div className={css.sectionTitle}>{t('plugins')}</div>
           <PluginPanel t={t} />
         </div>

@@ -64,16 +64,6 @@ const workerBundle: UserConfig = {
   outputOptions: { entryFileNames: 'worker.js' },
 }
 
-const shimBundle: UserConfig = {
-  entry: { shim: 'src/shim/index.ts' },
-  outDir: 'lib',
-  format: 'iife',
-  platform: 'browser',
-  dts: false,
-  sourcemap: true,
-  clean: false,
-  outputOptions: { entryFileNames: 'shim.js' },
-}
 
 const obsidianBundle: UserConfig = {
   entry: { 'pur-obsidian': 'src/pur-obsidian/index.ts' },
@@ -87,4 +77,5 @@ const obsidianBundle: UserConfig = {
   outputOptions: { entryFileNames: 'pur-obsidian.js', exports: 'default' },
 }
 
-export default [hostBundle, clientBundle, workerBundle, shimBundle, obsidianBundle] satisfies UserConfig[]
+
+export default [hostBundle, clientBundle, workerBundle, obsidianBundle]

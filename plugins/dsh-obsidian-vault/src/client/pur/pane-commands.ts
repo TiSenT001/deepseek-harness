@@ -45,9 +45,16 @@ let pathsSnapshot: readonly string[] = []
  * @returns the disposer removing the pane's commands (on unmount or path change).
  */
 export function registerPurPaneCommands(path: string, handlers: PurPaneHandlers): () => void {
+  // Re-registering the same path (the pane's effect re-runs when a prop changes
+  // identity) must not notify: the path set did not change, and notifying would
+  // re-render the palette holder, which re-runs the effect — an update loop
+  // React aborts with "Maximum update depth exceeded".
+  const first = !panes.has(path)
   panes.set(path, handlers)
-  pathsSnapshot = [...panes.keys()]
-  for (const listener of listeners) listener()
+  if (first) {
+    pathsSnapshot = [...panes.keys()]
+    for (const listener of listeners) listener()
+  }
   return () => {
     if (panes.get(path) !== handlers) return
     panes.delete(path)

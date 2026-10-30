@@ -1,4 +1,4 @@
-/**
+﻿/**
  * The Chromium-facing JSON API: `/obsidian/api/*`. The route layer only
  * parses requests, rejects untrusted callers, and shapes responses; every
  * answer comes from the vault index.
@@ -87,19 +87,6 @@ async function dispatch(
       response.writeHead(200, {
         'content-type': 'text/javascript; charset=utf-8',
         'cache-control': 'no-cache',
-      })
-      response.end(source)
-      return
-    }
-    case 'shim.js': {
-      // The obsidian shim loads into the sandboxed plugin frame with
-      // `crossorigin`, so like the plugin script it needs explicit CORS headers
-      // for the opaque origin to accept it.
-      const source = await readFile(new URL('./shim.js', import.meta.url), 'utf8')
-      response.writeHead(200, {
-        'content-type': 'text/javascript; charset=utf-8',
-        'cache-control': 'no-cache',
-        'access-control-allow-origin': '*',
       })
       response.end(source)
       return

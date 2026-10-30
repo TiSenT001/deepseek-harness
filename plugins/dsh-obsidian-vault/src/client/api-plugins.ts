@@ -29,27 +29,6 @@ export function revealPluginsFolder(): Promise<{ folder: string }> {
   return request<{ folder: string }>('plugins/reveal', { method: 'POST' })
 }
 
-/**
- * Allow or forbid one community plugin to run through the bridge.
- * @param id - plugin id.
- * @param enabled - desired state.
- * @returns the refreshed inventory.
- */
-export function toggleBridge(id: string, enabled: boolean): Promise<PluginsDto> {
-  return request<PluginsDto>('plugins/bridge-toggle', {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ id, enabled }),
-  })
-}
-
-/**
- * URL of the sandboxed frame that loads one bridged plugin.
- * @param id - whitelisted plugin id.
- */
-export function pluginFrameUrl(id: string): string {
-  return `${API_BASE}/plugins/frame?id=${encodeURIComponent(id)}`
-}
 
 /**
  * Read one vault file as base64 bytes; parts of the bridge call this for the
@@ -73,26 +52,6 @@ export async function bridgeWriteBinary(path: string, data: string): Promise<voi
   })
 }
 
-/**
- * Read one bridged plugin's `data.json`.
- * @param id - plugin id; the Host resolves it under `.obsidian/plugins`.
- */
-export async function bridgeReadPluginData(id: string): Promise<unknown> {
-  return (await request<{ value: unknown }>(`bridge/data?id=${encodeURIComponent(id)}`)).value
-}
-
-/**
- * Write one bridged plugin's `data.json`.
- * @param id - plugin id.
- * @param value - JSON-serializable document.
- */
-export async function bridgeWritePluginData(id: string, value: unknown): Promise<void> {
-  await request('bridge/data', {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ id, value }),
-  })
-}
 
 /**
  * Read one vault file as text, on the frame's behalf.

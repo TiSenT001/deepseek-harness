@@ -173,6 +173,9 @@ export function PurStudioPane({ t, path, onOpenPath }: PurStudioPaneProps): JSX.
     }
   }, [path, labels, env])
 
+  // The host context is refreshed every render; the registration below must not
+  // depend on it, or a prop whose identity changes would re-register the
+  // commands, notify the palette holder, re-render this pane and loop.
   useEffect(() => {
     const controller = controllerRef.current
     if (controller === null || !ready) return
@@ -190,10 +193,14 @@ export function PurStudioPane({ t, path, onOpenPath }: PurStudioPaneProps): JSX.
       pickNote: () => new Promise((resolve) => setPicker({ resolve })),
       ...(onOpenPath === undefined ? {} : { onOpenPath }),
     }
-    // Palette commands live while the document is loaded; the palette mirrors
-    // them while this file is the active tab.
+  })
+
+  // Palette commands live while the document is loaded; the palette mirrors
+  // them while this file is the active tab.
+  useEffect(() => {
+    if (!ready) return undefined
     return registerPurPaneCommands(path, createPurPaneHandlers(() => controllerRef.current, () => hostDepsRef.current, menuHost, run))
-  }, [t, labels, path, images, showNotice, run, ready, menuHost, onOpenPath])
+  }, [path, ready, menuHost, run])
 
   // Non-passive wheel: zoom must never scroll the workspace.
   useEffect(() => {

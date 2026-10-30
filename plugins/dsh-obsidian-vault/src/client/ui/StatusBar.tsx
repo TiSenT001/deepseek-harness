@@ -1,4 +1,4 @@
-/**
+﻿/**
  * The 24px status bar: vault identity, note measures, backlink counts, and the
  * index version. Values that only make sense while editing stay empty until the
  * editor lands in P7.
@@ -17,7 +17,7 @@ export interface StatusBarProps {
   readonly note: NoteDto | undefined
   readonly backlinks: readonly BacklinkDto[]
   readonly unlinked: readonly BacklinkDto[]
-  readonly view: 'note' | 'graph' | 'plugin'
+  readonly view: 'note' | 'graph'
 }
 
 /**
@@ -71,7 +71,7 @@ export function StatusBar({ t, status, note, backlinks, unlinked, view }: Status
               : `${status.notes} ${t('notes')} · v${status.version}`}
         </span>
         <span className={`${css.statusItem} ${css.statusMuted} ${css.statusNarrowHide}`.trim()}>
-          {view === 'graph' ? t('graph') : view === 'plugin' ? t('pluginView') : t('reading')}
+          {view === 'graph' ? t('graph') : t('reading')}
         </span>
       </span>
     </footer>

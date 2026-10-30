@@ -1,4 +1,4 @@
-/**
+﻿/**
  * The vault page's transient surfaces: quick switcher, context menu, vault
  * manager, and the settings dialog. The page owns their state; this file only
  * renders.
@@ -101,8 +101,6 @@ export function VaultOverlays(props: VaultOverlaysProps): JSX.Element {
         ? (
           <SettingsDialog
             t={t}
-            variant={variant}
-            onVariant={onVariant}
             onClose={onSettingsClose}
           />
         )

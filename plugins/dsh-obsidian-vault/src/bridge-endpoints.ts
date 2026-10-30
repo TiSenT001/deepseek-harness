@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Bridge data routes: the vault calls a sandboxed plugin frame can ask for,
  * answered by the host page on the frame's behalf. Binary access is confined
  * to the vault root by `VaultFiles`; `data.json` access is confined to the
@@ -7,7 +7,6 @@
  */
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { readJson, send } from './http.ts'
-import { isPluginId, readPluginData, writePluginData } from './vault/bridge.ts'
 import { VaultFiles, VaultPathError } from './vault/files.ts'
 import type { VaultRegistry } from './vault/registry.ts'
 
@@ -98,26 +97,6 @@ export async function serveBridgeRoute(
         }
         await files.writeBytes(path, Buffer.from(data, 'base64'))
         send(response, 200, { ok: true, path })
-        return
-      }
-      case 'bridge/data': {
-        if (request.method === 'POST') {
-          const body = await readJson(request)
-          const id = body['id']
-          if (!isPluginId(id)) {
-            send(response, 400, { error: 'invalid plugin id', id })
-            return
-          }
-          await writePluginData(root, id, body['value'] ?? {})
-          send(response, 200, { ok: true, id })
-          return
-        }
-        const id = new URL(request.url ?? '/', 'http://localhost').searchParams.get('id') ?? ''
-        if (!isPluginId(id)) {
-          send(response, 400, { error: 'invalid plugin id', id })
-          return
-        }
-        send(response, 200, { id, value: await readPluginData(root, id) ?? null })
         return
       }
       default:

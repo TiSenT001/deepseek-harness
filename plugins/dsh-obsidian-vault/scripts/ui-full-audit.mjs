@@ -2282,38 +2282,21 @@ try {
   })
 
   await check('settings.dialog-plugins', async () => {
-    // The plugins rail tab is gone; plugin management lives in the settings
-    // dialog the ribbon gear opens.
+    // Plugin management lives in the settings dialog the ribbon gear opens.
     await page.locator('.ov-ribbon button[aria-label="设置"]').click()
     await sleep(900)
     const dialog = page.locator('.ov-dialog[aria-label="设置"]')
     assert(await dialog.isVisible(), 'settings dialog did not open')
 
-    // Appearance: two density variants; the choice persists to localStorage
-    // and lands on the root element's data attribute.
+    // Bridging is gone: no appearance picker, no community/bridge section; the
+    // DSH folder list and the built-in switches remain.
     const titles = await dialog.locator('.ov-section-title').allTextContents()
-    assert(titles.some(text => text.includes('外观')), `appearance section missing: ${titles.join(' | ')}`)
-    const compact = dialog.locator('.ov-dialog-button', { hasText: '紧凑' })
-    const comfortable = dialog.locator('.ov-dialog-button', { hasText: '舒适' })
-    assert((await compact.count()) === 1 && (await comfortable.count()) === 1, 'variant buttons missing')
-    await compact.click()
-    await sleep(300)
-    const storedVariant = await page.evaluate(() => window.localStorage.getItem('dsh.obsidian.variant'))
-    assert(storedVariant === 'compact', `stored variant ${storedVariant}`)
-    assert((await page.locator('.ov-root').getAttribute('data-ov-variant')) === 'compact', 'root variant attribute did not follow')
-    assert((await compact.getAttribute('aria-pressed')) === 'true', 'compact button not pressed')
-    await comfortable.click()
-    await sleep(300)
-    assert((await page.evaluate(() => window.localStorage.getItem('dsh.obsidian.variant'))) === 'comfortable', 'variant did not switch back')
-
-    // The plugin panel has exactly two sections: DSH-adapted plugins and the
-    // built-in switches; the community section is gone for good.
+    assert(!titles.some(text => text.includes('外观')), `appearance section survived: ${titles.join(' | ')}`)
+    assert(!titles.some(text => text.includes('可桥接插件')), `bridge section survived: ${titles.join(' | ')}`)
     assert(titles.some(text => text.includes('DSH 插件')), `dsh section missing: ${titles.join(' | ')}`)
     assert(titles.some(text => text.includes('核心插件')), `core section missing: ${titles.join(' | ')}`)
-    assert(!titles.some(text => text.includes('社区插件')), `community section survived: ${titles.join(' | ')}`)
 
-    // The DSH row has no enable toggle; expanding it reveals the detail block
-    // with the id and the bridge placeholder.
+    // The DSH row has no enable toggle; expanding it reveals the id detail.
     const dshRow = dialog.locator('.ov-plugin-row[data-plugin="audit-dsh"]')
     assert((await dshRow.count()) === 1, 'dsh plugin row missing')
     assert((await dshRow.locator('.ov-plugin-toggle').count()) === 0, 'dsh row should have no enable toggle')
@@ -2322,8 +2305,6 @@ try {
     const dshDetail = dshRow.locator('.ov-plugin-detail')
     assert(await dshDetail.isVisible(), 'dsh detail block missing')
     assert((await dshDetail.textContent())?.includes('audit-dsh'), 'dsh detail id row missing')
-    const dshBridge = dshRow.locator('.ov-kit-toggle:has(input[aria-label="在 DSH 中运行"])')
-    assert((await dshBridge.count()) === 1, 'dsh row missing the bridge placeholder')
     await dshRow.locator('button.ov-plugin-info').click()
     await sleep(300)
     assert((await dshRow.locator('.ov-plugin-detail').count()) === 0, 'dsh detail stayed after collapse')
@@ -2377,122 +2358,24 @@ try {
   })
 
   await check('ui.ribbon-pur-icon', async () => {
-    // The plugin's own addRibbonIcon callback only calls activateView, so the
-    // host exposes the equivalent action on the rail: open the plugin view.
+    // Bridging is gone: the rail entry now writes a real canvas file and opens
+    // it in the reading area instead of loading an Obsidian plugin frame.
     const entry = page.locator('.ov-ribbon button[aria-label="打开 Pur Studio"]')
     assert((await entry.count()) === 1, `Pur Studio ribbon entry: ${await entry.count()}`)
     assert((await entry.getAttribute('aria-pressed')) === 'false', 'Pur Studio entry is an action, never pressed')
     await entry.click()
-    await sleep(600)
-    assert((await page.locator('[data-plugin="pur-studio"]').count()) === 1, 'ribbon click did not open the plugin view')
-    assert((await entry.getAttribute('aria-pressed')) === 'false', 'Pur Studio entry stayed pressed')
-    await page.locator('[data-plugin="pur-studio"] button[aria-label="关闭"]').click()
-    await sleep(400)
-    assert((await page.locator('[data-plugin="pur-studio"]').count()) === 0, 'plugin view stayed open after close')
-  })
-
-  await check('plugins.bridge-toggle-persists', async () => {
-    await ensureVaultB()
-    const listed = await api('plugins/list')
-    const pur = listed.community?.find(plugin => plugin.id === 'pur-studio')
-    assert(pur !== undefined && pur.name === 'Pur Studio' && pur.version === '0.1.0', `pur-studio missing from the community list: ${JSON.stringify(listed.community)}`)
-    assert(Array.isArray(listed.bridge) && !listed.bridge.includes('pur-studio'), `bridge whitelist should start empty: ${JSON.stringify(listed.bridge)}`)
-
-    const on = await api('plugins/bridge-toggle', { method: 'POST', body: JSON.stringify({ id: 'pur-studio', enabled: true }) })
-    assert(on.bridge.includes('pur-studio'), `toggle on did not apply: ${JSON.stringify(on.bridge)}`)
-    const onDisk = JSON.parse(readFileSync(join(AUDIT_VAULT_B, '.obsidian', 'plugins-bridge.json'), 'utf8'))
-    assert(onDisk.includes('pur-studio'), `plugins-bridge.json: ${JSON.stringify(onDisk)}`)
-
-    const script = await fetch(`${API}/plugins/script?id=pur-studio`)
-    assert(script.status === 200, `whitelisted script status ${script.status}`)
-    assert(script.headers.get('access-control-allow-origin') === '*', 'script missing the CORS header the sandboxed frame needs')
-    assert((script.headers.get('content-type') ?? '').includes('text/javascript'), `script content-type ${script.headers.get('content-type')}`)
-    const frame = await fetch(`${API}/plugins/frame?id=pur-studio`)
-    assert(frame.status === 200 && (frame.headers.get('content-type') ?? '').includes('text/html'), `frame status ${frame.status}`)
-    const ghost = await fetch(`${API}/plugins/script?id=audit-ghost`)
-    assert(ghost.status === 403, `unlisted plugin script status ${ghost.status}`)
-    let rejected = false
-    try {
-      await api('plugins/bridge-toggle', { method: 'POST', body: JSON.stringify({ id: 'audit-ghost', enabled: true }) })
-    } catch {
-      rejected = true
-    }
-    assert(rejected, 'bridge-toggle accepted a plugin the vault does not have')
-
-    // The same switch inside the settings dialog: off then back on, disk
-    // verified on the way out so the frame check starts bridged.
-    await page.locator('.ov-ribbon button[aria-label="设置"]').click()
-    await sleep(900)
-    const dialog = page.locator('.ov-dialog[aria-label="设置"]')
-    const titles = await dialog.locator('.ov-section-title').allTextContents()
-    assert(titles.some(text => text.includes('可桥接插件')), `bridge section missing: ${titles.join(' | ')}`)
-    const row = dialog.locator('.ov-plugin-row[data-plugin="pur-studio"]')
-    assert((await row.count()) === 1, 'pur-studio bridge row missing')
-    assert((await row.locator('.ov-kit-toggle').getAttribute('data-on')) === 'true', 'bridge row disagrees with the api state')
-    await row.locator('.ov-kit-toggle').click()
-    await sleep(700)
-    const offDisk = JSON.parse(readFileSync(join(AUDIT_VAULT_B, '.obsidian', 'plugins-bridge.json'), 'utf8'))
-    assert(!offDisk.includes('pur-studio'), `whitelist after the ui toggle: ${JSON.stringify(offDisk)}`)
-    assert((await row.locator('.ov-kit-toggle').getAttribute('data-on')) === 'false', 'bridge row did not flip off')
-    await row.locator('.ov-kit-toggle').click()
-    await sleep(700)
-    assert(JSON.parse(readFileSync(join(AUDIT_VAULT_B, '.obsidian', 'plugins-bridge.json'), 'utf8')).includes('pur-studio'), 'ui toggle back on did not persist')
-    await page.keyboard.press('Escape')
-    await sleep(400)
-  })
-
-  await check('pur.frame-opens', async () => {
-    // Idempotent: the previous check leaves the whitelist on, but --only runs do not.
-    await ensureVaultB()
-    await api('plugins/bridge-toggle', { method: 'POST', body: JSON.stringify({ id: 'pur-studio', enabled: true }) })
-    await runPalette('打开 Pur Studio')
-    const view = page.locator('.ov-plugin-view[data-plugin="pur-studio"]')
-    assert(await view.isVisible(), 'plugin view did not open')
-    const frame = view.locator('iframe.ov-plugin-frame')
-    await frame.waitFor({ timeout: 8000 })
-    assert((await frame.getAttribute('sandbox')) === 'allow-scripts', `sandbox=${await frame.getAttribute('sandbox')}`)
-    // The fixture plugin runs on the obsidian shim (P9-3) inside the sandboxed
-    // frame and reports every exercised API into #fixture-results.
-    const frameHandle = await frame.elementHandle()
-    const pluginFrame = await frameHandle.contentFrame()
-    assert(pluginFrame !== null, 'frame handle missing')
-    await pluginFrame.waitForFunction(
-      () => document.getElementById('fixture-results')?.textContent?.includes('"done"') === true,
-      undefined,
-      { timeout: 20000 },
-    )
-    const report = JSON.parse(await pluginFrame.locator('#fixture-results').textContent() ?? '[]')
-    const failed = report.filter(entry => !entry.ok)
-    assert(failed.length === 0, `fixture failures: ${JSON.stringify(failed)}`)
-    assert((await view.locator('.ov-plugin-frame-error').count()) === 0, 'frame error bar rendered for a healthy plugin')
-    await sleep(500)
-
-    // A frame-registered command runs from the host palette and lands back in the frame.
-    await runPalette('夹具命令')
-    assert((await pluginFrame.locator('#fixture-command').textContent()) === '夹具命令已跑', 'frame command did not run')
-
-    // The second command opens a link: the host navigates its reading view.
-    await runPalette('夹具打开链接')
     await sleep(1200)
-    const reading = await page.locator('.ov-note').textContent()
-    assert(reading?.includes('来自第二个库'), `reading view after openLinkText: ${reading?.slice(0, 80)}`)
-    assert((await page.locator('.ov-plugin-view').count()) === 0, 'plugin view stayed after the open-link command')
-
-    await api('plugins/bridge-toggle', { method: 'POST', body: JSON.stringify({ id: 'pur-studio', enabled: false }) })
-    await runPalette('打开 Pur Studio')
-    const empty = page.locator('.ov-plugin-view .ov-state')
-    await empty.waitFor({ timeout: 8000 })
-    assert((await page.locator('iframe.ov-plugin-frame').count()) === 0, 'frame rendered without the whitelist')
-    assert((await empty.textContent())?.includes('未开启桥接'), `not-bridged hint missing: ${await empty.textContent()}`)
-    assert((await page.locator('.ov-plugin-view .ov-state-action', { hasText: '打开设置' }).count()) === 1, 'settings action missing')
-    await page.locator('.ov-plugin-view button[aria-label="关闭"]').click()
-    await sleep(500)
-    // The open-link command navigated the host to vault B's note; close that
-    // tab before switching back, or the restored vault answers 404 for its path.
-    await runPalette('关闭标签页')
-    await sleep(600)
-    await restoreBridgeVault()
+    const tab = page.locator('.ov-doctab', { hasText: '新画布' }).first()
+    assert((await tab.count()) === 1, 'ribbon click did not open a canvas tab')
+    assert((await entry.getAttribute('aria-pressed')) === 'false', 'Pur Studio entry stayed pressed')
+    const created = await tab.getAttribute('title')
+    await tab.locator('.ov-doctab-close').click()
+    await sleep(400)
+    assert((await page.locator('.ov-doctab', { hasText: '新画布' }).count()) === 0, 'canvas tab stayed open')
+    if (created !== null) await api('delete', { method: 'POST', body: JSON.stringify({ path: created }) })
   })
+
+
 
   await check('vaults.switch-back', async () => {
     await page.locator('.ov-vault-switch').click()

@@ -6,6 +6,7 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createNote } from '../api.ts'
+import { createPurCanvas } from './newCanvas.ts'
 import { createT } from '../i18n.ts'
 import { fileTypeOf } from '../../filetypes.ts'
 import { useVaultData } from './useVaultData.ts'
@@ -41,7 +42,7 @@ export function VaultPage({ pickDirectory, hasPicker }: VaultPageProps = {}): JS
   const [activeHeading, setActiveHeading] = useState<string | undefined>()
   const [filter, setFilter] = useState('')
   const [rail, setRail] = useState<Rail>('outline')
-  const [view, setView] = useState<'note' | 'graph' | 'plugin'>('note')
+  const [view, setView] = useState<'note' | 'graph'>('note')
   // Reading and source are two views of the same Markdown file; attachments
   // and code files always render through the file view.
   const [sourceMode, setSourceMode] = useState(false)
@@ -85,7 +86,7 @@ export function VaultPage({ pickDirectory, hasPicker }: VaultPageProps = {}): JS
   } = overlays
   const openEdit = useCallback(() => setSourceMode(true), [])
   const openReading = useCallback(() => setSourceMode(false), [])
-  const openPurStudio = useCallback(() => setView('plugin'), [])
+  const openPurStudio = useCallback(() => { void createPurCanvas(t('purNewCanvas'), openPath).then(() => setView('note')) }, [openPath, t])
   const openNewTab = useCallback(() => {
     newTabPending.current = true
     openQuick()
@@ -131,7 +132,7 @@ export function VaultPage({ pickDirectory, hasPicker }: VaultPageProps = {}): JS
       return
     }
     if (id === 'plugin') {
-      // Action like search: show the bridged plugin without changing tabs.
+      // Action: write a fresh canvas file and open it in the reading area.
       openPurStudio()
       return
     }

@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Wire types shared by the Host half (index and routes) and the browser half.
  * Every type here is plain JSON so both sides can import it type-only.
  * @module dsh-obsidian-vault/protocol
@@ -164,8 +164,6 @@ export interface PluginsDto {
   readonly dshFolder: string
   /** Obsidian plugins installed under the vault's `.obsidian/plugins`; read-only metadata. */
   readonly community: readonly PluginDto[]
-  /** Ids the user allowed to run through the bridge (`.obsidian/plugins-bridge.json`). */
-  readonly bridge: readonly string[]
 }
 
 /** One file the bridge's `vault.list` reports, for TFile construction in the frame. */

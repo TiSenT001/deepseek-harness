@@ -1,4 +1,4 @@
-/**
+﻿/**
  * The palette's full command list: daily-note and template commands plus the
  * pane commands, fed into the shared command surface. Keeps command assembly
  * out of the page component.
@@ -6,11 +6,6 @@
  */
 import { useMemo, useSyncExternalStore } from 'react'
 import type { TreeNodeDto } from '../../protocol.ts'
-import {
-  getBridgedCommands,
-  runBridgedCommand,
-  subscribeBridgedCommands,
-} from '../bridge-commands.ts'
 import {
   getPurPaneHandlers,
   getPurPanePaths,
@@ -69,9 +64,6 @@ export function useVaultCommands(input: VaultCommandsInput): CommandSurface {
   }, [t, splitPane, closePane, paneCount])
   const folders = useMemo(() => folderPaths(tree), [tree])
   const bookmarks = useMemo(() => bookmarkEntries.map(entry => entry.path), [bookmarkEntries])
-  // Bridged plugin frames register their commands while their view is mounted;
-  // the palette merges them under a `bridge.<plugin>.<id>` namespace.
-  const bridged = useSyncExternalStore(subscribeBridgedCommands, getBridgedCommands)
   // A mounted Pur pane registers its verbs by document path; the palette
   // mirrors them while its file is the active tab.
   const purPanePaths = useSyncExternalStore(subscribePurPaneCommands, getPurPanePaths)
@@ -85,13 +77,8 @@ export function useVaultCommands(input: VaultCommandsInput): CommandSurface {
       ...noteCommands,
       ...paneCommands,
       ...purCommands,
-      ...bridged.map(command => ({
-        id: `bridge.${command.pluginId}.${command.id}`,
-        label: `${command.pluginName}: ${command.name}`,
-        run: () => runBridgedCommand(command),
-      })),
     ],
-    [noteCommands, paneCommands, purCommands, bridged],
+    [noteCommands, paneCommands, purCommands],
   )
   return useCommandSurface({ ...surface, t, folders, bookmarks, extra, paneCount })
 }
