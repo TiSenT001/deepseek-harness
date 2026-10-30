@@ -1,3 +1,10 @@
+## 第五十一轮：workspace 样式表 419 → 12（2026-10-31）
+
+- `workspace.ts` 原本是一个 419 行的单一 CSS 模板字符串。按区域切成三份：`workspace-shell.ts`（150，框架与资源管理器）、`workspace-note.ts`（154，笔记头/正文排版/标注）、`workspace-panel.ts`（127，大纲/反链/标签/分栏），`workspace.ts` 只剩 12 行的拼装。
+- **逐字节校验**：把 git HEAD 里的原文件写回临时模块，import 两版比较 `WORKSPACE_STYLE`——长度 12148 = 12148，`identical: true`。中途差 1 个字符，原因是模板尾部少了一个换行，加上后一致。
+- **验证**：`tsc` 0 错误、**395/395**、`tsdown` 三 bundle 成功。
+- 剩余：`controller.ts` 467、`client/api.ts` 427、`exporter.ts` 327、`graph/layout.ts` 324、`routes.ts` 322、`PurStudioPane.tsx` 303。
+
 ## 第五十轮：行数债收尾（vault 全部达标）——index 524 → 289、registry 314 → 259（2026-10-31）
 
 - **index 拆分（状态 / 门面分离）**：这是全项目最大的一个文件，做法是把**状态**与**公开 API** 分开——
