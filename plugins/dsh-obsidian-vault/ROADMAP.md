@@ -1,4 +1,10 @@
-﻿## 第五十二轮：graph/layout 324 → 190（2026-10-31）
+﻿## 第五十三轮：pur-obsidian/exporter 327 → 190（2026-10-31）
+
+- 拆成「管道 + 流程」两半：`exporter-host.ts`（193，`PurExporterHost` 契约、`TextPrompt` 模态、`promptText`/`safeName`/`ensureFolder`/`uniquePath`/`writeText`/`dataURLToArrayBuffer`/`exportedNotice`、两个导出目录常量），`exporter.ts`（190，`savePur`/`createEmptyCanvas`/`exportMarkdown`/`exportImage`/`exportCanvasDocument`/`generateCode`）。
+- `exporter.ts` 继续 re-export `PurExporterHost` 与 `promptText`，`view-menu.ts` 等调用方不用改导入。
+- **验证**：`tsc` 0 错误、**395/395**、`tsdown` 三 bundle 成功。
+
+## 第五十二轮：graph/layout 324 → 190（2026-10-31）
 
 - 按「词汇 / 播种 / 模拟」三段拆：`layout-types.ts`（65，节点与边形状、`WORLD`、`LayoutForces`、`DEFAULT_FORCES`、`LayoutSeed` 与四个能量常数）、`layout-seed.ts`（92，`jiggle`/`spreadSeed`/`seedPositions`）、`layout.ts`（190，`Link` + `Simulation` 类）。
 - `jiggle` 放在 seed 模块并导出，因为模拟的零长连线分支也要用它；这样避免为 4 行函数再开一个文件。
