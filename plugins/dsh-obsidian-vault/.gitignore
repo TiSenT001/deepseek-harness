@@ -1,3 +1,7 @@
 ﻿.artifacts/
 node_modules/
 plugins/
+# The DSH-adapted plugin package we ship lives inside this folder; the rest of
+# it stays a runtime drop zone for user-installed DSH plugins.
+!plugins/pur-studio/
+!plugins/pur-studio/**
