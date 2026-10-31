@@ -321,6 +321,7 @@ void saveStudioDocument(path, document).catch(async (error: unknown) => {
         closePrompt={() => setPrompt(null)}
         closePicker={() => setPicker(null)}
       />
+      {ask.node}
       {preview === null
         ? null
         : (
