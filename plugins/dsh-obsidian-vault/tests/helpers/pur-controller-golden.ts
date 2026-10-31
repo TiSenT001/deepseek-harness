@@ -35517,31 +35517,13 @@ export const MENU_SCENARIOS: MenuScenario[] = [
             "s": false,
             "c": [
               {
-                "t": "openWithDefault",
+                "t": "Default app",
                 "i": "",
                 "s": false,
                 "c": null
               },
               {
-                "t": "openWithPhotoshop",
-                "i": "",
-                "s": false,
-                "c": null
-              },
-              {
-                "t": "openWithWps",
-                "i": "",
-                "s": false,
-                "c": null
-              },
-              {
-                "t": "openWithPaint",
-                "i": "",
-                "s": false,
-                "c": null
-              },
-              {
-                "t": "openWithOther",
+                "t": "Other…",
                 "i": "",
                 "s": false,
                 "c": null
@@ -35816,31 +35798,13 @@ export const MENU_SCENARIOS: MenuScenario[] = [
             "s": false,
             "c": [
               {
-                "t": "openWithDefault",
+                "t": "Default app",
                 "i": "",
                 "s": false,
                 "c": null
               },
               {
-                "t": "openWithPhotoshop",
-                "i": "",
-                "s": false,
-                "c": null
-              },
-              {
-                "t": "openWithWps",
-                "i": "",
-                "s": false,
-                "c": null
-              },
-              {
-                "t": "openWithPaint",
-                "i": "",
-                "s": false,
-                "c": null
-              },
-              {
-                "t": "openWithOther",
+                "t": "Other…",
                 "i": "",
                 "s": false,
                 "c": null

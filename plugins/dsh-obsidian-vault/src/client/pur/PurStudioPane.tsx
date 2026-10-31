@@ -15,7 +15,7 @@ import { createPurMenuHost, exportSelectedText } from './host.ts'
 import type { PurMenuHostDeps } from './host.ts'
 import { purBundles } from './labels.ts'
 import { PurImageCache, loadStudioDocument, resolveNoteLink, saveStudioDocument } from './loader.ts'
-import { fetchCodeSnippets } from '../api.ts'
+import { fetchCodeSnippets, fetchOpenPrograms } from '../api.ts'
 import { refreshNoteLinks } from './refresh-links.ts'
 import { VaultWriteConflict } from '../api.ts'
 import { useAsk } from '../ui/useAsk.tsx'
@@ -56,6 +56,8 @@ export function PurStudioPane({ t, path, onOpenPath }: PurStudioPaneProps): JSX.
   const [prompt, setPrompt] = useState<PurPromptState | null>(null)
   const [picker, setPicker] = useState<PurPickerState | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
+  const [openPrograms, setOpenPrograms] = useState<readonly { id: string; label: string }[]>([])
+  const openProgramsRef = useRef<readonly { id: string; label: string }[]>([])
   const [snippets, setSnippets] = useState<readonly { id: string; title: string }[]>([])
   const snippetsRef = useRef<readonly { id: string; title: string }[]>([])
   const [preview, setPreview] = useState<{ id: string; destination: PurOpenDestination } | null>(null)
@@ -144,7 +146,14 @@ void saveStudioDocument(path, document).catch(async (error: unknown) => {
   }, [snippets])
 
   useEffect(() => {
+    openProgramsRef.current = openPrograms
+  }, [openPrograms])
+
+  useEffect(() => {
     if (!ready) return
+    void fetchOpenPrograms()
+      .then((programs) => setOpenPrograms(programs.filter((program) => program.available).map((program) => ({ id: program.id, label: program.label }))))
+      .catch(() => undefined)
     void fetchCodeSnippets()
       .then((nodes) => setSnippets(nodes.map((node) => ({ id: node.id, title: node.title }))))
       .catch(() => undefined)
@@ -188,6 +197,8 @@ void saveStudioDocument(path, document).catch(async (error: unknown) => {
         supportsPopout: true,
         supportsPinTop: false,
         supportsReveal: false,
+        codeSnippets: snippetsRef.current,
+        openPrograms: openProgramsRef.current,
       }
       const { model, effects } = controller.contextMenu(canvasX, canvasY, context)
       run(effects)

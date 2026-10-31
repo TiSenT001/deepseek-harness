@@ -129,17 +129,21 @@ function elementMenu(state: PurControllerState, context: PurMenuContext, hitLock
     }
     // Handing the picture to a desktop editor is the one thing the browser cannot
     // do, so it sits next to 打开 rather than inside it.
+    // Only programs the host actually found are offered, so no entry silently
+    // fails after the click.
+    const programs = context.openPrograms ?? [
+      { id: 'default', label: 'Default app' },
+      { id: 'other', label: 'Other…' },
+    ]
     openChildren.push({
       id: 'open-with-group',
       icon: 'external-link',
       labelKey: 'openWith',
-      children: [
-        { id: 'open-with:default', icon: '', labelKey: 'openWithDefault' },
-        { id: 'open-with:photoshop', icon: '', labelKey: 'openWithPhotoshop' },
-        { id: 'open-with:wps', icon: '', labelKey: 'openWithWps' },
-        { id: 'open-with:mspaint', icon: '', labelKey: 'openWithPaint' },
-        { id: 'open-with:other', icon: '', labelKey: 'openWithOther' },
-      ],
+      children: programs.map((program) => ({
+        id: `open-with:${program.id}`,
+        icon: '',
+        label: program.label,
+      })),
     })
     entries.push({ id: 'open-group', icon: 'external-link', labelKey: 'open', children: openChildren })
 

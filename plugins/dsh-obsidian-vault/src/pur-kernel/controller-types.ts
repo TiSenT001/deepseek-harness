@@ -268,6 +268,8 @@ export interface PurMenuContext {
   supportsPinTop: boolean
   /** Whether the host can reveal a file in the OS file manager. */
   supportsReveal: boolean
+  /** Desktop programs the host reported as available, in menu order. */
+  openPrograms?: readonly { readonly id: string; readonly label: string }[]
   /** Saved code snippets the blank menu offers; empty when the library is empty. */
   codeSnippets?: readonly { readonly id: string; readonly title: string }[]
 }

@@ -26,7 +26,6 @@ const CANDIDATES: readonly { id: string; label: string; exe?: string }[] = [
   { id: 'default', label: '系统默认程序' },
   { id: 'photoshop', label: 'Photoshop', exe: 'photoshop.exe' },
   { id: 'wps', label: 'WPS', exe: 'wps.exe' },
-  { id: 'mspaint', label: '画图', exe: 'mspaint.exe' },
   { id: 'other', label: '其他程序…' },
 ]
 
