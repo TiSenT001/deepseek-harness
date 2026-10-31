@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Vault-data endpoints: index status, tree, notes, files, backlinks, tags,
  * search, graph, and the write operations the explorer and editor call.
  * @module dsh-obsidian-vault/client/api-vault
@@ -199,4 +199,24 @@ export async function storeImage(name: string, dataUrl: string): Promise<string>
     body: JSON.stringify({ name, dataUrl }),
   })
   return result.path
+}
+/** Result of one image externalization pass. */
+export interface ExternalizeResultDto {
+  readonly replaced: number
+  readonly before: number
+  readonly after: number
+  readonly backup: string
+}
+
+/**
+ * Move a canvas' inline images into `附件/`.
+ * @param path - vault-relative `.PurStudio` path.
+ * @returns how many images moved and the document size on both sides.
+ */
+export function externalizeCanvas(path: string): Promise<ExternalizeResultDto> {
+  return request<ExternalizeResultDto>('pur/externalize', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ path }),
+  })
 }

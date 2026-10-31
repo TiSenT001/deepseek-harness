@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Resolve the `https://pur.studio/<canvas>/<file>` references that the export
  * and embed commands write into notes. The canvas document names the image; its
  * `dataURL` or its vault path supplies the bytes, so an exported outline paints
@@ -120,7 +120,7 @@ async function imageBytes(files: PurFileReader, element: PurElement): Promise<Pu
   }
   const original = element.original
   if (original.length === 0) return undefined
-  for (const candidate of [original, `Pur画布/${original}`, `附件/${original}`]) {
+  for (const candidate of [original, `Pur画布/${original}`, `Pur画布/附件/${original}`, `附件/${original}`]) {
     const bytes = await files.readBytes(candidate)
     if (bytes !== undefined) {
       return { bytes: Buffer.from(bytes), contentType: CONTENT_TYPES[extensionOf(candidate)] ?? 'application/octet-stream' }

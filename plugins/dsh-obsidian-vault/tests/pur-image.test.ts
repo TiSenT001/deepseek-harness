@@ -1,7 +1,8 @@
-﻿import assert from 'node:assert/strict'
+import assert from 'node:assert/strict'
 import { beforeEach, test } from 'node:test'
 import { resolvePurImage, type PurFileReader } from '../src/vault/pur-image.ts'
 import { storePurImage } from '../src/vault/pur-store.ts'
+import { externalizeCanvas } from '../src/vault/pur-externalize.ts'
 import { MemFs } from './helpers/memfs.ts'
 
 const ROOT = 'C:/vault'
@@ -97,7 +98,7 @@ test('storing the same bytes twice reuses one attachment', async () => {
   const second = await storePurImage(store, 'other name.png', 'data:image/png;base64,cG5nLWJ5dGVz')
   assert.equal(first, second)
   assert.equal(written.size, 1)
-  assert.match(first ?? '', /^附件\/[0-9a-f]{16}\.png$/)
+  assert.match(first ?? '', /^Pur画布\/附件\/[0-9a-f]{16}\.png$/)
 
   const third = await storePurImage(store, 'a b.png', 'data:image/png;base64,ZGlmZmVyZW50')
   assert.notEqual(third, first)
@@ -107,4 +108,40 @@ test('storing the same bytes twice reuses one attachment', async () => {
 test('a payload that is not a base64 data URL is rejected', async () => {
   const store = { readBytes: async () => undefined, writeBytes: async () => undefined }
   assert.equal(await storePurImage(store, 'x.png', 'https://example.com/x.png'), undefined)
+})
+
+test('externalizing a canvas moves inline images to attachments', async () => {
+  const written = new Map<string, string>()
+  const binary = new Map<string, Uint8Array>()
+  const path = 'Pur画布/外部化.PurStudio'
+  written.set(path, JSON.stringify({
+    elements: [
+      { id: 'i1', type: 'image', x: 0, y: 0, w: 10, h: 10, original: '附件/图.png', dataURL: 'data:image/png;base64,cG5nLWJ5dGVz' },
+      { id: 'g1', type: 'group', x: 0, y: 0, w: 10, h: 10, children: [
+        { id: 'i2', type: 'image', x: 0, y: 0, w: 10, h: 10, original: 'b.png', dataURL: 'data:image/png;base64,REVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVGREVG' },
+      ] },
+    ],
+    viewState: { offsetX: 0, offsetY: 0, scale: 1 },
+  }))
+  const store = {
+    readText: async (target: string) => written.get(target),
+    writeText: async (target: string, text: string) => { written.set(target, text) },
+    readBytes: async (target: string) => binary.get(target),
+    writeBytes: async (target: string, bytes: Uint8Array) => { binary.set(target, bytes) },
+  }
+  const result = await externalizeCanvas(store, path)
+  assert.equal(result?.replaced, 2)
+  assert.equal(result?.backup, `${path}.bak`)
+  assert.ok(written.has(`${path}.bak`), 'backup missing')
+  const after = JSON.parse(written.get(path) ?? '{}')
+  const images = [after.elements[0], after.elements[1].children[0]]
+  for (const image of images) {
+    assert.ok(String(image.original).startsWith('Pur画布/附件/'), `not stored: ${image.original}`)
+    assert.equal(image.dataURL, undefined)
+  }
+  assert.equal(binary.size, 2)
+  assert.ok((result?.after ?? 0) < (result?.before ?? 0), 'document did not shrink')
+
+  const again = await externalizeCanvas(store, path)
+  assert.equal(again?.replaced, 0, 'second pass rewrote images again')
 })

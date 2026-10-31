@@ -170,6 +170,7 @@ export const ZH = {
   pickerUnavailable: '当前环境不支持选择文件夹',
   cancel: '取消',
   ok: '确定',
+  externalizeImages: '外部化画布图片（存入 Pur画布/附件）',
   loadingVaults: '读取知识库列表…',
   plugins: '插件',
   settings: '设置',

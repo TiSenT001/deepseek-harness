@@ -15,6 +15,7 @@ import { serveConfigRoute } from './config-endpoints.ts'
 import { servePluginRoute } from './plugin-endpoints.ts'
 import { VaultFiles } from './vault/files.ts'
 import { resolvePurImage } from './vault/pur-image.ts'
+import { externalizeCanvas } from './vault/pur-externalize.ts'
 import { storePurImage } from './vault/pur-store.ts'
 import { serveVaultRoute } from './vault-endpoints.ts'
 import type { VaultIndex } from './vault/index.ts'
@@ -235,6 +236,28 @@ async function dispatch(
         ...(download ? { 'content-disposition': dispositionOf(path) } : {}),
       })
       response.end(Buffer.from(asset))
+      return
+    }
+    case 'pur/externalize': {
+      const body = await readJson(request)
+      const path = typeof body['path'] === 'string' ? body['path'] : ''
+      if (path.length === 0 || !/\.PurStudio$/i.test(path)) {
+        send(response, 400, { error: 'path must name a .PurStudio document', path })
+        return
+      }
+      const root = registry.active()?.path ?? registry.vault.status().root
+      const files = new VaultFiles(root)
+      const result = await externalizeCanvas({
+        readText: candidate => files.readText(candidate).catch(() => undefined),
+        writeText: (candidate, text) => files.writeText(candidate, text),
+        readBytes: candidate => files.readBytes(candidate).catch(() => undefined),
+        writeBytes: (candidate, bytes) => files.writeBytes(candidate, bytes),
+      }, path)
+      if (result === undefined) {
+        send(response, 404, { error: 'canvas not found', path })
+        return
+      }
+      send(response, 200, result)
       return
     }
     case 'pur/store-image': {

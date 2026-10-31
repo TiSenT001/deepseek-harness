@@ -1,4 +1,4 @@
-﻿/**
+/**
  * The palette's full command list: daily-note and template commands plus the
  * pane commands, fed into the shared command surface. Keeps command assembly
  * out of the page component.
@@ -11,6 +11,7 @@ import {
   getPurPanePaths,
   subscribePurPaneCommands,
 } from '../pur/pane-commands.ts'
+import { externalizeCanvas } from '../api.ts'
 import { buildPurPaneCommands } from './commands.ts'
 import type { CommandEntry } from './commands.ts'
 import { folderPaths } from './paths.ts'
@@ -74,13 +75,31 @@ export function useVaultCommands(input: VaultCommandsInput): CommandSurface {
     // `purPanePaths` invalidates the memo when a pane (un)registers.
     [t, purPath, purPanePaths],
   )
+  // Migration helper: rewrite a canvas' inline images into 附件/ so the document
+  // keeps only layout. Registering it here keeps it next to the pane commands.
+  const canvasCommands = useMemo<readonly CommandEntry[]>(() => {
+    if (purPath === undefined) return []
+    return [{
+      id: 'pur.externalize',
+      label: t('externalizeImages'),
+      run: () => {
+        void externalizeCanvas(purPath)
+          .then((result) => {
+            if (result.replaced === 0) return
+            return reload()
+          })
+          .catch((cause: unknown) => setError(cause instanceof Error ? cause.message : String(cause)))
+      },
+    }]
+  }, [purPath, reload, setError, t])
   const extra = useMemo<readonly CommandEntry[]>(
     () => [
       ...noteCommands,
       ...paneCommands,
       ...purCommands,
+      ...canvasCommands,
     ],
-    [noteCommands, paneCommands, purCommands],
+    [noteCommands, paneCommands, purCommands, canvasCommands],
   )
   return useCommandSurface({ ...surface, t, folders, bookmarks, extra, paneCount })
 }

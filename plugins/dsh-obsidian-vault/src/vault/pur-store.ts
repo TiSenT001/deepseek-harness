@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Store one pasted or dropped image in the vault instead of inside the canvas
  * document. The bytes are content-addressed, so pasting the same picture twice
  * reuses one attachment and the `.PurStudio` file keeps only a path.
@@ -14,8 +14,8 @@ export interface PurAssetStore {
   writeBytes(path: string, bytes: Uint8Array): Promise<void>
 }
 
-/** Folder attachments land in, matching the Obsidian adapter. */
-const ATTACHMENT_DIR = '附件'
+/** Folder Pur-owned attachments land in, keeping every canvas asset under the plugin's area. */
+const ATTACHMENT_DIR = 'Pur画布/附件'
 
 /** Store one data URL as a vault attachment, keyed by its content hash. */
 export async function storePurImage(

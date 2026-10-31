@@ -171,6 +171,7 @@ export const EN: Dict = {
   pickerUnavailable: 'Folder picking is unavailable in this environment',
   cancel: 'Cancel',
   ok: 'OK',
+  externalizeImages: 'Externalize canvas images (into Pur画布/附件)',
   loadingVaults: 'Loading vaults…',
   plugins: 'Plugins',
   settings: 'Settings',
