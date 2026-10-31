@@ -177,7 +177,9 @@ function PurMenuEntries(props: PurMenuEntriesProps): JSX.Element {
                 // child would be clipped by the menu's overflow and become
                 // invisible.
                 className={css.menu}
-                style={{ position: 'fixed', left: submenu.x, top: submenu.y, minWidth: 200, maxHeight: '60vh', overflowY: 'auto' }}
+                // Above the dismiss overlay (z-index 1000), otherwise clicks land on the
+                // overlay and close the menu instead of activating the entry.
+                style={{ position: 'fixed', left: submenu.x, top: submenu.y, minWidth: 200, maxHeight: '60vh', overflowY: 'auto', zIndex: 1001 }}
                 onMouseDown={(event) => event.stopPropagation()}
                 onContextMenu={(event) => event.preventDefault()}
               >
