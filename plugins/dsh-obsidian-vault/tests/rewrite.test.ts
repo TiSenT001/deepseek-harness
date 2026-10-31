@@ -1,6 +1,7 @@
-import assert from 'node:assert/strict'
+﻿import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { assetUrlFor, newUrlFor, openUrlFor, parseSentinel, rewriteMarkdown, SIZE_MARK } from '../src/client/markdown/rewrite.ts'
+import { appendReferences, selectedImageReferences } from '../src/pur-kernel/embed-note.ts'
 
 const openUrl = (path: string, options?: { anchor?: string; ambiguous?: boolean }): string => openUrlFor(path, options)
 
@@ -122,4 +123,25 @@ test('without a resolver the authored pur.studio reference is left alone', () =>
     assetUrl: assetUrlFor,
   })
   assert.equal(rendered, source)
+})
+
+test('selected images become pur.studio references in canvas order', () => {
+  const elements = [
+    { id: 'i1', type: 'image', x: 0, y: 0, w: 10, h: 10, original: '附件/a b.png' },
+    { id: 'g1', type: 'group', x: 0, y: 0, w: 10, h: 10, children: [
+      { id: 'i2', type: 'image', x: 0, y: 0, w: 10, h: 10, original: '附件/二.png' },
+    ] },
+    { id: 'i3', type: 'image', x: 0, y: 0, w: 10, h: 10, original: '附件/c.png' },
+  ]
+  const references = selectedImageReferences(elements as never, new Set(['i1', 'i2']), '方案')
+  assert.deepEqual(references, [
+    '![a b.png](https://pur.studio/%E6%96%B9%E6%A1%88/a%20b.png)',
+    '![二.png](https://pur.studio/%E6%96%B9%E6%A1%88/%E4%BA%8C.png)',
+  ])
+})
+
+test('appending references keeps one blank line and a trailing newline', () => {
+  assert.equal(appendReferences('body\n', ['![a](u)']), 'body\n\n![a](u)\n')
+  assert.equal(appendReferences('', ['![a](u)']), '![a](u)\n')
+  assert.equal(appendReferences('body', []), 'body')
 })

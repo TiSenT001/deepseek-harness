@@ -1,4 +1,4 @@
-/**
+﻿/**
  * The pane's menu host: save-as `.PurStudio`, Markdown outline, PNG/JPG
  * bitmap, JSON Canvas and generated-code exports land in the vault under
  * `收件箱/` (exports) and `Pur画布/` (save-as/new), mirroring the Obsidian
@@ -8,16 +8,19 @@
  */
 import {
   NOTE_RAW_PICKER,
+  appendReferences,
   createElementId,
   irToElements,
   jsonCanvasToElements,
   parseSimpleYAML,
   pushHistory,
+  selectedImageReferences,
   serializeStudioDocument,
 } from '../../pur-kernel/index.ts'
 import type { PurController, PurControllerEffect, PurElement, PurMenuHost, PurRenderPreferences } from '../../pur-kernel/index.ts'
 import type { Translate } from '../i18n.ts'
 import type { PurLabelBundles } from '../i18n/pur-labels.ts'
+import { fetchNote, saveNote } from '../api.ts'
 import { purReader } from './labels.ts'
 import { PurImageCache, fetchNoteSummary, resolveNoteLink } from './loader.ts'
 import { fileToDataURL, insertUrlInput } from './paste-drop.ts'
@@ -142,7 +145,27 @@ export function createPurMenuHost(deps: () => PurMenuHostDeps): PurMenuHost {
       void navigator.clipboard.writeText(text).then(() => deps().notice(deps().t('pur.copied')))
     },
     revealInExplorer: unsupported,
-    embedInActiveNote: unsupported,
+    embedInActiveNote: () => {
+      const d = deps()
+      const title = d.path.replace(/^.*\//, '').replace(/\.PurStudio$/i, '')
+      const references = selectedImageReferences(d.controller.state.elements, d.controller.state.selectedIds, title)
+      if (references.length === 0) {
+        d.notice(d.t('pur.embedNoSelection'))
+        return
+      }
+      // The canvas holds the active tab, so the target note comes from the
+      // picker; upstream reads the active file, which is the canvas here too.
+      void d.pickNote().then(async (note) => {
+        if (note === null) return
+        try {
+          const file = await fetchNote(note)
+          await saveNote(note, appendReferences(file.content, references))
+          d.notice(d.t('pur.embeddedTo'))
+        } catch (cause) {
+          d.notice(cause instanceof Error ? cause.message : d.t('pur.unsupportedFeature'))
+        }
+      })
+    },
     promptElementLink: (element) => {
       void deps().pickNote().then((picked) => {
         if (picked === null) return

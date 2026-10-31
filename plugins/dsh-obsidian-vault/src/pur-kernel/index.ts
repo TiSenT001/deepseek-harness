@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Platform-neutral Pur Studio kernel: element model, JSON Canvas conversion,
  * `.PurStudio` documents, node presets, geometry, hit-testing, YAML/IR import
  * and generated-code pipelines. No DOM, Obsidian or Node APIs.
@@ -10,6 +10,7 @@ export * from './errors.ts'
 export * from './ids.ts'
 export * from './nodes.ts'
 export * from './canvas-export.ts'
+export * from './embed-note.ts'
 export * from './canvas-import.ts'
 export * from './studio-file.ts'
 export * from './wrap.ts'

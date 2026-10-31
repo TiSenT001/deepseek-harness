@@ -52,6 +52,7 @@ export const PUR_EN: Record<keyof typeof PUR_ZH, string> = {
   'pur.genCodeJs': 'JavaScript (.js)',
   'pur.genCodePy': 'Python (.py)',
   'pur.embedNote': 'Embed in Current Note',
+  'pur.embedNoSelection': 'Select an image or group to embed first',
   'pur.open': 'Open',
   'pur.openNewTab': 'Open in New Tab',
   'pur.openRight': 'Open to the Right',

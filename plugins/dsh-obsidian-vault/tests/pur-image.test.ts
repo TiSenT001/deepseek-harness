@@ -1,18 +1,9 @@
 import assert from 'node:assert/strict'
 import { beforeEach, test } from 'node:test'
-import { VaultIndex, type FsLike, type FsTargetLike } from '../src/vault/index.ts'
-import { resolvePurImage } from '../src/vault/pur-image.ts'
+import { resolvePurImage, type PurFileReader } from '../src/vault/pur-image.ts'
 import { MemFs } from './helpers/memfs.ts'
 
 const ROOT = 'C:/vault'
-
-const OPTIONS = {
-  root: ROOT,
-  ignore: ['.obsidian'],
-  maxFileBytes: 1024 * 1024,
-  maxIndexBytes: 1024 * 1024,
-  maxDepth: 6,
-}
 
 const DATA_URL = 'data:image/png;base64,cG5nLWJ5dGVz'
 
@@ -21,9 +12,9 @@ function canvasDocument(elements: unknown[]): string {
 }
 
 let fs: MemFs
-let vault: VaultIndex
+let reader: PurFileReader
 
-beforeEach(async () => {
+beforeEach(() => {
   fs = new MemFs(ROOT)
   fs.write(`${ROOT}/Pur画布/方案.PurStudio`, canvasDocument([
     {
@@ -38,24 +29,42 @@ beforeEach(async () => {
     { id: 'i2', type: 'image', x: 20, y: 20, w: 10, h: 10, original: '附件/磁盘.png' },
   ]))
   fs.write(`${ROOT}/附件/磁盘.png`, 'disk-bytes')
-  vault = new VaultIndex(fs as unknown as FsLike, OPTIONS)
-  await vault.refresh()
+  const target = (path: string): { targetKey: string; displayPath: string } => ({
+    targetKey: `${ROOT}/${path}`,
+    displayPath: `${ROOT}/${path}`,
+  })
+  reader = {
+    readText: async (path) => {
+      try {
+        return await fs.readText(target(path))
+      } catch {
+        return undefined
+      }
+    },
+    readBytes: async (path) => {
+      try {
+        return await fs.readBytes(target(path), undefined, 1024 * 1024)
+      } catch {
+        return undefined
+      }
+    },
+  }
 })
 
 test('resolves an inline data URL nested inside a group', async () => {
-  const image = await resolvePurImage(vault, '方案', 'pic.png')
+  const image = await resolvePurImage(reader, '方案', 'pic.png')
   assert.notEqual(image, undefined)
   assert.equal(image?.contentType, 'image/png')
   assert.equal(image?.bytes.toString('utf8'), 'png-bytes')
 })
 
 test('resolves an image whose bytes live on disk', async () => {
-  const image = await resolvePurImage(vault, '方案.PurStudio', '磁盘.png')
+  const image = await resolvePurImage(reader, '方案.PurStudio', '磁盘.png')
   assert.equal(image?.contentType, 'image/png')
   assert.equal(image?.bytes.toString('utf8'), 'disk-bytes')
 })
 
 test('reports a missing canvas and a missing image as undefined', async () => {
-  assert.equal(await resolvePurImage(vault, '没有这个', 'pic.png'), undefined)
-  assert.equal(await resolvePurImage(vault, '方案', 'missing.png'), undefined)
+  assert.equal(await resolvePurImage(reader, '没有这个', 'pic.png'), undefined)
+  assert.equal(await resolvePurImage(reader, '方案', 'missing.png'), undefined)
 })

@@ -1,13 +1,23 @@
-﻿/**
+/**
  * Resolve the `https://pur.studio/<canvas>/<file>` references that the export
  * and embed commands write into notes. The canvas document names the image; its
  * `dataURL` or its vault path supplies the bytes, so an exported outline paints
  * the same picture the canvas shows without touching the network.
+ *
+ * Reads go through {@link PurFileReader} rather than the index: a canvas saved a
+ * moment ago is not in the index yet, and its reference must still resolve.
  * @module dsh-obsidian-vault/vault/pur-image
  */
 import { parseStudioDocument } from '../pur-kernel/studio-file.ts'
 import type { PurElement } from '../pur-kernel/types.ts'
-import type { VaultIndex } from './index.ts'
+
+/** Root-confined file access, as `VaultFiles` provides it. */
+export interface PurFileReader {
+  /** @param path - vault-relative path. @returns the text, or undefined when absent. */
+  readText(path: string): Promise<string | undefined>
+  /** @param path - vault-relative path. @returns the bytes, or undefined when absent. */
+  readBytes(path: string): Promise<Uint8Array | undefined>
+}
 
 /** One resolved image: bytes plus the type the response should declare. */
 export interface PurImage {
@@ -32,35 +42,35 @@ const CANVAS_DIRS = ['Pur画布', ''] as const
 
 /**
  * Resolve one pur.studio image reference against the active vault.
- * @param vault - index over the active vault.
+ * @param files - root-confined reader for the active vault.
  * @param canvas - canvas name from the URL, with or without its extension.
  * @param file - image file name from the URL.
  * @returns the bytes and content type, or undefined when either side is missing.
  */
 export async function resolvePurImage(
-  vault: VaultIndex,
+  files: PurFileReader,
   canvas: string,
   file: string,
 ): Promise<PurImage | undefined> {
-  const document = await readCanvas(vault, canvas)
-  if (document === undefined) return undefined
-  const image = findImage(document, file)
+  const elements = await readCanvas(files, canvas)
+  if (elements === undefined) return undefined
+  const image = findImage(elements, file)
   if (image === undefined) return undefined
-  return await imageBytes(vault, image)
+  return await imageBytes(files, image)
 }
 
 /** Read and parse one canvas document, trying the usual folders. */
-async function readCanvas(vault: VaultIndex, canvas: string): Promise<readonly PurElement[] | undefined> {
+async function readCanvas(files: PurFileReader, canvas: string): Promise<readonly PurElement[] | undefined> {
   const base = canvas.replace(/\.PurStudio$/i, '')
   for (const folder of CANVAS_DIRS) {
     const path = folder.length === 0 ? `${base}.PurStudio` : `${folder}/${base}.PurStudio`
-    const bytes = await vault.readAsset(path)
-    if (bytes === undefined) continue
+    const text = await files.readText(path)
+    if (text === undefined) continue
     try {
-      return parseStudioDocument(Buffer.from(bytes).toString('utf8')).elements
+      return parseStudioDocument(text).elements
     } catch {
-      // An unreadable canvas is reported as a missing image; the caller renders
-      // the file name instead of failing the whole note.
+      // An unreadable canvas is reported as a missing image; the note then paints
+      // the file name instead of failing as a whole.
       return undefined
     }
   }
@@ -87,23 +97,23 @@ function matchesFile(original: string, file: string): boolean {
 }
 
 /** Decode the element's inline data URL, or read the file it points at. */
-async function imageBytes(vault: VaultIndex, element: PurElement): Promise<PurImage | undefined> {
-  const inline = element.type === 'image' ? element.dataURL : undefined
+async function imageBytes(files: PurFileReader, element: PurElement): Promise<PurImage | undefined> {
+  if (element.type !== 'image') return undefined
+  const inline = element.dataURL
   if (inline !== undefined && inline.startsWith('data:')) {
     const separator = inline.indexOf(',')
     const meta = inline.slice(5, separator)
     const payload = inline.slice(separator + 1)
     const base64 = meta.endsWith(';base64')
-    const contentType = base64 ? meta.slice(0, -';base64'.length) : meta
     return {
       bytes: base64 ? Buffer.from(payload, 'base64') : Buffer.from(decodeURIComponent(payload), 'utf8'),
-      contentType: contentType.length === 0 ? 'application/octet-stream' : contentType,
+      contentType: base64 ? meta.slice(0, -';base64'.length) : meta,
     }
   }
-  const original = element.type === 'image' ? element.original : ''
+  const original = element.original
   if (original.length === 0) return undefined
   for (const candidate of [original, `Pur画布/${original}`, `附件/${original}`]) {
-    const bytes = await vault.readAsset(candidate)
+    const bytes = await files.readBytes(candidate)
     if (bytes !== undefined) {
       return { bytes: Buffer.from(bytes), contentType: CONTENT_TYPES[extensionOf(candidate)] ?? 'application/octet-stream' }
     }

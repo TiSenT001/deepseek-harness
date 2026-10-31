@@ -13,6 +13,7 @@ import { serveBridgeRoute } from './bridge-endpoints.ts'
 import { serveNoteSave } from './note-write.ts'
 import { serveConfigRoute } from './config-endpoints.ts'
 import { servePluginRoute } from './plugin-endpoints.ts'
+import { VaultFiles } from './vault/files.ts'
 import { resolvePurImage } from './vault/pur-image.ts'
 import { serveVaultRoute } from './vault-endpoints.ts'
 import type { VaultIndex } from './vault/index.ts'
@@ -66,7 +67,7 @@ async function serve(
       await serveBridgeRoute(registry, route, request, response)
       return
     }
-    await dispatch(host, registry.vault, route, url, request, response)
+    await dispatch(host, registry, route, url, request, response)
   } catch (error) {
     send(response, 500, { error: error instanceof Error ? error.message : String(error) })
   }
@@ -74,12 +75,13 @@ async function serve(
 
 async function dispatch(
   host: RouteHost,
-  vault: VaultIndex,
+  registry: VaultRegistry,
   route: string,
   url: URL,
   request: IncomingMessage,
   response: ServerResponse,
 ): Promise<void> {
+  const vault = registry.vault
   switch (route) {
     case 'worker.js': {
       // The layout worker lives beside the host bundle and is served as its own
@@ -241,7 +243,14 @@ async function dispatch(
         send(response, 400, { error: 'canvas and file are required' })
         return
       }
-      const image = await resolvePurImage(vault, canvas, file)
+      // Read through the file service, not the index: a canvas saved a moment ago
+      // is not indexed yet but its references must still resolve.
+      const root = registry.active()?.path ?? registry.vault.status().root
+      const files = new VaultFiles(root)
+      const image = await resolvePurImage({
+        readText: path => files.readText(path).catch(() => undefined),
+        readBytes: path => files.readBytes(path).catch(() => undefined),
+      }, canvas, file)
       if (image === undefined) {
         send(response, 404, { error: 'pur image not found', canvas, file })
         return

@@ -1,4 +1,14 @@
-﻿## 第六十一轮：导出/嵌入的 pur.studio 图片不再裂图（2026-10-31）
+﻿## 第六十二轮：嵌入当前笔记（B 阶段）+ 解析器改走文件服务（2026-10-31）
+
+- **B 阶段（前端，立即生效）**：`embedInActiveNote` 从「不支持」改成真实实现——取画布中选中的图片元素（含 group 内嵌套），拼成 `![名](https://pur.studio/<画布>/<名>)`，通过笔记选择器选定目标笔记，读原文→追加（空行分隔）→保存。画布自身占着活动标签，所以目标笔记走选择器，而不是上游的「活动文件」。
+- **抽纯函数**：`src/pur-kernel/embed-note.ts`（`purImageReference` / `selectedImageReferences` / `appendReferences`），导出器与嵌入动作写同一种引用，可单测。
+- **A 阶段的修正**：`pur/image` 之前用 `vault.readAsset`，受索引门控——刚保存的画布不在索引里会 404。改为注入 `PurFileReader`（根内文件读取），`routes.ts` 用 `VaultFiles` 实现；已用真实库文件验过（70 字节 PNG 解析成功，缺失返回 undefined）。
+- **i18n**：新增 `pur.embedNoSelection`（中/英）。
+- **测试**：`tests/rewrite.test.ts` +2（引用生成含中文/空格编码、追加语义）、`tests/pur-image.test.ts` 改为注入 reader。**388/388**。
+- **验证**：`tsc` 0、`tsdown` 成功、全量审核 **99/99、0 控制台错误**。
+- **仍需重启**：`pur/image` 路由改动要再重启宿主一次；嵌入动作与菜单项刷新页面即可用。
+
+## 第六十一轮：导出/嵌入的 pur.studio 图片不再裂图（2026-10-31）
 
 - **问题（审计 #4/#8）**：导出器按上游格式写 `![x](https://pur.studio/<画布>/<文件>)`，但阅读视图没有解析器——自家导出的大纲里每张图都是裂图，还会向 `pur.studio` 发真实请求。
 - **主机侧**：新增 `src/vault/pur-image.ts` + `pur/image` 路由。按 `https://pur.studio/<画布>/<文件>` 找到 `Pur画布/<画布>.PurStudio`，深度遍历元素树（含 group children）匹配 `original` 的文件名，优先取元素内联 `dataURL`（base64 解码 + 取 MIME），否则读 `original` 指向的库内文件。
