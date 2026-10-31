@@ -1,4 +1,4 @@
-/**
+﻿/**
  * The pane's menu host: save-as `.PurStudio`, Markdown outline, PNG/JPG
  * bitmap, JSON Canvas and generated-code exports land in the vault under
  * `收件箱/` (exports) and `Pur画布/` (save-as/new), mirroring the Obsidian
@@ -183,4 +183,15 @@ export function createPurMenuHost(deps: () => PurMenuHostDeps): PurMenuHost {
     editLine: (id) => deps().openEditor('line', id),
     editNoteLink: (id) => deps().openEditor('note-link', id),
   }
+}
+/** Depth-first lookup of one image element by id. */
+function findImageElement(elements: readonly PurElement[], id: string): PurElement | undefined {
+  for (const element of elements) {
+    if (element.id === id && element.type === 'image') return element
+    if (element.type === 'group') {
+      const nested = findImageElement(element.children, id)
+      if (nested !== undefined) return nested
+    }
+  }
+  return undefined
 }

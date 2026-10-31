@@ -35659,6 +35659,12 @@ export const MENU_SCENARIOS: MenuScenario[] = [
         "c": null
       },
       {
+        "t": "openLinkedNote",
+        "i": "link",
+        "s": false,
+        "c": null
+      },
+      {
         "t": "embedNote",
         "i": "image-up",
         "s": true,

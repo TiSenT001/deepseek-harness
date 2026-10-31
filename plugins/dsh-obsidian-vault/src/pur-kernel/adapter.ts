@@ -108,6 +108,12 @@ export function runMenuAction(controller: PurController, host: PurMenuHost, acti
       if (target !== null) host.openLink(target, id === 'open' ? 'current' : id === 'open-new-tab' ? 'new-tab' : 'right')
       return []
     }
+    case 'open-linked': {
+      const element = requireElement(controller, action)
+      const target = openTarget(element)
+      if (target !== null) host.openLink(target, 'current')
+      return []
+    }
     case 'copy-link':
       host.copyLinkOf(requireElement(controller, action))
       return []

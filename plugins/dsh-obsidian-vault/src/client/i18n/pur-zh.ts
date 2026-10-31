@@ -56,6 +56,7 @@ export const PUR_ZH = {
   'pur.embedNote': '嵌入当前笔记',
   'pur.embedNoSelection': '先选中要嵌入的图片或分组',
   'pur.open': '打开',
+  'pur.openLinkedNote': '打开关联笔记',
   'pur.openNewTab': '在新标签页打开',
   'pur.openRight': '在右侧打开',
   'pur.copy': '复制',

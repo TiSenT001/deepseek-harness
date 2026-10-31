@@ -115,6 +115,9 @@ function elementMenu(state: PurControllerState, context: PurMenuContext, hitLock
         entries.push({ id: 'link-note', icon: 'link', labelKey: 'linkNote', separatorAfter: true })
       }
     }
+    if (hasImage && selected.some((el) => el.type === 'image' && el.link !== undefined)) {
+      entries.push({ id: 'open-linked', icon: 'link', labelKey: 'openLinkedNote' })
+    }
     if (context.activeFileIsMarkdown && hasImage) entries.push({ id: 'embed-note', icon: 'image-up', labelKey: 'embedNote', separatorAfter: true })
     entries.push(
       { id: 'open', icon: 'external-link', labelKey: 'open' },

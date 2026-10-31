@@ -54,6 +54,7 @@ export const PUR_EN: Record<keyof typeof PUR_ZH, string> = {
   'pur.embedNote': 'Embed in Current Note',
   'pur.embedNoSelection': 'Select an image or group to embed first',
   'pur.open': 'Open',
+  'pur.openLinkedNote': 'Open linked note',
   'pur.openNewTab': 'Open in New Tab',
   'pur.openRight': 'Open to the Right',
   'pur.copy': 'Copy',
