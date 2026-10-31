@@ -168,7 +168,8 @@ export class VaultIndex {
   }
 
   /**
-   * Notes that link to this path.
+   * Documents that link to this path: notes whose wikilinks resolve here, or
+   * canvases whose element links and wiki links name it.
    * @param path - vault-relative path.
    * @returns the backlinks, empty when none link here.
    */

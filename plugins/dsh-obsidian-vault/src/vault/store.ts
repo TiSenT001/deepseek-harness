@@ -77,6 +77,7 @@ export class VaultStore {
     this.files = new VaultFiles(root)
     this.notes = new Map()
     this.attachments = new Set()
+    this.canvasRefs = new Map()
     this.attachmentMeta = new Map()
     this.rootTarget = undefined
     this.directories = []

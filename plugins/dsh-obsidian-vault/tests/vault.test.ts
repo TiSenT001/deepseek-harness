@@ -193,3 +193,54 @@ test('a canvas that references a note shows up in that note backlinks', async ()
   const graph = vault.graph('Alpha.md', 1, 50, { includeUnresolved: false, includeAttachments: true, includeTags: false })
   assert.ok(graph.nodes.some((node) => node.path === 'Pur画布/方案.PurStudio'), 'canvas missing from the graph')
 })
+
+test('indexes wiki links in canvas text and code cards', async () => {
+  fs.write(`${ROOT}/Pur画布/引用.PurStudio`, JSON.stringify({
+    elements: [
+      {
+        id: 'g1',
+        type: 'group',
+        x: 0,
+        y: 0,
+        w: 400,
+        h: 300,
+        content: 'group',
+        link: 'notes/Deep.md',
+        children: [
+          { id: 't1', type: 'text', x: 0, y: 0, w: 100, h: 40, content: 'See [[Alpha|first]] and [[Missing]]' },
+          { id: 'c1', type: 'code-node', x: 0, y: 60, w: 100, h: 40, content: 'load([[folder/Beta]])' },
+        ],
+      },
+      { id: 'n1', type: 'note-link', x: 0, y: 0, w: 100, h: 40, content: '', link: 'https://example.com' },
+    ],
+    viewState: { offsetX: 0, offsetY: 0, scale: 1 },
+  }))
+  await vault.refresh()
+  const canvas = 'Pur画布/引用.PurStudio'
+  const fromCanvas = (path: string) => vault.backlinksOf(path).filter((entry) => entry.path === canvas)
+
+  const alpha = fromCanvas('Alpha.md')
+  assert.equal(alpha.length, 1, JSON.stringify(alpha))
+  assert.deepEqual([alpha[0]?.source, alpha[0]?.line], ['canvas', 2], 'wiki links keep document order')
+  assert.equal(fromCanvas('folder/Beta.md').length, 1, 'code cards contribute their wiki links')
+  assert.equal(fromCanvas('notes/Deep.md').length, 1, 'group links still count')
+})
+
+test('republishes the index when a canvas changes', async () => {
+  const canvasPath = `${ROOT}/Pur画布/编辑.PurStudio`
+  const document = (link: string | null): string => JSON.stringify({
+    elements: link === null
+      ? []
+      : [{ id: 'n1', type: 'note-link', x: 0, y: 0, w: 100, h: 40, content: '', link }],
+    viewState: { offsetX: 0, offsetY: 0, scale: 1 },
+  })
+  fs.write(canvasPath, document('Alpha.md'))
+  await vault.refresh()
+  const version = vault.version
+  assert.equal(vault.backlinksOf('Alpha.md').filter((entry) => entry.path === 'Pur画布/编辑.PurStudio').length, 1)
+
+  fs.write(canvasPath, document(null))
+  await vault.refresh()
+  assert.equal(vault.version, version + 1, 'an edited canvas must republish the index')
+  assert.deepEqual(vault.backlinksOf('Alpha.md').filter((entry) => entry.path === 'Pur画布/编辑.PurStudio'), [])
+})

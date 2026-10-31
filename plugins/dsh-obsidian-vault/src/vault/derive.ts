@@ -18,9 +18,19 @@ export interface DerivedIndex {
 }
 
 /**
- * Resolve every note's links and collect the derived indexes.
+ * Resolve every note's links and merge every canvas document's references into
+ * the derived indexes.
+ *
+ * A canvas is a source only: its references become backlinks of the notes they
+ * name, tagged `source: 'canvas'`, and an adjacency edge lets the graph show the
+ * canvas as an attachment node. Outlinks are not exposed through the backlink
+ * map, because `BacklinkDto.path` names the document holding the link and
+ * `backlinksOf(canvasPath)` therefore reports links *to* the canvas. The panel
+ * rail also mounts for Markdown notes only, so a canvas has no view that would
+ * read its outlinks.
  * @param notes - vault-relative path to its parsed entry.
  * @param attachments - vault-relative paths of non-note files, so `![[img.png]]` resolves.
+ * @param canvasRefs - vault-relative canvas path to the note references it holds.
  * @returns the indexes; a link that resolves to itself or an attachment adds no backlink or edge.
  */
 export function deriveIndex(

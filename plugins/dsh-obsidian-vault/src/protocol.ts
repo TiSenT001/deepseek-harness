@@ -177,18 +177,18 @@ export interface BridgeFileDto {
   readonly ctime: number
 }
 
-/** One link that points at the queried note. */
+/** The kind of document that holds a backlink. */
 export type BacklinkSource = 'note' | 'canvas'
 
 /** One link that points at the queried note. */
 export interface BacklinkDto {
+  /** Vault-relative path of the document holding the link. */
   readonly path: string
   readonly title: string
-  /** 1-based source line. */
+  /** 1-based source line; a canvas reference reports its 1-based ordinal among the canvas's references. */
   readonly line: number
   readonly context: string
-  /** Kind of the source document; omitted means
-ote. */
+  /** Kind of the source document; omitted means `note`. */
   readonly source?: BacklinkSource
 }
 
