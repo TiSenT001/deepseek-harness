@@ -4,7 +4,7 @@
  * `收件箱/` export writes.
  * @module dsh-obsidian-vault/client/pur/loader
  */
-import { assetUrl, purAssetUrl, bridgeExists, bridgeReadText, bridgeWriteBinary, bridgeWriteText, createFolder, fetchNote, fetchTree } from '../api.ts'
+import { assetUrl, bridgeExists, bridgeReadText, bridgeReadTextVersion, bridgeWriteBinary, bridgeWriteText, createFolder, fetchNote, fetchTree, purAssetUrl } from '../api.ts'
 import { parseStudioDocument, serializeStudioDocument } from '../../pur-kernel/index.ts'
 import type { PurImageLookup, PurStudioDocument } from '../../pur-kernel/index.ts'
 import type { TreeNodeDto } from '../../protocol.ts'
@@ -22,6 +22,9 @@ export interface PurNoteSummary {
   readonly content: string
 }
 
+/** Modification time each canvas had when this pane loaded or last saved it. */
+const studioVersions = new Map<string, number>()
+
 /**
  * Read a `.PurStudio` document; an empty or unparsable file loads as an empty
  * canvas rather than failing the view.
@@ -29,7 +32,9 @@ export interface PurNoteSummary {
  * @returns the parsed document, or an empty one.
  */
 export async function loadStudioDocument(path: string): Promise<PurStudioDocument> {
-  const text = await bridgeReadText(path)
+  const read = await bridgeReadTextVersion(path)
+  if (read.mtime !== undefined) studioVersions.set(path, read.mtime)
+  const text = read.content
   if (text.trim() === '') return { elements: [], viewState: { offsetX: 0, offsetY: 0, scale: 1 } }
   try {
     return parseStudioDocument(text)
@@ -44,8 +49,19 @@ export async function loadStudioDocument(path: string): Promise<PurStudioDocumen
  * @param document - elements and viewport.
  * @returns completion.
  */
-export async function saveStudioDocument(path: string, document: PurStudioDocument): Promise<void> {
-  await bridgeWriteText(path, serializeStudioDocument(document))
+/**
+ * Persist a `.PurStudio` document, refusing to overwrite a version someone else
+ * wrote after this pane loaded it.
+ * @param path - vault-relative document path.
+ * @param document - elements and viewport.
+ * @param force - write even when the file moved since the load.
+ * @throws VaultWriteConflict when the file changed and `force` is off.
+ * @returns completion.
+ */
+export async function saveStudioDocument(path: string, document: PurStudioDocument, force = false): Promise<void> {
+  const expected = force ? undefined : studioVersions.get(path)
+  const result = await bridgeWriteText(path, serializeStudioDocument(document), expected)
+  if (result.mtime !== undefined) studioVersions.set(path, result.mtime)
 }
 
 /** Fetched note texts, so pipeline code generation can resolve linked code. */

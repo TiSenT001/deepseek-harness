@@ -8,6 +8,7 @@
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { readJson, send } from './http.ts'
 import { VaultFiles, VaultPathError } from './vault/files.ts'
+import { isStaleWrite } from './vault/write-guard.ts'
 import type { VaultRegistry } from './vault/registry.ts'
 
 /**
@@ -43,7 +44,8 @@ export async function serveBridgeRoute(
           send(response, 400, { error: 'path is required' })
           return
         }
-        send(response, 200, { path, content: await files.readText(path) })
+        const mtime = await files.mtimeOf(path)
+        send(response, 200, { path, content: await files.readText(path), ...(mtime === undefined ? {} : { mtime }) })
         return
       }
       case 'bridge/write-text': {
@@ -54,8 +56,18 @@ export async function serveBridgeRoute(
           send(response, 400, { error: 'path and content are required' })
           return
         }
+        // A caller that loaded the file earlier reports the version it saw; a
+        // moved mtime means another writer got there first, so this write stops
+        // instead of silently overwriting those edits.
+        const expected = typeof body['expectedMtime'] === 'number' ? body['expectedMtime'] : undefined
+        const current = await files.mtimeOf(path)
+        if (isStaleWrite(current, expected)) {
+          send(response, 409, { conflict: true, mtime: current })
+          return
+        }
         await files.writeText(path, content)
-        send(response, 200, { ok: true, path })
+        const mtime = await files.mtimeOf(path)
+        send(response, 200, { ok: true, path, ...(mtime === undefined ? {} : { mtime }) })
         return
       }
       case 'bridge/list':

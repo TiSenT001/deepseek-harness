@@ -1,3 +1,12 @@
+## 第八十五轮：画布保存冲突检测（2026-10-31）
+
+- **协议**：`bridge/read-text` 返回 `mtime`；`bridge/write-text` 接受可选 `expectedMtime`，与磁盘 mtime 相差超过 1ms 时返回 **409 `{conflict:true, mtime}`**，不写入。
+- **客户端**：`bridgeReadTextVersion` 读内容+版本；`bridgeWriteText(path, content, expectedMtime?)` 在 409 时抛 `VaultWriteConflict`；`saveStudioDocument(path, doc, force?)` 用载入时记录的版本做比对，成功回写新版本。
+- **交互**：保存冲突时弹确认框「画布已在外部被修改 / 覆盖会丢弃那边的改动」，选覆盖才强写（`force`），取消则提示「已保留外部改动，本次未保存」。
+- **守卫**：新增纯函数 `vault/write-guard.ts::isStaleWrite(current, expected)`（1ms 容差、任一侧未知则不拦），路由改用该函数，附 3 个单测。
+- **测试**：**418/418**（新增 write-guard 3 例 + attachment-name 8 例）；`tsc` 0、`tsdown` 成功、审核 99/99。
+- **注意**：`bridge-endpoints` 属宿主代码，**需重启 DSH 宿主**后冲突检测才生效。
+
 ## 第八十四轮：笔记坏图占位 + Obsidian 入库内容寻址（2026-10-31）
 
 - **笔记正文坏图占位**：`NoteView` 在正文容器上以捕获阶段监听 `error`/`load`（`error` 不冒泡），失败的 `<img>` 前插入与盒子同尺寸的占位块（虚线 + 「图片不可用」），图片恢复后自动移除；尺寸取 `getBoundingClientRect`，拿不到就用 160×100，不产生布局跳动。文案走 i18n（`noteImageFailed`）。

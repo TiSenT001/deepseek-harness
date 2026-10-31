@@ -15,6 +15,8 @@ import { createPurMenuHost, exportSelectedText } from './host.ts'
 import type { PurMenuHostDeps } from './host.ts'
 import { purBundles } from './labels.ts'
 import { PurImageCache, loadStudioDocument, resolveNoteLink, saveStudioDocument } from './loader.ts'
+import { VaultWriteConflict } from '../api.ts'
+import { useAsk } from '../ui/useAsk.tsx'
 import type { PurMenuState } from './menu.tsx'
 import type { PurOpenDestination } from '../../pur-kernel/index.ts'
 import { createPurPaneHandlers, registerPurPaneCommands } from './pane-commands.ts'
@@ -46,6 +48,7 @@ export interface PurStudioPaneProps {
  */
 export function PurStudioPane({ t, path, onOpenPath }: PurStudioPaneProps): JSX.Element {
   const labels = useMemo(() => purBundles(t), [t])
+  const ask = useAsk(t)
   const [ready, setReady] = useState(false)
   const [menu, setMenu] = useState<PurMenuState | null>(null)
   const [editor, setEditor] = useState<PurEditorState | null>(null)
@@ -93,7 +96,16 @@ export function PurStudioPane({ t, path, onOpenPath }: PurStudioPaneProps): JSX.
       saveTimerRef.current = null
       const controller = controllerRef.current
       if (controller === null) return
-      void saveStudioDocument(path, { elements: controller.state.elements, viewState: controller.state.view }).catch(() => showNotice(t('pur.saveFailed')))
+      const document = { elements: controller.state.elements, viewState: controller.state.view }
+void saveStudioDocument(path, document).catch(async (error: unknown) => {
+        if (error instanceof VaultWriteConflict) {
+          const overwrite = await ask.askConfirm(`${t('pur.saveConflictTitle')}\n\n${t('pur.saveConflictBody')}`)
+          if (overwrite) await saveStudioDocument(path, document, true).catch(() => showNotice(t('pur.saveFailed')))
+          else showNotice(t('pur.saveConflictKept'))
+          return
+        }
+        showNotice(t('pur.saveFailed'))
+      })
     }, 400)
   }, [path, t, showNotice])
 
