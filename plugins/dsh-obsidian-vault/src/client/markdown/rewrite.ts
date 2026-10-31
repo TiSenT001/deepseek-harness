@@ -209,16 +209,23 @@ export function rewriteMarkdown(source: string, context: RewriteContext): string
 /** `![alt](https://pur.studio/<canvas>/<file>)`, the reference the exporter writes. */
 const PUR_IMAGE = /(!\[[^\]]*\]\()https:\/\/pur\.studio\/([^/)\s]+)\/([^)\s]+)(\))/g
 
+/** Folder the embed and export commands name in their references. */
+const CANVAS_DIR = 'Pur画布'
+
 /**
  * Point `pur.studio` image references at the canvas document, so an exported
  * outline paints the picture instead of requesting a domain that does not serve
- * it. Hosts without a resolver keep the authored URL.
+ * it, and wrap each one in a link back to its canvas. Hosts without a resolver
+ * keep the authored URL.
  */
 function rewritePurImages(markdown: string, context: RewriteContext): string {
   const build = context.purImageUrl
   if (build === undefined) return markdown
-  return markdown.replace(PUR_IMAGE, (_match, head: string, canvas: string, file: string, tail: string) =>
-    `${head}${build(safeDecode(canvas), safeDecode(file))}${tail}`)
+  return markdown.replace(PUR_IMAGE, (_match, head: string, canvas: string, file: string, tail: string) => {
+    const name = safeDecode(canvas)
+    const src = `${head}${build(name, safeDecode(file))}${tail}`
+    return `[${src}](${context.openUrl(`${CANVAS_DIR}/${name}.PurStudio`)})`
+  })
 }
 
 /** Decode one URL segment, leaving a malformed escape as authored. */

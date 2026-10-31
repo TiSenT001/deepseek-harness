@@ -110,7 +110,10 @@ test('pur.studio image references resolve through the canvas, not the network', 
     assetUrl: assetUrlFor,
     purImageUrl: (canvas, file) => `https://host.invalid/api/pur/image?canvas=${encodeURIComponent(canvas)}&file=${encodeURIComponent(file)}`,
   })
-  assert.equal(rendered, '![图](https://host.invalid/api/pur/image?canvas=%E7%94%BB%E5%B8%83&file=pic%201.png)')
+  assert.equal(
+    rendered,
+    '[![图](https://host.invalid/api/pur/image?canvas=%E7%94%BB%E5%B8%83&file=pic%201.png)](https://dsh-obsidian.invalid/open?p=Pur%E7%94%BB%E5%B8%83%2F%E7%94%BB%E5%B8%83.PurStudio)',
+  )
 })
 
 test('without a resolver the authored pur.studio reference is left alone', () => {
