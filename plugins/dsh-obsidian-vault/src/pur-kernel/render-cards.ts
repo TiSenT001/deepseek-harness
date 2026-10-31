@@ -12,6 +12,9 @@ import type { PurImageElement, PurNoteLinkElement, PurPin } from './types.ts'
 /** Card corner radius, in canvas pixels per zoom unit. */
 const CARD_RADIUS = 8
 
+/** Below this on-screen area a picture draws as a tile instead of decoding. */
+const MIN_DECODE_AREA = 90 * 90
+
 /** Inset of the broken-image frame inside the card, in canvas pixels per zoom unit. */
 const PLACEHOLDER_INSET = 5
 
@@ -47,6 +50,15 @@ export function drawImageCard(
   const image = scene.images?.get(key)
   if (image !== undefined) {
     ctx.drawImage(image, 0, 0, screenW, screenH)
+    return
+  }
+  // A picture drawn smaller than this reads as a tint at any zoom, so decoding
+  // its full resolution would cost megabytes for a few dozen pixels. Zoomed-out
+  // canvases therefore draw a flat tile and never request the bitmap.
+  const tooSmall = scene.view.scale < 0.5 && screenW * screenH < MIN_DECODE_AREA
+  if (tooSmall) {
+    ctx.fillStyle = 'rgba(140,140,150,0.35)'
+    ctx.fillRect(0, 0, screenW, screenH)
     return
   }
   if (key === '' || (scene.images?.failedKeys?.has(key) ?? false)) {

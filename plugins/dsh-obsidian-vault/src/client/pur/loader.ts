@@ -122,11 +122,71 @@ export async function listMarkdownNotes(): Promise<readonly string[]> {
   return out
 }
 
-/** Decoded images keyed by `dataURL || original`, with the failed keys attached. */
+/** Estimated decoded size of one bitmap: four bytes per pixel, a megabyte when unknown. */
+function decodedBytes(value: CanvasImageSource): number {
+  const width = (value as { naturalWidth?: number }).naturalWidth ?? (value as { width?: number }).width ?? 0
+  const height = (value as { naturalHeight?: number }).naturalHeight ?? (value as { height?: number }).height ?? 0
+  return width > 0 && height > 0 ? width * height * 4 : 1024 * 1024
+}
+
+/**
+ * Decoded images keyed by `dataURL || original`, bounded by a byte budget and
+ * evicted least-recently-used: a canvas may reference thousands of pictures, and
+ * every decoded bitmap holds its pixels for as long as it stays cached.
+ */
 class PurImageMap extends Map<string, CanvasImageSource> implements PurImageLookup {
   /** Keys the browser could not decode; the renderer draws a placeholder for them. */
   readonly failedKeys = new Set<string>()
+  private readonly touched = new Map<string, number>()
+  private readonly sizes = new Map<string, number>()
+  private held = 0
+  private stamp = 0
+
+  override get(key: string): CanvasImageSource | undefined {
+    const value = super.get(key)
+    if (value !== undefined) this.touched.set(key, ++this.stamp)
+    return value
+  }
+
+  override set(key: string, value: CanvasImageSource): this {
+    const previous = this.sizes.get(key)
+    if (previous !== undefined) this.held -= previous
+    const size = decodedBytes(value)
+    this.sizes.set(key, size)
+    this.touched.set(key, ++this.stamp)
+    this.held += size
+    super.set(key, value)
+    this.evict(IMAGE_BUDGET_BYTES)
+    return this
+  }
+
+  override delete(key: string): boolean {
+    const size = this.sizes.get(key)
+    if (size !== undefined) this.held -= size
+    this.sizes.delete(key)
+    this.touched.delete(key)
+    return super.delete(key)
+  }
+
+  /** Drop the least recently drawn images until the budget holds. @param budget - bytes to keep. */
+  private evict(budget: number): void {
+    while (this.held > budget && this.size > 1) {
+      let oldestKey: string | undefined
+      let oldest = Infinity
+      for (const [key, stamp] of this.touched) {
+        if (stamp < oldest) {
+          oldest = stamp
+          oldestKey = key
+        }
+      }
+      if (oldestKey === undefined) return
+      this.delete(oldestKey)
+    }
+  }
 }
+
+/** Decoded pixels the cache keeps before evicting the least recently drawn. */
+const IMAGE_BUDGET_BYTES = 256 * 1024 * 1024
 
 /** Decoded canvas images keyed by `dataURL || original`, with load dedupe. */
 export class PurImageCache {
