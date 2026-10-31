@@ -4,6 +4,7 @@
  * @module dsh-obsidian-vault/pur-kernel/controller-view
  */
 import { getSelectedElements } from './controller-selection.ts'
+import { elementBounds } from './view-bounds.ts'
 import type { PurControllerEffect, PurControllerState, PurControllerTools } from './controller-types.ts'
 
 /**
@@ -26,28 +27,18 @@ export function selectAll(state: PurControllerState): PurControllerEffect[] {
  */
 export function fitToView(tools: PurControllerTools): PurControllerEffect[] {
   const targets = tools.state.selectedIds.size > 0 ? getSelectedElements(tools.state) : tools.state.elements
-  if (targets.length === 0) return []
-  let minX = Infinity
-  let minY = Infinity
-  let maxX = -Infinity
-  let maxY = -Infinity
-  for (const element of targets) {
-    const x = element.x ?? NaN
-    const y = element.y ?? NaN
-    const w = element.w ?? NaN
-    const h = element.h ?? NaN
-    if (x < minX) minX = x
-    if (y < minY) minY = y
-    if (x + w > maxX) maxX = x + w
-    if (y + h > maxY) maxY = y + h
-  }
+  const bounds = elementBounds(targets)
+  if (bounds === undefined) return []
   const pad = 40
-  const worldW = maxX - minX + pad * 2
-  const worldH = maxY - minY + pad * 2
+  const worldW = bounds.maxX - bounds.minX + pad * 2
+  const worldH = bounds.maxY - bounds.minY + pad * 2
+  if (!Number.isFinite(worldW) || !Number.isFinite(worldH) || worldW <= 0 || worldH <= 0) return []
   const sx = tools.env.canvasWidth / worldW
   const sy = tools.env.canvasHeight / worldH
-  tools.state.view.scale = Math.min(sx, sy, 5)
-  tools.state.view.offsetX = tools.env.canvasWidth / 2 - (minX + (maxX - minX) / 2) * tools.state.view.scale
-  tools.state.view.offsetY = tools.env.canvasHeight / 2 - (minY + (maxY - minY) / 2) * tools.state.view.scale
+  const scale = Math.min(sx, sy, 5)
+  if (!Number.isFinite(scale) || scale <= 0) return []
+  tools.state.view.scale = scale
+  tools.state.view.offsetX = tools.env.canvasWidth / 2 - ((bounds.minX + bounds.maxX) / 2) * scale
+  tools.state.view.offsetY = tools.env.canvasHeight / 2 - ((bounds.minY + bounds.maxY) / 2) * scale
   return [{ type: 'render' }]
 }

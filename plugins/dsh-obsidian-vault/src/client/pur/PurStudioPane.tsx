@@ -16,9 +16,11 @@ import type { PurMenuHostDeps } from './host.ts'
 import { purBundles } from './labels.ts'
 import { PurImageCache, loadStudioDocument, resolveNoteLink, saveStudioDocument } from './loader.ts'
 import type { PurMenuState } from './menu.tsx'
+import type { PurOpenDestination } from '../../pur-kernel/index.ts'
 import { createPurPaneHandlers, registerPurPaneCommands } from './pane-commands.ts'
 import { PurPaneOverlays } from './pane-overlays.tsx'
 import type { PurEditorState, PurPickerState, PurPromptState } from './pane-overlays.tsx'
+import { PurAssetPreview } from './preview.tsx'
 import { pointerEventOf } from './pane-events.ts'
 import { startPurPaintLoop, wirePurPaneDrop, wirePurPaneWheel } from './pane-paint.ts'
 import { pasteIntoCanvas } from './paste-drop.ts'
@@ -50,6 +52,7 @@ export function PurStudioPane({ t, path, onOpenPath }: PurStudioPaneProps): JSX.
   const [prompt, setPrompt] = useState<PurPromptState | null>(null)
   const [picker, setPicker] = useState<PurPickerState | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
+  const [preview, setPreview] = useState<{ id: string; destination: PurOpenDestination } | null>(null)
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   // Canvas size is read on demand: the controller uses it for fit-to-view and
   // paste centring, and the element only exists after the first paint.
@@ -207,6 +210,7 @@ export function PurStudioPane({ t, path, onOpenPath }: PurStudioPaneProps): JSX.
       promptText: (title, initial) => new Promise((resolve) => setPrompt({ title, initial, resolve })),
       pickNote: () => new Promise((resolve) => setPicker({ resolve })),
       ...(onOpenPath === undefined ? {} : { openPath: onOpenPath }),
+      openPreview: (id, destination) => setPreview({ id, destination }),
     }
   })
 
@@ -305,6 +309,16 @@ export function PurStudioPane({ t, path, onOpenPath }: PurStudioPaneProps): JSX.
         closePrompt={() => setPrompt(null)}
         closePicker={() => setPicker(null)}
       />
+      {preview === null
+        ? null
+        : (
+          <PurAssetPreview
+            t={t}
+            id={preview.id}
+            destination={preview.destination}
+            onClose={() => setPreview(null)}
+          />
+        )}
     </div>
   )
 }

@@ -1,4 +1,4 @@
-﻿/**
+/**
  * English copy for the vault workspace, keyed by the Chinese dictionary so a
  * missing translation fails to compile instead of falling back at runtime.
  * @module dsh-obsidian-vault/client/i18n/en
@@ -172,6 +172,7 @@ export const EN: Dict = {
   cancel: 'Cancel',
   ok: 'OK',
   externalizeImages: 'Externalize canvas images (into Pur画布/附件)',
+  previewImage: 'Image preview',
   loadingVaults: 'Loading vaults…',
   plugins: 'Plugins',
   settings: 'Settings',

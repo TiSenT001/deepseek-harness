@@ -17,7 +17,7 @@ import {
   selectedImageReferences,
   serializeStudioDocument,
 } from '../../pur-kernel/index.ts'
-import type { PurController, PurControllerEffect, PurElement, PurMenuHost, PurRenderPreferences } from '../../pur-kernel/index.ts'
+import type { PurController, PurControllerEffect, PurElement, PurMenuHost, PurOpenDestination, PurRenderPreferences } from '../../pur-kernel/index.ts'
 import type { Translate } from '../i18n.ts'
 import type { PurLabelBundles } from '../i18n/pur-labels.ts'
 import { fetchNote, findEmbeddingNotes, purAssetUrl, saveNote, storeImage } from '../api.ts'
@@ -56,6 +56,8 @@ export interface PurMenuHostDeps {
   readonly pickNote: () => Promise<string | null>
   /** Open a vault path in the workspace; absent where the pane cannot navigate. */
   readonly openPath?: (path: string) => void
+  /** Show a full-size preview of one plugin-owned asset. */
+  readonly openPreview?: (id: string, destination: PurOpenDestination) => void
 }
 
 /** Push imported elements into the document with one history snapshot. */
@@ -143,9 +145,9 @@ export function createPurMenuHost(deps: () => PurMenuHostDeps): PurMenuHost {
     togglePopout: unsupported,
     togglePinTop: unsupported,
     openAsset: (id, destination) => {
-      const url = purAssetUrl('pur-asset:' + id)
-      if (destination === 'current') window.location.assign(url)
-      else window.open(url, '_blank', 'noopener')
+      // An in-app preview, not `window.open`: the webview blocks popups, and
+      // navigating away would drop the canvas the user is working in.
+      deps().openPreview?.(id, destination)
     },
     openEmbeddingNote: (element) => {
       const d = deps()
