@@ -1,4 +1,13 @@
-﻿## 第六十轮：修好画布右键菜单 + 键盘操作（2026-10-31）
+﻿## 第六十一轮：导出/嵌入的 pur.studio 图片不再裂图（2026-10-31）
+
+- **问题（审计 #4/#8）**：导出器按上游格式写 `![x](https://pur.studio/<画布>/<文件>)`，但阅读视图没有解析器——自家导出的大纲里每张图都是裂图，还会向 `pur.studio` 发真实请求。
+- **主机侧**：新增 `src/vault/pur-image.ts` + `pur/image` 路由。按 `https://pur.studio/<画布>/<文件>` 找到 `Pur画布/<画布>.PurStudio`，深度遍历元素树（含 group children）匹配 `original` 的文件名，优先取元素内联 `dataURL`（base64 解码 + 取 MIME），否则读 `original` 指向的库内文件。
+- **客户端**：`rewrite.ts` 增加可选 `purImageUrl` 上下文与 `rewritePurImages` 后处理（正则匹配导出格式），`NoteView` 传入 `purImageUrlFor`；没有解析器的宿主保持原 URL 不变。
+- **测试**：`tests/rewrite.test.ts` +2（解析改写、无解析器时不动），新增 `tests/pur-image.test.ts` 3 例（嵌套 dataURL、磁盘文件、缺失回落）；`tests/helpers/memfs.ts` 补 `readBytes` 让资产读取路径可测。**386/386**。
+- **验证**：`tsc` 0、`tsdown` 成功、全量审核 **99/99、0 控制台错误**。
+- **注意**：新路由要**重启宿主**才生效；未重启前打开含 pur.studio 图的老笔记仍会 404。
+
+## 第六十轮：修好画布右键菜单 + 键盘操作（2026-10-31）
 
 - **真 bug**：Pur 画布右键菜单「闪一下就消失」。菜单在 pointerup 里打开，而浏览器紧接着在**同一手势**后触发 `contextmenu`，落在菜单的全屏遮罩上，遮罩的处理函数把菜单关了。改为遮罩只 `preventDefault`（不关闭），关闭仍走 mousedown/Esc/选中条目。这就是用户报的「右键菜单栏没有」。
 - **键盘**：菜单获得焦点后支持 Esc 关闭、↑↓ 在条目间移动、Enter/空格激活；条目补 `role="menuitem"`/`tabIndex`，容器补 `role="menu"` —— 之前这套完全为零（只能点外面关）。

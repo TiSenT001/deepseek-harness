@@ -1,4 +1,4 @@
-/**
+﻿/**
  * In-memory filesystem for index tests: the subset of the Host `fs` service the
  * vault index consumes, keyed by absolute paths.
  * @module tests/helpers/memfs
@@ -53,6 +53,14 @@ export class MemFs implements FsLike {
     const content = this.files.get(target.displayPath)
     if (content === undefined) throw new Error(`ENOENT: ${target.displayPath}`)
     return content
+  }
+
+  /** Binary read, so asset routes and the pur image resolver run against this FS. */
+  async readBytes(target: FsTargetLike, _signal: AbortSignal | undefined, maxBytes: number): Promise<Uint8Array> {
+    const content = this.files.get(target.displayPath)
+    if (content === undefined) throw new Error(`ENOENT: ${target.displayPath}`)
+    const bytes = Buffer.from(content, 'utf8')
+    return bytes.subarray(0, maxBytes)
   }
 
   async writeText(target: FsTargetLike, content: string): Promise<unknown> {

@@ -99,3 +99,27 @@ test('parseSentinel decodes open and create actions and ignores foreign links', 
   assert.deepEqual(parseSentinel('https://example.com/x'), { kind: 'none' })
   assert.deepEqual(parseSentinel('not a url'), { kind: 'none' })
 })
+
+test('pur.studio image references resolve through the canvas, not the network', () => {
+  const rendered = rewriteMarkdown('![图](https://pur.studio/%E7%94%BB%E5%B8%83/pic%201.png)', {
+    selfPath: 'Self.md',
+    resolve: () => ({ status: 'unresolved' }),
+    openUrl,
+    newUrl: newUrlFor,
+    assetUrl: assetUrlFor,
+    purImageUrl: (canvas, file) => `https://host.invalid/api/pur/image?canvas=${encodeURIComponent(canvas)}&file=${encodeURIComponent(file)}`,
+  })
+  assert.equal(rendered, '![图](https://host.invalid/api/pur/image?canvas=%E7%94%BB%E5%B8%83&file=pic%201.png)')
+})
+
+test('without a resolver the authored pur.studio reference is left alone', () => {
+  const source = '![图](https://pur.studio/canvas/pic.png)'
+  const rendered = rewriteMarkdown(source, {
+    selfPath: 'Self.md',
+    resolve: () => ({ status: 'unresolved' }),
+    openUrl,
+    newUrl: newUrlFor,
+    assetUrl: assetUrlFor,
+  })
+  assert.equal(rendered, source)
+})

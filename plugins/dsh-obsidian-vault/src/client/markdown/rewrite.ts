@@ -34,6 +34,8 @@ export interface RewriteContext {
   openUrl(path: string, options?: { readonly anchor?: string; readonly ambiguous?: boolean }): string
   newUrl(target: string): string
   assetUrl(path: string): string
+  /** Resolves a `https://pur.studio/<canvas>/<file>` image; hosts without it keep the URL. */
+  readonly purImageUrl?: (canvas: string, file: string) => string
 }
 
 /** Build the sentinel URL that opens one note. */
@@ -59,6 +61,18 @@ export function newUrlFor(target: string): string {
 export function assetUrlFor(path: string): string {
   const relative = `${API_BASE}/asset?path=${encodeURIComponent(path)}`
   // The shared Markdown renderer only paints absolute http(s) image sources.
+  return typeof location === 'undefined' ? relative : new URL(relative, location.origin).href
+}
+
+/**
+ * Build the URL that resolves one `pur.studio` image reference through the
+ * canvas document instead of the network.
+ * @param canvas - canvas name from the reference.
+ * @param file - image file name from the reference.
+ * @returns the absolute URL the renderer should load.
+ */
+export function purImageUrlFor(canvas: string, file: string): string {
+  const relative = `${API_BASE}/pur/image?canvas=${encodeURIComponent(canvas)}&file=${encodeURIComponent(file)}`
   return typeof location === 'undefined' ? relative : new URL(relative, location.origin).href
 }
 
@@ -161,7 +175,7 @@ export function rewriteTags(source: string, tagUrl: (tag: string) => string): st
  * @returns markdown with every wikilink replaced.
  */
 export function rewriteMarkdown(source: string, context: RewriteContext): string {
-  return replaceWikiLinks(source, token => {
+  return rewritePurImages(replaceWikiLinks(source, token => {
     const resolution = context.resolve(token.target)
     const label = escapeLabel(token.alias ?? (token.target.length > 0 ? token.target : token.anchor ?? ''))
     // `[[note#^id]]` carries the id in `block`; both anchors navigate the same way.
@@ -189,7 +203,31 @@ export function rewriteMarkdown(source: string, context: RewriteContext): string
       return `[${label}](${context.openUrl(context.selfPath, anchor === undefined ? {} : { anchor })})`
     }
     return `[${label}](${context.newUrl(token.target)})`
-  })
+  }), context)
+}
+
+/** `![alt](https://pur.studio/<canvas>/<file>)`, the reference the exporter writes. */
+const PUR_IMAGE = /(!\[[^\]]*\]\()https:\/\/pur\.studio\/([^/)\s]+)\/([^)\s]+)(\))/g
+
+/**
+ * Point `pur.studio` image references at the canvas document, so an exported
+ * outline paints the picture instead of requesting a domain that does not serve
+ * it. Hosts without a resolver keep the authored URL.
+ */
+function rewritePurImages(markdown: string, context: RewriteContext): string {
+  const build = context.purImageUrl
+  if (build === undefined) return markdown
+  return markdown.replace(PUR_IMAGE, (_match, head: string, canvas: string, file: string, tail: string) =>
+    `${head}${build(safeDecode(canvas), safeDecode(file))}${tail}`)
+}
+
+/** Decode one URL segment, leaving a malformed escape as authored. */
+function safeDecode(value: string): string {
+  try {
+    return decodeURIComponent(value)
+  } catch {
+    return value
+  }
 }
 
 function transclude(label: string, content: string): string {

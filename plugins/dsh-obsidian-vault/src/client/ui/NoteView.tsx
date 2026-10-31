@@ -12,7 +12,7 @@ import { annotateBlocks, annotateImages, findBlock, sliceBlock, sliceSection } f
 import { splitCallouts, type CalloutSegment } from '../markdown/callouts.ts'
 import { stripComments } from '../markdown/inline.ts'
 import {
-  assetUrlFor, newUrlFor, openUrlFor, parseSentinel, rewriteMarkdown, rewriteTags, tagUrlFor,
+  assetUrlFor, newUrlFor, openUrlFor, parseSentinel, purImageUrlFor, rewriteMarkdown, rewriteTags, tagUrlFor,
 } from '../markdown/rewrite.ts'
 import { MarkdownDelegateProvider, MarkdownText, type MarkdownLabels } from '../primitives.ts'
 import { HoverPreviewCard } from './HoverPreviewCard.tsx'
@@ -127,6 +127,7 @@ export function NoteView({
       openUrl: openUrlFor,
       newUrl: newUrlFor,
       assetUrl: assetUrlFor,
+      purImageUrl: purImageUrlFor,
     }
     const convert = (text: string): string => rewriteMarkdown(rewriteTags(stripComments(text), tagUrlFor), context)
     // Nested callouts lose one `>` level per split, so each level re-splits its body.

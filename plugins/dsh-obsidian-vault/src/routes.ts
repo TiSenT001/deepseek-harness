@@ -13,6 +13,7 @@ import { serveBridgeRoute } from './bridge-endpoints.ts'
 import { serveNoteSave } from './note-write.ts'
 import { serveConfigRoute } from './config-endpoints.ts'
 import { servePluginRoute } from './plugin-endpoints.ts'
+import { resolvePurImage } from './vault/pur-image.ts'
 import { serveVaultRoute } from './vault-endpoints.ts'
 import type { VaultIndex } from './vault/index.ts'
 import type { VaultRegistry } from './vault/registry.ts'
@@ -233,8 +234,23 @@ async function dispatch(
       response.end(Buffer.from(asset))
       return
     }
-    case 'note-open': {
-      const body = await readJson(request)
+    case 'pur/image': {
+      const canvas = url.searchParams.get('canvas') ?? ''
+      const file = url.searchParams.get('file') ?? ''
+      if (canvas.length === 0 || file.length === 0) {
+        send(response, 400, { error: 'canvas and file are required' })
+        return
+      }
+      const image = await resolvePurImage(vault, canvas, file)
+      if (image === undefined) {
+        send(response, 404, { error: 'pur image not found', canvas, file })
+        return
+      }
+      response.writeHead(200, { 'content-type': image.contentType, 'cache-control': 'no-cache' })
+      response.end(image.bytes)
+      return
+    }
+    case 'note-open': {      const body = await readJson(request)
       const path = typeof body['path'] === 'string' ? body['path'] : ''
       if (path.length === 0) {
         send(response, 400, { error: 'path is required' })
