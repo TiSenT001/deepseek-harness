@@ -152,9 +152,10 @@ test('updateElement applies the patch per kind and commits history', () => {
     assert.equal(text.fontSize, 20)
     assert.equal('link' in text, false)
   }
-  controller.updateElement(node?.id ?? '', { title: 'T2', bold: true })
+  controller.updateElement(node?.id ?? '', { title: 'T2', bold: true, code: 'return 2' })
   if (node?.type === 'code-node') {
     assert.equal(node.title, 'T2')
+    assert.equal(node.code, 'return 2')
     assert.equal('bold' in node, false)
   }
   assert.deepEqual(controller.updateElement('missing', { content: 'x' }), [])

@@ -16,6 +16,8 @@ import type { PurLineStyle } from './types.ts'
 export interface PurElementPatch {
   /** Body or label text. */
   content?: string
+  /** Code body of a code-node element. */
+  code?: string
   /** Card heading. */
   title?: string
   /** Element colour. */
@@ -74,6 +76,8 @@ export function updateElementProps(tools: PurControllerTools, elementId: string,
       if (patch.bgOpacity !== undefined) element.bgOpacity = patch.bgOpacity
       break
     case 'code-node':
+      // `code` is the body the generator runs; `content` is only its fallback text.
+      if (patch.code !== undefined) element.code = patch.code
       if (patch.content !== undefined) element.content = patch.content
       if (patch.title !== undefined) element.title = patch.title
       if (patch.color !== undefined) element.color = patch.color
