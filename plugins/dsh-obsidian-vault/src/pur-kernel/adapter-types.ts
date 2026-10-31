@@ -78,6 +78,8 @@ export interface PurMenuHost {
   openEmbeddingNote(element: PurElement): void
   /** Open one plugin-owned image asset for preview. */
   openAsset(id: string, destination: PurOpenDestination): void
+  /** Hand one file to a desktop program; ids come from the host fixed list. */
+  openFileWith(target: string, program: string): void
   /** Copy the element's link or image source to the clipboard. */
   copyLinkOf(element: PurElement): void
   /** Reveal the element's target in the file explorer. */

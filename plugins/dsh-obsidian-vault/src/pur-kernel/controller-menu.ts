@@ -117,6 +117,20 @@ function elementMenu(state: PurControllerState, context: PurMenuContext, hitLock
       openChildren.push({ id: 'open-linked', icon: 'link', labelKey: 'openLinkedNote' })
       openChildren.push({ id: 'open-embedded', icon: 'file-text', labelKey: 'openEmbeddedNote' })
     }
+    // Handing the picture to a desktop editor is the one thing the browser cannot
+    // do, so it sits next to 打开 rather than inside it.
+    openChildren.push({
+      id: 'open-with-group',
+      icon: 'external-link',
+      labelKey: 'openWith',
+      children: [
+        { id: 'open-with:default', icon: '', labelKey: 'openWithDefault' },
+        { id: 'open-with:photoshop', icon: '', labelKey: 'openWithPhotoshop' },
+        { id: 'open-with:wps', icon: '', labelKey: 'openWithWps' },
+        { id: 'open-with:mspaint', icon: '', labelKey: 'openWithPaint' },
+        { id: 'open-with:other', icon: '', labelKey: 'openWithOther' },
+      ],
+    })
     entries.push({ id: 'open-group', icon: 'external-link', labelKey: 'open', children: openChildren })
 
     const image = selected.find((el) => el.type === 'image')

@@ -186,7 +186,16 @@ export function createViewMenuHost(deps: () => PurMenuDeps): PurMenuHost {
     exportCanvasDocument: () => void exportCanvasDocument(deps().exporterHost()),
     togglePopout: unsupported,
     togglePinTop: unsupported,
-    openAsset: (id) => {
+    openFileWith: (target, program) => {
+      // Obsidian owns the desktop side, so the fixed list collapses to its opener.
+      void program
+      const file = deps().app.vault.getAbstractFileByPath(target)
+      if (file === null) return
+      // Public API, but the shipped typings still omit it.
+      const opener = deps().app as App & { openWithDefaultApp?: (path: string) => void }
+      opener.openWithDefaultApp?.(file.path)
+    },
+  openAsset: (id) => {
       void id
       new Notice(deps().read('pur.unsupportedFeature'))
     },

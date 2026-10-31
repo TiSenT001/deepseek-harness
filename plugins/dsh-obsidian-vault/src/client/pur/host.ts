@@ -21,6 +21,7 @@ import type { PurController, PurControllerEffect, PurElement, PurMenuHost, PurOp
 import type { Translate } from '../i18n.ts'
 import type { PurLabelBundles } from '../i18n/pur-labels.ts'
 import { fetchNote, findEmbeddingNotes, purAssetUrl, saveNote, storeImage } from '../api.ts'
+import { openFileWith } from '../api.ts'
 import { purReader } from './labels.ts'
 import { PurImageCache, fetchNoteSummary, resolveNoteLink } from './loader.ts'
 import { fileToDataURL, insertUrlInput } from './paste-drop.ts'
@@ -150,6 +151,9 @@ export function createPurMenuHost(deps: () => PurMenuHostDeps): PurMenuHost {
       window.open(`/obsidian/api/pur/popout?${query}`, '_blank', 'popup,width=1200,height=800')
     },
     togglePinTop: unsupported,
+    openFileWith: (target, program) => {
+      void openFileWith(target, program).catch(() => deps().notice(deps().t('pur.openWithFailed')))
+    },
     openAsset: (id, destination) => {
       // A real document tab (a split for 'right'), not `window.open`: the webview
       // blocks popups, and the image deserves the same zoom and pan as a file.

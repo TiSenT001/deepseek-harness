@@ -26,6 +26,12 @@ const SUBMENU_PARENTS: ReadonlySet<string> = new Set(['code-node-root', 'import'
  */
 export function runMenuAction(controller: PurController, host: PurMenuHost, action: PurMenuAction): PurControllerEffect[] {
   const { id, world } = action
+  // `open-with:<program>` hands a file to a desktop program through the host.
+  if (id.startsWith('open-with:')) {
+    const target = openTarget(requireElement(controller, action))
+    if (target !== null) host.openFileWith(target, id.slice('open-with:'.length))
+    return []
+  }
   if (SUBMENU_PARENTS.has(id) || id.startsWith('preset-cat:')) return []
   if (id.startsWith('preset:')) {
     const presetId = id.slice('preset:'.length)

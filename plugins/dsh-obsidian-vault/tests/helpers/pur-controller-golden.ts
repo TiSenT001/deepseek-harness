@@ -35504,6 +35504,43 @@ export const MENU_SCENARIOS: MenuScenario[] = [
             "i": "split",
             "s": false,
             "c": null
+          },
+          {
+            "t": "openWith",
+            "i": "external-link",
+            "s": false,
+            "c": [
+              {
+                "t": "openWithDefault",
+                "i": "",
+                "s": false,
+                "c": null
+              },
+              {
+                "t": "openWithPhotoshop",
+                "i": "",
+                "s": false,
+                "c": null
+              },
+              {
+                "t": "openWithWps",
+                "i": "",
+                "s": false,
+                "c": null
+              },
+              {
+                "t": "openWithPaint",
+                "i": "",
+                "s": false,
+                "c": null
+              },
+              {
+                "t": "openWithOther",
+                "i": "",
+                "s": false,
+                "c": null
+              }
+            ]
           }
         ]
       },
@@ -35766,6 +35803,43 @@ export const MENU_SCENARIOS: MenuScenario[] = [
             "i": "file-text",
             "s": false,
             "c": null
+          },
+          {
+            "t": "openWith",
+            "i": "external-link",
+            "s": false,
+            "c": [
+              {
+                "t": "openWithDefault",
+                "i": "",
+                "s": false,
+                "c": null
+              },
+              {
+                "t": "openWithPhotoshop",
+                "i": "",
+                "s": false,
+                "c": null
+              },
+              {
+                "t": "openWithWps",
+                "i": "",
+                "s": false,
+                "c": null
+              },
+              {
+                "t": "openWithPaint",
+                "i": "",
+                "s": false,
+                "c": null
+              },
+              {
+                "t": "openWithOther",
+                "i": "",
+                "s": false,
+                "c": null
+              }
+            ]
           }
         ]
       },

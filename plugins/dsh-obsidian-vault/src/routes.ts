@@ -17,6 +17,7 @@ import { servePluginRoute } from './plugin-endpoints.ts'
 import { VaultFiles } from './vault/files.ts'
 import { resolvePurImage } from './vault/pur-image.ts'
 import { PACKAGE_ROOT, PUR_ASSETS_FOLDER } from './package-root.ts'
+import { launchProgram, listOpenPrograms, resolveOpenTarget } from './system-open.ts'
 import { findEmbeddingNotes } from './vault/pur-embedders.ts'
 import { externalizeCanvas } from './vault/pur-externalize.ts'
 import { PUR_ASSET_SCHEME, readPurImage, storePurImage } from './vault/pur-store.ts'
@@ -326,6 +327,31 @@ async function dispatch(
       }
       response.writeHead(200, { 'content-type': image.contentType, 'cache-control': 'no-cache' })
       response.end(image.bytes)
+      return
+    }
+    case 'system/programs': {
+      send(response, 200, { programs: await listOpenPrograms() })
+      return
+    }
+    case 'system/open': {
+      const body = await readJson(request)
+      const target = typeof body['target'] === 'string' ? body['target'] : ''
+      const program = typeof body['program'] === 'string' ? body['program'] : 'default'
+      if (target.length === 0) {
+        send(response, 400, { error: 'target is required' })
+        return
+      }
+      const root = registry.active()?.path ?? registry.vault.status().root
+      const absolute = await resolveOpenTarget(target, new VaultFiles(root), PUR_ASSETS_FOLDER)
+      if (absolute === undefined) {
+        send(response, 404, { error: 'open target not found', target })
+        return
+      }
+      if (!launchProgram(absolute, program)) {
+        send(response, 500, { error: 'program failed to start', program })
+        return
+      }
+      send(response, 200, { ok: true, program })
       return
     }
     case 'pur/popout': {

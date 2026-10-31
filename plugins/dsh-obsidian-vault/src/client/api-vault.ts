@@ -242,3 +242,35 @@ export async function findEmbeddingNotes(canvas: string, file: string): Promise<
   )
   return result.notes
 }
+
+
+/** One desktop program the host can launch, as the menu offers it. */
+export interface OpenProgramDto {
+  /** Stable id the route accepts. */
+  readonly id: string
+  /** Localized label. */
+  readonly label: string
+  /** Whether the program was found on this machine. */
+  readonly available: boolean
+}
+
+/**
+ * List the fixed programs the host can open a file with.
+ * @returns the entries, unavailable ones included so the menu stays stable.
+ */
+export async function fetchOpenPrograms(): Promise<readonly OpenProgramDto[]> {
+  return (await request<{ programs: OpenProgramDto[] }>('system/programs')).programs
+}
+
+/**
+ * Ask the host to open one file with a desktop program.
+ * @param target - vault-relative path or `pur-asset:<id>`.
+ * @param program - program id from {@link fetchOpenPrograms}.
+ */
+export async function openFileWith(target: string, program: string): Promise<void> {
+  await request('system/open', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ target, program }),
+  })
+}
