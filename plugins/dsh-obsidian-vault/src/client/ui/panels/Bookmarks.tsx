@@ -12,8 +12,9 @@ function bookmarks(
   entries: readonly BookmarkEntry[],
   onOpen: (path: string) => void,
   onRemove: (path: string) => void,
+  onRowMenu?: (path: string, x: number, y: number) => void,
 ): JSX.Element {
-  return <BookmarksPanel t={t} entries={entries} onOpen={onOpen} onRemove={onRemove} />
+  return <BookmarksPanel t={t} entries={entries} onOpen={onOpen} onRemove={onRemove} onRowMenu={onRowMenu} />
 }
 
 /**
@@ -21,12 +22,14 @@ function bookmarks(
  * @param props - translator, entries, and the open and remove callbacks.
  */
 function BookmarksPanel({
-  t, entries, onOpen, onRemove,
+  t, entries, onOpen, onRemove, onRowMenu,
 }: {
   readonly t: Translate
   readonly entries: readonly BookmarkEntry[]
   readonly onOpen: (path: string) => void
   readonly onRemove: (path: string) => void
+  /** Open the shared context menu for one bookmarked file. */
+  readonly onRowMenu?: (path: string, x: number, y: number) => void
 }): JSX.Element {
   if (entries.length === 0) return <div className={css.empty}>{t('noBookmarks')}</div>
   return (
@@ -34,7 +37,17 @@ function BookmarksPanel({
       <div className={css.sectionTitle}>{t('bookmarks')} · {entries.length}</div>
       {entries.map(entry => (
         <div key={entry.path} className={css.bookmarkRow}>
-          <button type="button" className={css.item} title={entry.path} onClick={() => onOpen(entry.path)}>
+          <button
+            type="button"
+            className={css.item}
+            title={entry.path}
+            onClick={() => onOpen(entry.path)}
+            onContextMenu={(event) => {
+              if (onRowMenu === undefined) return
+              event.preventDefault()
+              onRowMenu(entry.path, event.clientX, event.clientY)
+            }}
+          >
             <span className={css.backlinkName}>{entry.title ?? stemOf(entry.path)}</span>
             <div className={css.itemMeta}>{entry.path}</div>
           </button>

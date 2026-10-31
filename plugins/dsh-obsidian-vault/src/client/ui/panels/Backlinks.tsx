@@ -13,8 +13,9 @@ function mentions(
   backlinks: readonly BacklinkDto[],
   unlinked: readonly BacklinkDto[],
   onOpen: (path: string) => void,
+  onRowMenu?: (path: string, x: number, y: number) => void,
 ): JSX.Element {
-  return <BacklinksPanel t={t} backlinks={backlinks} unlinked={unlinked} onOpen={onOpen} />
+  return <BacklinksPanel t={t} backlinks={backlinks} unlinked={unlinked} onOpen={onOpen} onRowMenu={onRowMenu} />
 }
 
 /**
@@ -22,12 +23,14 @@ function mentions(
  * each row opens that note.
  */
 function BacklinksPanel({
-  t, backlinks, unlinked, onOpen,
+  t, backlinks, unlinked, onOpen, onRowMenu,
 }: {
   readonly t: Translate
   readonly backlinks: readonly BacklinkDto[]
   readonly unlinked: readonly BacklinkDto[]
   readonly onOpen: (path: string) => void
+  /** Open the shared context menu for one source note. */
+  readonly onRowMenu?: (path: string, x: number, y: number) => void
 }): JSX.Element {
   const [expanded, setExpanded] = useState<ReadonlySet<string>>(() => new Set())
   const [filterText, setFilterText] = useState('')
@@ -81,7 +84,17 @@ function BacklinksPanel({
               const visible = open ? items : items.slice(0, 2)
               return (
                 <div key={path} className={css.backlinkGroup}>
-                  <button type="button" className={css.backlinkHead} title={path} onClick={() => toggle(path)}>
+                  <button
+                    type="button"
+                    className={css.backlinkHead}
+                    title={path}
+                    onClick={() => toggle(path)}
+                    onContextMenu={(event) => {
+                      if (onRowMenu === undefined) return
+                      event.preventDefault()
+                      onRowMenu(path, event.clientX, event.clientY)
+                    }}
+                  >
                     <span className={css.backlinkName}>{items[0]!.title}</span>
                     {items[0]!.source === 'canvas'
                       ? <span className={css.backlinkCount}>{t('canvasSource')}</span>

@@ -52,7 +52,13 @@ export function RailPanel({
   t, rail, note, backlinks, unlinked, activeHeading, bookmarks, onRail, onOpen, onHeading, onShiftHeading,
   onRemoveBookmark, onMenu, className,
 }: RailProps): JSX.Element {
+  // Rows inherit the explorer's file menu: a backlink or a bookmark names a real
+  // vault file, so 打开/新标签页/复制链接/关系图 all apply unchanged.
+  const rowMenu = (path: string, x: number, y: number): void => {
+    onMenu({ kind: 'tree-file', path }, x, y)
+  }
   return (
+
     <aside className={`${css.rail} ${className ?? ''}`.trim()}>
       <nav className={css.tabs} aria-label={t('vault')}>
         {TABS.map(tab => (
@@ -77,8 +83,8 @@ export function RailPanel({
         {rail === 'outline'
           ? <Outline t={t} note={note} activeHeading={activeHeading} onHeading={onHeading} onShift={onShiftHeading} />
           : null}
-        {rail === 'backlinks' ? renderBacklinks(t, backlinks, unlinked, onOpen) : null}
-        {rail === 'bookmarks' ? renderBookmarks(t, bookmarks, onOpen, onRemoveBookmark) : null}
+        {rail === 'backlinks' ? renderBacklinks(t, backlinks, unlinked, onOpen, rowMenu) : null}
+        {rail === 'bookmarks' ? renderBookmarks(t, bookmarks, onOpen, onRemoveBookmark, rowMenu) : null}
       </div>
     </aside>
   )
