@@ -50,16 +50,22 @@ export function PurStudioPane({ t, path, onOpenPath }: PurStudioPaneProps): JSX.
   const [prompt, setPrompt] = useState<PurPromptState | null>(null)
   const [picker, setPicker] = useState<PurPickerState | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
+  const canvasRef = useRef<HTMLCanvasElement | null>(null)
+  // Canvas size is read on demand: the controller uses it for fit-to-view and
+  // paste centring, and the element only exists after the first paint.
   const [env] = useState((): PurControllerEnv => ({
-    canvasWidth: 1,
-    canvasHeight: 1,
+    get canvasWidth(): number {
+      return canvasRef.current?.clientWidth ?? 1
+    },
+    get canvasHeight(): number {
+      return canvasRef.current?.clientHeight ?? 1
+    },
     createId: createElementId,
     now: () => Date.now(),
     hasOpenDialog: () => dialogRef.current,
   }))
   const [images] = useState(() => new PurImageCache())
   const containerRef = useRef<HTMLDivElement | null>(null)
-  const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const controllerRef = useRef<PurController | null>(null)
   const hostDepsRef = useRef<PurMenuHostDeps | null>(null)
   const openMenuRef = useRef<(clientX: number, clientY: number) => void>(() => undefined)

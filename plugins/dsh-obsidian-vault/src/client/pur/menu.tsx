@@ -100,7 +100,7 @@ export function PurContextMenu(props: PurContextMenuProps): JSX.Element {
         role="menu"
         tabIndex={-1}
         className={css.menu}
-        style={{ position: 'fixed', left, top, minWidth: 250, maxHeight: 'calc(100vh - 24px)', overflowY: 'auto', overflowX: 'hidden', outline: 'none' }}
+        style={{ position: 'fixed', left, top, minWidth: 210, maxHeight: 'calc(100vh - 24px)', overflowY: 'auto', overflowX: 'hidden', outline: 'none' }}
         onMouseDown={(event) => event.stopPropagation()}
       >
         <PurMenuEntries entries={props.state.model.entries} labels={props.labels} onAction={props.onAction} onPreviewOpacity={props.onPreviewOpacity} onClose={props.onClose} />
@@ -138,6 +138,8 @@ function PurMenuEntries(props: PurMenuEntriesProps): JSX.Element {
                 step={0.05}
                 defaultValue={entry.value}
                 style={{ width: 90 }}
+                onMouseDown={(event) => event.stopPropagation()}
+                onPointerDown={(event) => event.stopPropagation()}
                 onClick={(event) => event.stopPropagation()}
                 onInput={(event) => props.onPreviewOpacity(Number((event.target as HTMLInputElement).value))}
                 onChange={(event) => {
@@ -179,7 +181,7 @@ function PurMenuEntries(props: PurMenuEntriesProps): JSX.Element {
                 className={css.menu}
                 // Above the dismiss overlay (z-index 1000), otherwise clicks land on the
                 // overlay and close the menu instead of activating the entry.
-                style={{ position: 'fixed', left: submenu.x, top: submenu.y, minWidth: 200, maxHeight: '60vh', overflowY: 'auto', zIndex: 1001 }}
+                style={{ position: 'fixed', left: submenu.x, top: submenu.y, minWidth: 180, maxHeight: '60vh', overflowY: 'auto', zIndex: 1001 }}
                 onMouseDown={(event) => event.stopPropagation()}
                 onContextMenu={(event) => event.preventDefault()}
               >

@@ -186,6 +186,10 @@ export function createViewMenuHost(deps: () => PurMenuDeps): PurMenuHost {
     exportCanvasDocument: () => void exportCanvasDocument(deps().exporterHost()),
     togglePopout: unsupported,
     togglePinTop: unsupported,
+    openAsset: (id) => {
+      void id
+      new Notice(deps().read('pur.unsupportedFeature'))
+    },
     openEmbeddingNote: (element) => openEmbeddingNoteIn(deps(), element),
     openLink: (target, destination) => openViewLink(deps(), target, destination),
     copyLinkOf: (element) => copyLinkOf(deps(), element),

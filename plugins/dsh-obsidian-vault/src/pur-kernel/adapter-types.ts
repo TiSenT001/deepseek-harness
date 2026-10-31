@@ -76,6 +76,8 @@ export interface PurMenuHost {
   openLink(target: string, destination: PurOpenDestination): void
   /** Jump to the note that embeds this image, when one does. */
   openEmbeddingNote(element: PurElement): void
+  /** Open one plugin-owned image asset for preview. */
+  openAsset(id: string, destination: PurOpenDestination): void
   /** Copy the element's link or image source to the clipboard. */
   copyLinkOf(element: PurElement): void
   /** Reveal the element's target in the file explorer. */

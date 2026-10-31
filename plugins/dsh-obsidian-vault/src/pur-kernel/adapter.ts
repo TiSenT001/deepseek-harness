@@ -105,7 +105,10 @@ export function runMenuAction(controller: PurController, host: PurMenuHost, acti
     case 'open-new-tab':
     case 'open-right': {
       const target = openTarget(requireElement(controller, action))
-      if (target !== null) host.openLink(target, id === 'open' ? 'current' : id === 'open-new-tab' ? 'new-tab' : 'right')
+      const destination = id === 'open' ? 'current' : id === 'open-new-tab' ? 'new-tab' : 'right'
+      // A plugin-owned asset has no vault path; open it through the asset route.
+      if (target !== null && target.startsWith('pur-asset:')) host.openAsset(target.slice('pur-asset:'.length), destination)
+      else if (target !== null) host.openLink(target, destination)
       return []
     }
     case 'open-embedded':

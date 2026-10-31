@@ -20,7 +20,7 @@ import {
 import type { PurController, PurControllerEffect, PurElement, PurMenuHost, PurRenderPreferences } from '../../pur-kernel/index.ts'
 import type { Translate } from '../i18n.ts'
 import type { PurLabelBundles } from '../i18n/pur-labels.ts'
-import { fetchNote, findEmbeddingNotes, saveNote, storeImage } from '../api.ts'
+import { fetchNote, findEmbeddingNotes, purAssetUrl, saveNote, storeImage } from '../api.ts'
 import { purReader } from './labels.ts'
 import { PurImageCache, fetchNoteSummary, resolveNoteLink } from './loader.ts'
 import { fileToDataURL, insertUrlInput } from './paste-drop.ts'
@@ -142,6 +142,11 @@ export function createPurMenuHost(deps: () => PurMenuHostDeps): PurMenuHost {
     exportCanvasDocument: () => void exportCanvasFlow(deps()),
     togglePopout: unsupported,
     togglePinTop: unsupported,
+    openAsset: (id, destination) => {
+      const url = purAssetUrl('pur-asset:' + id)
+      if (destination === 'current') window.location.assign(url)
+      else window.open(url, '_blank', 'noopener')
+    },
     openEmbeddingNote: (element) => {
       const d = deps()
       const title = d.path.replace(/^.*\//, '').replace(/\.PurStudio$/i, '')
