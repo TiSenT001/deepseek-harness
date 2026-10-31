@@ -5,7 +5,7 @@
  * through the pane; the slider previews on input and commits on change.
  * @module dsh-obsidian-vault/client/pur/menu
  */
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { PurMenuEntry, PurMenuModel, PurMenuPoint } from '../../pur-kernel/index.ts'
 import type { PurLabelBundles } from '../i18n/pur-labels.ts'
 import { css } from '../ui/theme.ts'
@@ -49,18 +49,57 @@ const MENU_H = 320
 export function PurContextMenu(props: PurContextMenuProps): JSX.Element {
   const left = Math.max(4, Math.min(props.state.x, window.innerWidth - MENU_W))
   const top = Math.max(4, Math.min(props.state.y, window.innerHeight - MENU_H))
+  const boxRef = useRef<HTMLDivElement | null>(null)
+
+  // The menu has no focusable trigger, so it owns the keyboard while open:
+  // Escape dismisses, the arrows walk the entries and Enter activates one.
+  useEffect(() => {
+    const items = (): HTMLElement[] =>
+      Array.from(boxRef.current?.querySelectorAll<HTMLElement>('[data-pur-menu-item]') ?? [])
+    boxRef.current?.focus()
+    const onKey = (event: KeyboardEvent): void => {
+      if (event.key === 'Escape') {
+        event.preventDefault()
+        props.onClose()
+        return
+      }
+      if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp' && event.key !== 'Enter' && event.key !== ' ') return
+      const all = items()
+      if (all.length === 0) return
+      const current = all.indexOf(document.activeElement as HTMLElement)
+      if (event.key === 'Enter' || event.key === ' ') {
+        const item = all[current]
+        if (item === undefined) return
+        event.preventDefault()
+        item.click()
+        return
+      }
+      event.preventDefault()
+      const step = event.key === 'ArrowDown' ? 1 : -1
+      const next = current < 0 ? (step > 0 ? 0 : all.length - 1) : (current + step + all.length) % all.length
+      all[next]?.focus()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [props])
+
   return (
     <div
       style={{ position: 'fixed', inset: 0, zIndex: 1000 }}
       onMouseDown={props.onClose}
-      onContextMenu={(event) => {
-        event.preventDefault()
-        props.onClose()
-      }}
+      // The menu opens on the canvas pointerup that ends a right-click, and the
+      // browser fires `contextmenu` right after that same gesture. Closing here
+      // would dismiss the menu in the frame it appeared, so the overlay only
+      // suppresses the native menu; dismissal stays on mousedown, Escape and
+      // entry activation.
+      onContextMenu={(event) => event.preventDefault()}
     >
       <div
+        ref={boxRef}
+        role="menu"
+        tabIndex={-1}
         className={css.menu}
-        style={{ position: 'fixed', left, top, minWidth: 180, maxHeight: '70vh', overflowY: 'auto' }}
+        style={{ position: 'fixed', left, top, minWidth: 180, maxHeight: '70vh', overflowY: 'auto', outline: 'none' }}
         onMouseDown={(event) => event.stopPropagation()}
       >
         <PurMenuEntries entries={props.state.model.entries} labels={props.labels} onAction={props.onAction} onPreviewOpacity={props.onPreviewOpacity} onClose={props.onClose} />
@@ -109,6 +148,9 @@ function PurMenuEntries(props: PurMenuEntriesProps): JSX.Element {
           ) : (
             <div
               className={css.menuItem}
+              role="menuitem"
+              tabIndex={-1}
+              data-pur-menu-item=""
               onMouseEnter={() => setOpenId(entry.children !== undefined ? entry.id : null)}
               onClick={() => {
                 if (entry.children !== undefined) return

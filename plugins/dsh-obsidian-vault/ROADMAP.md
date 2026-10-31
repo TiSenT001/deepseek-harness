@@ -1,4 +1,11 @@
-﻿## 第五十九轮：移除插件桥接 + 精简设置面板（2026-10-31）
+﻿## 第六十轮：修好画布右键菜单 + 键盘操作（2026-10-31）
+
+- **真 bug**：Pur 画布右键菜单「闪一下就消失」。菜单在 pointerup 里打开，而浏览器紧接着在**同一手势**后触发 `contextmenu`，落在菜单的全屏遮罩上，遮罩的处理函数把菜单关了。改为遮罩只 `preventDefault`（不关闭），关闭仍走 mousedown/Esc/选中条目。这就是用户报的「右键菜单栏没有」。
+- **键盘**：菜单获得焦点后支持 Esc 关闭、↑↓ 在条目间移动、Enter/空格激活；条目补 `role="menuitem"`/`tabIndex`，容器补 `role="menu"` —— 之前这套完全为零（只能点外面关）。
+- **审核**：`ui.ribbon-pur-icon` 扩写为「新建画布 → 右键出菜单 → Esc 关闭 → 关标签 → 删文件」，把画布菜单重新纳入覆盖。
+- **验证**：`tsc` 0、**381/381**、全量审核 **99/99、0 控制台错误**。
+
+## 第五十九轮：移除插件桥接 + 精简设置面板（2026-10-31）
 
 - **删除桥接子系统**：`src/shim/**`（19 文件，Obsidian API 垫片）、`client/bridge.ts`/`bridge-commands.ts`/`bridge-dispatch.ts`、`client/ui/PluginView.tsx`、`bridge-protocol.ts`、`vault/bridge.ts`、`plugins/bridge-toggle`/`plugins/frame`/`plugins/script` 路由、`bridge/data` 路由与 `shim.js` 路由；`tsdown` 去掉 shim 包（构建入口少一个）。`bridge-endpoints.ts` 保留文件读写路由，因为 **DSH 侧 Pur 面板自己用它们读写库文件**。
 - **设置面板**：移除「外观」（舒适/紧凑）整段与「可桥接插件」整段；DSH 插件行里那个「在 DSH 中运行」占位开关一并删掉。面板现在只剩 DSH 插件列表与核心插件开关。

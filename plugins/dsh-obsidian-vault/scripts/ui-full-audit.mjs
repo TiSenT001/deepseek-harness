@@ -2358,16 +2358,27 @@ try {
   })
 
   await check('ui.ribbon-pur-icon', async () => {
-    // Bridging is gone: the rail entry now writes a real canvas file and opens
-    // it in the reading area instead of loading an Obsidian plugin frame.
+    // Bridging is gone: the rail entry writes a real canvas file and opens it.
     const entry = page.locator('.ov-ribbon button[aria-label="打开 Pur Studio"]')
     assert((await entry.count()) === 1, `Pur Studio ribbon entry: ${await entry.count()}`)
     assert((await entry.getAttribute('aria-pressed')) === 'false', 'Pur Studio entry is an action, never pressed')
     await entry.click()
-    await sleep(1200)
+    await sleep(1500)
     const tab = page.locator('.ov-doctab', { hasText: '新画布' }).first()
     assert((await tab.count()) === 1, 'ribbon click did not open a canvas tab')
-    assert((await entry.getAttribute('aria-pressed')) === 'false', 'Pur Studio entry stayed pressed')
+
+    // The canvas menu is the kernel's own overlay: right-click opens it and
+    // Escape dismisses it (it has no focusable trigger of its own).
+    const canvas = page.locator('canvas').first()
+    await canvas.click({ button: 'right', position: { x: 200, y: 200 } })
+    await sleep(500)
+    assert((await page.locator('.ov-menu').count()) >= 1, 'canvas right-click did not open a menu')
+    const items = await page.locator('.ov-menu [data-pur-menu-item]').count()
+    assert(items > 0, `canvas menu has no keyboard-reachable items: ${items}`)
+    await page.keyboard.press('Escape')
+    await sleep(300)
+    assert((await page.locator('.ov-menu').count()) === 0, 'Escape did not dismiss the canvas menu')
+
     const created = await tab.getAttribute('title')
     await tab.locator('.ov-doctab-close').click()
     await sleep(400)
