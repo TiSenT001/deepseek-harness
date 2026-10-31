@@ -1,3 +1,10 @@
+## 第八十四轮：笔记坏图占位 + Obsidian 入库内容寻址（2026-10-31）
+
+- **笔记正文坏图占位**：`NoteView` 在正文容器上以捕获阶段监听 `error`/`load`（`error` 不冒泡），失败的 `<img>` 前插入与盒子同尺寸的占位块（虚线 + 「图片不可用」），图片恢复后自动移除；尺寸取 `getBoundingClientRect`，拿不到就用 160×100，不产生布局跳动。文案走 i18n（`noteImageFailed`）。
+- **Obsidian 入库按内容去重**：新增 `pur-kernel/attachment-name.ts`（`attachmentName(baseName, hash)` → `hash8-name.ext`，非法字符替换、保留扩展名），`pur-obsidian/paste-drop.ts` 的 `storeFile` 改为 SHA-256 内容寻址：同字节复用同一路径，不再堆 `_1`、`_2`。
+- **审核修正**：子 agent 顺带把 `NoteView.tsx` 若干无关多行语句压成单行（+75/-26 的噪音）。已还原提交版本后**只重新插入特性块**，diff 收敛为 **+40/-0**；子 agent 只加了纯函数没接 `storeFile`，由我补齐接线。
+- **测试**：新增坏图降级与命名去重用例，**407/407**；`tsc` 0、`tsdown` 成功、审核 **99/99、0 控制台错误**。
+
 ## 第八十三轮：多 agent 批次（占位/头部菜单/只读视图菜单）+ BOM 清理（2026-10-31）
 
 - **坏图占位**：`PurImageCache` 用带 `failedKeys` 的 Map 记录解码失败，`onerror` 后触发一次重绘且不再重发请求；`render-cards` 对失败或空 key 画**纯几何**占位（虚线内框 + 居中破图标记），kernel 内不出现任何文案。

@@ -7,6 +7,7 @@
 import { Notice, TFile, requestUrl } from 'obsidian'
 import type { App } from 'obsidian'
 import {
+  attachmentName,
   NOTE_RAW_OBSIDIAN_URI,
   NOTE_RAW_PATH,
   NOTE_RAW_PICKER,
@@ -83,14 +84,13 @@ export async function insertVaultNote(host: PurInsertHost, world: PurMenuPoint, 
 async function storeFile(host: PurInsertHost, file: File): Promise<string | null> {
   try {
     if (!(await host.app.vault.adapter.exists(ATTACHMENT_DIR))) await host.app.vault.adapter.mkdir(ATTACHMENT_DIR)
-    const safe = file.name.replace(/[<>:"/\\|?*]/g, '_') || 'image.png'
-    let path = `${ATTACHMENT_DIR}/${safe}`
-    let counter = 1
-    while (await host.app.vault.adapter.exists(path)) {
-      path = `${ATTACHMENT_DIR}/${safe.replace(/(\.[^.]*)?$/, `_${counter}$1`)}`
-      counter++
-    }
-    await host.app.vault.createBinary(path, await file.arrayBuffer())
+    const bytes = await file.arrayBuffer()
+    const digest = await crypto.subtle.digest('SHA-256', bytes)
+    const hex = Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join('')
+    // Content-addressed, so importing the same picture twice reuses one file
+    // instead of piling up `_1`, `_2` copies.
+    const path = `${ATTACHMENT_DIR}/${attachmentName(file.name, hex)}`
+    if (!(await host.app.vault.adapter.exists(path))) await host.app.vault.createBinary(path, bytes)
     return path
   } catch {
     new Notice(host.read('pur.importFailed'))

@@ -37,6 +37,7 @@ export const ZH = {
   noBacklinks: '没有笔记链接到这里',
   noTags: '还没有标签',
   noOutline: '这篇笔记没有标题',
+  noteImageFailed: '图片不可用',
   quickSwitch: '快速切换',
   quickPlaceholder: '按标题、别名或路径查找，? 前缀全文搜索，> 前缀运行命令…',
   quickModeFiles: '文件',

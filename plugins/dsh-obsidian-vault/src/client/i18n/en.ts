@@ -38,6 +38,7 @@ export const EN: Dict = {
   noBacklinks: 'No note links here yet',
   noTags: 'No tags yet',
   noOutline: 'This note has no headings',
+  noteImageFailed: 'Image unavailable',
   quickSwitch: 'Quick switcher',
   quickPlaceholder: 'Find by title, alias, or path; ? for full-text, > for commands…',
   quickModeFiles: 'Files',

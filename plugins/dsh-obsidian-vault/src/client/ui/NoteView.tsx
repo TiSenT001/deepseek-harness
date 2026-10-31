@@ -59,6 +59,8 @@ type Rendered =
 
 const EMBED_LIMIT = 6
 const IMAGE_EMBED = /\.(png|jpe?g|gif|webp|svg|bmp|avif)$/i
+/** Placeholder size in CSS pixels when a failed image never got a measurable box. */
+const FALLBACK_IMAGE = { width: 160, height: 100 } as const
 
 /**
  * Render one note.
@@ -160,6 +162,44 @@ export function NoteView({
     }
     highlightDocument(bodyRef.current)
   }, [rendered])
+
+  useEffect(() => {
+    const container = bodyRef.current
+    if (container === null) return
+    // `error` does not bubble, so one capture listener covers every image the
+    // renderer produced. The placeholder sits beside the image: the renderer
+    // still owns that node, and React must keep removing it from its parent.
+    const mark = (image: HTMLImageElement): void => {
+      if (image.classList.contains(css.noteImageFailed)) return
+      const box = image.getBoundingClientRect()
+      const placeholder = document.createElement('span')
+      placeholder.className = css.noteImagePlaceholder
+      placeholder.style.width = `${Math.round(box.width) || FALLBACK_IMAGE.width}px`
+      placeholder.style.height = `${Math.round(box.height) || FALLBACK_IMAGE.height}px`
+      placeholder.textContent = t('noteImageFailed')
+      image.classList.add(css.noteImageFailed)
+      image.before(placeholder)
+    }
+    const clear = (image: HTMLImageElement): void => {
+      if (!image.classList.contains(css.noteImageFailed)) return
+      image.classList.remove(css.noteImageFailed)
+      const placeholder = image.previousElementSibling
+      if (placeholder !== null && placeholder.classList.contains(css.noteImagePlaceholder)) placeholder.remove()
+    }
+    // Drop placeholders whose image left the document with an earlier render.
+    for (const placeholder of container.querySelectorAll(`span.${css.noteImagePlaceholder}`)) {
+      const image = placeholder.nextElementSibling
+      if (!(image instanceof HTMLImageElement) || !image.classList.contains(css.noteImageFailed)) placeholder.remove()
+    }
+    const onError = (event: Event): void => { if (event.target instanceof HTMLImageElement) mark(event.target) }
+    const onLoad = (event: Event): void => { if (event.target instanceof HTMLImageElement) clear(event.target) }
+    container.addEventListener('error', onError, true)
+    container.addEventListener('load', onLoad, true)
+    return () => {
+      container.removeEventListener('error', onError, true)
+      container.removeEventListener('load', onLoad, true)
+    }
+  }, [rendered, t])
 
   useEffect(() => {
     if (anchor === undefined) return

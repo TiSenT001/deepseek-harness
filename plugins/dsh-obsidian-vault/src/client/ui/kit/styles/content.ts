@@ -176,4 +176,26 @@ details.ov-callout[open] > summary::before { content: '▾'; }
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+/* Reading-view image fallback: a failed image keeps its box as a quiet block. */
+.ov-document img.ov-note-image-failed { display: none; }
+.ov-document .ov-note-image-placeholder {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  max-width: 100%;
+  padding: 0 8px;
+  border: 1px dashed var(--dsw-alias-border-l2, #3a3a42);
+  border-radius: 6px;
+  background: var(--dsw-alias-bg-layer-1, #1d1d22);
+  color: var(--dsw-alias-label-tertiary, #8b8b94);
+  font-size: 12px;
+  line-height: 1.4;
+  overflow: hidden;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  vertical-align: middle;
+}
 `

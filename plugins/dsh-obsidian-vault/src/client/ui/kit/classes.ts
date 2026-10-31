@@ -106,6 +106,8 @@ export const css = {
   docBacklinkRow: 'ov-doc-backlink-row',
   docBacklinkTitle: 'ov-doc-backlink-title',
   docBacklinkContext: 'ov-doc-backlink-context',
+  noteImageFailed: 'ov-note-image-failed',
+  noteImagePlaceholder: 'ov-note-image-placeholder',
   search: 'ov-search',
   searchBar: 'ov-search-bar',
   searchInput: 'ov-search-input',
