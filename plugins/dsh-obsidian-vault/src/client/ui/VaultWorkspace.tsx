@@ -85,7 +85,7 @@ export interface VaultWorkspaceProps {
   readonly onShowNoteView: () => void
   readonly onOpenWithAnchor: MainProps['onOpen']
   readonly onCreateNote: MainProps['onCreate']
-  readonly onOpenPath: RailProps['onOpen']
+  readonly onOpenPath: (path: string, destination?: 'current' | 'new-tab' | 'right') => void
   readonly activeHeading: RailProps['activeHeading']
   readonly onRail: RailProps['onRail']
   readonly onHeading: RailProps['onHeading']

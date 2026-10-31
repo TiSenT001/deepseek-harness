@@ -24,7 +24,7 @@ export interface FileViewProps {
   /** Called after the Markdown editor writes the file. */
   readonly onSaved?: () => void
   /** Open another vault path; the Pur pane navigates to freshly saved canvases. */
-  readonly onOpenPath?: (path: string) => void
+  readonly onOpenPath?: (path: string, destination?: 'current' | 'new-tab' | 'right') => void
 }
 
 type State =

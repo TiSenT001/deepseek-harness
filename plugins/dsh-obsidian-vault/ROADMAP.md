@@ -1,4 +1,12 @@
-﻿## 第七十七轮：审计落地的三个真 bug（2026-10-31）
+﻿## 第七十八轮：画布元素「打开」真正导航（2026-10-31）
+
+- **修好「打开」**：`openPurLink` 对 vault 路径只调 `noteOpen()`（只写日志，不导航），且 `destination` 在 host 层被整个丢弃。现在 `openLink(target, destination)`：URL 走浏览器标签；vault 路径走 `openPath(target, destination)`，由工作区决定当前页/新标签。
+- **穿线**：`PurStudioPane.onOpenPath` 与 `PurMenuHostDeps.openPath` 增加可选 destination；`FileView`、`VaultWorkspace` 的 prop 类型同步放宽；`VaultPage` 把 `new-tab`/`right` 映射成 `openPath(..., { newTab: true })`。
+- **实测**：右键 note-link →「打开」→ 标签页从 `菜单探针.purstudio` 变成 `关联探针` ✅（此前完全无反应）。
+- **已知边界**：`在新标签页打开` 目前与「打开」同效（未叠加标签页），已记录待查；`在右侧打开` 同样退化为新标签。
+- **验证**：`tsc` 0、**392/392**、`tsdown` 成功、审核 **99/99、0 控制台错误**。
+
+## 第七十七轮：审计落地的三个真 bug（2026-10-31）
 
 - **导入/粘贴/拖入图片失效**：`storeImage` 仍按旧契约读 `result.path`，而路由已改为返回 `{id, ref}` → 拿到 `undefined` → `path.length` 抛 TypeError，图片静默不插入。改为返回 `ref`（`pur-asset:<id>`）。
 - **不透明度滑块仍"拖不动"**：React 的 `onChange` 在 range 上映射到原生 `input`，**拖动过程中连续触发**，于是第一步提交并关菜单。改为 `onInput` 只做预览、`onPointerUp`/`onKeyUp` 提交并关闭。

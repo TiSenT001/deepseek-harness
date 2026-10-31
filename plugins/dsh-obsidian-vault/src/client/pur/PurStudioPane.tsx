@@ -37,7 +37,7 @@ export interface PurStudioPaneProps {
   /** Vault-relative `.PurStudio` document path. */
   readonly path: string
   /** Open another vault path; newly created canvases navigate to themselves. */
-  readonly onOpenPath?: (path: string) => void
+  readonly onOpenPath?: (path: string, destination?: PurOpenDestination) => void
 }
 
 /**

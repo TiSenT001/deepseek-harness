@@ -1,4 +1,4 @@
-﻿/**
+/**
  * The vault workspace page: explorer, reading area, right rail, quick switcher,
  * and the graph. Owns shared view state, the data fetches, and the one action
  * dispatcher every surface calls; layout composition lives in VaultWorkspace.
@@ -284,7 +284,11 @@ export function VaultPage({ pickDirectory, hasPicker }: VaultPageProps = {}): JS
           setView('note')
           createTarget(target)
         }}
-        onOpenPath={(next) => openPath(next)}
+        onOpenPath={(next, destination) => {
+          // A new tab honours the destination; the right split is not available to
+          // the canvas pane yet, so it falls back to a tab.
+          openPath(next, destination === undefined || destination === 'current' ? {} : { newTab: true })
+        }}
         activeHeading={activeHeading}
         onRail={setRail}
         onHeading={onHeading}

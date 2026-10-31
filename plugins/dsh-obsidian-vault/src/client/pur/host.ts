@@ -55,7 +55,7 @@ export interface PurMenuHostDeps {
   /** Markdown note picker; null settles a dismissal. */
   readonly pickNote: () => Promise<string | null>
   /** Open a vault path in the workspace; absent where the pane cannot navigate. */
-  readonly openPath?: (path: string) => void
+  readonly openPath?: (path: string, destination?: PurOpenDestination) => void
   /** Show a full-size preview of one plugin-owned asset. */
   readonly openPreview?: (id: string, destination: PurOpenDestination) => void
 }
@@ -165,7 +165,15 @@ export function createPurMenuHost(deps: () => PurMenuHostDeps): PurMenuHost {
         }
         d.openPath?.(first)
       }).catch(() => d.notice(d.t('pur.noEmbeddingNote')))
-    },    openLink: (target) => openPurLink(target),
+    },    openLink: (target, destination) => {
+      // A URL leaves the app; a vault path navigates inside the workspace, so the
+      // destination decides between the current tab and a new one.
+      if (/^https?:/i.test(target)) {
+        window.open(target, '_blank', 'noopener')
+        return
+      }
+      deps().openPath?.(target, destination)
+    },
     copyLinkOf: (element) => {
       const text = element.type === 'note-link' ? element.link : element.type === 'image' ? (element.link ?? element.original) : ''
       if (text === '') return
