@@ -34185,6 +34185,12 @@ export const MENU_SCENARIOS: MenuScenario[] = [
             "c": null
           },
           {
+            "t": "importPur",
+            "i": "image",
+            "s": false,
+            "c": null
+          },
+          {
             "t": "importNet",
             "i": "link",
             "s": false,

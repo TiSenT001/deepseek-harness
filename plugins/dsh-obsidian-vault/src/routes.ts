@@ -19,6 +19,8 @@ import { resolvePurImage } from './vault/pur-image.ts'
 import { PACKAGE_ROOT, PLUGIN_DATA_FOLDER, PUR_ASSETS_FOLDER } from './package-root.ts'
 import { launchProgram, listOpenPrograms, resolveOpenTarget } from './system-open.ts'
 import { deleteCodeSnippet, readCodeSnippets, saveCodeSnippet } from './code-snippets.ts'
+import { importZipPur, isZipPur } from './vault/pur-import.ts'
+import { storePurBytes } from './vault/pur-store.ts'
 import type { CodeSnippet } from './code-snippets.ts'
 import { findEmbeddingNotes } from './vault/pur-embedders.ts'
 import { externalizeCanvas } from './vault/pur-externalize.ts'
@@ -329,6 +331,28 @@ async function dispatch(
       }
       response.writeHead(200, { 'content-type': image.contentType, 'cache-control': 'no-cache' })
       response.end(image.bytes)
+      return
+    }
+    case 'pur/import': {
+      const body = await readJson(request)
+      const name = typeof body['name'] === 'string' ? body['name'] : 'canvas.pur'
+      const data = typeof body['data'] === 'string' ? body['data'] : ''
+      if (data.length === 0) {
+        send(response, 400, { error: 'data is required' })
+        return
+      }
+      const bytes = Buffer.from(data, 'base64')
+      if (!isZipPur(bytes)) {
+        // PureRef's native format is QDataStream; the ZIP reader cannot guess at
+        // it, so the caller is told rather than handed an empty canvas.
+        send(response, 415, { error: 'unsupported pur container', name })
+        return
+      }
+      const result = await importZipPur(bytes, async (entryName, entryBytes) => {
+        const id = await storePurBytes(PUR_ASSETS_FOLDER, entryName, entryBytes)
+        return id === undefined ? undefined : `${PUR_ASSET_SCHEME}${id}`
+      })
+      send(response, 200, { elements: result.elements, unsupported: result.unsupported })
       return
     }
     case 'pur/code-nodes': {

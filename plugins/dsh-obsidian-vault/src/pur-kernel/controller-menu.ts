@@ -79,6 +79,7 @@ function blankMenu(context: PurMenuContext): PurMenuEntry[] {
         { id: 'import-local', icon: 'image', labelKey: 'importLocal' },
         { id: 'import-ir', icon: 'code', labelKey: 'importIr' },
         { id: 'import-canvas', icon: 'layout-dashboard', labelKey: 'importCanvas' },
+        { id: 'import-pur', icon: 'image', labelKey: 'importPur' },
         { id: 'import-net', icon: 'link', labelKey: 'importNet' },
       ],
     },

@@ -323,3 +323,31 @@ export async function deleteCodeSnippet(id: string): Promise<readonly CodeSnippe
     body: JSON.stringify({ action: 'delete', id }),
   })).nodes
 }
+
+
+/** One element the host reconstructed from a PureRef document. */
+export interface ImportedPurElement {
+  /** Only images are mapped today. */
+  readonly type: 'image'
+  /** World position and size. */
+  readonly x: number
+  readonly y: number
+  readonly w: number
+  readonly h: number
+  /** `pur-asset:<id>` reference. */
+  readonly ref: string
+}
+
+/**
+ * Import a ZIP-form PureRef document.
+ * @param name - source file name.
+ * @param data - base64 file contents.
+ * @returns the elements and any tags the reader skipped.
+ */
+export async function importPurFile(name: string, data: string): Promise<{ elements: readonly ImportedPurElement[]; unsupported: readonly string[] }> {
+  return request<{ elements: ImportedPurElement[]; unsupported: string[] }>('pur/import', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ name, data }),
+  })
+}

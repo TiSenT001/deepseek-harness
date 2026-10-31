@@ -22,7 +22,7 @@ import type { Translate } from '../i18n.ts'
 import type { PurLabelBundles } from '../i18n/pur-labels.ts'
 import { fetchNote, findEmbeddingNotes, purAssetUrl, saveNote, storeImage } from '../api.ts'
 import { findElement } from '../../pur-kernel/index.ts'
-import { fetchCodeSnippets, openFileWith, saveCodeSnippet } from '../api.ts'
+import { fetchCodeSnippets, importPurFile, openFileWith, saveCodeSnippet } from '../api.ts'
 import { purReader } from './labels.ts'
 import { PurImageCache, fetchNoteSummary, resolveNoteLink } from './loader.ts'
 import { fileToDataURL, insertUrlInput } from './paste-drop.ts'
@@ -113,6 +113,19 @@ export function createPurMenuHost(deps: () => PurMenuHostDeps): PurMenuHost {
         ? deps().controller.insertImage(at.x, at.y, '', dataURL)
         : deps().controller.insertImage(at.x, at.y, path))
     }),
+    importPur: (at) => {
+      const d = deps()
+      pickFile('.pur,.purz', async (file) => {
+        if (file === null) return
+        const bytes = new Uint8Array(await file.arrayBuffer())
+        const data = btoa(String.fromCharCode(...bytes))
+        const result = await importPurFile(file.name, data)
+        for (const element of result.elements) {
+          d.run(d.controller.insertImage(element.x + at.x, element.y + at.y, element.ref))
+        }
+        d.notice(d.t('pur.importedCount').replace('{count}', String(result.elements.length)))
+      })
+    },
     importIr: (at) => pickFile('.yaml,.yml,.json', async (file) => {
       try {
         const groups = irToElements(parseSimpleYAML(await file.text()), at.x, at.y, { createId: createElementId })

@@ -158,6 +158,9 @@ export function runMenuAction(controller: PurController, host: PurMenuHost, acti
     case 'import-local':
       host.importLocal(world)
       return []
+    case 'import-pur':
+      host.importPur(action.world)
+      return []
     case 'import-ir':
       host.importIr(world)
       return []

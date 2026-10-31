@@ -54,6 +54,8 @@ export interface PurMenuHost {
   importLocal(at: PurMenuPoint): void
   /** Import a YAML/IR file at the point. */
   importIr(at: PurMenuPoint): void
+  /** Import a PureRef \.pur\ document at one canvas point. */
+  importPur(at: PurMenuPoint): void
   /** Import a JSON Canvas file at the point. */
   importCanvas(at: PurMenuPoint): void
   /** Import from a remote URL at the point. */

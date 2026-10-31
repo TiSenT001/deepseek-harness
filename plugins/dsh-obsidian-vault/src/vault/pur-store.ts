@@ -94,3 +94,26 @@ function extensionOf(name: string): string {
   if (dot < 0 || dot === name.length - 1) return ''
   return name.slice(dot + 1).toLowerCase().replace(/[^a-z0-9]/g, '')
 }
+
+
+/**
+ * Store raw picture bytes under their content address.
+ * @param folder - asset folder.
+ * @param name - source name, used for the extension.
+ * @param bytes - picture bytes.
+ * @returns the asset id, or undefined when the bytes carry no known type.
+ */
+export async function storePurBytes(folder: string, name: string, bytes: Uint8Array): Promise<string | undefined> {
+  const buffer = Buffer.from(bytes.buffer, bytes.byteOffset, bytes.byteLength)
+  const id = assetId(buffer, extensionOf(name))
+  await mkdir(folder, { recursive: true })
+  const target = join(folder, id)
+  try {
+    await readFile(target)
+    return id
+  } catch {
+    // Absent: write it below.
+  }
+  await writeFile(target, buffer)
+  return id
+}
