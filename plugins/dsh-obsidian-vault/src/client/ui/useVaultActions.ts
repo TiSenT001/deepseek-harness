@@ -1,4 +1,4 @@
-﻿/**
+/**
  * The page's single action dispatcher: menus, the explorer, tabs, and the rail
  * all call these functions, so mutations, prompts, tab remapping, and reloads
  * happen in one place.

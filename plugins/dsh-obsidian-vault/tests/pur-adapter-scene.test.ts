@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Adapter scene and document tests: zoom badge window, scene assembly,
  * export-text documents, locale coverage of every menu labelKey, label
  * interpolation, and the generic element patch command.

@@ -6,7 +6,7 @@
  */
 import { assetUrl, purAssetUrl, bridgeExists, bridgeReadText, bridgeWriteBinary, bridgeWriteText, createFolder, fetchNote, fetchTree } from '../api.ts'
 import { parseStudioDocument, serializeStudioDocument } from '../../pur-kernel/index.ts'
-import type { PurStudioDocument } from '../../pur-kernel/index.ts'
+import type { PurImageLookup, PurStudioDocument } from '../../pur-kernel/index.ts'
 import type { TreeNodeDto } from '../../protocol.ts'
 
 /** Folder every export lands in, mirroring the Obsidian adapter. */
@@ -106,32 +106,42 @@ export async function listMarkdownNotes(): Promise<readonly string[]> {
   return out
 }
 
+/** Decoded images keyed by `dataURL || original`, with the failed keys attached. */
+class PurImageMap extends Map<string, CanvasImageSource> implements PurImageLookup {
+  /** Keys the browser could not decode; the renderer draws a placeholder for them. */
+  readonly failedKeys = new Set<string>()
+}
+
 /** Decoded canvas images keyed by `dataURL || original`, with load dedupe. */
 export class PurImageCache {
-  private readonly images = new Map<string, CanvasImageSource>()
+  private readonly images = new PurImageMap()
   private readonly pending = new Set<string>()
 
-  /** The map the scene builder reads. @returns decoded images by key. */
-  get map(): ReadonlyMap<string, CanvasImageSource> {
+  /** The lookup the scene builder reads. @returns decoded images by key, with failed keys. */
+  get map(): PurImageLookup {
     return this.images
   }
 
   /**
-   * Decode an image when missing; `onload` fires once it is drawable.
+   * Decode an image when missing; the callback fires once the request settles,
+   * whether the image decoded or the cache recorded a failure. A failed key is
+   * never requested again, so a broken reference costs one request per cache.
    * @param key - the scene's image key (`dataURL || original`).
-   * @param onload - repaint callback.
+   * @param onSettled - repaint callback.
    */
-  request(key: string, onload: () => void): void {
-    if (this.images.has(key) || this.pending.has(key)) return
+  request(key: string, onSettled: () => void): void {
+    if (key === '' || this.images.has(key) || this.images.failedKeys.has(key) || this.pending.has(key)) return
     this.pending.add(key)
     const image = new Image()
     image.onload = () => {
       this.pending.delete(key)
       this.images.set(key, image)
-      onload()
+      onSettled()
     }
     image.onerror = () => {
       this.pending.delete(key)
+      this.images.failedKeys.add(key)
+      onSettled()
     }
     image.src = key.startsWith('data:') || /^https?:/i.test(key) ? key : purAssetUrl(key)
   }

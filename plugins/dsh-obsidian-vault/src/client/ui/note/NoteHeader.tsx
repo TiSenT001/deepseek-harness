@@ -6,6 +6,7 @@
  */
 import type { NoteDto } from '../../../protocol.ts'
 import type { Translate } from '../../i18n.ts'
+import type { MenuScene } from '../menu/registry.ts'
 import { css } from '../theme.ts'
 
 /** Props for {@link NoteHeader}. */
@@ -13,6 +14,11 @@ export interface NoteHeaderProps {
   readonly t: Translate
   readonly note: NoteDto
   readonly onPathFilter: (prefix: string) => void
+  /**
+   * Open the shared context menu for the note file this header names; absent
+   * when the surface has no menu host.
+   */
+  readonly onMenu?: (scene: MenuScene, x: number, y: number) => void
   /** Switch the same Markdown file to its source view; absent without one. */
   readonly onSource?: () => void
   /** Toggle the in-document backlinks section; absent when the note has none. */
@@ -25,11 +31,21 @@ export interface NoteHeaderProps {
  * Render the note header.
  * @param props - the note and the header actions.
  */
-export function NoteHeader({ t, note, onPathFilter, onSource, onToggleBacklinks, backlinksVisible = true }: NoteHeaderProps): JSX.Element {
+export function NoteHeader({
+  t, note, onPathFilter, onSource, onToggleBacklinks, backlinksVisible = true, onMenu,
+}: NoteHeaderProps): JSX.Element {
   const folders = note.path.split('/').slice(0, -1)
 
   return (
-    <header className={css.noteHead}>
+    <header
+      className={css.noteHead}
+      onContextMenu={(event) => {
+        if (onMenu === undefined) return
+        event.preventDefault()
+        // The header names exactly one file, so the file menu applies unchanged.
+        onMenu({ kind: 'tree-file', path: note.path }, event.clientX, event.clientY)
+      }}
+    >
       {note.headings[0]?.level === 1 ? null : <h1 className={css.title}>{note.title}</h1>}
       <div className={css.noteHeadRow}>
         <nav className={css.breadcrumb} aria-label={note.path}>

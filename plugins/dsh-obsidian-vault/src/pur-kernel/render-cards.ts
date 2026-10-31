@@ -1,7 +1,8 @@
 /**
  * Image cards and note-link cards. Images draw from the caller's decoded cache
- * and report the key they need; note links render their title, optional note
- * text and pins on the purple default card.
+ * and report the key they need; a key the cache failed on, or an element with
+ * no source at all, draws a geometric broken-image placeholder. Note links
+ * render their title, optional note text and pins on the purple default card.
  * @module dsh-obsidian-vault/pur-kernel/render-cards
  */
 import type { PurCanvasContext, PurScene } from './render-types.ts'
@@ -11,9 +12,22 @@ import type { PurImageElement, PurNoteLinkElement, PurPin } from './types.ts'
 /** Card corner radius, in canvas pixels per zoom unit. */
 const CARD_RADIUS = 8
 
+/** Inset of the broken-image frame inside the card, in canvas pixels per zoom unit. */
+const PLACEHOLDER_INSET = 5
+
+/** Dash segment of the broken-image frame, in canvas pixels per zoom unit. */
+const PLACEHOLDER_DASH = 6
+
+/** Gap between the broken-image frame's dash segments, in canvas pixels per zoom unit. */
+const PLACEHOLDER_GAP = 4
+
+/** Longest half-edge of the broken-image glyph, in canvas pixels. */
+const PLACEHOLDER_GLYPH_MAX = 40
+
 /**
- * Draw an image card, or its loading placeholder when the image is not decoded
- * yet.
+ * Draw an image card: the decoded bitmap, the loading placeholder while the
+ * caller still owes the decode, or the broken-image placeholder when the key
+ * has no source and when the cache already failed it.
  * @param ctx - drawing surface.
  * @param scene - frame description.
  * @param element - the image element.
@@ -35,12 +49,50 @@ export function drawImageCard(
     ctx.drawImage(image, 0, 0, screenW, screenH)
     return
   }
+  if (key === '' || (scene.images?.failedKeys?.has(key) ?? false)) {
+    drawBrokenImageCard(ctx, screenW, screenH, scene.view.scale)
+    return
+  }
   ctx.fillStyle = '#333'
   ctx.fillRect(0, 0, screenW, screenH)
   ctx.fillStyle = '#888'
   ctx.font = '12px sans-serif'
   ctx.fillText(scene.labels.imageLoading, 10, 20)
-  if (key) requestImage(key)
+  requestImage(key)
+}
+
+/**
+ * Draw the subdued placeholder an image card shows when its reference cannot
+ * be resolved: a dashed frame plus a centred broken-image glyph. Purely
+ * geometric, so the kernel carries no user-visible copy of its own.
+ * @param ctx - drawing surface.
+ * @param screenW - canvas width.
+ * @param screenH - canvas height.
+ * @param scale - zoom, which sizes the strokes and dashes.
+ */
+function drawBrokenImageCard(ctx: PurCanvasContext, screenW: number, screenH: number, scale: number): void {
+  const cx = screenW / 2
+  const cy = screenH / 2
+  const inset = Math.min(PLACEHOLDER_INSET * scale, screenW / 4, screenH / 4)
+  const halfW = Math.min(screenW * 0.3, PLACEHOLDER_GLYPH_MAX)
+  const halfH = Math.min(screenH * 0.3, PLACEHOLDER_GLYPH_MAX)
+  ctx.save()
+  ctx.fillStyle = 'rgba(120,120,120,0.12)'
+  ctx.fillRect(0, 0, screenW, screenH)
+  ctx.strokeStyle = 'rgba(150,150,150,0.55)'
+  ctx.lineWidth = Math.max(1, scale)
+  ctx.setLineDash([PLACEHOLDER_DASH * scale, PLACEHOLDER_GAP * scale])
+  ctx.strokeRect(inset, inset, screenW - inset * 2, screenH - inset * 2)
+  ctx.setLineDash([])
+  ctx.strokeStyle = 'rgba(150,150,150,0.75)'
+  ctx.beginPath()
+  ctx.rect(cx - halfW, cy - halfH, halfW * 2, halfH * 2)
+  ctx.stroke()
+  ctx.beginPath()
+  ctx.moveTo(cx - halfW, cy + halfH)
+  ctx.lineTo(cx + halfW, cy - halfH)
+  ctx.stroke()
+  ctx.restore()
 }
 
 /**

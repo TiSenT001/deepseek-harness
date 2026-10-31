@@ -1,4 +1,4 @@
-﻿/**
+/**
  * The `.obsidian` JSON files Obsidian itself maintains. Reads fall back to
  * `undefined` when a file is absent or unparsable; writes merge the patch into
  * whatever is already on disk, so keys this plugin does not model survive.

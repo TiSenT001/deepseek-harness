@@ -1,4 +1,4 @@
-﻿/**
+/**
  * In-memory filesystem for index tests: the subset of the Host `fs` service the
  * vault index consumes, keyed by absolute paths.
  * @module tests/helpers/memfs

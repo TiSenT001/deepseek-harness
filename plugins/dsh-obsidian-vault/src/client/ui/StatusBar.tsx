@@ -1,4 +1,4 @@
-﻿/**
+/**
  * The 24px status bar: vault identity, note measures, backlink counts, and the
  * index version. Values that only make sense while editing stay empty until the
  * editor lands in P7.

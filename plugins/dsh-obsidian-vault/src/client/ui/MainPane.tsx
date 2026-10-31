@@ -118,6 +118,7 @@ export function MainPane(props: MainPaneProps): JSX.Element {
                 path={path}
                 onSaved={onSaved}
                 onOpenPath={onOpen}
+                onMenu={onMenu}
                 {...(isMarkdown ? { onReading } : {})}
               />
             )}

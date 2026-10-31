@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Dialog and vault-manager rules: the overlay card, its action buttons, the
  * recent-vault rows, and the topbar vault switcher. Plain rules only; media
  * queries stay in the responsive module.

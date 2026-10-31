@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Paste, drop and URL-dialog glue for the React Pur pane: kernel classifiers
  * decide what a payload becomes, then the controller inserts it. Note
  * hydration reads the vault; local image files insert as data URLs without

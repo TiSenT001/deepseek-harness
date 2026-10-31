@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Daily notes and template commands for the palette. The hook reads
  * `daily-notes.json` and `templates.json`, resolves today's path, and turns the
  * template folder's notes into palette entries. Creation always goes through

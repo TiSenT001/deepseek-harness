@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Element-editing commands: alignment, uniform scaling, auto arrangement,
  * connection and deletion. Each mutates the state and returns the effects the
  * adapter must perform, in upstream order.

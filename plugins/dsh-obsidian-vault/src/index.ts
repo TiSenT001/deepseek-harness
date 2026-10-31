@@ -1,4 +1,4 @@
-﻿﻿/**
+/**
  * Host half: resolve the vault, build the index, mount `/obsidian/api`, and
  * keep the index fresh from directory watches.
  * @module dsh-obsidian-vault

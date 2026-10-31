@@ -1,4 +1,4 @@
-﻿import assert from 'node:assert/strict'
+import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { assetUrlFor, newUrlFor, openUrlFor, parseSentinel, rewriteMarkdown, SIZE_MARK } from '../src/client/markdown/rewrite.ts'
 import { appendReferences, selectedImageReferences } from '../src/pur-kernel/embed-note.ts'

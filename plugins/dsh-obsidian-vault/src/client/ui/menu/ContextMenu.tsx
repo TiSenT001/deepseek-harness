@@ -1,4 +1,4 @@
-﻿/**
+/**
  * The one context-menu renderer: grouped items, nested submenus, viewport
  * clamping, arrow/Enter/Escape navigation, first-letter jumps, and focus
  * restore. Every surface renders its scene through this component.

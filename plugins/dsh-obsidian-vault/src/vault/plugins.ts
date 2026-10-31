@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Plugin inventory: the DSH-adapted plugin folder, which is global (inside the
  * plugin package) and injected by the caller, plus the built-in plugin
  * enablement Obsidian records in `core-plugins.json`. This module never loads

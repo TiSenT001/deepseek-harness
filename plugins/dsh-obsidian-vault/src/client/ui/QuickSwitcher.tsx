@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Command palette: fuzzy file switching by default; Tab or a leading `?`
  * switches to full-text search, and a leading `>` lists runnable commands.
  * Arrow keys navigate, Enter opens the hit or runs the command.

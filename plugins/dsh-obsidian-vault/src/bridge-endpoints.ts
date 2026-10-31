@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Bridge data routes: the vault calls a sandboxed plugin frame can ask for,
  * answered by the host page on the frame's behalf. Binary access is confined
  * to the vault root by `VaultFiles`; `data.json` access is confined to the

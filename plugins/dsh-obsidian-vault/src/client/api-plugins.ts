@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Plugin and bridge endpoints: the installed-plugin list, toggles, the framed
  * plugin URL, and the file/data bridge the sandboxed plugin frame calls.
  * @module dsh-obsidian-vault/client/api-plugins

@@ -1,4 +1,4 @@
-﻿export const css = {
+export const css = {
   root: 'ov-root',
   top: 'ov-top',
   brand: 'ov-brand',

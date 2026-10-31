@@ -84,6 +84,18 @@ export interface PurCanvasContext {
   roundRect?(x: number, y: number, w: number, h: number, radii?: number): void
 }
 
+/**
+ * Decoded images a scene draws from, keyed by `dataURL || original`. Adapters
+ * that track decode failures report them through {@link PurImageLookup.failedKeys}
+ * so the renderer can draw its broken-image placeholder instead of waiting for
+ * an image that will never arrive; a plain `Map` without that record stays
+ * valid and renders every missing key as loading.
+ */
+export interface PurImageLookup extends ReadonlyMap<string, CanvasImageSource> {
+  /** Keys whose decode failed and whose placeholder the renderer draws. */
+  readonly failedKeys?: ReadonlySet<string>
+}
+
 /** Colours and grid toggles the adapter resolves before drawing. */
 export interface PurRenderPreferences {
   /** Canvas fill; `transparent` leaves it unpainted. */
@@ -168,8 +180,8 @@ export interface PurScene {
   preferences: PurRenderPreferences
   /** Display copy the renderer interpolates. */
   labels: PurRenderLabels
-  /** Decoded images keyed by `dataURL || original`. */
-  images?: ReadonlyMap<string, CanvasImageSource>
+  /** Decoded images keyed by `dataURL || original`, plus the failed keys. */
+  images?: PurImageLookup
   /** Elements drawn with the selection frame. */
   selectedIds?: ReadonlySet<string>
   /** Line drawn in its hover style, by id. */

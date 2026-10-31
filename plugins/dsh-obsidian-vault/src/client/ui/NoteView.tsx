@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Reading view: note header, properties, tags, callouts, and the rewritten
  * Markdown document. Wikilinks, tags, embeds, and creation links all resolve
  * here, and a hovered note link shows a small preview card.
@@ -189,6 +189,7 @@ export function NoteView({
         t={t}
         note={note}
         onPathFilter={onPathFilter}
+        onMenu={onMenu}
         {...(onSource === undefined ? {} : { onSource })}
         {...(backlinks.length === 0 ? {} : { backlinksVisible: inlineBacklinks, onToggleBacklinks: toggleInlineBacklinks })}
       />
