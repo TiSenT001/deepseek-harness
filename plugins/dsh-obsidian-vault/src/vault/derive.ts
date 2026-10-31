@@ -5,6 +5,7 @@
  */
 import type { BacklinkDto, NoteLinkDto } from '../protocol.ts'
 import type { NoteEntry } from './entry.ts'
+import type { CanvasReference } from './canvas-refs.ts'
 import { LinkResolver, type NoteIdentity } from './resolver.ts'
 
 /** Indexes rebuilt after every successful scan. */
@@ -22,7 +23,11 @@ export interface DerivedIndex {
  * @param attachments - vault-relative paths of non-note files, so `![[img.png]]` resolves.
  * @returns the indexes; a link that resolves to itself or an attachment adds no backlink or edge.
  */
-export function deriveIndex(notes: ReadonlyMap<string, NoteEntry>, attachments: ReadonlySet<string>): DerivedIndex {
+export function deriveIndex(
+  notes: ReadonlyMap<string, NoteEntry>,
+  attachments: ReadonlySet<string>,
+  canvasRefs: ReadonlyMap<string, readonly CanvasReference[]> = new Map(),
+): DerivedIndex {
   const identities: NoteIdentity[] = []
   for (const [path, entry] of notes) {
     identities.push({ path, title: entry.title, aliases: entry.aliases })
@@ -62,6 +67,22 @@ export function deriveIndex(notes: ReadonlyMap<string, NoteEntry>, attachments: 
     }
     linkIndex.set(path, links)
     for (const tag of entry.tags) tags.set(tag, (tags.get(tag) ?? 0) + 1)
+  }
+  // A canvas links to notes through element fields, not markdown syntax, so its
+  // references are merged into the backlink index here.
+  for (const [canvasPath, references] of canvasRefs) {
+    const title = canvasPath.slice(canvasPath.lastIndexOf('/') + 1).replace(/\.PurStudio$/i, '')
+    for (const reference of references) {
+      const resolution = resolver.resolve(reference.target, canvasPath)
+      const target = resolution.path
+      if (target === undefined || target === canvasPath) continue
+      if (!notes.has(target)) continue
+      const list = backlinks.get(target)
+      const item: BacklinkDto = { path: canvasPath, title, line: reference.ordinal, context: '画布引用', source: 'canvas' }
+      if (list === undefined) backlinks.set(target, [item])
+      else list.push(item)
+      connect(adjacency, canvasPath, target)
+    }
   }
   return { resolver, linkIndex, backlinks, tagCounts: tags, adjacency }
 }

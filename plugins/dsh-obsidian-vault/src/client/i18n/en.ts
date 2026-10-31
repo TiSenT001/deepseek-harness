@@ -172,6 +172,7 @@ export const EN: Dict = {
   cancel: 'Cancel',
   ok: 'OK',
   externalizeImages: 'Externalize canvas images (into Pur画布/附件)',
+  canvasSource: 'canvas',
   previewImage: 'Image preview',
   loadingVaults: 'Loading vaults…',
   plugins: 'Plugins',

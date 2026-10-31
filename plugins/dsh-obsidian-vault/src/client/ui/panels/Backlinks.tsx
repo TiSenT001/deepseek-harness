@@ -83,6 +83,9 @@ function BacklinksPanel({
                 <div key={path} className={css.backlinkGroup}>
                   <button type="button" className={css.backlinkHead} title={path} onClick={() => toggle(path)}>
                     <span className={css.backlinkName}>{items[0]!.title}</span>
+                    {items[0]!.source === 'canvas'
+                      ? <span className={css.backlinkCount}>{t('canvasSource')}</span>
+                      : null}
                     <span className={css.backlinkCount}>{items.length}</span>
                   </button>
                   {visible.map((item, index) => (

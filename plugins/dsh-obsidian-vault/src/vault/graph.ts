@@ -148,6 +148,25 @@ function expandedGraph(
     }
   }
 
+  // A canvas is an attachment that references notes through element fields, so it
+  // never appears as a note link. Add any attachment that adjacency already
+  // connects, or the graph would drop it.
+  if (options.includeAttachments) {
+    for (const [source, targets] of input.adjacency) {
+      for (const target of targets) {
+        for (const candidate of [source, target]) {
+          if (!input.attachments.has(candidate)) continue
+          addNode({
+            path: candidate,
+            title: candidate.slice(candidate.lastIndexOf('/') + 1),
+            depth: 0,
+            kind: 'attachment',
+            tags: [],
+          })
+        }
+      }
+    }
+  }
   if (options.includeAttachments && input.attachments.size > 0) {
     const byName = new Map<string, string>()
     for (const attachment of input.attachments) {

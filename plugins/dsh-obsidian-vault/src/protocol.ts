@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Wire types shared by the Host half (index and routes) and the browser half.
  * Every type here is plain JSON so both sides can import it type-only.
  * @module dsh-obsidian-vault/protocol
@@ -178,12 +178,18 @@ export interface BridgeFileDto {
 }
 
 /** One link that points at the queried note. */
+export type BacklinkSource = 'note' | 'canvas'
+
+/** One link that points at the queried note. */
 export interface BacklinkDto {
   readonly path: string
   readonly title: string
   /** 1-based source line. */
   readonly line: number
   readonly context: string
+  /** Kind of the source document; omitted means
+ote. */
+  readonly source?: BacklinkSource
 }
 
 /** One index hit. */

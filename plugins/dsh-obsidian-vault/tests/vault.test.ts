@@ -176,3 +176,20 @@ class SlowRootFs implements FsLike {
     return this.inner.contains(parent, child)
   }
 }
+
+test('a canvas that references a note shows up in that note backlinks', async () => {
+  fs.write(`${ROOT}/Pur画布/方案.PurStudio`, JSON.stringify({
+    elements: [
+      { id: 'n1', type: 'note-link', x: 0, y: 0, w: 100, h: 40, link: 'Alpha.md', content: 'Alpha' },
+    ],
+    viewState: { offsetX: 0, offsetY: 0, scale: 1 },
+  }))
+  await vault.refresh()
+  const backlinks = vault.backlinksOf('Alpha.md')
+  const fromCanvas = backlinks.filter((entry) => entry.path === 'Pur画布/方案.PurStudio')
+  assert.equal(fromCanvas.length, 1, JSON.stringify(backlinks))
+  assert.equal(fromCanvas[0]?.source, 'canvas')
+
+  const graph = vault.graph('Alpha.md', 1, 50, { includeUnresolved: false, includeAttachments: true, includeTags: false })
+  assert.ok(graph.nodes.some((node) => node.path === 'Pur画布/方案.PurStudio'), 'canvas missing from the graph')
+})

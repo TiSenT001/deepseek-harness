@@ -1,4 +1,4 @@
-﻿/**
+/**
  * The vault index state: owned collections, the serialized scan cycle, and the
  * parse step. `VaultIndex` is the public facade over one store instance.
  * @module dsh-obsidian-vault/vault/store
@@ -6,6 +6,7 @@
 import { deriveIndex } from './derive.ts'
 import { parseNoteEntry, type NoteEntry } from './entry.ts'
 import { VaultFiles } from './files.ts'
+import { CANVAS_MAX_BYTES, readCanvasReferences, type CanvasReference } from './canvas-refs.ts'
 import { scanVault } from './scan.ts'
 import { resolveInVault } from './index-read.ts'
 import type { BacklinkDto, NoteLinkDto } from '../protocol.ts'
@@ -18,6 +19,8 @@ export class VaultStore {
   notes = new Map<string, NoteEntry>()
   /** Attachment paths. */
   attachments = new Set<string>()
+  /** Canvas documents that reference notes, keyed by canvas path. */
+  canvasRefs = new Map<string, readonly CanvasReference[]>()
   /** Attachment metadata by path. */
   attachmentMeta = new Map<string, { readonly size?: number }>()
   /** Root target once the first scan resolved it. */
@@ -133,6 +136,7 @@ export class VaultStore {
     // either populated or genuinely empty (freshly created) and stays visible.
     this.dirPaths = result.dirPaths
     this.rootTarget = result.root
+    await this.collectCanvasRefs()
     this.reindex()
     this.revision += 1
     this.failure = undefined
@@ -156,8 +160,28 @@ export class VaultStore {
     }))
   }
 
+  /**
+   * Read every canvas document once per scan and keep the note references it
+   * makes. Canvases are attachments to the note index, so their links have to be
+   * collected separately for the backlink pass.
+   */
+  private async collectCanvasRefs(): Promise<void> {
+    const refs = new Map<string, readonly CanvasReference[]>()
+    for (const path of this.attachments) {
+      if (!/\.PurStudio$/i.test(path)) continue
+      const size = this.attachmentMeta.get(path)?.size ?? 0
+      if (size > CANVAS_MAX_BYTES) continue
+      const target = await resolveInVault(this.fs, this.rootTarget, path).catch(() => undefined)
+      if (target === undefined) continue
+      const text = await this.fs.readText(target).catch(() => undefined)
+      if (text === undefined) continue
+      const found = readCanvasReferences(text)
+      if (found.length > 0) refs.set(path, found)
+    }
+    this.canvasRefs = refs
+  }
   private reindex(): void {
-    const derived = deriveIndex(this.notes, this.attachments)
+    const derived = deriveIndex(this.notes, this.attachments, this.canvasRefs)
     this.resolver = derived.resolver
     this.linkIndex = new Map(derived.linkIndex)
     this.backlinks = new Map(derived.backlinks)
