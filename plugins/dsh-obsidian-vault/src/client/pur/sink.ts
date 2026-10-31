@@ -26,6 +26,8 @@ export interface PurSinkDeps {
   readonly openMenu: (clientX: number, clientY: number) => void
   /** Run the selected-text export flow. */
   readonly exportText: () => void
+  /** Navigate the workspace to a vault path; absent when the pane cannot navigate. */
+  readonly openPath?: (path: string) => void
 }
 
 /**
@@ -33,8 +35,14 @@ export interface PurSinkDeps {
  * client's note-open reporting.
  * @param target - vault path or URL.
  */
-export function openPurLink(target: string): void {
-  if (/^https?:/i.test(target)) window.open(target, '_blank', 'noopener')
+export function openPurLink(target: string, openPath?: (path: string) => void): void {
+  if (/^https?:/i.test(target)) {
+    window.open(target, '_blank', 'noopener')
+    return
+  }
+  // A vault path navigates in the workspace; reporting it is the fallback for
+  // surfaces that cannot navigate.
+  if (openPath !== undefined) openPath(target)
   else void noteOpen(target)
 }
 
@@ -49,7 +57,7 @@ export function createPurSink(deps: () => PurSinkDeps): PurEffectSink {
     save: () => deps().scheduleSave(),
     notice: (text) => deps().notice(text),
     setCursor: (cursor) => deps().setCursor(cursor),
-    openLink: (target) => openPurLink(target),
+    openLink: (target) => deps().openPath === undefined ? openPurLink(target) : openPurLink(target, deps().openPath),
     editText: (id) => deps().openEditor('text', id),
     editGroup: (id) => deps().openEditor('group', id),
     editLine: (id) => deps().openEditor('line', id),

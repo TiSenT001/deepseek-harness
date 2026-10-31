@@ -123,6 +123,7 @@ void saveStudioDocument(path, document).catch(async (error: unknown) => {
           if (canvas !== null) canvas.style.cursor = cursor
         },
         openEditor: (kind, id) => setEditor({ kind, id }),
+        ...(onOpenPath === undefined ? {} : { openPath: (next: string) => onOpenPath(next) }),
         openMenu: (clientX, clientY) => openMenuRef.current(clientX, clientY),
         exportText: () => {
           const hostDeps = hostDepsRef.current
