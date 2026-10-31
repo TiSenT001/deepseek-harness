@@ -1,4 +1,4 @@
-/**
+﻿/**
  * The page's single action dispatcher: menus, the explorer, tabs, and the rail
  * all call these functions, so mutations, prompts, tab remapping, and reloads
  * happen in one place.
@@ -43,6 +43,10 @@ export interface VaultActionInput {
   readonly collapseRef: { current: (() => void) | null }
   /** Add or remove one file's bookmark. */
   readonly toggleBookmark: (path: string) => void
+  /** In-app text prompt; embedded webviews block the native one. */
+  readonly askText: (title: string, initial?: string) => Promise<string | null>
+  /** In-app confirmation, for the same reason. */
+  readonly askConfirm: (message: string) => Promise<boolean>
 }
 
 const failMessage = (cause: unknown): string => cause instanceof Error ? cause.message : String(cause)
@@ -57,7 +61,7 @@ export function useVaultActions(input: VaultActionInput): MenuActions {
     t, openPath, createTarget, mapTabs, reload, setError, closeTab, closeOthers, closeAllTabs, pinTab,
     splitPane, closePane,
     setView, setTreeOpen, setRailOpen, setRail, setFilter, openQuickSwitcher, newTabPending, collapseRef,
-    toggleBookmark,
+    toggleBookmark, askText, askConfirm,
   } = input
 
   return useMemo<MenuActions>(() => {
@@ -66,53 +70,58 @@ export function useVaultActions(input: VaultActionInput): MenuActions {
     }
 
     const createNote = (folder: string): void => {
-      const name = window.prompt(t('newNotePrompt'), t('untitled'))
-      if (name === null || name.trim().length === 0) return
-      const trimmed = name.trim()
-      const file = /\.md$/i.test(trimmed) ? trimmed : `${trimmed}.md`
-      const relative = folder.length === 0 ? file : `${folder}/${file}`
-      run(apiCreateNote(relative).then((ok) => {
-        if (!ok) {
-          setError(t('createFailed'))
-          return
-        }
-        return reload().then(() => openPath(relative))
-      }))
+      void askText(t('newNotePrompt'), t('untitled')).then((name) => {
+        if (name === null || name.trim().length === 0) return
+        const trimmed = name.trim()
+        const file = /\.md$/i.test(trimmed) ? trimmed : `${trimmed}.md`
+        const relative = folder.length === 0 ? file : `${folder}/${file}`
+        run(apiCreateNote(relative).then((ok) => {
+          if (!ok) {
+            setError(t('createFailed'))
+            return
+          }
+          return reload().then(() => openPath(relative))
+        }))
+      })
     }
 
     const createFolder = (folder: string): void => {
-      const name = window.prompt(t('newFolderPrompt'), t('untitled'))
-      if (name === null || name.trim().length === 0) return
-      const relative = folder.length === 0 ? name.trim() : `${folder}/${name.trim()}`
-      run(apiCreateFolder(relative).then(() => reload()))
+      void askText(t('newFolderPrompt'), t('untitled')).then((name) => {
+        if (name === null || name.trim().length === 0) return
+        const relative = folder.length === 0 ? name.trim() : `${folder}/${name.trim()}`
+        run(apiCreateFolder(relative).then(() => reload()))
+      })
     }
 
     const rename = (path: string): void => {
       const slash = path.lastIndexOf('/')
       const name = slash === -1 ? path : path.slice(slash + 1)
       const isNote = /\.md$/i.test(name)
-      const next = window.prompt(t('renamePrompt'), isNote ? name.replace(/\.md$/i, '') : name)
-      if (next === null || next.trim().length === 0) return
-      const trimmed = next.trim()
-      const finalName = isNote && !/\.md$/i.test(trimmed) ? `${trimmed}.md` : trimmed
-      const renamed = slash === -1 ? finalName : `${path.slice(0, slash)}/${finalName}`
-      run(renameEntry(path, finalName).then(() => {
-        mapTabs(previous => remapPath(previous, path, renamed))
-        return reload()
-      }))
+      void askText(t('renamePrompt'), isNote ? name.replace(/\.md$/i, '') : name).then((next) => {
+        if (next === null || next.trim().length === 0) return
+        const trimmed = next.trim()
+        const finalName = isNote && !/\.md$/i.test(trimmed) ? `${trimmed}.md` : trimmed
+        const renamed = slash === -1 ? finalName : `${path.slice(0, slash)}/${finalName}`
+        run(renameEntry(path, finalName).then(() => {
+          mapTabs(previous => remapPath(previous, path, renamed))
+          return reload()
+        }))
+      })
     }
 
     const remove = (paths: readonly string[]): void => {
       const targets = withoutNested(paths)
       if (targets.length === 0) return
       const label = targets.length === 1 ? targets[0] ?? '' : `${targets.length}`
-      if (!window.confirm(`${t('delete')} ${label}?`)) return
-      run(targets.reduce<Promise<unknown>>(
-        (chain, path) => chain.then(() => deleteEntry(path)).then(() => {
-          mapTabs(previous => removePath(previous, path))
-        }),
-        Promise.resolve(),
-      ).then(() => reload()))
+      void askConfirm(`${t('delete')} ${label}?`).then((ok) => {
+        if (!ok) return
+        run(targets.reduce<Promise<unknown>>(
+          (chain, path) => chain.then(() => deleteEntry(path)).then(() => {
+            mapTabs(previous => removePath(previous, path))
+          }),
+          Promise.resolve(),
+        ).then(() => reload()))
+      })
     }
 
     const move = (paths: readonly string[], folder: string): void => {

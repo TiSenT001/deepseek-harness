@@ -1,4 +1,4 @@
-/**
+﻿/**
  * The one context-menu renderer: grouped items, nested submenus, viewport
  * clamping, arrow/Enter/Escape navigation, first-letter jumps, and focus
  * restore. Every surface renders its scene through this component.
@@ -209,7 +209,9 @@ function MenuPanel({ groups, x, y, label, level, onClose, onBack }: PanelProps):
       <div
         ref={panelRef}
         className={`${css.menu} ${level > 0 ? css.menuSub : ''}`.trim()}
-        style={pos}
+        // A folder list can hold every directory in the vault; cap the panel so
+        // it scrolls inside the viewport instead of running off the bottom edge.
+        style={{ ...pos, maxHeight: 'calc(100vh - 24px)', overflowY: 'auto' }}
         role="menu"
         aria-label={label}
         tabIndex={-1}

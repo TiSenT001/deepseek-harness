@@ -169,6 +169,7 @@ export const ZH = {
   vaultMissing: '文件夹不存在或不可访问',
   pickerUnavailable: '当前环境不支持选择文件夹',
   cancel: '取消',
+  ok: '确定',
   loadingVaults: '读取知识库列表…',
   plugins: '插件',
   settings: '设置',

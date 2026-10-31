@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Daily notes and template commands for the palette. The hook reads
  * `daily-notes.json` and `templates.json`, resolves today's path, and turns the
  * template folder's notes into palette entries. Creation always goes through
@@ -21,6 +21,8 @@ export interface VaultNoteInput {
   /** Active index root; the configuration is re-read when the vault changes. */
   readonly root: string | undefined
   readonly tree: readonly TreeNodeDto[]
+  /** In-app text prompt; embedded webviews block the native one. */
+  readonly askText: (title: string, initial?: string) => Promise<string | null>
 }
 
 const message = (cause: unknown): string => (cause instanceof Error ? cause.message : String(cause))
@@ -49,7 +51,7 @@ function filesUnder(nodes: readonly TreeNodeDto[], folder: string): string[] {
  * @returns palette commands, daily first, then one per template note.
  */
 export function useVaultNotes(input: VaultNoteInput): readonly CommandEntry[] {
-  const { t, openPath, reload, setError, root, tree } = input
+  const { t, openPath, reload, setError, root, tree, askText } = input
   const [templates, setTemplates] = useState<string | undefined>()
 
   useEffect(() => {
@@ -76,7 +78,7 @@ export function useVaultNotes(input: VaultNoteInput): readonly CommandEntry[] {
   }, [])
 
   const createFromTemplate = useCallback((template: string): void => {
-    const name = window.prompt(t('newNotePrompt'), t('untitled'))
+    void askText(t('newNotePrompt'), t('untitled')).then((name) => {
     if (name === null || name.trim().length === 0) return
     const trimmed = name.trim()
     const path = /\.md$/i.test(trimmed) ? trimmed : `${trimmed}.md`
@@ -95,7 +97,8 @@ export function useVaultNotes(input: VaultNoteInput): readonly CommandEntry[] {
         openPath(path)
       })
       .catch((cause: unknown) => setError(message(cause)))
-  }, [openPath, reload, seed, setError, t])
+    })
+  }, [askText, openPath, reload, seed, setError, t])
 
   const openDaily = useCallback((): void => {
     void (async () => {
@@ -120,7 +123,7 @@ export function useVaultNotes(input: VaultNoteInput): readonly CommandEntry[] {
         setError(message(cause))
       }
     })()
-  }, [openPath, reload, seed, setError, t])
+  }, [askText, openPath, reload, seed, setError, t])
 
   return useMemo<readonly CommandEntry[]>(() => {
     const daily: CommandEntry = { id: 'daily.open', label: t('dailyNote'), run: openDaily }

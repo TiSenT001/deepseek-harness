@@ -40,6 +40,8 @@ export interface VaultCommandsInput extends Omit<CommandSurfaceOptions, 'folders
   readonly paneCount: number
   /** Active `.PurStudio` document path; its pane's commands join the palette. */
   readonly purPath: string | undefined
+  /** In-app text prompt for the template command. */
+  readonly askText: (title: string, initial?: string) => Promise<string | null>
 }
 
 /**
@@ -51,9 +53,9 @@ export interface VaultCommandsInput extends Omit<CommandSurfaceOptions, 'folders
 export function useVaultCommands(input: VaultCommandsInput): CommandSurface {
   const {
     tree, bookmarkEntries, openPath, reload, setError, root, splitPane, closePane, paneCount,
-    purPath, t, ...surface
+    purPath, t, askText, ...surface
   } = input
-  const noteCommands = useVaultNotes({ t, openPath, reload, setError, root, tree })
+  const noteCommands = useVaultNotes({ t, openPath, reload, setError, root, tree, askText })
   const paneCommands = useMemo<readonly CommandEntry[]>(() => {
     const entries: CommandEntry[] = [
       { id: 'split.right', label: t('splitRight'), run: () => splitPane('row') },

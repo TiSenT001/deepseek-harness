@@ -1,4 +1,4 @@
-﻿import { chromium } from 'file:///G:/Software/deepseek-harness/node_modules/.pnpm/playwright@1.61.1/node_modules/playwright/index.mjs'
+import { chromium } from 'file:///G:/Software/deepseek-harness/node_modules/.pnpm/playwright@1.61.1/node_modules/playwright/index.mjs'
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, basename } from 'node:path'
@@ -336,6 +336,27 @@ page.on('dialog', async (dialog) => {
   }
   await dialog.accept(dialogAnswer)
 })
+
+/**
+ * Fill and submit the in-app ask dialog that replaced `window.prompt`. Embedded
+ * webviews block the native dialog, so every prompt renders as `.ov-dialog`.
+ */
+async function answerAsk(text) {
+  const dialog = page.locator('.ov-dialog')
+  await dialog.waitFor({ timeout: 8000 })
+  const input = dialog.locator('.ov-dialog-input')
+  if ((await input.count()) === 1) await input.fill(text)
+  await dialog.locator('.ov-dialog-button', { hasText: '确定' }).click()
+  await sleep(500)
+}
+
+/** Accept the in-app confirmation that replaced `window.confirm`. */
+async function confirmAsk() {
+  const dialog = page.locator('.ov-dialog')
+  await dialog.waitFor({ timeout: 8000 })
+  await dialog.locator('.ov-dialog-button', { hasText: '确定' }).click()
+  await sleep(500)
+}
 
 async function check(name, fn) {
   if (only !== undefined && !only.has(name)) {
@@ -1469,6 +1490,7 @@ try {
     await explorerFilter.fill('')
     dialogAnswer = '审核按钮新建'
     await page.locator('button[aria-label="新建笔记"]').click()
+    await answerAsk(dialogAnswer)
     await sleep(1200)
     const active = await page.locator('.ov-doctab-active').textContent()
     assert(active?.includes('审核按钮新建'), `opened ${active}`)
@@ -1488,6 +1510,7 @@ try {
     }
     dialogAnswer = '审核按钮新建改名'
     await menu.locator('.ov-menu-item', { hasText: '重命名' }).click()
+    await answerAsk(dialogAnswer)
     await sleep(1200)
     await explorerFilter.fill('审核按钮新建改名')
     await sleep(600)
@@ -1700,6 +1723,7 @@ try {
   await check('files.new-folder-button', async () => {
     dialogAnswer = '审核按钮新建文件夹'
     await page.locator('button[aria-label="新建文件夹"]').click()
+    await answerAsk(dialogAnswer)
     // mkdir awaits a full rescan; poll instead of racing it.
     let found = false
     for (let attempt = 0; attempt < 20 && !found; attempt += 1) {
@@ -1717,6 +1741,7 @@ try {
       await row.click({ button: 'right' })
       await sleep(300)
       await page.locator('.ov-menu-item', { hasText: '删除' }).click()
+    await confirmAsk()
       await sleep(1200)
       await explorerFilter.fill('审核按钮新建改名')
       await sleep(600)
@@ -1743,6 +1768,7 @@ try {
     }
     dialogAnswer = '审核目录内新建'
     await menu.locator('.ov-menu-item', { hasText: '在此新建笔记' }).click()
+    await answerAsk(dialogAnswer)
     await sleep(1200)
     const json = JSON.stringify(await api('tree'))
     assert(json.includes(`${FIXTURE_DIR}/审核目录内新建.md`), 'note not created in dir')
@@ -2440,6 +2466,7 @@ try {
     const items = page.locator('.ov-quick-list .ov-item', { hasText: '每日模板' })
     assert((await items.count()) === 1, `template command missing: ${await items.count()}`)
     await page.keyboard.press('Enter')
+    await answerAsk(dialogAnswer)
     await sleep(2200)
     assert((await page.locator('.ov-quick').count()) === 0, 'palette stayed open after the template command')
     const path = `${TEMPLATE_CREATED}.md`

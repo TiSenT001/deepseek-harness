@@ -170,6 +170,7 @@ export const EN: Dict = {
   vaultMissing: 'Folder does not exist or cannot be read',
   pickerUnavailable: 'Folder picking is unavailable in this environment',
   cancel: 'Cancel',
+  ok: 'OK',
   loadingVaults: 'Loading vaults…',
   plugins: 'Plugins',
   settings: 'Settings',

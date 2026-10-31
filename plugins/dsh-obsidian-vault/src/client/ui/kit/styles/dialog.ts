@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Dialog and vault-manager rules: the overlay card, its action buttons, the
  * recent-vault rows, and the topbar vault switcher. Plain rules only; media
  * queries stay in the responsive module.
@@ -205,4 +205,17 @@ export const DIALOG_STYLE = `
   text-transform: uppercase;
   color: var(--dsw-alias-label-tertiary, #8b8b94);
 }
+.ov-dialog-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 7px 9px;
+  margin-bottom: 12px;
+  border: 1px solid var(--dsw-alias-border-l1, #2a2a30);
+  border-radius: 6px;
+  background: var(--dsw-alias-bg-layer-1, #1b1b1f);
+  color: var(--dsw-alias-label-primary, #e8e8ea);
+  font: inherit;
+  outline: none;
+}
+.ov-dialog-input:focus { border-color: var(--dsw-alias-border-l2, #3a3a42); }
 `

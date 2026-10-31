@@ -1,4 +1,4 @@
-/**
+﻿/**
  * The vault workspace page: explorer, reading area, right rail, quick switcher,
  * and the graph. Owns shared view state, the data fetches, and the one action
  * dispatcher every surface calls; layout composition lives in VaultWorkspace.
@@ -19,6 +19,7 @@ import { useOverlayState } from './useOverlayState.ts'
 import { usePaneWidths } from './usePaneWidths.ts'
 import { useResponsivePanes } from './useResponsivePanes.ts'
 import { useVaultActions } from './useVaultActions.ts'
+import { useAsk } from './useAsk.tsx'
 import { useVaultAppearance } from './useVaultAppearance.ts'
 import { useVaultBookmarks } from './useVaultBookmarks.ts'
 import { useVaultCommands } from './useVaultCommands.ts'
@@ -165,6 +166,7 @@ export function VaultPage({ pickDirectory, hasPicker }: VaultPageProps = {}): JS
       .catch((cause: unknown) => setError(cause instanceof Error ? cause.message : String(cause)))
   }, [openPath, reload, setError, t])
 
+  const ask = useAsk(t)
   const bookmarks = useVaultBookmarks({ root: status?.root, setError })
 
   const vaultActions = useVaultActions({
@@ -189,9 +191,12 @@ export function VaultPage({ pickDirectory, hasPicker }: VaultPageProps = {}): JS
     newTabPending,
     collapseRef,
     toggleBookmark: bookmarks.toggle,
+    askText: ask.askText,
+    askConfirm: ask.askConfirm,
   })
 
   const { menuGroups, commands, runCommand } = useVaultCommands({
+    askText: ask.askText,
     t,
     actions: vaultActions,
     menu,
@@ -293,6 +298,7 @@ export function VaultPage({ pickDirectory, hasPicker }: VaultPageProps = {}): JS
         variant={variant}
         onVariant={setVariant}
       />
+      {ask.node}
     </div>
   )
 }

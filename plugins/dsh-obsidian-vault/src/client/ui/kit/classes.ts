@@ -1,4 +1,4 @@
-export const css = {
+﻿export const css = {
   root: 'ov-root',
   top: 'ov-top',
   brand: 'ov-brand',
@@ -203,6 +203,7 @@ export const css = {
   dialogClose: 'ov-dialog-close',
   dialogBody: 'ov-dialog-body',
   dialogActions: 'ov-dialog-actions',
+  dialogInput: 'ov-dialog-input',
   dialogButton: 'ov-dialog-button',
   dialogButtonPrimary: 'ov-dialog-button-primary',
   dialogHint: 'ov-dialog-hint',
