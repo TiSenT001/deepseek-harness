@@ -18,6 +18,7 @@ import {
 import type { PurController, PurControllerEffect, PurMenuPoint, PurNoteRawOptions } from '../../pur-kernel/index.ts'
 import type { PurNoteSummary } from './loader.ts'
 import { storeImage } from '../api.ts'
+import { thumbnailOf } from './loader.ts'
 
 /** What the paste/drop flows need from the pane. */
 export interface PurInsertDeps {
@@ -204,7 +205,12 @@ async function insertStoredImage(
 ): Promise<void> {
   const dataURL = await fileToDataURL(file)
   const path = await storeImage(file.name, dataURL).catch(() => '')
+  // A small copy keeps a zoomed-out board readable without decoding every
+  // original at full resolution.
+  const thumbData = await thumbnailOf(dataURL).catch(() => null)
+  const thumb = thumbData === null ? '' : await storeImage(`${file.name}-thumb`, thumbData).catch(() => '')
+  const thumbRef = thumb.length === 0 ? undefined : thumb
   deps.run(path.length === 0
-    ? controller.insertImage(x, y, '', dataURL)
-    : controller.insertImage(x, y, path))
+    ? controller.insertImage(x, y, '', dataURL, thumbRef)
+    : controller.insertImage(x, y, path, undefined, thumbRef))
 }

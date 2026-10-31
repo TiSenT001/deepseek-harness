@@ -189,9 +189,14 @@ class PurImageMap extends Map<string, CanvasImageSource> implements PurImageLook
 const IMAGE_BUDGET_BYTES = 256 * 1024 * 1024
 
 /** Decoded canvas images keyed by `dataURL || original`, with load dedupe. */
+/** Decodes allowed to run at once; more than a couple only queue for the same frame. */
+const MAX_PARALLEL_DECODES = 2
+
 export class PurImageCache {
   private readonly images = new PurImageMap()
   private readonly pending = new Set<string>()
+  private readonly queue: { key: string; onSettled: () => void }[] = []
+  private active = 0
 
   /** The lookup the scene builder reads. @returns decoded images by key, with failed keys. */
   get map(): PurImageLookup {
@@ -202,24 +207,39 @@ export class PurImageCache {
    * Decode an image when missing; the callback fires once the request settles,
    * whether the image decoded or the cache recorded a failure. A failed key is
    * never requested again, so a broken reference costs one request per cache.
+   *
+   * Decodes run at most `MAX_PARALLEL_DECODES` at a time: a pan that brings a
+   * screenful of new pictures into view would otherwise start every decode at
+   * once and blow the frame budget.
    * @param key - the scene's image key (`dataURL || original`).
    * @param onSettled - repaint callback.
    */
   request(key: string, onSettled: () => void): void {
     if (key === '' || this.images.has(key) || this.images.failedKeys.has(key) || this.pending.has(key)) return
     this.pending.add(key)
-    const image = new Image()
-    image.onload = () => {
-      this.pending.delete(key)
-      this.images.set(key, image)
-      onSettled()
+    this.queue.push({ key, onSettled })
+    this.pump()
+  }
+
+  /** Start queued decodes up to the concurrency limit. */
+  private pump(): void {
+    while (this.active < MAX_PARALLEL_DECODES && this.queue.length > 0) {
+      const next = this.queue.shift()
+      if (next === undefined) return
+      this.active += 1
+      const image = new Image()
+      const settle = (failed: boolean): void => {
+        this.active -= 1
+        this.pending.delete(next.key)
+        if (failed) this.images.failedKeys.add(next.key)
+        else this.images.set(next.key, image)
+        next.onSettled()
+        this.pump()
+      }
+      image.onload = () => settle(false)
+      image.onerror = () => settle(true)
+      image.src = next.key.startsWith('data:') || /^https?:/i.test(next.key) ? next.key : purAssetUrl(next.key)
     }
-    image.onerror = () => {
-      this.pending.delete(key)
-      this.images.failedKeys.add(key)
-      onSettled()
-    }
-    image.src = key.startsWith('data:') || /^https?:/i.test(key) ? key : purAssetUrl(key)
   }
 }
 
@@ -268,4 +288,40 @@ export async function writeExportText(path: string, content: string): Promise<vo
  */
 export async function writeExportDataURL(path: string, dataURL: string): Promise<void> {
   await bridgeWriteBinary(path, dataURL.slice(dataURL.indexOf(',') + 1))
+}
+
+
+/** Longest edge of the copy drawn for a zoomed-out canvas. */
+const THUMB_MAX_EDGE = 256
+
+/**
+ * Downscale one picture for the zoomed-out view.
+ * @param dataUrl - source image as a data URL.
+ * @returns a PNG data URL, or null when the browser cannot decode the source.
+ */
+export async function thumbnailOf(dataUrl: string): Promise<string | null> {
+  return new Promise((resolve) => {
+    const image = new Image()
+    image.onload = () => {
+      const sourceW = image.naturalWidth
+      const sourceH = image.naturalHeight
+      if (sourceW === 0 || sourceH === 0) {
+        resolve(null)
+        return
+      }
+      const ratio = Math.min(1, THUMB_MAX_EDGE / Math.max(sourceW, sourceH))
+      const canvas = document.createElement('canvas')
+      canvas.width = Math.max(1, Math.round(sourceW * ratio))
+      canvas.height = Math.max(1, Math.round(sourceH * ratio))
+      const context = canvas.getContext('2d')
+      if (context === null) {
+        resolve(null)
+        return
+      }
+      context.drawImage(image, 0, 0, canvas.width, canvas.height)
+      resolve(canvas.toDataURL('image/png'))
+    }
+    image.onerror = () => resolve(null)
+    image.src = dataUrl
+  })
 }

@@ -192,3 +192,32 @@ test('a recorded failure reaches the renderer through the scene', () => {
     restore()
   }
 })
+
+test('a zoomed-out card draws its thumbnail instead of the flat tile', () => {
+  const thumb = { width: 64, height: 48 } as CanvasImageSource
+  const images = new Map<string, CanvasImageSource>([['thumb-key', thumb]])
+  const element: PurElement = {
+    id: 'img',
+    type: 'image',
+    x: 10,
+    y: 10,
+    w: 220,
+    h: 165,
+    original: 'orig-key',
+    thumb: 'thumb-key',
+  }
+  const scene: PurScene = {
+    elements: [element],
+    view: { offsetX: 0, offsetY: 0, scale: 0.3 },
+    width: 400,
+    height: 300,
+    preferences: { backgroundColor: '#1e1e1e', gridColor: '#333333', showGrid: false },
+    labels: LABELS,
+    images,
+  }
+  const recorder = new RenderRecorder({ roundRect: true })
+  drawScene(recorder, scene)
+  const draws = recorder.calls.filter((call) => call.startsWith('drawImage('))
+  assert.equal(draws.length, 1, JSON.stringify(recorder.calls.slice(0, 8)))
+  assert.ok(draws[0]?.includes('66,49.5'), `thumbnail should be drawn at the card size: ${draws[0]}`)
+})

@@ -23,6 +23,7 @@ import type { PurLabelBundles } from '../i18n/pur-labels.ts'
 import { fetchNote, findEmbeddingNotes, purAssetUrl, saveNote, storeImage } from '../api.ts'
 import { findElement } from '../../pur-kernel/index.ts'
 import { fetchCodeSnippets, importPurFile, openFileWith, saveCodeSnippet } from '../api.ts'
+import { thumbnailOf } from './loader.ts'
 import { purReader } from './labels.ts'
 import { PurImageCache, fetchNoteSummary, resolveNoteLink } from './loader.ts'
 import { fileToDataURL, insertUrlInput } from './paste-drop.ts'
@@ -109,9 +110,14 @@ export function createPurMenuHost(deps: () => PurMenuHostDeps): PurMenuHost {
     importLocal: (at) => pickFile('image/*', async (file) => {
       const dataURL = await fileToDataURL(file)
       const path = await storeImage(file.name, dataURL).catch(() => '')
+      // Store a small copy too: a zoomed-out board draws it instead of decoding
+      // the full picture for a few dozen pixels.
+      const thumbData = await thumbnailOf(dataURL).catch(() => null)
+      const thumbStored = thumbData === null ? '' : await storeImage(`${file.name}-thumb`, thumbData).catch(() => '')
+      const thumb = thumbStored.length === 0 ? undefined : thumbStored
       deps().run(path.length === 0
-        ? deps().controller.insertImage(at.x, at.y, '', dataURL)
-        : deps().controller.insertImage(at.x, at.y, path))
+        ? deps().controller.insertImage(at.x, at.y, '', dataURL, thumb)
+        : deps().controller.insertImage(at.x, at.y, path, undefined, thumb))
     }),
     importPur: (at) => {
       const d = deps()

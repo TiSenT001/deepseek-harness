@@ -84,6 +84,8 @@ export interface PurImageElement extends PurElementBase {
   dataURL?: string
   /** Vault path of a note the image is linked to, when one is. */
   link?: string
+  /** Small copy drawn when the card is too small to be worth a full decode. */
+  readonly thumb?: string
 }
 
 /** A card pointing at a vault note or at an external URL. */

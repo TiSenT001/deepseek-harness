@@ -424,8 +424,8 @@ export class PurController {
    * @param worldX - x. @param worldY - y. @param original - vault path or URL. @param dataURL - inline data, when imported.
    * @returns the effects.
    */
-  insertImage(worldX: number, worldY: number, original: string, dataURL?: string): PurControllerEffect[] {
-    this.tools.state.elements.push({ id: this.tools.env.createId(), type: 'image', x: worldX, y: worldY, w: 300, h: 200, original, dataURL, rotation: 0, opacity: 1 })
+  insertImage(worldX: number, worldY: number, original: string, dataURL?: string, thumb?: string): PurControllerEffect[] {
+    this.tools.state.elements.push({ id: this.tools.env.createId(), type: 'image', x: worldX, y: worldY, w: 300, h: 200, original, dataURL, ...(thumb === undefined ? {} : { thumb }), rotation: 0, opacity: 1 })
     pushSnapshot(this.tools)
     return [{ type: 'save' }, { type: 'render' }]
   }

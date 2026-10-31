@@ -57,6 +57,20 @@ export function drawImageCard(
   // canvases therefore draw a flat tile and never request the bitmap.
   const tooSmall = scene.view.scale < 0.5 && screenW * screenH < MIN_DECODE_AREA
   if (tooSmall) {
+    // A thumbnail keeps the board readable when zoomed out; only pictures without
+    // one fall back to a flat tile.
+    const thumb = element.thumb
+    const thumbImage = thumb === undefined ? undefined : scene.images?.get(thumb)
+    if (thumb !== undefined && thumbImage !== undefined) {
+      ctx.drawImage(thumbImage, 0, 0, screenW, screenH)
+      return
+    }
+    if (thumb !== undefined) {
+      requestImage(thumb)
+      ctx.fillStyle = 'rgba(140,140,150,0.35)'
+      ctx.fillRect(0, 0, screenW, screenH)
+      return
+    }
     ctx.fillStyle = 'rgba(140,140,150,0.35)'
     ctx.fillRect(0, 0, screenW, screenH)
     return
