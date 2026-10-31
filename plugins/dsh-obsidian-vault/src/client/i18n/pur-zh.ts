@@ -17,6 +17,7 @@ export const PUR_ZH = {
   'pur.cmdUngroup': 'Pur Studio: 取消群组',
   'pur.cmdDuplicate': 'Pur Studio: 创建副本',
   'pur.cmdFitView': 'Pur Studio: 适应视图',
+  'pur.cmdRefreshLinks': '刷新关联笔记',
   'pur.cmdExportMd': 'Pur Studio: 导出 Markdown',
   'pur.cmdSelectAll': 'Pur Studio: 全选',
   'pur.cmdUndo': 'Pur Studio: 撤销',

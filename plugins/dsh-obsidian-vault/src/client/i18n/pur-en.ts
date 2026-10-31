@@ -15,6 +15,7 @@ export const PUR_EN: Record<keyof typeof PUR_ZH, string> = {
   'pur.cmdUngroup': 'Pur Studio: Ungroup',
   'pur.cmdDuplicate': 'Pur Studio: Duplicate',
   'pur.cmdFitView': 'Pur Studio: Fit to View',
+  'pur.cmdRefreshLinks': 'Refresh note links',
   'pur.cmdExportMd': 'Pur Studio: Export Markdown',
   'pur.cmdSelectAll': 'Pur Studio: Select All',
   'pur.cmdUndo': 'Pur Studio: Undo',

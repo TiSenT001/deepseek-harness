@@ -82,6 +82,9 @@ export function updateElementProps(tools: PurControllerTools, elementId: string,
       if (patch.fontFamily !== undefined) element.fontFamily = patch.fontFamily
       break
     case 'note-link':
+      // The card's body is the note text, so a refresh rewrites content while
+      // the user's own note/secondary line keeps its value.
+      if (patch.content !== undefined) element.content = patch.content
       if (patch.note !== undefined) element.note = patch.note
       if (patch.noteFontSize !== undefined) element.noteFontSize = patch.noteFontSize
       if (patch.noteFontFamily !== undefined) element.noteFontFamily = patch.noteFontFamily

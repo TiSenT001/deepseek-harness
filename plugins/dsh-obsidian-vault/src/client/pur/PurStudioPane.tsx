@@ -15,6 +15,7 @@ import { createPurMenuHost, exportSelectedText } from './host.ts'
 import type { PurMenuHostDeps } from './host.ts'
 import { purBundles } from './labels.ts'
 import { PurImageCache, loadStudioDocument, resolveNoteLink, saveStudioDocument } from './loader.ts'
+import { refreshNoteLinks } from './refresh-links.ts'
 import { VaultWriteConflict } from '../api.ts'
 import { useAsk } from '../ui/useAsk.tsx'
 import type { PurMenuState } from './menu.tsx'
@@ -132,6 +133,27 @@ void saveStudioDocument(path, document).catch(async (error: unknown) => {
   )
 
   const run = useCallback((effects: readonly PurControllerEffect[]) => executeEffects(effects, sink), [sink])
+
+  // A note-link card caches the note text, so it drifts when the note changes
+  // on disk. Re-read on focus: no polling, and an open dialog or editor is
+  // left alone.
+  useEffect(() => {
+    if (!ready) return undefined
+    const refresh = (): void => {
+      const controller = controllerRef.current
+      if (controller === null || dialogRef.current) return
+      void refreshNoteLinks(controller).then((result) => {
+        if (result.updated > 0) run([{ type: 'render' }])
+      }).catch(() => undefined)
+    }
+    refresh()
+    window.addEventListener('focus', refresh)
+    document.addEventListener('visibilitychange', refresh)
+    return () => {
+      window.removeEventListener('focus', refresh)
+      document.removeEventListener('visibilitychange', refresh)
+    }
+  }, [ready, run])
 
   const openMenu = useCallback(
     (clientX: number, clientY: number): void => {
