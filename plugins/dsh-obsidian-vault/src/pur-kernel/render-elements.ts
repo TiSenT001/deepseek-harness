@@ -109,7 +109,7 @@ function drawCard(
   if (!editing) drawBody(ctx, scene, element, screenW, screenH, requestImage)
   ctx.restore()
   const selected = scene.selectedIds?.has(element.id) ?? false
-  if (selected && !editing) drawElementSelection(ctx, element, x, y, screenW, screenH)
+  if (selected && !editing) drawElementSelection(ctx, element, x, y, screenW, screenH, scene.view.scale)
 }
 
 /**

@@ -15,7 +15,15 @@ import type { PurElementBase } from './types.ts'
  * @param w - canvas width.
  * @param h - canvas height.
  */
-export function drawElementSelection(ctx: PurCanvasContext, element: PurElementBase, x: number, y: number, w: number, h: number): void {
+export function drawElementSelection(
+  ctx: PurCanvasContext,
+  element: PurElementBase,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  scale: number,
+): void {
   ctx.save()
   ctx.translate(x + w / 2, y + h / 2)
   if (element.rotation) ctx.rotate((element.rotation * Math.PI) / 180)
@@ -26,7 +34,7 @@ export function drawElementSelection(ctx: PurCanvasContext, element: PurElementB
   if (element.locked) {
     drawLockGlyph(ctx, w)
   } else {
-    drawResizeHandle(ctx, w, h)
+    drawResizeHandles(ctx, w, h, scale)
   }
   ctx.restore()
 }
@@ -54,12 +62,20 @@ function drawLockGlyph(ctx: PurCanvasContext, w: number): void {
  * @param w - canvas width.
  * @param h - canvas height.
  */
-function drawResizeHandle(ctx: PurCanvasContext, w: number, h: number): void {
+function drawResizeHandles(ctx: PurCanvasContext, w: number, h: number, scale: number): void {
+  // Below a third of the zoom the eight handles would merge into a ring, so only
+  // the corners stay and the edges keep their cursor affordance.
+  const points: [number, number][] = scale < 0.35
+    ? [[0, 0], [w, 0], [w, h], [0, h]]
+    : [[0, 0], [w / 2, 0], [w, 0], [w, h / 2], [w, h], [w / 2, h], [0, h], [0, h / 2]]
+  const size = 7
   ctx.fillStyle = '#ffffff'
-  ctx.fillRect(w - 8, h - 8, 14, 14)
   ctx.strokeStyle = '#000000'
   ctx.lineWidth = 1
-  ctx.strokeRect(w - 8, h - 8, 14, 14)
+  for (const [px, py] of points) {
+    ctx.fillRect(px - size / 2, py - size / 2, size, size)
+    ctx.strokeRect(px - size / 2, py - size / 2, size, size)
+  }
 }
 
 /**

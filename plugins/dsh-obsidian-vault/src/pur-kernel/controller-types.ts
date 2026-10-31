@@ -1,3 +1,4 @@
+import type { PurResizeHandle } from './resize-handles.ts'
 /**
  * Controller contracts: the events adapters forward, the environment and copy
  * they inject, the effects the kernel reports back, the menu model the
@@ -153,6 +154,8 @@ export interface PurResizeState {
   startX: number
   /** Pointer viewport y at resize start. */
   startY: number
+  /** Which handle the drag started from. */
+  handle: PurResizeHandle
   /** Width at resize start. */
   w: number
   /** Height at resize start. */

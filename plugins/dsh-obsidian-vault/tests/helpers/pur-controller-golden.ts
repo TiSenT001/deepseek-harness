@@ -32730,7 +32730,9 @@ export const CONTROLLER_SCENARIOS: ControllerScenario[] = [
           }
         },
         "snapshot": {
-          "calls": [],
+          "calls": [
+            "cursor:nwse-resize"
+          ],
           "elements": [
             {
               "id": "t1",

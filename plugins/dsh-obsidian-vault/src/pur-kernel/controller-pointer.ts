@@ -5,6 +5,7 @@
  * @module dsh-obsidian-vault/pur-kernel/controller-pointer
  */
 import { findElement, screenToWorld, worldRect } from './geometry.ts'
+import { handlePositions, RESIZE_HANDLES, resizeRect, type PurResizeHandle } from './resize-handles.ts'
 import { elementAt, lineEndpointAt, pinAt } from './hit-test.ts'
 import { pushHistory } from './history.ts'
 import { finishPinDrag, local, momentumStep, reparentDragged } from './controller-gestures.ts'
@@ -49,13 +50,29 @@ export function pointerDown(tools: PurControllerTools, event: PurPointerEvent): 
     const site = findElement(state.elements, id)
     const element = site?.element
     if (site === null || element === undefined || element.locked || element.type === 'line') continue
-    const handleWorldX = element.x + site.parentX + (element.w ?? 0)
-    const handleWorldY = element.y + site.parentY + (element.h ?? 0)
-    const tolerance = 20 / state.view.scale
-    if (Math.abs(world.x - handleWorldX) < tolerance && Math.abs(world.y - handleWorldY) < tolerance) {
+    const rect = {
+      x: element.x + site.parentX,
+      y: element.y + site.parentY,
+      w: element.w ?? 0,
+      h: element.h ?? 0,
+    }
+    const tolerance = 9 / state.view.scale
+    const points = handlePositions(rect)
+    for (const handle of RESIZE_HANDLES) {
+      const point = points[handle]
+      if (Math.abs(world.x - point.x) > tolerance || Math.abs(world.y - point.y) > tolerance) continue
       state.resizing = true
-      state.resize = { elementId: element.id, startX: event.clientX, startY: event.clientY, w: element.w ?? 0, h: element.h ?? 0, parentX: site.parentX, parentY: site.parentY }
-      return []
+      state.resize = {
+        elementId: element.id,
+        handle,
+        startX: event.clientX,
+        startY: event.clientY,
+        w: rect.w,
+        h: rect.h,
+        parentX: site.parentX,
+        parentY: site.parentY,
+      }
+      return [{ type: 'cursor', cursor: cursorForHandle(handle) }]
     }
   }
 
@@ -171,8 +188,21 @@ export function pointerMove(tools: PurControllerTools, event: PurPointerEvent): 
     if (site !== null && site.element.type !== 'line') {
       const moveX = (event.clientX - state.resize.startX) / state.view.scale
       const moveY = (event.clientY - state.resize.startY) / state.view.scale
-      site.element.w = parseFloat(Math.max(30, state.resize.w + moveX).toFixed(1))
-      site.element.h = parseFloat(Math.max(30, state.resize.h + moveY).toFixed(1))
+      const start = {
+        x: site.element.x,
+        y: site.element.y,
+        w: state.resize.w,
+        h: state.resize.h,
+      }
+      // Images keep their ratio on corner drags; cards resize freely.
+      const aspect = site.element.type === 'image' && state.resize.h > 0
+        ? state.resize.w / state.resize.h
+        : undefined
+      const next = resizeRect(state.resize.handle, start, moveX, moveY, aspect)
+      site.element.x = next.x
+      site.element.y = next.y
+      site.element.w = next.w
+      site.element.h = next.h
     }
     effects.push({ type: 'render' })
   } else if (state.dragging && state.dragStart !== null) {
@@ -257,4 +287,16 @@ export function pointerUp(tools: PurControllerTools, event: PurPointerEvent): Pu
   }
   effects.push({ type: 'cursor', cursor: 'default' }, { type: 'render' })
   return effects
+}
+
+/**
+ * Cursor the pointer should show over one resize handle.
+ * @param handle - the handle under the pointer.
+ * @returns a CSS cursor name.
+ */
+function cursorForHandle(handle: PurResizeHandle): string {
+  if (handle === 'n' || handle === 's') return 'ns-resize'
+  if (handle === 'e' || handle === 'w') return 'ew-resize'
+  if (handle === 'nw' || handle === 'se') return 'nwse-resize'
+  return 'nesw-resize'
 }
