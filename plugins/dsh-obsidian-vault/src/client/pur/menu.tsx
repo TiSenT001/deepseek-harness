@@ -100,7 +100,7 @@ export function PurContextMenu(props: PurContextMenuProps): JSX.Element {
         role="menu"
         tabIndex={-1}
         className={css.menu}
-        style={{ position: 'fixed', left, top, minWidth: 210, maxHeight: 'calc(100vh - 24px)', overflowY: 'auto', overflowX: 'hidden', outline: 'none' }}
+        style={{ position: 'fixed', left, top, width: 'max-content', minWidth: 168, maxWidth: 280, maxHeight: 'calc(100vh - 24px)', overflowY: 'auto', overflowX: 'hidden', outline: 'none' }}
         onMouseDown={(event) => event.stopPropagation()}
       >
         <PurMenuEntries entries={props.state.model.entries} labels={props.labels} onAction={props.onAction} onPreviewOpacity={props.onPreviewOpacity} onClose={props.onClose} />
@@ -167,7 +167,8 @@ function PurMenuEntries(props: PurMenuEntriesProps): JSX.Element {
                   return
                 }
                 const rect = event.currentTarget.getBoundingClientRect()
-                setSubmenu({ id: entry.id, x: Math.min(rect.right + 2, window.innerWidth - 220), y: Math.min(rect.top - 4, window.innerHeight - 220) })
+                const height = entry.children.length * 28 + 16
+                setSubmenu({ id: entry.id, x: Math.min(rect.right + 2, window.innerWidth - 220), y: Math.max(8, Math.min(rect.top, window.innerHeight - height)) })
               }}
               onClick={() => {
                 if (entry.children !== undefined) return

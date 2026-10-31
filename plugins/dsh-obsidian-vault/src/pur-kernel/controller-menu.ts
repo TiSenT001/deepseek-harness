@@ -105,35 +105,48 @@ function elementMenu(state: PurControllerState, context: PurMenuContext, hitLock
   const nonLine = selected.filter((el) => el.type !== 'line')
   const entries: PurMenuEntry[] = []
 
+  // Opening and linking are one subject, so they collapse into two submenus and
+  // leave the top level for the commands that are used constantly.
   if (hasNoteLink || hasImage) {
-    if (hasNoteLink) entries.push({ id: 'edit-note-link', icon: 'pencil', labelKey: 'editLine', separatorAfter: true })
-    if (hasImage && !hasNoteLink) {
-      const image = selected.find((el) => el.type === 'image')
-      if (image !== undefined && image.type === 'image' && image.link !== undefined) {
-        entries.push({ id: 'mod-link-note', icon: 'link', labelKey: 'modLinkNote' }, { id: 'unlink-note', icon: 'unlink', labelKey: 'unlinkNote', separatorAfter: true })
-      } else {
-        entries.push({ id: 'link-note', icon: 'link', labelKey: 'linkNote', separatorAfter: true })
-      }
-    }
-    if (hasImage) {
-      entries.push({ id: 'open-linked', icon: 'link', labelKey: 'openLinkedNote' })
-      entries.push({ id: 'open-embedded', icon: 'file-text', labelKey: 'openEmbeddedNote' })
-    }
-    if (context.activeFileIsMarkdown && hasImage) entries.push({ id: 'embed-note', icon: 'image-up', labelKey: 'embedNote', separatorAfter: true })
-    entries.push(
+    const openChildren: PurMenuEntry[] = [
       { id: 'open', icon: 'external-link', labelKey: 'open' },
       { id: 'open-new-tab', icon: 'file-plus', labelKey: 'openNewTab' },
-      { id: 'open-right', icon: 'split', labelKey: 'openRight', separatorAfter: true },
-    )
-  }
+      { id: 'open-right', icon: 'split', labelKey: 'openRight' },
+    ]
+    if (hasImage) {
+      openChildren.push({ id: 'open-linked', icon: 'link', labelKey: 'openLinkedNote' })
+      openChildren.push({ id: 'open-embedded', icon: 'file-text', labelKey: 'openEmbeddedNote' })
+    }
+    entries.push({ id: 'open-group', icon: 'external-link', labelKey: 'open', children: openChildren })
 
+    const image = selected.find((el) => el.type === 'image')
+    const group = selected.find((el) => el.type === 'group')
+    const linked = (image !== undefined && image.type === 'image' && image.link !== undefined)
+      || (group !== undefined && group.type === 'group' && group.link !== undefined)
+    const linkChildren: PurMenuEntry[] = linked
+      ? [
+        { id: 'mod-link-note', icon: 'link', labelKey: 'modLinkNote' },
+        { id: 'unlink-note', icon: 'unlink', labelKey: 'unlinkNote' },
+      ]
+      : [{ id: 'link-note', icon: 'link', labelKey: 'linkNote' }]
+    if (context.activeFileIsMarkdown && hasImage) {
+      linkChildren.push({ id: 'embed-note', icon: 'image-up', labelKey: 'embedNote' })
+    }
+    // A group with a single child is just noise: keep the plain entry then.
+    entries.push(linkChildren.length === 1
+      ? { id: 'link-note', icon: 'link', labelKey: 'linkNote', separatorAfter: true }
+      : { id: 'link-group', icon: 'link', labelKey: 'linkNote', children: linkChildren, separatorAfter: true })
+  }
   if (hasText || hasCodeNode || hasNoteLink) {
     const editable = selected.find((el) => el.type === 'text' || el.type === 'code-node' || el.type === 'note-link')
-    entries.push({ id: 'edit', icon: 'pencil', labelKey: 'edit' })
-    entries.push({ id: 'add-in-pin', icon: 'git-commit', labelKey: 'addInPin' }, { id: 'add-out-pin', icon: 'git-commit', labelKey: 'addOutPin' })
-    if (editable !== undefined && (editable.inputs?.length ?? 0) > 0) entries.push({ id: 'del-in-pin', icon: 'minus', labelKey: 'delInPin', children: pinEntries(editable, 'del-in-pin') })
-    if (editable !== undefined && (editable.outputs?.length ?? 0) > 0) entries.push({ id: 'del-out-pin', icon: 'minus', labelKey: 'delOutPin', children: pinEntries(editable, 'del-out-pin') })
-    entries[entries.length - 1] = { ...entries[entries.length - 1] as PurMenuEntry, separatorAfter: true }
+    entries.push({ id: hasNoteLink ? 'edit-note-link' : 'edit', icon: 'pencil', labelKey: hasNoteLink ? 'editNoteLink' : 'edit' })
+    const pinChildren: PurMenuEntry[] = [
+      { id: 'add-in-pin', icon: 'git-commit', labelKey: 'addInPin' },
+      { id: 'add-out-pin', icon: 'git-commit', labelKey: 'addOutPin' },
+    ]
+    if (editable !== undefined && (editable.inputs?.length ?? 0) > 0) pinChildren.push({ id: 'del-in-pin', icon: 'minus', labelKey: 'delInPin', children: pinEntries(editable, 'del-in-pin') })
+    if (editable !== undefined && (editable.outputs?.length ?? 0) > 0) pinChildren.push({ id: 'del-out-pin', icon: 'minus', labelKey: 'delOutPin', children: pinEntries(editable, 'del-out-pin') })
+    entries.push({ id: 'pin-group', icon: 'git-commit', labelKey: 'pinGroup', children: pinChildren, separatorAfter: true })
   }
 
   if (hasGroup) {
@@ -194,14 +207,16 @@ function elementMenu(state: PurControllerState, context: PurMenuContext, hitLock
         { id: 'send-to-back', icon: 'arrow-down-to-line', labelKey: 'sendToBack' },
       ],
     })
-    if (!hasGroup) {
-      const current = selected[0]?.opacity ?? 1
-      entries.push({ id: 'opacity', icon: 'droplet', labelKey: 'opacity', value: current })
-    }
   }
 
   const anyLocked = nonLine.some((el) => el.locked === true)
-  entries.push({ id: 'toggle-lock', icon: hitLocked ? 'unlock' : 'lock', labelKey: anyLocked ? 'unlockPosition' : 'lockPosition', separatorAfter: true })
+  const appearance: PurMenuEntry[] = []
+  if (nonLine.length > 0 && !hasGroup) {
+    appearance.push({ id: 'opacity', icon: 'droplet', labelKey: 'opacity', value: selected[0]?.opacity ?? 1 })
+  }
+  appearance.push({ id: 'toggle-lock', icon: hitLocked ? 'unlock' : 'lock', labelKey: anyLocked ? 'unlockPosition' : 'lockPosition' })
+  appearance.push({ id: 'fit-view', icon: 'maximize', labelKey: 'fitViewF' })
+  entries.push({ id: 'appearance', icon: 'droplet', labelKey: 'appearance', children: appearance, separatorAfter: true })
 
   if (hasNoteLink || hasImage) {
     entries.push({ id: 'copy-link', icon: 'link', labelKey: 'copyLink' })
@@ -210,7 +225,6 @@ function elementMenu(state: PurControllerState, context: PurMenuContext, hitLock
   }
 
   entries.push(
-    { id: 'fit-view', icon: 'maximize', labelKey: 'fitViewF' },
     { id: 'save-export', icon: 'folder', labelKey: 'saveExport', children: saveExportEntries() },
     ...windowEntries(context),
   )

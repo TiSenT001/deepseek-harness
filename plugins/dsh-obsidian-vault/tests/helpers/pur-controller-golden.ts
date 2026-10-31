@@ -34310,16 +34310,23 @@ export const MENU_SCENARIOS: MenuScenario[] = [
         "c": null
       },
       {
-        "t": "addInPin",
-        "i": "git-commit",
-        "s": false,
-        "c": null
-      },
-      {
-        "t": "addOutPin",
+        "t": "pinGroup",
         "i": "git-commit",
         "s": true,
-        "c": null
+        "c": [
+          {
+            "t": "addInPin",
+            "i": "git-commit",
+            "s": false,
+            "c": null
+          },
+          {
+            "t": "addOutPin",
+            "i": "git-commit",
+            "s": false,
+            "c": null
+          }
+        ]
       },
       {
         "t": "copy",
@@ -34371,22 +34378,29 @@ export const MENU_SCENARIOS: MenuScenario[] = [
         ]
       },
       {
-        "t": "opacity",
+        "t": "appearance",
         "i": "droplet",
-        "s": false,
-        "c": null
-      },
-      {
-        "t": "锁定位置",
-        "i": "lock",
         "s": true,
-        "c": null
-      },
-      {
-        "t": "适应视图 (F)",
-        "i": "maximize",
-        "s": false,
-        "c": null
+        "c": [
+          {
+            "t": "opacity",
+            "i": "droplet",
+            "s": false,
+            "c": null
+          },
+          {
+            "t": "锁定位置",
+            "i": "lock",
+            "s": false,
+            "c": null
+          },
+          {
+            "t": "适应视图 (F)",
+            "i": "maximize",
+            "s": false,
+            "c": null
+          }
+        ]
       },
       {
         "t": "saveExport",
@@ -34520,46 +34534,53 @@ export const MENU_SCENARIOS: MenuScenario[] = [
         "c": null
       },
       {
-        "t": "addInPin",
+        "t": "pinGroup",
         "i": "git-commit",
-        "s": false,
-        "c": null
-      },
-      {
-        "t": "addOutPin",
-        "i": "git-commit",
-        "s": false,
-        "c": null
-      },
-      {
-        "t": "delInPin",
-        "i": "minus",
-        "s": false,
+        "s": true,
         "c": [
           {
-            "t": "a",
-            "i": "",
+            "t": "addInPin",
+            "i": "git-commit",
             "s": false,
             "c": null
           },
           {
-            "t": "输入2",
-            "i": "",
+            "t": "addOutPin",
+            "i": "git-commit",
             "s": false,
             "c": null
-          }
-        ]
-      },
-      {
-        "t": "delOutPin",
-        "i": "minus",
-        "s": true,
-        "c": [
+          },
           {
-            "t": "sum",
-            "i": "",
+            "t": "delInPin",
+            "i": "minus",
             "s": false,
-            "c": null
+            "c": [
+              {
+                "t": "a",
+                "i": "",
+                "s": false,
+                "c": null
+              },
+              {
+                "t": "输入2",
+                "i": "",
+                "s": false,
+                "c": null
+              }
+            ]
+          },
+          {
+            "t": "delOutPin",
+            "i": "minus",
+            "s": false,
+            "c": [
+              {
+                "t": "sum",
+                "i": "",
+                "s": false,
+                "c": null
+              }
+            ]
           }
         ]
       },
@@ -34613,22 +34634,29 @@ export const MENU_SCENARIOS: MenuScenario[] = [
         ]
       },
       {
-        "t": "opacity",
+        "t": "appearance",
         "i": "droplet",
-        "s": false,
-        "c": null
-      },
-      {
-        "t": "锁定位置",
-        "i": "lock",
         "s": true,
-        "c": null
-      },
-      {
-        "t": "适应视图 (F)",
-        "i": "maximize",
-        "s": false,
-        "c": null
+        "c": [
+          {
+            "t": "opacity",
+            "i": "droplet",
+            "s": false,
+            "c": null
+          },
+          {
+            "t": "锁定位置",
+            "i": "lock",
+            "s": false,
+            "c": null
+          },
+          {
+            "t": "适应视图 (F)",
+            "i": "maximize",
+            "s": false,
+            "c": null
+          }
+        ]
       },
       {
         "t": "saveExport",
@@ -34761,16 +34789,23 @@ export const MENU_SCENARIOS: MenuScenario[] = [
         "c": null
       },
       {
-        "t": "addInPin",
-        "i": "git-commit",
-        "s": false,
-        "c": null
-      },
-      {
-        "t": "addOutPin",
+        "t": "pinGroup",
         "i": "git-commit",
         "s": true,
-        "c": null
+        "c": [
+          {
+            "t": "addInPin",
+            "i": "git-commit",
+            "s": false,
+            "c": null
+          },
+          {
+            "t": "addOutPin",
+            "i": "git-commit",
+            "s": false,
+            "c": null
+          }
+        ]
       },
       {
         "t": "copy",
@@ -34890,22 +34925,29 @@ export const MENU_SCENARIOS: MenuScenario[] = [
         ]
       },
       {
-        "t": "opacity",
+        "t": "appearance",
         "i": "droplet",
-        "s": false,
-        "c": null
-      },
-      {
-        "t": "锁定位置",
-        "i": "lock",
         "s": true,
-        "c": null
-      },
-      {
-        "t": "适应视图 (F)",
-        "i": "maximize",
-        "s": false,
-        "c": null
+        "c": [
+          {
+            "t": "opacity",
+            "i": "droplet",
+            "s": false,
+            "c": null
+          },
+          {
+            "t": "锁定位置",
+            "i": "lock",
+            "s": false,
+            "c": null
+          },
+          {
+            "t": "适应视图 (F)",
+            "i": "maximize",
+            "s": false,
+            "c": null
+          }
+        ]
       },
       {
         "t": "saveExport",
@@ -35083,16 +35125,23 @@ export const MENU_SCENARIOS: MenuScenario[] = [
         ]
       },
       {
-        "t": "锁定位置",
-        "i": "lock",
+        "t": "appearance",
+        "i": "droplet",
         "s": true,
-        "c": null
-      },
-      {
-        "t": "适应视图 (F)",
-        "i": "maximize",
-        "s": false,
-        "c": null
+        "c": [
+          {
+            "t": "锁定位置",
+            "i": "lock",
+            "s": false,
+            "c": null
+          },
+          {
+            "t": "适应视图 (F)",
+            "i": "maximize",
+            "s": false,
+            "c": null
+          }
+        ]
       },
       {
         "t": "saveExport",
@@ -35231,16 +35280,23 @@ export const MENU_SCENARIOS: MenuScenario[] = [
         "c": null
       },
       {
-        "t": "addInPin",
-        "i": "git-commit",
-        "s": false,
-        "c": null
-      },
-      {
-        "t": "addOutPin",
+        "t": "pinGroup",
         "i": "git-commit",
         "s": true,
-        "c": null
+        "c": [
+          {
+            "t": "addInPin",
+            "i": "git-commit",
+            "s": false,
+            "c": null
+          },
+          {
+            "t": "addOutPin",
+            "i": "git-commit",
+            "s": false,
+            "c": null
+          }
+        ]
       },
       {
         "t": "copy",
@@ -35292,22 +35348,29 @@ export const MENU_SCENARIOS: MenuScenario[] = [
         ]
       },
       {
-        "t": "opacity",
+        "t": "appearance",
         "i": "droplet",
-        "s": false,
-        "c": null
-      },
-      {
-        "t": "锁定位置",
-        "i": "lock",
         "s": true,
-        "c": null
-      },
-      {
-        "t": "适应视图 (F)",
-        "i": "maximize",
-        "s": false,
-        "c": null
+        "c": [
+          {
+            "t": "opacity",
+            "i": "droplet",
+            "s": false,
+            "c": null
+          },
+          {
+            "t": "锁定位置",
+            "i": "lock",
+            "s": false,
+            "c": null
+          },
+          {
+            "t": "适应视图 (F)",
+            "i": "maximize",
+            "s": false,
+            "c": null
+          }
+        ]
       },
       {
         "t": "saveExport",
@@ -35418,46 +35481,60 @@ export const MENU_SCENARIOS: MenuScenario[] = [
     },
     "menu": [
       {
-        "t": "editLine",
-        "i": "pencil",
-        "s": true,
-        "c": null
-      },
-      {
         "t": "open",
         "i": "external-link",
         "s": false,
-        "c": null
+        "c": [
+          {
+            "t": "open",
+            "i": "external-link",
+            "s": false,
+            "c": null
+          },
+          {
+            "t": "openNewTab",
+            "i": "file-plus",
+            "s": false,
+            "c": null
+          },
+          {
+            "t": "openRight",
+            "i": "split",
+            "s": false,
+            "c": null
+          }
+        ]
       },
       {
-        "t": "openNewTab",
-        "i": "file-plus",
-        "s": false,
-        "c": null
-      },
-      {
-        "t": "openRight",
-        "i": "split",
+        "t": "linkNote",
+        "i": "link",
         "s": true,
         "c": null
       },
       {
-        "t": "edit",
+        "t": "editNoteLink",
         "i": "pencil",
         "s": false,
         "c": null
       },
       {
-        "t": "addInPin",
-        "i": "git-commit",
-        "s": false,
-        "c": null
-      },
-      {
-        "t": "addOutPin",
+        "t": "pinGroup",
         "i": "git-commit",
         "s": true,
-        "c": null
+        "c": [
+          {
+            "t": "addInPin",
+            "i": "git-commit",
+            "s": false,
+            "c": null
+          },
+          {
+            "t": "addOutPin",
+            "i": "git-commit",
+            "s": false,
+            "c": null
+          }
+        ]
       },
       {
         "t": "copy",
@@ -35509,16 +35586,29 @@ export const MENU_SCENARIOS: MenuScenario[] = [
         ]
       },
       {
-        "t": "opacity",
+        "t": "appearance",
         "i": "droplet",
-        "s": false,
-        "c": null
-      },
-      {
-        "t": "锁定位置",
-        "i": "lock",
         "s": true,
-        "c": null
+        "c": [
+          {
+            "t": "opacity",
+            "i": "droplet",
+            "s": false,
+            "c": null
+          },
+          {
+            "t": "锁定位置",
+            "i": "lock",
+            "s": false,
+            "c": null
+          },
+          {
+            "t": "适应视图 (F)",
+            "i": "maximize",
+            "s": false,
+            "c": null
+          }
+        ]
       },
       {
         "t": "copyLink",
@@ -35530,12 +35620,6 @@ export const MENU_SCENARIOS: MenuScenario[] = [
         "t": "revealExplorer",
         "i": "folder-search",
         "s": true,
-        "c": null
-      },
-      {
-        "t": "适应视图 (F)",
-        "i": "maximize",
-        "s": false,
         "c": null
       },
       {
@@ -35647,52 +35731,66 @@ export const MENU_SCENARIOS: MenuScenario[] = [
     },
     "menu": [
       {
-        "t": "modLinkNote",
-        "i": "link",
-        "s": false,
-        "c": null
-      },
-      {
-        "t": "unlinkNote",
-        "i": "unlink",
-        "s": true,
-        "c": null
-      },
-      {
-        "t": "openLinkedNote",
-        "i": "link",
-        "s": false,
-        "c": null
-      },
-      {
-        "t": "openEmbeddedNote",
-        "i": "file-text",
-        "s": false,
-        "c": null
-      },
-      {
-        "t": "embedNote",
-        "i": "image-up",
-        "s": true,
-        "c": null
-      },
-      {
         "t": "open",
         "i": "external-link",
         "s": false,
-        "c": null
+        "c": [
+          {
+            "t": "open",
+            "i": "external-link",
+            "s": false,
+            "c": null
+          },
+          {
+            "t": "openNewTab",
+            "i": "file-plus",
+            "s": false,
+            "c": null
+          },
+          {
+            "t": "openRight",
+            "i": "split",
+            "s": false,
+            "c": null
+          },
+          {
+            "t": "openLinkedNote",
+            "i": "link",
+            "s": false,
+            "c": null
+          },
+          {
+            "t": "openEmbeddedNote",
+            "i": "file-text",
+            "s": false,
+            "c": null
+          }
+        ]
       },
       {
-        "t": "openNewTab",
-        "i": "file-plus",
-        "s": false,
-        "c": null
-      },
-      {
-        "t": "openRight",
-        "i": "split",
+        "t": "linkNote",
+        "i": "link",
         "s": true,
-        "c": null
+        "c": [
+          {
+            "t": "modLinkNote",
+            "i": "link",
+            "s": false,
+            "c": null
+          },
+          {
+            "t": "unlinkNote",
+            "i": "unlink",
+            "s": false,
+            "c": null
+          },
+          {
+            "t": "embedNote",
+            "i": "image-up",
+            "s": false,
+            "c": null
+          }
+        ]
       },
       {
         "t": "copy",
@@ -35744,16 +35842,29 @@ export const MENU_SCENARIOS: MenuScenario[] = [
         ]
       },
       {
-        "t": "opacity",
+        "t": "appearance",
         "i": "droplet",
-        "s": false,
-        "c": null
-      },
-      {
-        "t": "锁定位置",
-        "i": "lock",
         "s": true,
-        "c": null
+        "c": [
+          {
+            "t": "opacity",
+            "i": "droplet",
+            "s": false,
+            "c": null
+          },
+          {
+            "t": "锁定位置",
+            "i": "lock",
+            "s": false,
+            "c": null
+          },
+          {
+            "t": "适应视图 (F)",
+            "i": "maximize",
+            "s": false,
+            "c": null
+          }
+        ]
       },
       {
         "t": "copyLink",
@@ -35765,12 +35876,6 @@ export const MENU_SCENARIOS: MenuScenario[] = [
         "t": "revealExplorer",
         "i": "folder-search",
         "s": true,
-        "c": null
-      },
-      {
-        "t": "适应视图 (F)",
-        "i": "maximize",
-        "s": false,
         "c": null
       },
       {
@@ -35891,16 +35996,23 @@ export const MENU_SCENARIOS: MenuScenario[] = [
         "c": null
       },
       {
-        "t": "addInPin",
-        "i": "git-commit",
-        "s": false,
-        "c": null
-      },
-      {
-        "t": "addOutPin",
+        "t": "pinGroup",
         "i": "git-commit",
         "s": true,
-        "c": null
+        "c": [
+          {
+            "t": "addInPin",
+            "i": "git-commit",
+            "s": false,
+            "c": null
+          },
+          {
+            "t": "addOutPin",
+            "i": "git-commit",
+            "s": false,
+            "c": null
+          }
+        ]
       },
       {
         "t": "copy",
@@ -35952,22 +36064,29 @@ export const MENU_SCENARIOS: MenuScenario[] = [
         ]
       },
       {
-        "t": "opacity",
+        "t": "appearance",
         "i": "droplet",
-        "s": false,
-        "c": null
-      },
-      {
-        "t": "解锁位置",
-        "i": "unlock",
         "s": true,
-        "c": null
-      },
-      {
-        "t": "适应视图 (F)",
-        "i": "maximize",
-        "s": false,
-        "c": null
+        "c": [
+          {
+            "t": "opacity",
+            "i": "droplet",
+            "s": false,
+            "c": null
+          },
+          {
+            "t": "解锁位置",
+            "i": "unlock",
+            "s": false,
+            "c": null
+          },
+          {
+            "t": "适应视图 (F)",
+            "i": "maximize",
+            "s": false,
+            "c": null
+          }
+        ]
       },
       {
         "t": "saveExport",
