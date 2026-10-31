@@ -142,7 +142,13 @@ export function createPurMenuHost(deps: () => PurMenuHostDeps): PurMenuHost {
     generateCode: (format) => void generateCodeFlow(deps(), format),
     exportImage: (format) => void exportImageFlow(deps(), format),
     exportCanvasDocument: () => void exportCanvasFlow(deps()),
-    togglePopout: unsupported,
+    togglePopout: () => {
+      // A browser window, not a second workspace: the popout page mounts only
+      // this canvas, so it can sit on another monitor without its own file tree.
+      const token = new URLSearchParams(window.location.search).get('token') ?? ''
+      const query = `path=${encodeURIComponent(deps().path)}${token === '' ? '' : `&token=${encodeURIComponent(token)}`}`
+      window.open(`/obsidian/api/pur/popout?${query}`, '_blank', 'popup,width=1200,height=800')
+    },
     togglePinTop: unsupported,
     openAsset: (id, destination) => {
       // A real document tab (a split for 'right'), not `window.open`: the webview

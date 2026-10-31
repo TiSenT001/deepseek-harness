@@ -169,7 +169,7 @@ void saveStudioDocument(path, document).catch(async (error: unknown) => {
         activeFileIsMarkdown: false,
         isPopout: false,
         isPinned: false,
-        supportsPopout: false,
+        supportsPopout: true,
         supportsPinTop: false,
         supportsReveal: false,
       }

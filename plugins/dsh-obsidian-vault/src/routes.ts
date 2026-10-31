@@ -5,6 +5,7 @@
  * @module dsh-obsidian-vault/routes
  */
 import { readFile, appendFile, mkdir } from 'node:fs/promises'
+import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { readJson, send } from './http.ts'
@@ -15,7 +16,7 @@ import { serveConfigRoute } from './config-endpoints.ts'
 import { servePluginRoute } from './plugin-endpoints.ts'
 import { VaultFiles } from './vault/files.ts'
 import { resolvePurImage } from './vault/pur-image.ts'
-import { PUR_ASSETS_FOLDER } from './package-root.ts'
+import { PACKAGE_ROOT, PUR_ASSETS_FOLDER } from './package-root.ts'
 import { findEmbeddingNotes } from './vault/pur-embedders.ts'
 import { externalizeCanvas } from './vault/pur-externalize.ts'
 import { PUR_ASSET_SCHEME, readPurImage, storePurImage } from './vault/pur-store.ts'
@@ -24,6 +25,9 @@ import type { VaultIndex } from './vault/index.ts'
 import type { VaultRegistry } from './vault/registry.ts'
 import { CONTENT_TYPES, dispositionOf, extensionOf, logNoteOpen } from './routes-shared.ts'
 import type { RouteHost, TrustGate } from './routes-shared.ts'
+
+/** Bundle the standalone popout page loads, shipped next to the workspace one. */
+const POPOUT_BUNDLE = join(PACKAGE_ROOT, 'lib', 'popout.js')
 export type { RouteHost } from './routes-shared.ts'
 
 
@@ -322,6 +326,48 @@ async function dispatch(
       }
       response.writeHead(200, { 'content-type': image.contentType, 'cache-control': 'no-cache' })
       response.end(image.bytes)
+      return
+    }
+    case 'pur/popout': {
+      // A standalone window: the page carries its own token forward so the
+      // bundle's asset requests stay authorised, and it loads the popout bundle
+      // this plugin ships next to the workspace one.
+      const documentPath = url.searchParams.get('path') ?? ''
+      const token = url.searchParams.get('token') ?? ''
+      if (documentPath.length === 0) {
+        send(response, 400, { error: 'path is required' })
+        return
+      }
+      const html = [
+        '<!doctype html>',
+        '<html lang="zh">',
+        '<head>',
+        '<meta charset="utf-8">',
+        '<meta name="viewport" content="width=device-width, initial-scale=1">',
+        '<title>Pur Studio</title>',
+        '<style>html,body,#root{margin:0;height:100%;background:#1e1e1e;color:#ddd;font-family:system-ui,sans-serif}</style>',
+        '</head>',
+        '<body><div id="root"></div>',
+        `<script src="/obsidian/api/pur/popout-js${token === '' ? '' : `?token=${encodeURIComponent(token)}`}"></script>`,
+        '</body>',
+        '</html>',
+      ].join('')
+      response.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' })
+      response.end(html)
+      return
+    }
+    case 'pur/popout-js': {
+      // The workspace bundle is loaded by the shell; the popout page is not, so
+      // the host serves its bundle directly.
+      let script: Buffer
+      try {
+        script = readFileSync(POPOUT_BUNDLE)
+      } catch {
+        send(response, 404, { error: 'popout bundle missing', path: POPOUT_BUNDLE })
+        return
+      }
+      response.writeHead(200, { 'content-type': 'text/javascript; charset=utf-8', 'cache-control': 'no-cache' })
+      response.end(script)
       return
     }
     case 'note-open': {      const body = await readJson(request)

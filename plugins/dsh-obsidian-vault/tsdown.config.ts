@@ -1,4 +1,4 @@
-﻿﻿import type { UserConfig } from 'tsdown'
+import type { UserConfig } from 'tsdown'
 
 /** Package id baked into the browser bundle registration. */
 const PLUGIN_ID = 'dsh-obsidian-vault'
@@ -78,4 +78,20 @@ const obsidianBundle: UserConfig = {
 }
 
 
-export default [hostBundle, clientBundle, workerBundle, obsidianBundle]
+const popoutBundle: UserConfig = {
+  entry: { popout: 'src/client/popout.tsx' },
+  // A standalone page has no shell to provide React, so bundle everything.
+  deps: { neverBundle: [], alwaysBundle: () => true },
+  outDir: 'lib',
+  format: 'iife',
+  platform: 'browser',
+  dts: false,
+  sourcemap: true,
+  clean: false,
+  define: {
+    'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV ?? 'production'),
+  },
+  outputOptions: { entryFileNames: 'popout.js' },
+}
+
+export default [hostBundle, clientBundle, workerBundle, obsidianBundle, popoutBundle]
