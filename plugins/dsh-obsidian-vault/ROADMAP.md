@@ -1,4 +1,12 @@
-﻿## 第七十八轮：画布元素「打开」真正导航（2026-10-31）
+﻿## 第七十九轮：新标签页 destination 打通（2026-10-31）
+
+- **根因**：工作区把 `onOpenWithAnchor`（锚点处理器）当作 pane 的 `onOpen`，于是画布传来的 destination（`new-tab`）被当成**标题锚点**解析 → `openPath(path, { anchor: 'new-tab' })`，自然不叠加标签。
+- **修法**：`VaultWorkspace` 的 pane `onOpen` 先判断第二个参数是否为 `current/new-tab/right`，命中就转给 `onOpenPath`（destination 语义），否则仍走锚点分支；`MainPane` 的 `onOpen` 类型放宽为 `(path, argument?: string)`。
+- **实测**：`打开` → 标签 **[关联探针]**（替换，符合预期）；`在新标签页打开` → 标签 **[菜单探针.purstudio, 关联探针]**（叠加 ✅）。
+- **诊断手段**：临时在 `host.openLink` 打 `console.warn('PUR_OPEN', target, destination)` 抓运行时值，确认 destination 到达且 `openPath` 存在，定位到它被误当锚点；问题解决后已移除日志。
+- **验证**：`tsc` 0、**392/392**、`tsdown` 成功、审核 **99/99、0 控制台错误**。
+
+## 第七十八轮：画布元素「打开」真正导航（2026-10-31）
 
 - **修好「打开」**：`openPurLink` 对 vault 路径只调 `noteOpen()`（只写日志，不导航），且 `destination` 在 host 层被整个丢弃。现在 `openLink(target, destination)`：URL 走浏览器标签；vault 路径走 `openPath(target, destination)`，由工作区决定当前页/新标签。
 - **穿线**：`PurStudioPane.onOpenPath` 与 `PurMenuHostDeps.openPath` 增加可选 destination；`FileView`、`VaultWorkspace` 的 prop 类型同步放宽；`VaultPage` 把 `new-tab`/`right` 映射成 `openPath(..., { newTab: true })`。

@@ -1,4 +1,4 @@
-﻿/**
+/**
  * The main column: the error banner plus whichever surface owns the reading
  * area — graph, empty state, loading state, reading view, or the file viewer.
  * @module dsh-obsidian-vault/client/ui/MainPane
@@ -35,7 +35,7 @@ export interface MainPaneProps {
   readonly onSource: () => void
   /** The source editor wrote the note; reload the index. */
   readonly onSaved: () => void
-  readonly onOpen: (path: string, anchor?: string) => void
+  readonly onOpen: (path: string, argument?: string) => void
   readonly onCreate: (target: string) => void
   readonly onTag: (tag: string) => void
   readonly onPathFilter: (prefix: string) => void

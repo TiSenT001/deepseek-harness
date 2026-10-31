@@ -196,7 +196,15 @@ export function VaultWorkspace(props: VaultWorkspaceProps): JSX.Element {
             onSaved={() => {
               void reload()
             }}
-            onOpen={onOpenWithAnchor}
+            onOpen={(next, argument) => {
+              // The canvas pane reuses this prop for its open destinations; a note
+              // anchor arrives as a plain heading string instead.
+              if (argument === 'current' || argument === 'new-tab' || argument === 'right') {
+                onOpenPath(next, argument)
+                return
+              }
+              onOpenWithAnchor(next, argument)
+            }}
             onCreate={onCreateNote}
             onTag={onTagSearch}
             onPathFilter={onFilter}
