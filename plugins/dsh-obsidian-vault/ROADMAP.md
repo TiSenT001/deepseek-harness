@@ -1,3 +1,14 @@
+## 第八十七轮：笔记卡刷新 + 画布索引失效修复（2026-10-31）
+
+- **note-link 卡片随笔记刷新**：新增 `client/pur/refresh-links.ts`，重新解析每个库内 note-link 的目标笔记，文本变了就 `updateElement`；触发点=窗口获得焦点 / 可见性变化 / 命令面板「刷新关联笔记」（后者刷新后立即保存）。
+- **根因修复**：`updateElement` 的 `note-link` 分支**漏了 `content`**，只处理 note/font/cardColor/link，所以刷新写不进卡片；补上后实测：外部把笔记改成「第二版内容」→ 执行命令 → 画布文件里卡片内容同步为「第二版内容」✅
+- **P4 两处缺口（子 agent 补，我审核）**：
+  1. 画布编辑不触发重索引 —— 签名只含附件路径。现在 `ScanResult.canvasKeys` 把画布 `version:size` 纳入签名，删掉 note-link 后旧反链会消失（此前一直残留）。
+  2. 文本/代码卡里的 `[[笔记]]` 未提取 —— 现在复用 `scanWikiLinks`，并在模块头写清覆盖范围与不覆盖项。
+  顺带把签名从内嵌 NUL/0x01 改成 `JSON.stringify([...])`，`scan.ts` 恢复为可 diff 文本；`rebind()` 清空 `canvasRefs`；protocol 里被截断的 JSDoc 修正。
+- **测试**：**420/420**（+2 画布索引失效与 wiki 链接用例）；`tsc` 0、`tsdown` 成功、审核 **99/99、0 控制台错误**。
+- 提交：`cba498e187`（笔记卡刷新）、`215fc376e2`（画布索引/wiki 链接）。
+
 ## 第八十六轮：保存冲突端到端验证（2026-10-31）
 
 - **接口实测**（重启宿主后）：`read-text` 返回 mtime；用当前版本写 → 200；用过期版本写 → **409 `{conflict:true,mtime}`**，文件内容保持外部版本（`{"v":2}` 而非 `{"v":3}`）。
