@@ -99,7 +99,7 @@ export function PurContextMenu(props: PurContextMenuProps): JSX.Element {
         role="menu"
         tabIndex={-1}
         className={css.menu}
-        style={{ position: 'fixed', left, top, minWidth: 180, maxHeight: '70vh', overflowY: 'auto', outline: 'none' }}
+        style={{ position: 'fixed', left, top, minWidth: 250, maxHeight: 'calc(100vh - 24px)', overflowY: 'auto', overflowX: 'hidden', outline: 'none' }}
         onMouseDown={(event) => event.stopPropagation()}
       >
         <PurMenuEntries entries={props.state.model.entries} labels={props.labels} onAction={props.onAction} onPreviewOpacity={props.onPreviewOpacity} onClose={props.onClose} />

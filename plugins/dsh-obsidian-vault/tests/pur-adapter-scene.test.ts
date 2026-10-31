@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Adapter scene and document tests: zoom badge window, scene assembly,
  * export-text documents, locale coverage of every menu labelKey, label
  * interpolation, and the generic element patch command.
@@ -105,8 +105,8 @@ test('every menu labelKey resolves in both locale dictionaries', () => {
   const controller = new PurController(envOf(), LABELS)
   const keys = new Set<string>()
   const contexts = [
-    { activeFileIsMarkdown: true, isPopout: false, isPinned: false },
-    { activeFileIsMarkdown: false, isPopout: true, isPinned: true },
+    { activeFileIsMarkdown: true, isPopout: false, isPinned: false, supportsPopout: true, supportsPinTop: true, supportsReveal: true },
+    { activeFileIsMarkdown: false, isPopout: true, isPinned: true, supportsPopout: true, supportsPinTop: true, supportsReveal: false },
   ]
   for (const context of contexts) labelKeys(controller.contextMenu(10, 10, context).model.entries, keys)
   controller.addTextBlock(10, 20)

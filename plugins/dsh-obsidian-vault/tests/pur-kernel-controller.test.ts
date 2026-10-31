@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Controller-layer tests: the kernel controller must match the upstream Pur
  * Studio view method-for-method over the recorded golden scenarios, the
  * context-menu model must match the upstream menu trees, and the history

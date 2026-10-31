@@ -131,7 +131,14 @@ export function openViewContextMenu(view: PurStudioView, clientX: number, client
   const rect = canvas.getBoundingClientRect()
   const canvasX = clientX - rect.left
   const canvasY = clientY - rect.top
-  const context: PurMenuContext = { activeFileIsMarkdown: view.app.workspace.getActiveFile()?.extension === 'md', isPopout: false, isPinned: false }
+  const context: PurMenuContext = {
+    activeFileIsMarkdown: view.app.workspace.getActiveFile()?.extension === 'md',
+    isPopout: false,
+    isPinned: false,
+    supportsPopout: true,
+    supportsPinTop: true,
+    supportsReveal: true,
+  }
   const { model, effects } = controller.contextMenu(canvasX, canvasY, context)
   executeEffects(effects, view.sink)
   const world = screenToWorld(controller.state.view, canvasX, canvasY)

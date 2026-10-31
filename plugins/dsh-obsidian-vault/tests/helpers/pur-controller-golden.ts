@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Golden controller traces captured by driving the upstream Pur Studio view's
  * real methods (onMouseDown/Move/Up, onWheel, onKeyDown, commands and
  * showContextMenu) over the scenarios in {@link CONTROLLER_SCENARIOS}. Ids are
@@ -43,7 +43,7 @@ export interface MenuScenario {
   name: string
   setup: { elements: PurElement[]; selected?: string[]; activeFileIsMarkdown?: boolean; isPopout?: boolean; isPinned?: boolean }
   event: { clientX: number; clientY: number }
-  context: { activeFileIsMarkdown: boolean; isPopout: boolean; isPinned: boolean }
+  context: { activeFileIsMarkdown: boolean; isPopout: boolean; isPinned: boolean; supportsPopout: boolean; supportsPinTop: boolean; supportsReveal: boolean }
   menu: MenuNode[] | null
   calls: string[]
   selected: string[]
@@ -33732,7 +33732,7 @@ export const MENU_SCENARIOS: MenuScenario[] = [
       "clientY": 50
     },
     "context": {
-      "activeFileIsMarkdown": false,
+      "activeFileIsMarkdown": false, "supportsPopout": true, "supportsPinTop": true, "supportsReveal": true,
       "isPopout": false,
       "isPinned": false
     },
@@ -34298,7 +34298,7 @@ export const MENU_SCENARIOS: MenuScenario[] = [
       "clientY": 10
     },
     "context": {
-      "activeFileIsMarkdown": false,
+      "activeFileIsMarkdown": false, "supportsPopout": true, "supportsPinTop": true, "supportsReveal": true,
       "isPopout": false,
       "isPinned": false
     },
@@ -34508,7 +34508,7 @@ export const MENU_SCENARIOS: MenuScenario[] = [
       "clientY": 10
     },
     "context": {
-      "activeFileIsMarkdown": false,
+      "activeFileIsMarkdown": false, "supportsPopout": true, "supportsPinTop": true, "supportsReveal": true,
       "isPopout": false,
       "isPinned": false
     },
@@ -34749,7 +34749,7 @@ export const MENU_SCENARIOS: MenuScenario[] = [
       "clientY": 10
     },
     "context": {
-      "activeFileIsMarkdown": false,
+      "activeFileIsMarkdown": false, "supportsPopout": true, "supportsPinTop": true, "supportsReveal": true,
       "isPopout": false,
       "isPinned": false
     },
@@ -35010,7 +35010,7 @@ export const MENU_SCENARIOS: MenuScenario[] = [
       "clientY": 10
     },
     "context": {
-      "activeFileIsMarkdown": false,
+      "activeFileIsMarkdown": false, "supportsPopout": true, "supportsPinTop": true, "supportsReveal": true,
       "isPopout": false,
       "isPinned": false
     },
@@ -35219,7 +35219,7 @@ export const MENU_SCENARIOS: MenuScenario[] = [
       "clientY": 30
     },
     "context": {
-      "activeFileIsMarkdown": false,
+      "activeFileIsMarkdown": false, "supportsPopout": true, "supportsPinTop": true, "supportsReveal": true,
       "isPopout": false,
       "isPinned": false
     },
@@ -35412,7 +35412,7 @@ export const MENU_SCENARIOS: MenuScenario[] = [
       "clientY": 10
     },
     "context": {
-      "activeFileIsMarkdown": false,
+      "activeFileIsMarkdown": false, "supportsPopout": true, "supportsPinTop": true, "supportsReveal": true,
       "isPopout": false,
       "isPinned": false
     },
@@ -35641,7 +35641,7 @@ export const MENU_SCENARIOS: MenuScenario[] = [
       "clientY": 10
     },
     "context": {
-      "activeFileIsMarkdown": true,
+      "activeFileIsMarkdown": true, "supportsPopout": true, "supportsPinTop": true, "supportsReveal": true,
       "isPopout": false,
       "isPinned": false
     },
@@ -35867,7 +35867,7 @@ export const MENU_SCENARIOS: MenuScenario[] = [
       "clientY": 10
     },
     "context": {
-      "activeFileIsMarkdown": false,
+      "activeFileIsMarkdown": false, "supportsPopout": true, "supportsPinTop": true, "supportsReveal": true,
       "isPopout": false,
       "isPinned": false
     },

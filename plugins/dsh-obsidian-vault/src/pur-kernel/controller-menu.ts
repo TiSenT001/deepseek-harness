@@ -31,12 +31,16 @@ function saveExportEntries(): PurMenuEntry[] {
   ]
 }
 
-/** The trailing popout and pin entries, shared by both menus. */
+/** The trailing popout and pin entries, omitted when the host cannot honour them. */
 function windowEntries(context: PurMenuContext): PurMenuEntry[] {
-  return [
-    { id: 'popout', icon: context.isPopout ? 'minimize' : 'external-link', labelKey: context.isPopout ? 'mergeToMain' : 'popOut' },
-    { id: 'pin-top', icon: 'pin', labelKey: context.isPinned ? 'unpinTop' : 'pinTop' },
-  ]
+  const entries: PurMenuEntry[] = []
+  if (context.supportsPopout) {
+    entries.push({ id: 'popout', icon: context.isPopout ? 'minimize' : 'external-link', labelKey: context.isPopout ? 'mergeToMain' : 'popOut' })
+  }
+  if (context.supportsPinTop) {
+    entries.push({ id: 'pin-top', icon: 'pin', labelKey: context.isPinned ? 'unpinTop' : 'pinTop' })
+  }
+  return entries
 }
 
 /** The blank-canvas menu (upstream `showContextMenu` with no hit element). */
@@ -196,7 +200,9 @@ function elementMenu(state: PurControllerState, context: PurMenuContext, hitLock
   entries.push({ id: 'toggle-lock', icon: hitLocked ? 'unlock' : 'lock', labelKey: anyLocked ? 'unlockPosition' : 'lockPosition', separatorAfter: true })
 
   if (hasNoteLink || hasImage) {
-    entries.push({ id: 'copy-link', icon: 'link', labelKey: 'copyLink' }, { id: 'reveal', icon: 'folder-search', labelKey: 'revealExplorer', separatorAfter: true })
+    entries.push({ id: 'copy-link', icon: 'link', labelKey: 'copyLink' })
+    if (context.supportsReveal) entries.push({ id: 'reveal', icon: 'folder-search', labelKey: 'revealExplorer' })
+    entries[entries.length - 1] = { ...entries[entries.length - 1] as PurMenuEntry, separatorAfter: true }
   }
 
   entries.push(

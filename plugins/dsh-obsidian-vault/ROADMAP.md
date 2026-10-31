@@ -1,4 +1,11 @@
-﻿## 第六十八轮：图片资产归插件所有，知识库只做预览（2026-10-31）
+﻿## 第六十九轮：画布右键菜单去掉假选项、修尺寸（2026-10-31）
+
+- **「点了没反应」的根因**：`弹出为独立窗口`、`启动系统置顶`、`在资源管理器中显示` 在 DSH 面板里只有 `unsupported` 占位实现，点了只弹「不支持」。现在给 `PurMenuContext` 加三个能力位（`supportsPopout` / `supportsPinTop` / `supportsReveal`），DSH 面板全部置 false，菜单模型直接不生成这些条目；Obsidian 适配器置 true，功能照旧。
+- **菜单尺寸**：宽度 180 → 260，横向溢出改 `overflow-x: hidden`，纵向 `max-height: calc(100vh - 24px)` 可滚动，不再出现底部横向滚动条。
+- **实测动作**：右键文本卡片 → `创建副本` 元素数 **2 → 3**，`删除` **3 → 2**，落盘确认；`层级▸`、`保存/导出▸` 子菜单正常展开（menus=2）。
+- **验证**：`tsc` 0、**392/392**、`tsdown` 成功、审核 **99/99、0 控制台错误**。
+
+## 第六十八轮：图片资产归插件所有，知识库只做预览（2026-10-31）
 
 - **架构改正**：图片不再写进知识库。资产放在**插件包内** `plugins/dsh-obsidian-vault/.data/images/<sha256前16位>.<ext>`，`.data/` 已加入 `.gitignore`。
 - **引用方式**：画布元素 `original` 记为 `pur-asset:<id>`；渲染经 `pur/asset?id=<id>` 取字节；笔记里的 `pur.studio` 引用同样从这份资产解析（`resolvePurImage` 增加 `readAsset` 通道）。

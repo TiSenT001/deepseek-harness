@@ -259,4 +259,10 @@ export interface PurMenuContext {
   isPopout: boolean
   /** Whether the window is pinned always-on-top. */
   isPinned: boolean
+  /** Whether the host can move the canvas into its own window. */
+  supportsPopout: boolean
+  /** Whether the host can pin the window always-on-top. */
+  supportsPinTop: boolean
+  /** Whether the host can reveal a file in the OS file manager. */
+  supportsReveal: boolean
 }

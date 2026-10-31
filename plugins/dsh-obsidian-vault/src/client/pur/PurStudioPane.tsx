@@ -1,4 +1,4 @@
-﻿/**
+/**
  * The React Pur Studio pane: hosts the kernel controller over a `<canvas>`,
  * repainting on a rAF loop (dirty flag plus momentum frames), persisting
  * debounced through the bridge, and routing kernel effects to the overlays.
@@ -120,7 +120,16 @@ export function PurStudioPane({ t, path, onOpenPath }: PurStudioPaneProps): JSX.
       const rect = canvas.getBoundingClientRect()
       const canvasX = clientX - rect.left
       const canvasY = clientY - rect.top
-      const context: PurMenuContext = { activeFileIsMarkdown: false, isPopout: false, isPinned: false }
+      // The DSH pane cannot pop out, pin or reveal files, so the menu model
+      // omits those entries instead of offering actions that only report back.
+      const context: PurMenuContext = {
+        activeFileIsMarkdown: false,
+        isPopout: false,
+        isPinned: false,
+        supportsPopout: false,
+        supportsPinTop: false,
+        supportsReveal: false,
+      }
       const { model, effects } = controller.contextMenu(canvasX, canvasY, context)
       run(effects)
       const world = screenToWorld(controller.state.view, canvasX, canvasY)
