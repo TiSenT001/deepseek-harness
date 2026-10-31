@@ -23,7 +23,7 @@ const ENTRIES: readonly Entry[] = [
   { id: 'graph', icon: 'graph', label: 'graph' },
   // Mirrors the plugin's own ribbon icon: opening the plugin view is what its
   // `addRibbonIcon` callback does inside the frame.
-  { id: 'plugin', icon: 'plugin', label: 'openPurStudio' },
+  { id: 'plugin', icon: 'canvas', label: 'openPurStudio' },
   { id: 'rail', icon: 'panelRight', label: 'toggleRail' },
 ]
 

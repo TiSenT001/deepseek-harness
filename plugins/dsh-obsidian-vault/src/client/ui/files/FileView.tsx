@@ -13,6 +13,7 @@ import { ErrorState, LoadingState } from '../kit/index.ts'
 import type { MenuScene } from '../menu/registry.ts'
 import { css } from '../theme.ts'
 import { PurStudioPane } from '../../pur/PurStudioPane.tsx'
+import { AssetView } from './AssetView.tsx'
 import { CodeView, formatBytes } from './CodeView.tsx'
 import { SourceEditor } from '../editor/SourceEditor.tsx'
 
@@ -83,6 +84,8 @@ export function FileView({ t, path, onReading, onSaved, onOpenPath, onMenu }: Fi
   const contextMenu = fileContextMenu(path, onMenu)
 
   if (isPur) return <PurStudioPane t={t} path={path} {...(onOpenPath === undefined ? {} : { onOpenPath })} />
+  // A plugin asset is not a vault file: it has its own preview pane.
+  if (path.startsWith('pur-asset:')) return <AssetView t={t} path={path} {...(onMenu === undefined ? {} : { onMenu })} />
   if (state.status === 'loading') return <LoadingState label={t('loadingFile')} />
   if (state.status === 'error') {
     return <ErrorState message={`${t('loadFailed')}: ${state.message}`} retryLabel={t('refresh')} onRetry={retry} />

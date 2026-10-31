@@ -20,6 +20,7 @@ export type IconName =
   | 'newFolder'
   | 'collapseAll'
   | 'files'
+  | 'canvas'
   | 'plugin'
   | 'puzzle'
 
@@ -125,6 +126,16 @@ const SHAPES: Record<IconName, JSX.Element> = {
     </>
   ),
   files: <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />,
+  canvas: (
+    <>
+      {/* An artboard with two aligned cards and a selection handle: the
+          workspace draws documents, it is not a plugin box. */}
+      <rect x="3" y="4" width="18" height="16" rx="2" />
+      <rect x="6" y="7" width="6" height="4" rx="1" />
+      <rect x="12" y="13" width="6" height="4" rx="1" />
+      <circle cx="17" cy="8" r="1" />
+    </>
+  ),
   plugin: (
     <>
       <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />

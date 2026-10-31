@@ -23,7 +23,6 @@ import type { PurOpenDestination } from '../../pur-kernel/index.ts'
 import { createPurPaneHandlers, registerPurPaneCommands } from './pane-commands.ts'
 import { PurPaneOverlays } from './pane-overlays.tsx'
 import type { PurEditorState, PurPickerState, PurPromptState } from './pane-overlays.tsx'
-import { PurAssetPreview } from './preview.tsx'
 import { pointerEventOf } from './pane-events.ts'
 import { startPurPaintLoop, wirePurPaneDrop, wirePurPaneWheel } from './pane-paint.ts'
 import { pasteIntoCanvas } from './paste-drop.ts'
@@ -345,16 +344,6 @@ void saveStudioDocument(path, document).catch(async (error: unknown) => {
         closePicker={() => setPicker(null)}
       />
       {ask.node}
-      {preview === null
-        ? null
-        : (
-          <PurAssetPreview
-            t={t}
-            id={preview.id}
-            destination={preview.destination}
-            onClose={() => setPreview(null)}
-          />
-        )}
     </div>
   )
 }

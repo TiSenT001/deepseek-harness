@@ -145,9 +145,9 @@ export function createPurMenuHost(deps: () => PurMenuHostDeps): PurMenuHost {
     togglePopout: unsupported,
     togglePinTop: unsupported,
     openAsset: (id, destination) => {
-      // An in-app preview, not `window.open`: the webview blocks popups, and
-      // navigating away would drop the canvas the user is working in.
-      deps().openPreview?.(id, destination)
+      // A real document tab (a split for 'right'), not `window.open`: the webview
+      // blocks popups, and the image deserves the same zoom and pan as a file.
+      deps().openPath?.(`pur-asset:${id}`, destination)
     },
     openEmbeddingNote: (element) => {
       const d = deps()
