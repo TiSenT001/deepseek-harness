@@ -21,7 +21,8 @@ import type { PurController, PurControllerEffect, PurElement, PurMenuHost, PurOp
 import type { Translate } from '../i18n.ts'
 import type { PurLabelBundles } from '../i18n/pur-labels.ts'
 import { fetchNote, findEmbeddingNotes, purAssetUrl, saveNote, storeImage } from '../api.ts'
-import { openFileWith } from '../api.ts'
+import { findElement } from '../../pur-kernel/index.ts'
+import { fetchCodeSnippets, openFileWith, saveCodeSnippet } from '../api.ts'
 import { purReader } from './labels.ts'
 import { PurImageCache, fetchNoteSummary, resolveNoteLink } from './loader.ts'
 import { fileToDataURL, insertUrlInput } from './paste-drop.ts'
@@ -55,6 +56,8 @@ export interface PurMenuHostDeps {
   readonly promptText: (title: string, initial: string) => Promise<string | null>
   /** Markdown note picker; null settles a dismissal. */
   readonly pickNote: () => Promise<string | null>
+  /** Re-read the snippet library after a save, so the menu lists it. */
+  readonly reloadSnippets?: () => void
   /** Open a vault path in the workspace; absent where the pane cannot navigate. */
   readonly openPath?: (path: string, destination?: PurOpenDestination) => void
   /** Show a full-size preview of one plugin-owned asset. */
@@ -151,6 +154,35 @@ export function createPurMenuHost(deps: () => PurMenuHostDeps): PurMenuHost {
       window.open(`/obsidian/api/pur/popout?${query}`, '_blank', 'popup,width=1200,height=800')
     },
     togglePinTop: unsupported,
+    insertCodeSnippet: (id, at) => {
+      const d = deps()
+      void fetchCodeSnippets().then((nodes) => {
+        const node = nodes.find((entry) => entry.id === id)
+        if (node === undefined) return
+        d.run(d.controller.addCodeNode(at.x, at.y, {
+          inputs: node.inputs.map((pin) => pin.label),
+          outputs: node.outputs.map((pin) => pin.label),
+          code: node.code,
+          title: node.title,
+        }))
+      }).catch(() => d.notice(d.t('pur.snippetFailed')))
+    },
+    saveCodeSnippet: (elementId) => {
+      const d = deps()
+      const site = findElement(d.controller.state.elements, elementId)
+      const element = site !== null && site.element.type === 'code-node' ? site.element : null
+      if (element === null) return
+      void d.promptText(d.t('pur.snippetTitle'), element.title ?? '').then((title) => {
+        if (title === null || title.trim() === '') return
+        return saveCodeSnippet({
+          id: `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
+          title: title.trim(),
+          code: element.code ?? element.content,
+          inputs: (element.inputs ?? []).map((pin) => ({ id: pin.id, label: pin.label })),
+          outputs: (element.outputs ?? []).map((pin) => ({ id: pin.id, label: pin.label })),
+        }).then(() => d.reloadSnippets?.())
+      }).catch(() => d.notice(d.t('pur.snippetFailed')))
+    },
     openFileWith: (target, program) => {
       void openFileWith(target, program).catch(() => deps().notice(deps().t('pur.openWithFailed')))
     },

@@ -15,3 +15,6 @@ export const DSH_PLUGINS_FOLDER = join(PACKAGE_ROOT, 'plugins')
 
 /** Folder holding canvas image assets, owned by the plugin rather than the vault. */
 export const PUR_ASSETS_FOLDER = join(PACKAGE_ROOT, '.data', 'images')
+
+/** Plugin-owned data folder: canvas assets and the code snippet library. */
+export const PLUGIN_DATA_FOLDER = join(PACKAGE_ROOT, '.data')

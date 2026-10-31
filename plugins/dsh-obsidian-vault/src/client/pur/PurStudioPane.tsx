@@ -15,6 +15,7 @@ import { createPurMenuHost, exportSelectedText } from './host.ts'
 import type { PurMenuHostDeps } from './host.ts'
 import { purBundles } from './labels.ts'
 import { PurImageCache, loadStudioDocument, resolveNoteLink, saveStudioDocument } from './loader.ts'
+import { fetchCodeSnippets } from '../api.ts'
 import { refreshNoteLinks } from './refresh-links.ts'
 import { VaultWriteConflict } from '../api.ts'
 import { useAsk } from '../ui/useAsk.tsx'
@@ -55,6 +56,8 @@ export function PurStudioPane({ t, path, onOpenPath }: PurStudioPaneProps): JSX.
   const [prompt, setPrompt] = useState<PurPromptState | null>(null)
   const [picker, setPicker] = useState<PurPickerState | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
+  const [snippets, setSnippets] = useState<readonly { id: string; title: string }[]>([])
+  const snippetsRef = useRef<readonly { id: string; title: string }[]>([])
   const [preview, setPreview] = useState<{ id: string; destination: PurOpenDestination } | null>(null)
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   // Canvas size is read on demand: the controller uses it for fit-to-view and
@@ -133,6 +136,19 @@ void saveStudioDocument(path, document).catch(async (error: unknown) => {
   )
 
   const run = useCallback((effects: readonly PurControllerEffect[]) => executeEffects(effects, sink), [sink])
+
+  // The snippet library lives in plugin data, so it is read once per mount and
+  // refreshed whenever the user saves a node.
+  useEffect(() => {
+    snippetsRef.current = snippets
+  }, [snippets])
+
+  useEffect(() => {
+    if (!ready) return
+    void fetchCodeSnippets()
+      .then((nodes) => setSnippets(nodes.map((node) => ({ id: node.id, title: node.title }))))
+      .catch(() => undefined)
+  }, [ready])
 
   // A note-link card caches the note text, so it drifts when the note changes
   // on disk. Re-read on focus: no polling, and an open dialog or editor is
@@ -244,6 +260,11 @@ void saveStudioDocument(path, document).catch(async (error: unknown) => {
       promptText: (title, initial) => new Promise((resolve) => setPrompt({ title, initial, resolve })),
       pickNote: () => new Promise((resolve) => setPicker({ resolve })),
       ...(onOpenPath === undefined ? {} : { openPath: onOpenPath }),
+      reloadSnippets: () => {
+        void fetchCodeSnippets()
+          .then((nodes) => setSnippets(nodes.map((node) => ({ id: node.id, title: node.title }))))
+          .catch(() => undefined)
+      },
       openPreview: (id, destination) => setPreview({ id, destination }),
     }
   })

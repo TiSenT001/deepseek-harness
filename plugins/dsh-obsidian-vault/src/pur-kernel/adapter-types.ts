@@ -78,6 +78,12 @@ export interface PurMenuHost {
   openEmbeddingNote(element: PurElement): void
   /** Open one plugin-owned image asset for preview. */
   openAsset(id: string, destination: PurOpenDestination): void
+  /** Insert one saved snippet as a new code node. */
+  insertCodeSnippet(id: string, at: PurMenuPoint): void
+
+  /** Save one code node into the snippet library, asking for its title. */
+  saveCodeSnippet(elementId: string): void
+
   /** Hand one file to a desktop program; ids come from the host fixed list. */
   openFileWith(target: string, program: string): void
   /** Copy the element's link or image source to the clipboard. */

@@ -16,8 +16,10 @@ import { serveConfigRoute } from './config-endpoints.ts'
 import { servePluginRoute } from './plugin-endpoints.ts'
 import { VaultFiles } from './vault/files.ts'
 import { resolvePurImage } from './vault/pur-image.ts'
-import { PACKAGE_ROOT, PUR_ASSETS_FOLDER } from './package-root.ts'
+import { PACKAGE_ROOT, PLUGIN_DATA_FOLDER, PUR_ASSETS_FOLDER } from './package-root.ts'
 import { launchProgram, listOpenPrograms, resolveOpenTarget } from './system-open.ts'
+import { deleteCodeSnippet, readCodeSnippets, saveCodeSnippet } from './code-snippets.ts'
+import type { CodeSnippet } from './code-snippets.ts'
 import { findEmbeddingNotes } from './vault/pur-embedders.ts'
 import { externalizeCanvas } from './vault/pur-externalize.ts'
 import { PUR_ASSET_SCHEME, readPurImage, storePurImage } from './vault/pur-store.ts'
@@ -327,6 +329,37 @@ async function dispatch(
       }
       response.writeHead(200, { 'content-type': image.contentType, 'cache-control': 'no-cache' })
       response.end(image.bytes)
+      return
+    }
+    case 'pur/code-nodes': {
+      if (request.method === 'GET') {
+        send(response, 200, { nodes: await readCodeSnippets(PLUGIN_DATA_FOLDER) })
+        return
+      }
+      // The snippet library is plugin data, never vault content, so these writes
+      // stay out of the note index entirely.
+      const body = await readJson(request)
+      const action = body['action'] === 'delete' ? 'delete' : 'save'
+      if (action === 'delete') {
+        const id = typeof body['id'] === 'string' ? body['id'] : ''
+        if (id.length === 0) {
+          send(response, 400, { error: 'id is required' })
+          return
+        }
+        send(response, 200, { nodes: await deleteCodeSnippet(PLUGIN_DATA_FOLDER, id) })
+        return
+      }
+      const snippet = body['node']
+      if (typeof snippet !== 'object' || snippet === null) {
+        send(response, 400, { error: 'node is required' })
+        return
+      }
+      const node = snippet as CodeSnippet
+      if (typeof node.id !== 'string' || typeof node.title !== 'string' || typeof node.code !== 'string') {
+        send(response, 400, { error: 'node needs id, title and code' })
+        return
+      }
+      send(response, 200, { nodes: await saveCodeSnippet(PLUGIN_DATA_FOLDER, node) })
       return
     }
     case 'system/programs': {

@@ -39,6 +39,14 @@ export function runMenuAction(controller: PurController, host: PurMenuHost, acti
     if (preset === undefined) throw new Error(`unknown pur preset: ${presetId}`)
     return controller.addCodeNode(world.x, world.y, { inputs: preset.inputs, outputs: preset.outputs, code: preset.code, title: host.presetTitle(preset.id) })
   }
+  if (id.startsWith('snippet:')) {
+    host.insertCodeSnippet(id.slice('snippet:'.length), world)
+    return []
+  }
+  if (id === 'save-snippet') {
+    host.saveCodeSnippet(requireTarget(action))
+    return []
+  }
   if (id.startsWith('del-in-pin:')) return controller.removeInputPin(requireTarget(action), id.slice('del-in-pin:'.length))
   if (id.startsWith('del-out-pin:')) return controller.removeOutputPin(requireTarget(action), id.slice('del-out-pin:'.length))
 

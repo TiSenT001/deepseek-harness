@@ -274,3 +274,52 @@ export async function openFileWith(target: string, program: string): Promise<voi
     body: JSON.stringify({ target, program }),
   })
 }
+
+
+/** One saved code node, as the library stores it. */
+export interface CodeSnippetDto {
+  /** Stable id. */
+  readonly id: string
+  /** Menu label. */
+  readonly title: string
+  /** Body of `function process(inputs)`. */
+  readonly code: string
+  /** Input pins. */
+  readonly inputs: readonly { readonly id: string; readonly label: string }[]
+  /** Output pins. */
+  readonly outputs: readonly { readonly id: string; readonly label: string }[]
+}
+
+/**
+ * Read the code snippet library.
+ * @returns the saved snippets.
+ */
+export async function fetchCodeSnippets(): Promise<readonly CodeSnippetDto[]> {
+  return (await request<{ nodes: CodeSnippetDto[] }>('pur/code-nodes')).nodes
+}
+
+/**
+ * Store one snippet, replacing it when the id is already known.
+ * @param node - the snippet to keep.
+ * @returns the library after the write.
+ */
+export async function saveCodeSnippet(node: CodeSnippetDto): Promise<readonly CodeSnippetDto[]> {
+  return (await request<{ nodes: CodeSnippetDto[] }>('pur/code-nodes', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ action: 'save', node }),
+  })).nodes
+}
+
+/**
+ * Remove one snippet.
+ * @param id - snippet id.
+ * @returns the library after the removal.
+ */
+export async function deleteCodeSnippet(id: string): Promise<readonly CodeSnippetDto[]> {
+  return (await request<{ nodes: CodeSnippetDto[] }>('pur/code-nodes', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ action: 'delete', id }),
+  })).nodes
+}

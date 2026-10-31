@@ -186,7 +186,16 @@ export function createViewMenuHost(deps: () => PurMenuDeps): PurMenuHost {
     exportCanvasDocument: () => void exportCanvasDocument(deps().exporterHost()),
     togglePopout: unsupported,
     togglePinTop: unsupported,
-    openFileWith: (target, program) => {
+      insertCodeSnippet: (id, at) => {
+      deps().read('pur.snippetUnsupported')
+      void id
+      void at
+    },
+    saveCodeSnippet: (elementId) => {
+      deps().read('pur.snippetUnsupported')
+      void elementId
+    },
+  openFileWith: (target, program) => {
       // Obsidian owns the desktop side, so the fixed list collapses to its opener.
       void program
       const file = deps().app.vault.getAbstractFileByPath(target)

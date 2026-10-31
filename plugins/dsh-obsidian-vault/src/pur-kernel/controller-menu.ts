@@ -57,6 +57,15 @@ function blankMenu(context: PurMenuContext): PurMenuEntry[] {
     labelKey: `presetCategory.${category}`,
     children,
   }))
+  const snippets = context.codeSnippets ?? []
+  const snippetChildren: PurMenuEntry[] = snippets.map((snippet) => ({
+    id: `snippet:${snippet.id}`,
+    icon: 'code',
+    label: snippet.title,
+  }))
+  if (snippetChildren.length > 0) {
+    codeChildren.push({ id: 'preset-snippets', icon: '', labelKey: 'mySnippets', children: snippetChildren })
+  }
   return [
     { id: 'new-canvas', icon: 'plus', labelKey: 'newCanvas' },
     { id: 'new-text', icon: 'file-text', labelKey: 'newText' },
@@ -161,6 +170,7 @@ function elementMenu(state: PurControllerState, context: PurMenuContext, hitLock
     if (editable !== undefined && (editable.inputs?.length ?? 0) > 0) pinChildren.push({ id: 'del-in-pin', icon: 'minus', labelKey: 'delInPin', children: pinEntries(editable, 'del-in-pin') })
     if (editable !== undefined && (editable.outputs?.length ?? 0) > 0) pinChildren.push({ id: 'del-out-pin', icon: 'minus', labelKey: 'delOutPin', children: pinEntries(editable, 'del-out-pin') })
     entries.push({ id: 'pin-group', icon: 'git-commit', labelKey: 'pinGroup', children: pinChildren, separatorAfter: true })
+    if (hasCodeNode) entries.push({ id: 'save-snippet', icon: 'save', labelKey: 'saveSnippet' })
   }
 
   if (hasGroup) {
