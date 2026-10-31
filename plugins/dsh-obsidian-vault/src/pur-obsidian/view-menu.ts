@@ -186,6 +186,7 @@ export function createViewMenuHost(deps: () => PurMenuDeps): PurMenuHost {
     exportCanvasDocument: () => void exportCanvasDocument(deps().exporterHost()),
     togglePopout: unsupported,
     togglePinTop: unsupported,
+    openEmbeddingNote: (element) => openEmbeddingNoteIn(deps(), element),
     openLink: (target, destination) => openViewLink(deps(), target, destination),
     copyLinkOf: (element) => copyLinkOf(deps(), element),
     revealInExplorer: (element) => revealInExplorer(deps(), element),
@@ -196,4 +197,23 @@ export function createViewMenuHost(deps: () => PurMenuDeps): PurMenuHost {
     editLine: (id) => deps().openEditor('line', id),
     editNoteLink: (id) => deps().openEditor('note-link', id),
   }
+}
+
+
+/**
+ * Open the note that embeds one canvas image, when the vault has one. Obsidian
+ * does not index `.PurStudio` files, so this walks markdown links for the image
+ * name and opens the first match.
+ * @param deps - menu host context with the app handle.
+ * @param element - the image element the menu was opened on.
+ */
+/**
+ * Reverse lookup is only implemented in the DSH pane: Obsidian's metadata index
+ * does not see .PurStudio files, so nothing here can name the embedding note.
+ * @param deps - menu host context (unused).
+ * @param element - the image element (unused).
+ */
+function openEmbeddingNoteIn(deps: PurMenuDeps, element: PurElement): void {
+  void deps
+  void element
 }

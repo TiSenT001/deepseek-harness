@@ -1,4 +1,4 @@
-﻿/**
+/**
  * English Pur Studio copy, keyed by the Chinese dictionary so a missing
  * translation fails to compile instead of falling back at runtime.
  * @module dsh-obsidian-vault/client/i18n/pur-en
@@ -55,6 +55,8 @@ export const PUR_EN: Record<keyof typeof PUR_ZH, string> = {
   'pur.embedNoSelection': 'Select an image or group to embed first',
   'pur.open': 'Open',
   'pur.openLinkedNote': 'Open linked note',
+  'pur.openEmbeddedNote': 'Go to embedding note',
+  'pur.noEmbeddingNote': 'No note embeds this image',
   'pur.openNewTab': 'Open in New Tab',
   'pur.openRight': 'Open to the Right',
   'pur.copy': 'Copy',

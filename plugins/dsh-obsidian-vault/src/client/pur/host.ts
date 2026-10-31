@@ -1,4 +1,4 @@
-﻿/**
+/**
  * The pane's menu host: save-as `.PurStudio`, Markdown outline, PNG/JPG
  * bitmap, JSON Canvas and generated-code exports land in the vault under
  * `收件箱/` (exports) and `Pur画布/` (save-as/new), mirroring the Obsidian
@@ -20,7 +20,7 @@ import {
 import type { PurController, PurControllerEffect, PurElement, PurMenuHost, PurRenderPreferences } from '../../pur-kernel/index.ts'
 import type { Translate } from '../i18n.ts'
 import type { PurLabelBundles } from '../i18n/pur-labels.ts'
-import { fetchNote, saveNote, storeImage } from '../api.ts'
+import { fetchNote, findEmbeddingNotes, saveNote, storeImage } from '../api.ts'
 import { purReader } from './labels.ts'
 import { PurImageCache, fetchNoteSummary, resolveNoteLink } from './loader.ts'
 import { fileToDataURL, insertUrlInput } from './paste-drop.ts'
@@ -142,7 +142,23 @@ export function createPurMenuHost(deps: () => PurMenuHostDeps): PurMenuHost {
     exportCanvasDocument: () => void exportCanvasFlow(deps()),
     togglePopout: unsupported,
     togglePinTop: unsupported,
-    openLink: (target) => openPurLink(target),
+    openEmbeddingNote: (element) => {
+      const d = deps()
+      const title = d.path.replace(/^.*\//, '').replace(/\.PurStudio$/i, '')
+      const name = element.type === 'image' ? element.original.split(/[\\/]/).pop() ?? '' : ''
+      if (name.length === 0) {
+        d.notice(d.t('pur.noEmbeddingNote'))
+        return
+      }
+      void findEmbeddingNotes(title, name).then((notes) => {
+        const first = notes[0]
+        if (first === undefined) {
+          d.notice(d.t('pur.noEmbeddingNote'))
+          return
+        }
+        d.openPath?.(first)
+      }).catch(() => d.notice(d.t('pur.noEmbeddingNote')))
+    },    openLink: (target) => openPurLink(target),
     copyLinkOf: (element) => {
       const text = element.type === 'note-link' ? element.link : element.type === 'image' ? (element.link ?? element.original) : ''
       if (text === '') return

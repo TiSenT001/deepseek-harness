@@ -230,3 +230,15 @@ export function purAssetUrl(original: string): string {
   const relative = `${API_BASE}/pur/asset?id=${encodeURIComponent(original.slice('pur-asset:'.length))}`
   return typeof location === 'undefined' ? relative : new URL(relative, location.origin).href
 }
+/**
+ * Notes that embed one canvas image.
+ * @param canvas - canvas title as written in the reference.
+ * @param file - image file name as written in the reference.
+ * @returns vault-relative note paths.
+ */
+export async function findEmbeddingNotes(canvas: string, file: string): Promise<readonly string[]> {
+  const result = await request<{ notes: readonly string[] }>(
+    `pur/embedders?canvas=${encodeURIComponent(canvas)}&file=${encodeURIComponent(file)}`,
+  )
+  return result.notes
+}

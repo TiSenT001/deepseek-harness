@@ -107,6 +107,7 @@ export const WORKSPACE_SHELL_STYLE = `
   min-width: 150px;
   max-height: calc(100vh - 8px);
   overflow-y: auto;
+  overflow-x: hidden;
   padding: 4px;
   border-radius: 8px;
   border: 1px solid var(--dsw-alias-border-l2, #3a3a42);
@@ -126,6 +127,7 @@ export const WORKSPACE_SHELL_STYLE = `
   align-items: center;
   gap: 8px;
   width: 100%;
+  white-space: nowrap;
   text-align: left;
   border: 0;
   background: none;

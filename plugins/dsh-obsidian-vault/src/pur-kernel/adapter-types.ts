@@ -74,6 +74,8 @@ export interface PurMenuHost {
   togglePinTop(): void
   /** Open an element's link target. */
   openLink(target: string, destination: PurOpenDestination): void
+  /** Jump to the note that embeds this image, when one does. */
+  openEmbeddingNote(element: PurElement): void
   /** Copy the element's link or image source to the clipboard. */
   copyLinkOf(element: PurElement): void
   /** Reveal the element's target in the file explorer. */

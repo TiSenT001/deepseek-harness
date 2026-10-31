@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Simplified Chinese Pur Studio copy: the `pur.*` keys both adapters (the
  * real-Obsidian plugin shell and the DSH React pane) resolve through the
  * shared label builders. zh owns the key set; en must implement every key.
@@ -57,6 +57,8 @@ export const PUR_ZH = {
   'pur.embedNoSelection': '先选中要嵌入的图片或分组',
   'pur.open': '打开',
   'pur.openLinkedNote': '打开关联笔记',
+  'pur.openEmbeddedNote': '跳转到嵌入的笔记',
+  'pur.noEmbeddingNote': '没有笔记嵌入这张图',
   'pur.openNewTab': '在新标签页打开',
   'pur.openRight': '在右侧打开',
   'pur.copy': '复制',

@@ -16,6 +16,7 @@ import { servePluginRoute } from './plugin-endpoints.ts'
 import { VaultFiles } from './vault/files.ts'
 import { resolvePurImage } from './vault/pur-image.ts'
 import { PUR_ASSETS_FOLDER } from './package-root.ts'
+import { findEmbeddingNotes } from './vault/pur-embedders.ts'
 import { externalizeCanvas } from './vault/pur-externalize.ts'
 import { PUR_ASSET_SCHEME, readPurImage, storePurImage } from './vault/pur-store.ts'
 import { serveVaultRoute } from './vault-endpoints.ts'
@@ -237,6 +238,17 @@ async function dispatch(
         ...(download ? { 'content-disposition': dispositionOf(path) } : {}),
       })
       response.end(Buffer.from(asset))
+      return
+    }
+    case 'pur/embedders': {
+      const canvas = url.searchParams.get('canvas') ?? ''
+      const file = url.searchParams.get('file') ?? ''
+      if (canvas.length === 0 || file.length === 0) {
+        send(response, 400, { error: 'canvas and file are required' })
+        return
+      }
+      const notes = await findEmbeddingNotes(vault, canvas, file)
+      send(response, 200, { notes })
       return
     }
     case 'pur/externalize': {

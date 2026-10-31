@@ -200,7 +200,7 @@ export function PurStudioPane({ t, path, onOpenPath }: PurStudioPaneProps): JSX.
       openEditor: (kind, id) => setEditor({ kind, id }),
       promptText: (title, initial) => new Promise((resolve) => setPrompt({ title, initial, resolve })),
       pickNote: () => new Promise((resolve) => setPicker({ resolve })),
-      ...(onOpenPath === undefined ? {} : { onOpenPath }),
+      ...(onOpenPath === undefined ? {} : { openPath: onOpenPath }),
     }
   })
 

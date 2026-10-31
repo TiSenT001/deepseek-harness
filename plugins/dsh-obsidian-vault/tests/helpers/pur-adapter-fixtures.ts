@@ -104,6 +104,7 @@ export function hostOf(): { host: PurMenuHost; calls: string[] } {
       exportCanvasDocument: record('exportCanvasDocument'),
       togglePopout: record('togglePopout'),
       togglePinTop: record('togglePinTop'),
+      openEmbeddingNote: record('openEmbeddingNote'),
       openLink: (target, destination) => calls.push(`openLink:${target}:${destination}`),
       copyLinkOf: record('copyLinkOf'),
       revealInExplorer: record('revealInExplorer'),

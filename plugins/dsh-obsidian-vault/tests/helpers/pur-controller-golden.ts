@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Golden controller traces captured by driving the upstream Pur Studio view's
  * real methods (onMouseDown/Move/Up, onWheel, onKeyDown, commands and
  * showContextMenu) over the scenarios in {@link CONTROLLER_SCENARIOS}. Ids are
@@ -35661,6 +35661,12 @@ export const MENU_SCENARIOS: MenuScenario[] = [
       {
         "t": "openLinkedNote",
         "i": "link",
+        "s": false,
+        "c": null
+      },
+      {
+        "t": "openEmbeddedNote",
+        "i": "file-text",
         "s": false,
         "c": null
       },
