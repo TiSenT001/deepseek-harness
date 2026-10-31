@@ -193,12 +193,12 @@ export async function noteOpen(path: string): Promise<void> {
  * @returns the vault-relative path the canvas should reference.
  */
 export async function storeImage(name: string, dataUrl: string): Promise<string> {
-  const result = await request<{ path: string }>('pur/store-image', {
+  const result = await request<{ id: string; ref: string }>('pur/store-image', {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({ name, dataUrl }),
   })
-  return result.path
+  return result.ref
 }
 /** Result of one image externalization pass. */
 export interface ExternalizeResultDto {

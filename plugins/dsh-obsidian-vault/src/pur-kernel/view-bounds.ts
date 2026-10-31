@@ -30,6 +30,9 @@ export function elementBounds(elements: readonly PurElement[]): WorldBounds | un
   let maxY = -Infinity
   const visit = (nodes: readonly PurElement[], parentX: number, parentY: number): void => {
     for (const element of nodes) {
+      // Lines carry no box: pulling them into the union would stretch the view
+      // to the connector endpoints and, before the guards, produce NaN.
+      if (element.type === 'line') continue
       const x = parentX + finite(element.x, 0)
       const y = parentY + finite(element.y, 0)
       const w = finite(element.w, DEFAULT_W)

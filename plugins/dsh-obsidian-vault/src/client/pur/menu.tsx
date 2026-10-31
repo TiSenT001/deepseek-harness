@@ -142,8 +142,15 @@ function PurMenuEntries(props: PurMenuEntriesProps): JSX.Element {
                 onPointerDown={(event) => event.stopPropagation()}
                 onClick={(event) => event.stopPropagation()}
                 onInput={(event) => props.onPreviewOpacity(Number((event.target as HTMLInputElement).value))}
-                onChange={(event) => {
-                  props.onAction(entry.id, Number((event.target as HTMLInputElement).value))
+                // React maps `onChange` to the native input event, which fires on
+                // every step of a drag; committing there would close the menu after
+                // the first step. Preview on input, commit on release.
+                onPointerUp={(event) => {
+                  props.onAction(entry.id, Number((event.currentTarget as HTMLInputElement).value))
+                  props.onClose()
+                }}
+                onKeyUp={(event) => {
+                  props.onAction(entry.id, Number((event.currentTarget as HTMLInputElement).value))
                   props.onClose()
                 }}
               />
