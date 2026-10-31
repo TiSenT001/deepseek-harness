@@ -15,8 +15,9 @@ import { serveConfigRoute } from './config-endpoints.ts'
 import { servePluginRoute } from './plugin-endpoints.ts'
 import { VaultFiles } from './vault/files.ts'
 import { resolvePurImage } from './vault/pur-image.ts'
+import { PUR_ASSETS_FOLDER } from './package-root.ts'
 import { externalizeCanvas } from './vault/pur-externalize.ts'
-import { storePurImage } from './vault/pur-store.ts'
+import { PUR_ASSET_SCHEME, readPurImage, storePurImage } from './vault/pur-store.ts'
 import { serveVaultRoute } from './vault-endpoints.ts'
 import type { VaultIndex } from './vault/index.ts'
 import type { VaultRegistry } from './vault/registry.ts'
@@ -247,11 +248,9 @@ async function dispatch(
       }
       const root = registry.active()?.path ?? registry.vault.status().root
       const files = new VaultFiles(root)
-      const result = await externalizeCanvas({
+      const result = await externalizeCanvas(PUR_ASSETS_FOLDER, {
         readText: candidate => files.readText(candidate).catch(() => undefined),
         writeText: (candidate, text) => files.writeText(candidate, text),
-        readBytes: candidate => files.readBytes(candidate).catch(() => undefined),
-        writeBytes: (candidate, bytes) => files.writeBytes(candidate, bytes),
       }, path)
       if (result === undefined) {
         send(response, 404, { error: 'canvas not found', path })
@@ -268,20 +267,28 @@ async function dispatch(
         send(response, 400, { error: 'dataUrl is required' })
         return
       }
-      const root = registry.active()?.path ?? registry.vault.status().root
-      const files = new VaultFiles(root)
-      const path = await storePurImage({
-        readBytes: candidate => files.readBytes(candidate).catch(() => undefined),
-        writeBytes: (candidate, bytes) => files.writeBytes(candidate, bytes),
-      }, name, dataUrl)
-      if (path === undefined) {
+      const id = await storePurImage(PUR_ASSETS_FOLDER, name, dataUrl)
+      if (id === undefined) {
         send(response, 400, { error: 'unsupported data URL' })
         return
       }
-      send(response, 200, { path })
+      send(response, 200, { id, ref: `${PUR_ASSET_SCHEME}${id}` })
       return
     }
-    case 'pur/image': {
+    case 'pur/asset': {
+      const id = url.searchParams.get('id') ?? ''
+      const bytes = await readPurImage(PUR_ASSETS_FOLDER, id)
+      if (bytes === undefined) {
+        send(response, 404, { error: 'asset not found', id })
+        return
+      }
+      response.writeHead(200, {
+        'content-type': CONTENT_TYPES[extensionOf(id)] ?? 'application/octet-stream',
+        'cache-control': 'no-cache',
+      })
+      response.end(bytes)
+      return
+    }    case 'pur/image': {
       const canvas = url.searchParams.get('canvas') ?? ''
       const file = url.searchParams.get('file') ?? ''
       if (canvas.length === 0 || file.length === 0) {

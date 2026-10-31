@@ -4,7 +4,7 @@
  * `收件箱/` export writes.
  * @module dsh-obsidian-vault/client/pur/loader
  */
-import { assetUrl, bridgeExists, bridgeReadText, bridgeWriteBinary, bridgeWriteText, createFolder, fetchNote, fetchTree } from '../api.ts'
+import { assetUrl, purAssetUrl, bridgeExists, bridgeReadText, bridgeWriteBinary, bridgeWriteText, createFolder, fetchNote, fetchTree } from '../api.ts'
 import { parseStudioDocument, serializeStudioDocument } from '../../pur-kernel/index.ts'
 import type { PurStudioDocument } from '../../pur-kernel/index.ts'
 import type { TreeNodeDto } from '../../protocol.ts'
@@ -133,7 +133,7 @@ export class PurImageCache {
     image.onerror = () => {
       this.pending.delete(key)
     }
-    image.src = key.startsWith('data:') || /^https?:/i.test(key) ? key : assetUrl(key)
+    image.src = key.startsWith('data:') || /^https?:/i.test(key) ? key : purAssetUrl(key)
   }
 }
 

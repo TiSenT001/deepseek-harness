@@ -9,6 +9,7 @@
  * @module dsh-obsidian-vault/vault/pur-image
  */
 import { parseStudioDocument } from '../pur-kernel/studio-file.ts'
+import { PUR_ASSET_SCHEME } from './pur-store.ts'
 import type { PurElement } from '../pur-kernel/types.ts'
 
 /** Root-confined file access, as `VaultFiles` provides it. */
@@ -57,12 +58,13 @@ export async function resolvePurImage(
   files: PurFileReader,
   canvas: string,
   file: string,
+  readAsset?: (id: string) => Promise<Uint8Array | undefined>,
 ): Promise<PurImage | undefined> {
   const elements = await readCanvas(files, canvas)
   if (elements === undefined) return undefined
   const image = findImage(elements, file)
   if (image === undefined) return undefined
-  return await imageBytes(files, image)
+  return await imageBytes(files, image, readAsset)
 }
 
 /** Read and parse one canvas document, trying the usual folders and then a name search. */
@@ -105,7 +107,11 @@ function matchesFile(original: string, file: string): boolean {
 }
 
 /** Decode the element's inline data URL, or read the file it points at. */
-async function imageBytes(files: PurFileReader, element: PurElement): Promise<PurImage | undefined> {
+async function imageBytes(
+  files: PurFileReader,
+  element: PurElement,
+  readAsset?: (id: string) => Promise<Uint8Array | undefined>,
+): Promise<PurImage | undefined> {
   if (element.type !== 'image') return undefined
   const inline = element.dataURL
   if (inline !== undefined && inline.startsWith('data:')) {
@@ -120,6 +126,11 @@ async function imageBytes(files: PurFileReader, element: PurElement): Promise<Pu
   }
   const original = element.original
   if (original.length === 0) return undefined
+  if (original.startsWith(PUR_ASSET_SCHEME) && readAsset !== undefined) {
+    const bytes = await readAsset(original.slice(PUR_ASSET_SCHEME.length))
+    if (bytes === undefined) return undefined
+    return { bytes: Buffer.from(bytes), contentType: CONTENT_TYPES[extensionOf(original)] ?? 'application/octet-stream' }
+  }
   for (const candidate of [original, `Pur画布/${original}`, `Pur画布/附件/${original}`, `附件/${original}`]) {
     const bytes = await files.readBytes(candidate)
     if (bytes !== undefined) {

@@ -12,3 +12,6 @@ export const PACKAGE_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..
 
 /** Global folder holding the DSH-adapted plugins, shared by every vault. */
 export const DSH_PLUGINS_FOLDER = join(PACKAGE_ROOT, 'plugins')
+
+/** Folder holding canvas image assets, owned by the plugin rather than the vault. */
+export const PUR_ASSETS_FOLDER = join(PACKAGE_ROOT, '.data', 'images')

@@ -220,3 +220,13 @@ export function externalizeCanvas(path: string): Promise<ExternalizeResultDto> {
     body: JSON.stringify({ path }),
   })
 }
+/**
+ * Resolve one canvas image reference to a URL the browser can load.
+ * @param original - element `original`, either `pur-asset:<id>` or a vault path.
+ * @returns the absolute URL.
+ */
+export function purAssetUrl(original: string): string {
+  if (!original.startsWith('pur-asset:')) return assetUrl(original)
+  const relative = `${API_BASE}/pur/asset?id=${encodeURIComponent(original.slice('pur-asset:'.length))}`
+  return typeof location === 'undefined' ? relative : new URL(relative, location.origin).href
+}

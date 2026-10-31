@@ -1,5 +1,7 @@
-﻿.artifacts/
+.artifacts/
 node_modules/
 # Runtime drop zone for user-installed DSH plugins, minus the package we ship.
 plugins/*
 !plugins/pur-studio/
+# Pur canvas image assets live with the plugin, not in the user's vault.
+.data/

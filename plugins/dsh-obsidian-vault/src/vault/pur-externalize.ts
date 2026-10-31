@@ -1,27 +1,28 @@
 /**
- * Move the images a canvas carries inline into the vault. Old documents store
- * every picture as a base64 `dataURL`, which is what makes a moodboard canvas
- * 120 MB; rewriting them as `附件/<hash>.<ext>` references keeps the same
- * pixels and shrinks the document to its layout.
+ * Move the images a canvas carries inline into the plugin's own asset folder.
+ * Old documents store every picture as a base64 `dataURL`, which is what makes a
+ * moodboard canvas 120 MB; rewriting them as `pur-asset:<id>` references keeps
+ * the same pixels and shrinks the document to its layout. Nothing is written
+ * into the vault: the knowledge base only previews these assets.
  * @module dsh-obsidian-vault/vault/pur-externalize
  */
 import { parseStudioDocument, serializeStudioDocument } from '../pur-kernel/studio-file.ts'
 import type { PurElement } from '../pur-kernel/types.ts'
-import { storePurImage, type PurAssetStore } from './pur-store.ts'
+import { PUR_ASSET_SCHEME, storePurImage } from './pur-store.ts'
 
 /** What one externalization pass changed. */
 export interface ExternalizeResult {
-  /** Images rewritten to a stored path. */
+  /** Images rewritten to a plugin asset reference. */
   readonly replaced: number
-  /** Document bytes before and after, for the report. */
+  /** Document bytes before and after. */
   readonly before: number
   readonly after: number
   /** Backup written beside the document. */
   readonly backup: string
 }
 
-/** Root-confined document access. */
-export interface PurDocumentStore extends PurAssetStore {
+/** Document access, root-confined by `VaultFiles`. */
+export interface PurDocumentStore {
   /** @param path - vault-relative path. @returns the text, or undefined when absent. */
   readText(path: string): Promise<string | undefined>
   /** @param path - vault-relative path. @param text - content to write. */
@@ -30,18 +31,20 @@ export interface PurDocumentStore extends PurAssetStore {
 
 /**
  * Externalize every inline image of one canvas document.
- * @param store - document and attachment access.
+ * @param folder - absolute plugin asset directory.
+ * @param store - document access.
  * @param path - vault-relative `.PurStudio` path.
  * @returns the change report, or undefined when the document cannot be read.
  */
 export async function externalizeCanvas(
+  folder: string,
   store: PurDocumentStore,
   path: string,
 ): Promise<ExternalizeResult | undefined> {
   const text = await store.readText(path)
   if (text === undefined) return undefined
   const document = parseStudioDocument(text)
-  const replaced = await externalizeElements(store, document.elements, path)
+  const replaced = await externalizeElements(folder, document.elements, path)
   if (replaced === 0) {
     return { replaced: 0, before: text.length, after: text.length, backup: '' }
   }
@@ -54,25 +57,25 @@ export async function externalizeCanvas(
 
 /**
  * Rewrite the inline images of one element list, recursing into groups.
- * @param store - attachment access.
+ * @param folder - absolute plugin asset directory.
  * @param elements - the element tree, mutated in place.
- * @param path - owning document, for the attachment extension.
+ * @param path - owning document, for a fallback name.
  * @returns how many images were rewritten.
  */
-async function externalizeElements(store: PurAssetStore, elements: PurElement[], path: string): Promise<number> {
+async function externalizeElements(folder: string, elements: PurElement[], path: string): Promise<number> {
   let replaced = 0
   for (const element of elements) {
     if (element.type === 'group') {
-      replaced += await externalizeElements(store, element.children, path)
+      replaced += await externalizeElements(folder, element.children, path)
       continue
     }
     if (element.type !== 'image') continue
     const dataURL = element.dataURL
     if (dataURL === undefined || !dataURL.startsWith('data:')) continue
     const name = element.original.length > 0 ? element.original : `${baseName(path)}.png`
-    const stored = await storePurImage(store, name, dataURL)
-    if (stored === undefined) continue
-    element.original = stored
+    const id = await storePurImage(folder, name, dataURL)
+    if (id === undefined) continue
+    element.original = `${PUR_ASSET_SCHEME}${id}`
     delete element.dataURL
     replaced += 1
   }
