@@ -6,6 +6,7 @@
  * @module dsh-obsidian-vault/client/pur/menu
  */
 import { useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import type { PurMenuEntry, PurMenuModel, PurMenuPoint } from '../../pur-kernel/index.ts'
 import type { PurLabelBundles } from '../i18n/pur-labels.ts'
 import { css } from '../ui/theme.ts'
@@ -122,13 +123,13 @@ interface PurMenuEntriesProps {
  * @param props - the entries and dispatch callbacks.
  */
 function PurMenuEntries(props: PurMenuEntriesProps): JSX.Element {
-  const [openId, setOpenId] = useState<string | null>(null)
+  const [submenu, setSubmenu] = useState<{ id: string; x: number; y: number } | null>(null)
   return (
     <>
       {props.entries.map((entry, index) => (
         <div key={`${entry.id}:${index}`} style={{ position: 'relative' }}>
           {entry.id === 'opacity' && entry.value !== undefined ? (
-            <div className={css.menuItem} onMouseEnter={() => setOpenId(null)}>
+            <div className={css.menuItem} onMouseEnter={() => setSubmenu(null)}>
               <span className={css.menuItemLabel}>{props.labels.menuTitle(entry)}</span>
               <input
                 type="range"
@@ -151,7 +152,14 @@ function PurMenuEntries(props: PurMenuEntriesProps): JSX.Element {
               role="menuitem"
               tabIndex={-1}
               data-pur-menu-item=""
-              onMouseEnter={() => setOpenId(entry.children !== undefined ? entry.id : null)}
+              onMouseEnter={(event) => {
+                if (entry.children === undefined) {
+                  setSubmenu(null)
+                  return
+                }
+                const rect = event.currentTarget.getBoundingClientRect()
+                setSubmenu({ id: entry.id, x: Math.min(rect.right + 2, window.innerWidth - 220), y: Math.min(rect.top - 4, window.innerHeight - 220) })
+              }}
               onClick={() => {
                 if (entry.children !== undefined) return
                 props.onAction(entry.id)
@@ -162,11 +170,28 @@ function PurMenuEntries(props: PurMenuEntriesProps): JSX.Element {
               {entry.children === undefined ? null : <span className={css.menuCaret}>▸</span>}
             </div>
           )}
-          {entry.children !== undefined && openId === entry.id ? (
-            <div className={css.menu} style={{ position: 'absolute', left: '100%', top: 0, minWidth: 160, maxHeight: '60vh', overflowY: 'auto' }}>
-              <PurMenuEntries entries={entry.children} labels={props.labels} onAction={props.onAction} onPreviewOpacity={props.onPreviewOpacity} onClose={props.onClose} />
-            </div>
-          ) : null}
+          {submenu !== null && submenu.id === entry.id && entry.children !== undefined
+            ? createPortal(
+              <div
+                // Portalled out of the scrolling panel: an absolutely positioned
+                // child would be clipped by the menu's overflow and become
+                // invisible.
+                className={css.menu}
+                style={{ position: 'fixed', left: submenu.x, top: submenu.y, minWidth: 200, maxHeight: '60vh', overflowY: 'auto' }}
+                onMouseDown={(event) => event.stopPropagation()}
+                onContextMenu={(event) => event.preventDefault()}
+              >
+                <PurMenuEntries
+                  entries={entry.children}
+                  labels={props.labels}
+                  onAction={props.onAction}
+                  onPreviewOpacity={props.onPreviewOpacity}
+                  onClose={props.onClose}
+                />
+              </div>,
+              document.body,
+            )
+            : null}
           {entry.separatorAfter === true ? <div style={{ borderTop: '1px solid rgba(128,128,128,0.3)', margin: '4px 6px' }} /> : null}
         </div>
       ))}
