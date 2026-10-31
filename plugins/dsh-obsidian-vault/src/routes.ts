@@ -1,4 +1,4 @@
-﻿/**
+/**
  * The Chromium-facing JSON API: `/obsidian/api/*`. The route layer only
  * parses requests, rejects untrusted callers, and shapes responses; every
  * answer comes from the vault index.
@@ -15,6 +15,7 @@ import { serveConfigRoute } from './config-endpoints.ts'
 import { servePluginRoute } from './plugin-endpoints.ts'
 import { VaultFiles } from './vault/files.ts'
 import { resolvePurImage } from './vault/pur-image.ts'
+import { storePurImage } from './vault/pur-store.ts'
 import { serveVaultRoute } from './vault-endpoints.ts'
 import type { VaultIndex } from './vault/index.ts'
 import type { VaultRegistry } from './vault/registry.ts'
@@ -234,6 +235,27 @@ async function dispatch(
         ...(download ? { 'content-disposition': dispositionOf(path) } : {}),
       })
       response.end(Buffer.from(asset))
+      return
+    }
+    case 'pur/store-image': {
+      const body = await readJson(request)
+      const name = typeof body['name'] === 'string' ? body['name'] : 'image.png'
+      const dataUrl = typeof body['dataUrl'] === 'string' ? body['dataUrl'] : ''
+      if (dataUrl.length === 0) {
+        send(response, 400, { error: 'dataUrl is required' })
+        return
+      }
+      const root = registry.active()?.path ?? registry.vault.status().root
+      const files = new VaultFiles(root)
+      const path = await storePurImage({
+        readBytes: candidate => files.readBytes(candidate).catch(() => undefined),
+        writeBytes: (candidate, bytes) => files.writeBytes(candidate, bytes),
+      }, name, dataUrl)
+      if (path === undefined) {
+        send(response, 400, { error: 'unsupported data URL' })
+        return
+      }
+      send(response, 200, { path })
       return
     }
     case 'pur/image': {

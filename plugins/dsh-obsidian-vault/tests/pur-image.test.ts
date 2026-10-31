@@ -1,6 +1,7 @@
-import assert from 'node:assert/strict'
+﻿import assert from 'node:assert/strict'
 import { beforeEach, test } from 'node:test'
 import { resolvePurImage, type PurFileReader } from '../src/vault/pur-image.ts'
+import { storePurImage } from '../src/vault/pur-store.ts'
 import { MemFs } from './helpers/memfs.ts'
 
 const ROOT = 'C:/vault'
@@ -84,4 +85,26 @@ test('finds a canvas by name when it lives in a subfolder', async () => {
   const image = await resolvePurImage(locating, '附件图库', '深图.png')
   assert.equal(image?.contentType, 'image/png')
   assert.equal(image?.bytes.toString('utf8'), 'png-bytes')
+})
+
+test('storing the same bytes twice reuses one attachment', async () => {
+  const written = new Map<string, Uint8Array>()
+  const store = {
+    readBytes: async (path: string) => written.get(path),
+    writeBytes: async (path: string, bytes: Uint8Array) => { written.set(path, bytes) },
+  }
+  const first = await storePurImage(store, 'a b.png', 'data:image/png;base64,cG5nLWJ5dGVz')
+  const second = await storePurImage(store, 'other name.png', 'data:image/png;base64,cG5nLWJ5dGVz')
+  assert.equal(first, second)
+  assert.equal(written.size, 1)
+  assert.match(first ?? '', /^附件\/[0-9a-f]{16}\.png$/)
+
+  const third = await storePurImage(store, 'a b.png', 'data:image/png;base64,ZGlmZmVyZW50')
+  assert.notEqual(third, first)
+  assert.equal(written.size, 2)
+})
+
+test('a payload that is not a base64 data URL is rejected', async () => {
+  const store = { readBytes: async () => undefined, writeBytes: async () => undefined }
+  assert.equal(await storePurImage(store, 'x.png', 'https://example.com/x.png'), undefined)
 })

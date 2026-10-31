@@ -1,4 +1,4 @@
-﻿/**
+/**
  * The pane's menu host: save-as `.PurStudio`, Markdown outline, PNG/JPG
  * bitmap, JSON Canvas and generated-code exports land in the vault under
  * `收件箱/` (exports) and `Pur画布/` (save-as/new), mirroring the Obsidian
@@ -20,7 +20,7 @@ import {
 import type { PurController, PurControllerEffect, PurElement, PurMenuHost, PurRenderPreferences } from '../../pur-kernel/index.ts'
 import type { Translate } from '../i18n.ts'
 import type { PurLabelBundles } from '../i18n/pur-labels.ts'
-import { fetchNote, saveNote } from '../api.ts'
+import { fetchNote, saveNote, storeImage } from '../api.ts'
 import { purReader } from './labels.ts'
 import { PurImageCache, fetchNoteSummary, resolveNoteLink } from './loader.ts'
 import { fileToDataURL, insertUrlInput } from './paste-drop.ts'
@@ -101,7 +101,11 @@ export function createPurMenuHost(deps: () => PurMenuHostDeps): PurMenuHost {
     newCanvas: () => void writeFreshDocument(deps()),
     addNoteLink: (at) => void insertPickedNote(deps(), at),
     importLocal: (at) => pickFile('image/*', async (file) => {
-      deps().run(deps().controller.insertImage(at.x, at.y, '', await fileToDataURL(file)))
+      const dataURL = await fileToDataURL(file)
+      const path = await storeImage(file.name, dataURL).catch(() => '')
+      deps().run(path.length === 0
+        ? deps().controller.insertImage(at.x, at.y, '', dataURL)
+        : deps().controller.insertImage(at.x, at.y, path))
     }),
     importIr: (at) => pickFile('.yaml,.yml,.json', async (file) => {
       try {

@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Vault-data endpoints: index status, tree, notes, files, backlinks, tags,
  * search, graph, and the write operations the explorer and editor call.
  * @module dsh-obsidian-vault/client/api-vault
@@ -185,4 +185,18 @@ export async function noteOpen(path: string): Promise<void> {
   } catch {
     // 打开上报失败不阻断
   }
+}
+/**
+ * Store one pasted or dropped image as a vault attachment.
+ * @param name - the source file name, used for the extension.
+ * @param dataUrl - base64 data URL of the bytes.
+ * @returns the vault-relative path the canvas should reference.
+ */
+export async function storeImage(name: string, dataUrl: string): Promise<string> {
+  const result = await request<{ path: string }>('pur/store-image', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ name, dataUrl }),
+  })
+  return result.path
 }

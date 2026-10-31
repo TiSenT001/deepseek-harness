@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Paste, drop and URL-dialog glue for the React Pur pane: kernel classifiers
  * decide what a payload becomes, then the controller inserts it. Note
  * hydration reads the vault; local image files insert as data URLs without
@@ -17,6 +17,7 @@ import {
 } from '../../pur-kernel/index.ts'
 import type { PurController, PurControllerEffect, PurMenuPoint, PurNoteRawOptions } from '../../pur-kernel/index.ts'
 import type { PurNoteSummary } from './loader.ts'
+import { storeImage } from '../api.ts'
 
 /** What the paste/drop flows need from the pane. */
 export interface PurInsertDeps {
@@ -105,7 +106,7 @@ export function pasteIntoCanvas(controller: PurController, event: ClipboardEvent
     case 'clipboard-image': {
       const file = imageItem?.getAsFile()
       if (file == null) return
-      void fileToDataURL(file).then((dataURL) => deps.run(controller.insertImage(at.x, at.y, '', dataURL)))
+      void insertStoredImage(controller, file, at.x, at.y, deps)
       return
     }
     case 'none':
@@ -130,7 +131,7 @@ export function dropIntoCanvas(controller: PurController, event: DragEvent, deps
   if (files.length > 0) {
     for (const file of files) {
       if (file.type.startsWith('image/')) {
-        void fileToDataURL(file).then((dataURL) => deps.run(controller.insertImage(at.x, at.y, '', dataURL)))
+        void insertStoredImage(controller, file, at.x, at.y, deps)
       } else {
         void file.text().then((text) => deps.run(controller.insertText(at.x, at.y, text, droppedFileTextSpec(text))))
       }
@@ -185,4 +186,25 @@ export function insertUrlInput(controller: PurController, at: PurMenuPoint, valu
     default:
       return
   }
+}
+/**
+ * Insert one local image: store the bytes in the vault and reference the path,
+ * falling back to an inline data URL when the host has no store endpoint.
+ * @param controller - the canvas controller.
+ * @param file - the pasted or dropped image file.
+ * @param x - world x. @param y - world y.
+ * @param deps - effect drain.
+ */
+async function insertStoredImage(
+  controller: PurController,
+  file: File,
+  x: number,
+  y: number,
+  deps: PurInsertDeps,
+): Promise<void> {
+  const dataURL = await fileToDataURL(file)
+  const path = await storeImage(file.name, dataURL).catch(() => '')
+  deps.run(path.length === 0
+    ? controller.insertImage(x, y, '', dataURL)
+    : controller.insertImage(x, y, path))
 }
