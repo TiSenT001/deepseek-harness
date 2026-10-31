@@ -22,7 +22,7 @@ import type { Translate } from '../i18n.ts'
 import type { PurLabelBundles } from '../i18n/pur-labels.ts'
 import { fetchNote, findEmbeddingNotes, purAssetUrl, saveNote, storeImage } from '../api.ts'
 import { findElement } from '../../pur-kernel/index.ts'
-import { fetchCodeSnippets, importPurFile, openFileWith, saveCodeSnippet } from '../api.ts'
+import { deleteCodeSnippet, fetchCodeSnippets, importPurFile, openFileWith, saveCodeSnippet } from '../api.ts'
 import { thumbnailOf } from './loader.ts'
 import { purReader } from './labels.ts'
 import { PurImageCache, fetchNoteSummary, resolveNoteLink } from './loader.ts'
@@ -129,7 +129,8 @@ export function createPurMenuHost(deps: () => PurMenuHostDeps): PurMenuHost {
         for (const element of result.elements) {
           d.run(d.controller.insertImage(element.x + at.x, element.y + at.y, element.ref))
         }
-        d.notice(d.t('pur.importedCount').replace('{count}', String(result.elements.length)))
+        const template = result.approximate ? 'pur.importedApprox' : 'pur.importedCount'
+        d.notice(d.t(template).replace('{count}', String(result.elements.length)))
       })
     },
     importIr: (at) => pickFile('.yaml,.yml,.json', async (file) => {
@@ -185,6 +186,10 @@ export function createPurMenuHost(deps: () => PurMenuHostDeps): PurMenuHost {
           title: node.title,
         }))
       }).catch(() => d.notice(d.t('pur.snippetFailed')))
+    },
+    deleteCodeSnippet: (id) => {
+      const d = deps()
+      void deleteCodeSnippet(id).then(() => d.reloadSnippets?.()).catch(() => d.notice(d.t('pur.snippetFailed')))
     },
     saveCodeSnippet: (elementId) => {
       const d = deps()

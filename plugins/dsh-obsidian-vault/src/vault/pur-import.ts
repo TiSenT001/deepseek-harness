@@ -172,3 +172,99 @@ function findEndOfCentralDirectory(view: DataView): number {
   }
   return -1
 }
+
+/** PNG signature, used to recognise an embedded picture. */
+const PNG_MAGIC = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]
+
+/** Largest single embedded picture the reader accepts, guarding against a bogus length. */
+const MAX_PICTURE_BYTES = 64 * 1024 * 1024
+
+/**
+ * Whether a length prefix plausibly describes an embedded picture.
+ * @param bytes - the file.
+ * @param offset - offset just before the picture data.
+ * @param length - declared length.
+ * @param magic - expected signature.
+ * @returns true when the picture fits the file.
+ */
+function looksLikePicture(bytes: Uint8Array, offset: number, length: number, magic: readonly number[]): boolean {
+  if (length < magic.length + 8 || length > MAX_PICTURE_BYTES) return false
+  if (offset + length > bytes.byteLength) return false
+  if (!magic.every((value, index) => bytes[offset + index] === value)) return false
+  // The declared length must land exactly on the picture's own terminator; a
+  // coincidental 32-bit value inside the stream would otherwise swallow the rest
+  // of the file and hide every later picture.
+  const end = offset + length
+  if (magic === PNG_MAGIC) return endsWithPngIend(bytes, end)
+  return bytes[end - 2] === 0xff && bytes[end - 1] === 0xd9
+}
+
+/**
+ * Whether the bytes just before one offset are a PNG IEND chunk.
+ * @param bytes - the file.
+ * @param end - offset the picture claims to end at.
+ * @returns true when the IEND signature and CRC sit right before the end.
+ */
+function endsWithPngIend(bytes: Uint8Array, end: number): boolean {
+  const iend = [0x49, 0x45, 0x4e, 0x44, 0xae, 0x42, 0x60, 0x82]
+  if (end < iend.length) return false
+  return iend.every((value, index) => bytes[end - iend.length + index] === value)
+}
+
+/**
+ * Extract the pictures embedded in PureRef's native container. The reader does
+ * not know the scene structure, but every picture is stored as
+ * `[uint32 BE length][PNG or JPEG bytes]`, which is enough to recover the images.
+ * @param bytes - native `.pur` contents.
+ * @returns each found picture, in file order.
+ */
+export function extractEmbeddedPictures(bytes: Uint8Array): readonly { name: string; bytes: Uint8Array }[] {
+  const found: { name: string; bytes: Uint8Array }[] = []
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength)
+  for (let offset = 0; offset + 12 < bytes.byteLength; offset++) {
+    const length = view.getUint32(offset, false)
+    const start = offset + 4
+    const png = looksLikePicture(bytes, start, length, PNG_MAGIC)
+    const jpeg = !png && bytes[start] === 0xff && bytes[start + 1] === 0xd8 && bytes[start + 2] === 0xff
+    if (!png && !jpeg) continue
+    const picture = bytes.subarray(start, start + length)
+    const name = png ? `embedded-${found.length}.png` : `embedded-${found.length}.jpg`
+    found.push({ name, bytes: picture })
+    offset = start + length - 1
+  }
+  return found
+}
+
+/**
+ * Import the pictures of a native `.pur` document on a grid. The scene
+ * coordinates live in a serialised Qt structure this reader does not decode, so
+ * the layout is approximate and the caller is told so.
+ * @param bytes - native `.pur` contents.
+ * @param store - callback storing one picture and returning its `pur-asset:` ref.
+ * @returns the elements and the count of pictures that could not be stored.
+ */
+export async function importNativePur(
+  bytes: Uint8Array,
+  store: (name: string, data: Uint8Array) => Promise<string | undefined>,
+): Promise<{ elements: readonly ImportedElement[]; skipped: number }> {
+  const pictures = extractEmbeddedPictures(bytes)
+  const columns = Math.max(1, Math.ceil(Math.sqrt(pictures.length)))
+  const elements: ImportedElement[] = []
+  let skipped = 0
+  for (const [index, picture] of pictures.entries()) {
+    const ref = await store(picture.name, picture.bytes)
+    if (ref === undefined) {
+      skipped += 1
+      continue
+    }
+    elements.push({
+      type: 'image',
+      x: (index % columns) * 240,
+      y: Math.floor(index / columns) * 190,
+      w: 220,
+      h: 165,
+      ref,
+    })
+  }
+  return { elements, skipped }
+}

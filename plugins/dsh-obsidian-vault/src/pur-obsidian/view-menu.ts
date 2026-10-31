@@ -196,6 +196,10 @@ export function createViewMenuHost(deps: () => PurMenuDeps): PurMenuHost {
       void id
       void at
     },
+    deleteCodeSnippet: (id) => {
+      deps().read('pur.snippetUnsupported')
+      void id
+    },
     saveCodeSnippet: (elementId) => {
       deps().read('pur.snippetUnsupported')
       void elementId

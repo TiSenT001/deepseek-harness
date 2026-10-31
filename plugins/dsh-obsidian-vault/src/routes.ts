@@ -19,7 +19,7 @@ import { resolvePurImage } from './vault/pur-image.ts'
 import { PACKAGE_ROOT, PLUGIN_DATA_FOLDER, PUR_ASSETS_FOLDER } from './package-root.ts'
 import { launchProgram, listOpenPrograms, resolveOpenTarget } from './system-open.ts'
 import { deleteCodeSnippet, readCodeSnippets, saveCodeSnippet } from './code-snippets.ts'
-import { importZipPur, isZipPur } from './vault/pur-import.ts'
+import { importNativePur, importZipPur, isZipPur } from './vault/pur-import.ts'
 import { storePurBytes } from './vault/pur-store.ts'
 import type { CodeSnippet } from './code-snippets.ts'
 import { findEmbeddingNotes } from './vault/pur-embedders.ts'
@@ -342,17 +342,19 @@ async function dispatch(
         return
       }
       const bytes = Buffer.from(data, 'base64')
-      if (!isZipPur(bytes)) {
-        // PureRef's native format is QDataStream; the ZIP reader cannot guess at
-        // it, so the caller is told rather than handed an empty canvas.
-        send(response, 415, { error: 'unsupported pur container', name })
-        return
-      }
-      const result = await importZipPur(bytes, async (entryName, entryBytes) => {
+      const store = async (entryName: string, entryBytes: Uint8Array): Promise<string | undefined> => {
         const id = await storePurBytes(PUR_ASSETS_FOLDER, entryName, entryBytes)
         return id === undefined ? undefined : `${PUR_ASSET_SCHEME}${id}`
-      })
-      send(response, 200, { elements: result.elements, unsupported: result.unsupported })
+      }
+      if (!isZipPur(bytes)) {
+        // The native container stores each picture as a length-prefixed PNG or
+        // JPEG; the scene coordinates stay unread, so the layout is approximate.
+        const native = await importNativePur(bytes, store)
+        send(response, 200, { elements: native.elements, unsupported: [], approximate: true, skipped: native.skipped })
+        return
+      }
+      const result = await importZipPur(bytes, store)
+      send(response, 200, { elements: result.elements, unsupported: result.unsupported, approximate: false })
       return
     }
     case 'pur/code-nodes': {

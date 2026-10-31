@@ -83,6 +83,9 @@ export interface PurMenuHost {
   /** Insert one saved snippet as a new code node. */
   insertCodeSnippet(id: string, at: PurMenuPoint): void
 
+  /** Remove one snippet from the library. */
+  deleteCodeSnippet(id: string): void
+
   /** Save one code node into the snippet library, asking for its title. */
   saveCodeSnippet(elementId: string): void
 

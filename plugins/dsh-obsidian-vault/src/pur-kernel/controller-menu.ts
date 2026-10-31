@@ -65,6 +65,12 @@ function blankMenu(context: PurMenuContext): PurMenuEntry[] {
   }))
   if (snippetChildren.length > 0) {
     codeChildren.push({ id: 'preset-snippets', icon: '', labelKey: 'mySnippets', children: snippetChildren })
+    codeChildren.push({
+      id: 'preset-snippets-delete',
+      icon: '',
+      labelKey: 'deleteSnippet',
+      children: snippetChildren.map((snippet) => ({ ...snippet, id: `delete-snippet:${snippet.id.slice('snippet:'.length)}` })),
+    })
   }
   return [
     { id: 'new-canvas', icon: 'plus', labelKey: 'newCanvas' },

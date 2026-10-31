@@ -106,6 +106,7 @@ export function hostOf(): { host: PurMenuHost; calls: string[] } {
       togglePopout: record('togglePopout'),
       togglePinTop: record('togglePinTop'),
       insertCodeSnippet: (id: string, at: { x: number; y: number }) => record('insertCodeSnippet') ?? `${id}@${at.x},${at.y}`,
+  deleteCodeSnippet: (id: string) => record('deleteCodeSnippet') ?? id,
   saveCodeSnippet: (elementId: string) => record('saveCodeSnippet') ?? elementId,
   openFileWith: (target: string, program: string) => record('openFileWith') ?? `${target}:${program}`,
   openAsset: record('openAsset'),

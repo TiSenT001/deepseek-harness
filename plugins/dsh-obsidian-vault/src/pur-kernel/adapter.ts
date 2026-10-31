@@ -43,6 +43,10 @@ export function runMenuAction(controller: PurController, host: PurMenuHost, acti
     host.insertCodeSnippet(id.slice('snippet:'.length), world)
     return []
   }
+  if (id.startsWith('delete-snippet:')) {
+    host.deleteCodeSnippet(id.slice('delete-snippet:'.length))
+    return []
+  }
   if (id === 'save-snippet') {
     host.saveCodeSnippet(requireTarget(action))
     return []

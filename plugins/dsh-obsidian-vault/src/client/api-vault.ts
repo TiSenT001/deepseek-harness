@@ -344,8 +344,8 @@ export interface ImportedPurElement {
  * @param data - base64 file contents.
  * @returns the elements and any tags the reader skipped.
  */
-export async function importPurFile(name: string, data: string): Promise<{ elements: readonly ImportedPurElement[]; unsupported: readonly string[] }> {
-  return request<{ elements: ImportedPurElement[]; unsupported: string[] }>('pur/import', {
+export async function importPurFile(name: string, data: string): Promise<{ elements: readonly ImportedPurElement[]; unsupported: readonly string[]; approximate: boolean }> {
+  return request<{ elements: ImportedPurElement[]; unsupported: string[]; approximate: boolean }>('pur/import', {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({ name, data }),
