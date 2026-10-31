@@ -285,9 +285,14 @@ export function VaultPage({ pickDirectory, hasPicker }: VaultPageProps = {}): JS
           createTarget(target)
         }}
         onOpenPath={(next, destination) => {
-          // A new tab honours the destination; the right split is not available to
-          // the canvas pane yet, so it falls back to a tab.
-          openPath(next, destination === undefined || destination === 'current' ? {} : { newTab: true })
+          if (destination === 'right') {
+            // Splitting moves the active tab into the new pane, so open first and
+            // let the split carry it to the right half.
+            openPath(next, { newTab: true })
+            splitPane('row')
+            return
+          }
+          openPath(next, destination === 'new-tab' ? { newTab: true } : {})
         }}
         activeHeading={activeHeading}
         onRail={setRail}

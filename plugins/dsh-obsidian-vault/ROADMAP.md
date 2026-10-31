@@ -1,4 +1,11 @@
-﻿## 第七十九轮：新标签页 destination 打通（2026-10-31）
+﻿## 第八十轮：在右侧打开真分栏（2026-10-31）
+
+- **实现**：`splitPane` 的语义是「把当前活动标签移到新面板并聚焦」，所以顺序为 `openPath(path, { newTab: true })` 再 `splitPane('row')`，新标签自然落到右半边。
+- **实测**：右键 note-link →「在右侧打开」→ 面板数 **2**，标签 `[菜单探针.purstudio, 关联探针]`，笔记在右栏 ✅
+- 至此「打开 / 在新标签页打开 / 在右侧打开」三种 destination 全部有真实行为，不再退化。
+- **验证**：`tsc` 0、**392/392**、`tsdown` 成功、审核 **99/99、0 控制台错误**。
+
+## 第七十九轮：新标签页 destination 打通（2026-10-31）
 
 - **根因**：工作区把 `onOpenWithAnchor`（锚点处理器）当作 pane 的 `onOpen`，于是画布传来的 destination（`new-tab`）被当成**标题锚点**解析 → `openPath(path, { anchor: 'new-tab' })`，自然不叠加标签。
 - **修法**：`VaultWorkspace` 的 pane `onOpen` 先判断第二个参数是否为 `current/new-tab/right`，命中就转给 `onOpenPath`（destination 语义），否则仍走锚点分支；`MainPane` 的 `onOpen` 类型放宽为 `(path, argument?: string)`。
