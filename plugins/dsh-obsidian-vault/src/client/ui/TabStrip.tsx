@@ -84,7 +84,10 @@ export function TabStrip({
     <div
       className={css.tabBar}
       onContextMenu={(event) => {
-        if (event.target !== event.currentTarget) return
+        // Any right-click on the bar that missed a tab row — the strip padding,
+        // the new-tab button, the overflow trigger — opens the empty menu; tab
+        // rows stop propagation with their own menu.
+        if ((event.target as HTMLElement).closest('.ov-doctab') !== null) return
         event.preventDefault()
         onMenu({ kind: 'tabbar-empty' }, event.clientX, event.clientY)
       }}
