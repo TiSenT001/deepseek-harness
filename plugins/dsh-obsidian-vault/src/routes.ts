@@ -250,6 +250,7 @@ async function dispatch(
       const image = await resolvePurImage({
         readText: path => files.readText(path).catch(() => undefined),
         readBytes: path => files.readBytes(path).catch(() => undefined),
+        locate: fileName => locateVaultFile(vault, fileName),
       }, canvas, file)
       if (image === undefined) {
         send(response, 404, { error: 'pur image not found', canvas, file })
@@ -272,4 +273,24 @@ async function dispatch(
     default:
       send(response, 404, { error: 'unknown route', route })
   }
+}
+/**
+ * Find one vault file by base name, for canvases that live in a subfolder.
+ * @param vault - index over the active vault.
+ * @param fileName - base name including the extension.
+ * @returns the vault-relative path, or undefined when the name is absent.
+ */
+function locateVaultFile(vault: VaultIndex, fileName: string): string | undefined {
+  const walk = (nodes: ReadonlyArray<{ readonly kind: string; readonly path: string; readonly children?: readonly unknown[] }>): string | undefined => {
+    for (const node of nodes) {
+      if (node.kind === 'file') {
+        if (node.path === fileName || node.path.endsWith(`/${fileName}`)) return node.path
+        continue
+      }
+      const nested = walk((node.children ?? []) as ReadonlyArray<{ readonly kind: string; readonly path: string; readonly children?: readonly unknown[] }>)
+      if (nested !== undefined) return nested
+    }
+    return undefined
+  }
+  return walk(vault.tree() as never)
 }

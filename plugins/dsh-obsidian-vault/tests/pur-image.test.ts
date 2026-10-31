@@ -68,3 +68,20 @@ test('reports a missing canvas and a missing image as undefined', async () => {
   assert.equal(await resolvePurImage(reader, '没有这个', 'pic.png'), undefined)
   assert.equal(await resolvePurImage(reader, '方案', 'missing.png'), undefined)
 })
+
+test('finds a canvas by name when it lives in a subfolder', async () => {
+  // The exported notes name the bucket, not a path; the canvas that holds those
+  // images can sit anywhere (Pur画布/附件图库/附件图管理.PurStudio).
+  const nested = 'Pur画布/附件图库/附件图库.PurStudio'
+  fs.write(`${ROOT}/${nested}`, JSON.stringify({
+    elements: [{ id: 'i9', type: 'image', x: 0, y: 0, w: 10, h: 10, original: '附件/深图.png', dataURL: DATA_URL }],
+    viewState: { offsetX: 0, offsetY: 0, scale: 1 },
+  }))
+  const locating: PurFileReader = {
+    ...reader,
+    locate: (name) => (name === '附件图库.PurStudio' ? nested : undefined),
+  }
+  const image = await resolvePurImage(locating, '附件图库', '深图.png')
+  assert.equal(image?.contentType, 'image/png')
+  assert.equal(image?.bytes.toString('utf8'), 'png-bytes')
+})

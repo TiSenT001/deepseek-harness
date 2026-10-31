@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Resolve the `https://pur.studio/<canvas>/<file>` references that the export
  * and embed commands write into notes. The canvas document names the image; its
  * `dataURL` or its vault path supplies the bytes, so an exported outline paints
@@ -17,6 +17,12 @@ export interface PurFileReader {
   readText(path: string): Promise<string | undefined>
   /** @param path - vault-relative path. @returns the bytes, or undefined when absent. */
   readBytes(path: string): Promise<Uint8Array | undefined>
+  /**
+   * Find a file by name anywhere in the vault, for canvases in subfolders.
+   * @param fileName - base name including the extension.
+   * @returns the vault-relative path, or undefined when absent.
+   */
+  locate?(fileName: string): string | undefined
 }
 
 /** One resolved image: bytes plus the type the response should declare. */
@@ -59,11 +65,13 @@ export async function resolvePurImage(
   return await imageBytes(files, image)
 }
 
-/** Read and parse one canvas document, trying the usual folders. */
+/** Read and parse one canvas document, trying the usual folders and then a name search. */
 async function readCanvas(files: PurFileReader, canvas: string): Promise<readonly PurElement[] | undefined> {
   const base = canvas.replace(/\.PurStudio$/i, '')
-  for (const folder of CANVAS_DIRS) {
-    const path = folder.length === 0 ? `${base}.PurStudio` : `${folder}/${base}.PurStudio`
+  const located = files.locate?.(`${base}.PurStudio`)
+  const paths = CANVAS_DIRS.map(folder => (folder.length === 0 ? `${base}.PurStudio` : `${folder}/${base}.PurStudio`))
+  if (located !== undefined && !paths.includes(located)) paths.push(located)
+  for (const path of paths) {
     const text = await files.readText(path)
     if (text === undefined) continue
     try {
