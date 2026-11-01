@@ -199,3 +199,64 @@ items, items_images, items_drawings, items_notes, items_groups, metadata
 差值 5,618 = 4,096 + 1,522，说明重排后还有 1,522 字节的错位，需要再定位一次。
 
 **重要**：现在问题从"未知二进制格式"变成了"SQLite 页如何重排"，是有明确边界的工程问题。
+
+## 页重排成功：数据库可以打开了
+
+正确拼法是 **page 1 在文件尾部、其余页在中间**：
+
+```
+页 1      = file[1,540,096 .. 1,544,192)        （4,096 字节）
+页 2..376 = file[4,096   .. 1,540,096)          （1,536,000 字节 = 375 页）
+数据库     = 页 1 + 页 2..376                    （1,540,096 字节 = 376 页）
+文件尾部   = file[1,544,192 .. 1,545,714)        （1,522 字节，尚属未解）
+```
+
+用这个拼法打开后：
+
+```
+images      = 1 行
+items       = 1 行
+metadata    = 1 行（application_version = 2.1.1）
+```
+
+### 完整表结构（已读出）
+
+```sql
+images(id INTEGER PRIMARY KEY, source_type INTEGER, origin TEXT, source TEXT,
+       format TEXT, checksum TEXT, data BLOB, width INTEGER, height INTEGER)
+items(parent INTEGER, id INTEGER PRIMARY KEY, name TEXT, transform BLOB,
+      sort_order BLOB, z REAL, opacity REAL, locked INTEGER, comment INTEGER)
+items_images(image INTEGER, playback_speed REAL, id INTEGER PRIMARY KEY,
+             playback_state INTEGER, image_transform BLOB, image_bounds BLOB,
+             playback_frame INTEGER, flags INTEGER)
+items_notes(text_color TEXT, id INTEGER PRIMARY KEY, fixed_size TEXT,
+            background_color TEXT, text TEXT, style INTEGER)
+items_groups(id INTEGER PRIMARY KEY, background_color TEXT, lock_mode INTEGER)
+items_drawings(id INTEGER PRIMARY KEY, strokes BLOB)
+metadata(id INTEGER PRIMARY KEY, scene_rect TEXT, application_version TEXT,
+         view_transform TEXT, thumbnail BLOB, horizontal_scroll INTEGER,
+         vertical_scroll INTEGER, last_save_path TEXT, last_load_path TEXT,
+         last_load_checksum TEXT, saved INTEGER)
+```
+
+样例行（`快照1`）：
+
+| 表 | 值 |
+|---|---|
+| `items` | `parent=-1, id=0, name=快照1, z=1, opacity=1, locked=0` |
+| `items_images` | `image=0, id=0, flags=1, playback_speed=1` |
+| `metadata` | `application_version=2.1.1` |
+
+### 新的卡点：几何数据以 **text** 存字节，且有少量字节被 UTF-8 往返破坏
+
+`typeof(transform)` = `text` 而 `length(transform)` = `0`（早早就出现 NUL），
+`length(CAST(transform AS BLOB))` = `89`（原始 80 字节被 UTF-8 扩成 89）。
+
+`items.transform` 与 `items_images.image_transform` 是 **80 字节的 Qt 序列化数据**（前 4 字节是长度），
+里面是 double；但经 text 列往返后，个别非法 UTF-8 字节被替换成 `U+FFFD`，长度从 80 掉到 77。
+
+**解决方向**：绕开文本接口，直接按页读取 B 树单元格里的原始字节（或让查询走 `CAST(... AS BLOB)` 的底层表示）。
+
+### `images.data`
+
+`typeof(images.data)` = **blob**（真正的二进制），但查询该表会报 `database disk image is malformed` —— 说明这棵 B 树的溢出页还在文件尾部那 1,522 字节或别处，尚未归位。
