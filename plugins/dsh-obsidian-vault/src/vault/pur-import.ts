@@ -316,11 +316,11 @@ export function pictureSize(bytes: Uint8Array): PictureSize | undefined {
 export async function importNativePur(
   bytes: Uint8Array,
   store: (name: string, data: Uint8Array) => Promise<string | undefined>,
-): Promise<{ elements: readonly ImportedElement[]; skipped: number }> {
+): Promise<{ elements: readonly ImportedElement[]; skipped: number; placed: boolean }> {
   // The scene database carries the real placement, so it wins whenever it parses;
   // the embedded pictures remain the fallback for documents it cannot read.
   const placed = await importPlacedScene(Buffer.from(bytes), store)
-  if (placed !== undefined) return placed
+  if (placed !== undefined) return { ...placed, placed: true }
 
   const pictures = extractEmbeddedPictures(bytes)
   const columns = Math.max(1, Math.ceil(Math.sqrt(pictures.length)))
@@ -353,7 +353,7 @@ export async function importNativePur(
       ref,
     })
   }
-  return { elements, skipped }
+  return { elements, skipped, placed: false }
 }
 
 /** Smallest card the placed import will produce, so a heavily zoomed item stays usable. */
@@ -391,7 +391,9 @@ async function importPlacedScene(
       skipped += 1
       continue
     }
-    const ref = await store(`scene-${item.image}-${fallbackIndex}`, payload)
+    // The stored name must carry an extension: the asset route keys files by it.
+    const isPng = payload[0] === 0x89 && payload[1] === 0x50
+    const ref = await store(`scene-${item.image}-${fallbackIndex}.${isPng ? 'png' : 'jpg'}`, payload)
     if (ref === undefined) {
       skipped += 1
       continue

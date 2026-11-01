@@ -350,7 +350,7 @@ async function dispatch(
         // The native container stores each picture as a length-prefixed PNG or
         // JPEG; the scene coordinates stay unread, so the layout is approximate.
         const native = await importNativePur(bytes, store)
-        send(response, 200, { elements: native.elements, unsupported: [], approximate: true, skipped: native.skipped })
+        send(response, 200, { elements: native.elements, unsupported: [], approximate: !native.placed, skipped: native.skipped })
         return
       }
       const result = await importZipPur(bytes, store)
