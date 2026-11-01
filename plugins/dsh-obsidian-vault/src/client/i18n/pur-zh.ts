@@ -18,6 +18,8 @@ export const PUR_ZH = {
   'pur.cmdDuplicate': 'Pur Studio: 创建副本',
   'pur.cmdFitView': 'Pur Studio: 适应视图',
   'pur.cmdRefreshLinks': '刷新关联笔记',
+  'pur.cmdBackfillThumbs': 'Pur Studio: 为当前画布生成缩略图',
+  'pur.thumbsBackfilled': '已为 {count} 张图片生成缩略图',
   'pur.cmdExportMd': 'Pur Studio: 导出 Markdown',
   'pur.cmdSelectAll': 'Pur Studio: 全选',
   'pur.cmdUndo': 'Pur Studio: 撤销',

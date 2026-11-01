@@ -18,6 +18,8 @@ export interface PurElementPatch {
   content?: string
   /** Code body of a code-node element. */
   code?: string
+  /** Small copy of an image card, drawn when the card is too small to decode. */
+  thumb?: string
   /** Card heading. */
   title?: string
   /** Element colour. */
@@ -114,6 +116,7 @@ export function updateElementProps(tools: PurControllerTools, elementId: string,
       break
     case 'image':
       if (patch.link !== undefined) element.link = patch.link
+      if (patch.thumb !== undefined) element.thumb = patch.thumb
       break
   }
   return commit(tools)

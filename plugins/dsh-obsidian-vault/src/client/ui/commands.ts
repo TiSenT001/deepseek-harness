@@ -65,6 +65,7 @@ export function buildPurPaneCommands(t: Translate, handlers: PurPaneHandlers | u
     { id: 'pur.duplicate', label: t('pur.cmdDuplicate'), run: handlers.duplicate },
     { id: 'pur.fitView', label: t('pur.cmdFitView'), run: handlers.fitView },
     { id: 'pur.refreshLinks', label: t('pur.cmdRefreshLinks'), run: handlers.refreshLinks },
+    { id: 'pur.backfillThumbs', label: t('pur.cmdBackfillThumbs'), run: handlers.backfillThumbs },
     { id: 'pur.exportMd', label: t('pur.cmdExportMd'), run: handlers.exportMarkdown },
     { id: 'pur.selectAll', label: t('pur.cmdSelectAll'), run: handlers.selectAll },
     { id: 'pur.undo', label: t('pur.cmdUndo'), run: handlers.undo },

@@ -9,6 +9,7 @@ import type { PurController, PurControllerEffect, PurMenuHost } from '../../pur-
 import type { PurMenuHostDeps } from './host.ts'
 import { exportMarkdownFlow } from './host-export.ts'
 import { refreshNoteLinks } from './refresh-links.ts'
+import { backfillThumbnails } from './backfill-thumbs.ts'
 
 /** Fixed file name of the no-prompt Markdown export command, mirroring upstream. */
 const COMMAND_EXPORT_NAME = 'pur-studio-export'
@@ -33,6 +34,8 @@ export interface PurPaneHandlers {
   readonly ungroup: () => void
   readonly duplicate: () => void
   readonly fitView: () => void
+  /** Generate a thumbnail for every image card that still lacks one. */
+  readonly backfillThumbs: () => void
   /** Re-read the linked notes and save cards whose cached text went stale. */
   readonly refreshLinks: () => void
 }
@@ -127,6 +130,15 @@ export function createPurPaneHandlers(
     ungroup: () => dispatch((c) => c.ungroup()),
     duplicate: () => dispatch((c) => c.duplicate()),
     fitView: () => dispatch((c) => c.fitToView()),
+    backfillThumbs: () => {
+      const c = controller()
+      if (c === null) return
+      void backfillThumbnails(c).then((result) => {
+        if (result.updated > 0) run([{ type: 'save' }, { type: 'render' }])
+        const deps = hostDeps()
+        deps?.notice(deps.t('pur.thumbsBackfilled').replace('{count}', String(result.updated)))
+      }).catch(() => undefined)
+    },
     refreshLinks: () => {
       const c = controller()
       if (c === null) return

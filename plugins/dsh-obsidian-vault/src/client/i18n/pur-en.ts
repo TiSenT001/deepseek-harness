@@ -16,6 +16,8 @@ export const PUR_EN: Record<keyof typeof PUR_ZH, string> = {
   'pur.cmdDuplicate': 'Pur Studio: Duplicate',
   'pur.cmdFitView': 'Pur Studio: Fit to View',
   'pur.cmdRefreshLinks': 'Refresh note links',
+  'pur.cmdBackfillThumbs': 'Pur Studio: Generate thumbnails for this canvas',
+  'pur.thumbsBackfilled': 'Generated thumbnails for {count} images',
   'pur.cmdExportMd': 'Pur Studio: Export Markdown',
   'pur.cmdSelectAll': 'Pur Studio: Select All',
   'pur.cmdUndo': 'Pur Studio: Undo',

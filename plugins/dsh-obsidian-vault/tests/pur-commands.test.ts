@@ -140,6 +140,7 @@ function recordingHandlers(log: string[]): PurPaneHandlers {
     duplicate: record('duplicate'),
     fitView: record('fitView'),
     refreshLinks: record('refreshLinks'),
+    backfillThumbs: record('backfillThumbs'),
   }
 }
 
@@ -189,7 +190,7 @@ test('a stale disposer cannot remove a pane re-registered under its path', () =>
 test('buildPurPaneCommands lists localised entries dispatching to the pane', () => {
   const log: string[] = []
   const commands = buildPurPaneCommands(createT('zh'), recordingHandlers(log))
-  assert.equal(commands.length, 16)
+  assert.equal(commands.length, 17)
   const ids = commands.map((entry) => entry.id)
   assert.equal(new Set(ids).size, ids.length, `duplicate ids: ${ids.join(',')}`)
   assert.equal(commands.find((entry) => entry.id === 'pur.newCanvas')?.label, '新建 Pur Studio 画布')
@@ -206,6 +207,7 @@ test('buildPurPaneCommands lists localised entries dispatching to the pane', () 
     'duplicate',
     'fitView',
     'refreshLinks',
+    'backfillThumbs',
     'exportMarkdown',
     'selectAll',
     'undo',
