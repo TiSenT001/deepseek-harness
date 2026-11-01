@@ -127,6 +127,30 @@ export function openSceneDatabase(bytes: Buffer): SceneDatabase | undefined {
 }
 
 /**
+ * Every candidate assembly of the rotated database. The header in front of the
+ * pages differs per document and more than one offset can look plausible, so all
+ * of them are returned and the caller picks the one that decodes into real values.
+ * @param bytes - the raw `.pur` file.
+ * @returns the candidates, in file order.
+ */
+export function sceneDatabaseCandidates(bytes: Buffer): SceneDatabase[] {
+  const marker = bytes.indexOf(SQLITE_MAGIC)
+  if (marker < 0) return []
+  const pageSize = bytes.readUInt16BE(marker + 16)
+  const pageCount = bytes.readUInt32BE(marker + 28)
+  if (pageSize < 512 || pageSize > 65536 || pageCount === 0) return []
+  const first = bytes.subarray(marker, marker + pageSize)
+  const restLength = (pageCount - 1) * pageSize
+  const limit = Math.min(marker, pageSize * 32)
+  const candidates: SceneDatabase[] = []
+  for (let shift = 0; shift <= limit; shift += pageSize) {
+    const rest = bytes.subarray(shift, shift + restLength)
+    if (rest.length < restLength) continue
+    candidates.push({ bytes: Buffer.concat([first, rest]), pageSize })
+  }
+  return candidates
+}
+/**
  * Decode one record from a table leaf cell.
  * @param bytes - database bytes.
  * @param offset - first byte of the record header.
@@ -308,8 +332,30 @@ export function decodeBounds(raw: Buffer): number[] {
  * @returns the scene, or undefined when the document carries no database.
  */
 export function readPurScene(bytes: Buffer): PurSceneData | undefined {
-  const database = openSceneDatabase(bytes)
-  if (database === undefined) return undefined
+  // Several offsets can hold a structurally plausible database, so every candidate
+  // is decoded and scored by the values it produces rather than by its page headers.
+  let best: PurSceneData | undefined
+  let bestScore = -1
+  for (const candidate of sceneDatabaseCandidates(bytes)) {
+    const scene = decodeScene(candidate)
+    if (scene === undefined) continue
+    const sized = scene.images.filter((image) => image.width > 0 && image.height > 0).length
+    const placed = scene.items.filter((item) => item.transform.length >= 9).length
+    const score = sized * 8 + placed * 4 + scene.images.length + scene.items.length
+    if (score > bestScore) {
+      bestScore = score
+      best = scene
+    }
+  }
+  return best
+}
+
+/**
+ * Decode one scene from a specific database assembly.
+ * @param database - the reassembled database.
+ * @returns the scene, or undefined when its tables are missing.
+ */
+function decodeScene(database: SceneDatabase): PurSceneData | undefined {
   const master = readTable(database, 1)
   const roots = new Map<string, number>()
   for (const row of master) {
