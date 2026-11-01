@@ -66,7 +66,7 @@ export const PUR_EN: Record<keyof typeof PUR_ZH, string> = {
   'pur.open': 'Open',
   'pur.importPur': 'Import PureRef canvas (.pur)',
   'pur.importedCount': 'Imported {count} images',
-  'pur.importedApprox': 'Imported {count} images in an approximate layout (native .pur coordinates need reversing)',
+  'pur.importedApprox': 'Imported {count} images on an approximate grid',
   'pur.importFailed': 'Import failed',
   'pur.snippetUnsupported': 'Not available in Obsidian yet',
   'pur.importPurUnsupported': 'Open it in PureRef from Obsidian',

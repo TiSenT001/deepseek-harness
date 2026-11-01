@@ -68,7 +68,7 @@ export const PUR_ZH = {
   'pur.open': '打开',
   'pur.importPur': '导入 PureRef 画布（.pur）',
   'pur.importedCount': '已导入 {count} 张图片',
-  'pur.importedApprox': '已按近似布局导入 {count} 张（原生 .pur 的坐标需逆向）',
+  'pur.importedApprox': '已导入 {count} 张，位置按近似网格排列',
   'pur.importFailed': '导入失败',
   'pur.snippetUnsupported': 'Obsidian 端暂不支持该操作',
   'pur.importPurUnsupported': 'Obsidian 端请直接用 PureRef 打开',
