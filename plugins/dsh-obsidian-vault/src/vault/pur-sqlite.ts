@@ -104,8 +104,29 @@ export function unescapeTextBytes(raw: Buffer): Buffer {
   return out.subarray(0, written)
 }
 
+/** Page kinds that may start a b-tree page. */
+const PAGE_KINDS = new Set([0x02, 0x05, 0x0a, 0x0d])
+
 /**
- * Reassemble the rotated database out of a document.
+ * Whether the pages after page one look like a b-tree, which is how a candidate
+ * offset is accepted.
+ * @param assembled - one candidate database.
+ * @param pageSize - page size in bytes.
+ * @returns true when page two and one later page carry a b-tree header.
+ */
+function looksLikePages(assembled: Buffer, pageSize: number): boolean {
+  if (assembled.length < pageSize * 2) return false
+  const second = assembled[pageSize] ?? 0
+  if (!PAGE_KINDS.has(second)) return false
+  const index = Math.min(3, Math.floor(assembled.length / pageSize) - 1)
+  const later = assembled[index * pageSize] ?? 0
+  return PAGE_KINDS.has(later)
+}
+
+/**
+ * Reassemble the rotated database out of a document. The header block in front of
+ * the pages differs per document, so the offset is searched in page steps and
+ * accepted when the pages that follow look like b-trees.
  * @param bytes - the raw `.pur` file.
  * @returns the database, or undefined when the file holds none.
  */
@@ -116,14 +137,17 @@ export function openSceneDatabase(bytes: Buffer): SceneDatabase | undefined {
   const pageCount = bytes.readUInt32BE(marker + 28)
   if (pageSize < 512 || pageSize > 65536 || pageCount === 0) return undefined
   const first = bytes.subarray(marker, marker + pageSize)
-  const rest = bytes.subarray(pageSize, marker)
-  const assembled = Buffer.concat([first, rest])
-  // A document can be saved while the database is still shorter than its declared
-  // page count; read the pages that are actually present.
-  const available = Math.floor(assembled.length / pageSize) * pageSize
-  const size = Math.min(pageSize * pageCount, available)
-  if (size < pageSize * 2) return undefined
-  return { bytes: assembled.subarray(0, size), pageSize }
+  const restLength = (pageCount - 1) * pageSize
+  const lowest = 0
+  const highest = Math.min(marker, pageSize * 64)
+  for (let shift = lowest; shift <= highest; shift += pageSize) {
+    const rest = bytes.subarray(shift, shift + restLength)
+    if (rest.length < restLength) continue
+    const assembled = Buffer.concat([first, rest])
+    if (!looksLikePages(assembled, pageSize)) continue
+    return { bytes: assembled, pageSize }
+  }
+  return undefined
 }
 
 /**

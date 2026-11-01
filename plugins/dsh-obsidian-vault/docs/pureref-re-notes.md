@@ -322,3 +322,26 @@ metadata(id INTEGER PRIMARY KEY, scene_rect TEXT, application_version TEXT,
 1. `images` 表在 `道具.pur` / `科学家…pur` 读出 0 行 —— 大 BLOB 的溢出页链拼接仍有偏差（`NewScene.pur` 能读出 1.5MB 原图，说明链路在某类页序下成立）
 2. `items_images.image` 与 `images.id` 的对应在部分文件偏移一位，需要按 rowid 再核对
 3. `NewScene1.pur` 识别不到库（声明页数与实际长度不符）
+
+## 头块长度因文件而异（本轮）
+
+对照实验结论：**页 2 起在文件里的起点不是固定的 `pageSize`**。
+
+| 文件 | `SQLite format 3` 偏移 | 页 2 真实起点 |
+|---|---|---|
+| `NewScene.pur`(439908e1) | 1,540,096 | 4,096 |
+| `道具.pur` | 1,699,840 | **12,288**（3 页） |
+
+`道具.pur` 用 12,288 起点的拼法，SQLite 打开后 `images` 表能读出 **15 行**（此前 0 行）。
+
+因此 `openSceneDatabase` 改为**按页步长搜索头块长度**：从 0 到 `min(marker, 64 页)`，逐个候选检查「页 2 与后一页是否为合法 B 树页」（`0x02/0x05/0x0a/0x0d`），首个通过的候选即采用。
+
+### 当前读取结果
+
+| 文件 | images | items | 备注 |
+|---|---|---|---|
+| `NewScene.pur` | 1 | 1 | 列解码异常（尺寸 NaN），偏移选择可能选中了错误候选 |
+| `道具.pur` | 15 | 0 | images 有了，items 读不出 |
+| `科学家人物概念设计.pur` | 15 | 1 | 同上 |
+
+说明**候选接受条件太弱**：只检查页类型不足以确定唯一正确偏移，两个候选都能通过但只有一个能完整解码。下一步应把「能读出 items 与 images 且有非零尺寸」作为接受条件。
