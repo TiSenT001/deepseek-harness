@@ -138,13 +138,18 @@ class PurImageMap extends Map<string, CanvasImageSource> implements PurImageLook
   /** Keys the browser could not decode; the renderer draws a placeholder for them. */
   readonly failedKeys = new Set<string>()
   private readonly touched = new Map<string, number>()
+  /** Wall clock of the last frame that drew each picture. */
+  private readonly drawn = new Map<string, number>()
   private readonly sizes = new Map<string, number>()
   private held = 0
   private stamp = 0
 
   override get(key: string): CanvasImageSource | undefined {
     const value = super.get(key)
-    if (value !== undefined) this.touched.set(key, ++this.stamp)
+    if (value !== undefined) {
+      this.touched.set(key, ++this.stamp)
+      this.drawn.set(key, now())
+    }
     return value
   }
 
@@ -154,9 +159,10 @@ class PurImageMap extends Map<string, CanvasImageSource> implements PurImageLook
     const size = decodedBytes(value)
     this.sizes.set(key, size)
     this.touched.set(key, ++this.stamp)
+    this.drawn.set(key, now())
     this.held += size
     super.set(key, value)
-    this.evict(IMAGE_BUDGET_BYTES)
+    this.evict()
     return this
   }
 
@@ -165,15 +171,26 @@ class PurImageMap extends Map<string, CanvasImageSource> implements PurImageLook
     if (size !== undefined) this.held -= size
     this.sizes.delete(key)
     this.touched.delete(key)
+    this.drawn.delete(key)
     return super.delete(key)
   }
 
-  /** Drop the least recently drawn images until the budget holds. @param budget - bytes to keep. */
-  private evict(budget: number): void {
-    while (this.held > budget && this.size > 1) {
+  /**
+   * Drop the images that have not been drawn for a while once the cache grows past
+   * a high-water mark, down to a low-water mark. Evicting on every insert made a
+   * large board flicker: the picture inserted a moment after a visible one pushed
+   * that visible picture out of the cache, so it fell back to a placeholder for a
+   * frame and was then decoded again.
+   */
+  private evict(): void {
+    if (this.held <= IMAGE_BUDGET_BYTES * HIGH_WATER_RATIO) return
+    const cutoff = now() - VISIBLE_GRACE_MS
+    while (this.held > IMAGE_BUDGET_BYTES * LOW_WATER_RATIO && this.size > 1) {
       let oldestKey: string | undefined
       let oldest = Infinity
       for (const [key, stamp] of this.touched) {
+        // A picture drawn within the grace window is on screen; keep it.
+        if ((this.drawn.get(key) ?? 0) > cutoff) continue
         if (stamp < oldest) {
           oldest = stamp
           oldestKey = key
@@ -187,6 +204,23 @@ class PurImageMap extends Map<string, CanvasImageSource> implements PurImageLook
 
 /** Decoded pixels the cache keeps before evicting the least recently drawn. */
 const IMAGE_BUDGET_BYTES = 256 * 1024 * 1024
+
+/** Eviction starts only above this multiple of the budget, so small saves do not thrash. */
+const HIGH_WATER_RATIO = 1.5
+
+/** Eviction stops at this multiple, leaving headroom for the next frames. */
+const LOW_WATER_RATIO = 0.75
+
+/** A picture drawn this recently is on screen and is never evicted. */
+const VISIBLE_GRACE_MS = 1500
+
+/**
+ * Monotonic time source; a browser without `performance` falls back to the clock.
+ * @returns milliseconds.
+ */
+function now(): number {
+  return typeof performance === 'object' ? performance.now() : Date.now()
+}
 
 /** Decoded canvas images keyed by `dataURL || original`, with load dedupe. */
 /** Decodes allowed to run at once; more than a couple only queue for the same frame. */
