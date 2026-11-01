@@ -186,7 +186,11 @@ export function createViewMenuHost(deps: () => PurMenuDeps): PurMenuHost {
     exportCanvasDocument: () => void exportCanvasDocument(deps().exporterHost()),
     togglePopout: unsupported,
     togglePinTop: unsupported,
-      importPur: (at) => {
+      importPurAsCanvas: (at) => {
+    deps().read('pur.importPurUnsupported')
+    void at
+  },
+  importPur: (at) => {
       // The Obsidian adapter reuses the same import flow as the web client.
       void at
       deps().read('pur.importPurUnsupported')

@@ -163,6 +163,9 @@ export function runMenuAction(controller: PurController, host: PurMenuHost, acti
       host.importLocal(world)
       return []
     case 'import-pur':
+    case 'import-pur-new':
+      host.importPurAsCanvas(action.world)
+      return []
       host.importPur(action.world)
       return []
     case 'import-ir':

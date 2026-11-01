@@ -22,7 +22,7 @@ import type { Translate } from '../i18n.ts'
 import type { PurLabelBundles } from '../i18n/pur-labels.ts'
 import { fetchNote, findEmbeddingNotes, purAssetUrl, saveNote, storeImage } from '../api.ts'
 import { findElement } from '../../pur-kernel/index.ts'
-import { deleteCodeSnippet, fetchCodeSnippets, importPurFile, openFileWith, saveCodeSnippet } from '../api.ts'
+import { bridgeWriteText, deleteCodeSnippet, fetchCodeSnippets, importPurFile, openFileWith, saveCodeSnippet } from '../api.ts'
 import { thumbnailOf } from './loader.ts'
 import { purReader } from './labels.ts'
 import { PurImageCache, fetchNoteSummary, resolveNoteLink } from './loader.ts'
@@ -133,7 +133,43 @@ export function createPurMenuHost(deps: () => PurMenuHostDeps): PurMenuHost {
         d.notice(d.t(template).replace('{count}', String(result.elements.length)))
       })
     },
-    importIr: (at) => pickFile('.yaml,.yml,.json', async (file) => {
+    importPurAsCanvas: () => pickFile('.pur,.purz', async (file) => {
+      if (file === null) return
+      const d = deps()
+      const bytes = new Uint8Array(await file.arrayBuffer())
+      const data = btoa(String.fromCharCode(...bytes))
+      const result = await importPurFile(file.name, data).catch(() => null)
+      if (result === null || result.elements.length === 0) {
+        d.notice(d.t('pur.importFailed'))
+        return
+      }
+      const suggested = `${file.name.replace(/\.purz?$/i, '')}.purstudio`
+      const name = await d.promptText(d.t('pur.newCanvasName'), suggested)
+      if (name === null || name.trim() === '') return
+      const folder = d.path.includes('/') ? d.path.slice(0, d.path.lastIndexOf('/')) : ''
+      const target = folder === '' ? name.trim() : `${folder}/${name.trim()}`
+      const document = {
+        elements: result.elements.map((element, index) => ({
+          id: `imported-${index}`,
+          type: 'image',
+          x: element.x,
+          y: element.y,
+          w: element.w,
+          h: element.h,
+          original: element.ref,
+        })),
+        viewState: { offsetX: 0, offsetY: 0, scale: 1 },
+      }
+      // The canvas format is plugin-owned: it is written through the bridge route,
+      // which creates the file when it does not exist yet.
+      const written = await bridgeWriteText(target, JSON.stringify(document, null, 2)).catch(() => null)
+      if (written === null) {
+        d.notice(d.t('pur.importFailed'))
+        return
+      }
+      d.notice(d.t('pur.importedCount').replace('{count}', String(result.elements.length)))
+      d.openPath?.(target)
+    }),    importIr: (at) => pickFile('.yaml,.yml,.json', async (file) => {
       try {
         const groups = irToElements(parseSimpleYAML(await file.text()), at.x, at.y, { createId: createElementId })
         if (groups !== null) insertElements(deps(), groups)
