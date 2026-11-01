@@ -176,6 +176,9 @@ function findEndOfCentralDirectory(view: DataView): number {
 /** PNG signature, used to recognise an embedded picture. */
 const PNG_MAGIC = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]
 
+/** JPEG start-of-image marker. */
+const JPEG_MAGIC = [0xff, 0xd8, 0xff]
+
 /** Largest single embedded picture the reader accepts, guarding against a bogus length. */
 const MAX_PICTURE_BYTES = 64 * 1024 * 1024
 
@@ -225,7 +228,9 @@ export function extractEmbeddedPictures(bytes: Uint8Array): readonly { name: str
     const length = view.getUint32(offset, false)
     const start = offset + 4
     const png = looksLikePicture(bytes, start, length, PNG_MAGIC)
-    const jpeg = !png && bytes[start] === 0xff && bytes[start + 1] === 0xd8 && bytes[start + 2] === 0xff
+    // The JPEG branch has to run through the same length check: reading the magic
+    // alone accepted zero-length and over-long spans that merely started with it.
+    const jpeg = !png && looksLikePicture(bytes, start, length, JPEG_MAGIC)
     if (!png && !jpeg) continue
     const picture = bytes.subarray(start, start + length)
     const name = png ? `embedded-${found.length}.png` : `embedded-${found.length}.jpg`
@@ -243,6 +248,54 @@ export function extractEmbeddedPictures(bytes: Uint8Array): readonly { name: str
  * @param store - callback storing one picture and returning its `pur-asset:` ref.
  * @returns the elements and the count of pictures that could not be stored.
  */
+/** Width or height read from a picture header. */
+export interface PictureSize {
+  /** Pixel width. */
+  readonly width: number
+  /** Pixel height. */
+  readonly height: number
+}
+
+/** Card width on the imported grid, in world units. */
+const GRID_CARD_WIDTH = 320
+
+/** Largest card side, so a tall screenshot cannot dominate the board. */
+const GRID_MAX_HEIGHT = 480
+
+/**
+ * Read a picture's pixel size from its own header: PNG stores it in IHDR, JPEG
+ * in the first SOFn marker. The native container layout is still unread, but the
+ * cards can at least keep each picture's aspect ratio.
+ * @param bytes - picture bytes.
+ * @returns the size, or undefined when the header is not understood.
+ */
+export function pictureSize(bytes: Uint8Array): PictureSize | undefined {
+  if (bytes.length > 24 && bytes[0] === 0x89 && bytes[1] === 0x50) {
+    const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength)
+    return { width: view.getUint32(16, false), height: view.getUint32(20, false) }
+  }
+  if (bytes.length > 4 && bytes[0] === 0xff && bytes[1] === 0xd8) {
+    let offset = 2
+    while (offset + 9 < bytes.length) {
+      if (bytes[offset] !== 0xff) {
+        offset += 1
+        continue
+      }
+      const marker = bytes[offset + 1] ?? 0
+      // SOF0..SOF15 except DHT/JPG/DAC carry the frame size.
+      if (marker >= 0xc0 && marker <= 0xcf && marker !== 0xc4 && marker !== 0xc8 && marker !== 0xcc) {
+        return {
+          height: ((bytes[offset + 5] ?? 0) << 8) | (bytes[offset + 6] ?? 0),
+          width: ((bytes[offset + 7] ?? 0) << 8) | (bytes[offset + 8] ?? 0),
+        }
+      }
+      const length = ((bytes[offset + 2] ?? 0) << 8) | (bytes[offset + 3] ?? 0)
+      if (length < 2) return undefined
+      offset += 2 + length
+    }
+  }
+  return undefined
+}
 export async function importNativePur(
   bytes: Uint8Array,
   store: (name: string, data: Uint8Array) => Promise<string | undefined>,
@@ -250,6 +303,9 @@ export async function importNativePur(
   const pictures = extractEmbeddedPictures(bytes)
   const columns = Math.max(1, Math.ceil(Math.sqrt(pictures.length)))
   const elements: ImportedElement[] = []
+  // Cards keep each picture's own aspect ratio, so a board of portrait and
+  // landscape references still reads correctly even on an approximate layout.
+  const rowHeights: number[] = []
   let skipped = 0
   for (const [index, picture] of pictures.entries()) {
     const ref = await store(picture.name, picture.bytes)
@@ -257,12 +313,21 @@ export async function importNativePur(
       skipped += 1
       continue
     }
+    const size = pictureSize(picture.bytes)
+    const ratio = size === undefined || size.width === 0 ? 0.75 : size.height / size.width
+    const width = GRID_CARD_WIDTH
+    const height = Math.min(GRID_MAX_HEIGHT, Math.max(GRID_CARD_WIDTH * 0.4, width * ratio))
+    const column = index % columns
+    const row = Math.floor(index / columns)
+    rowHeights[row] = Math.max(rowHeights[row] ?? 0, height)
+    let y = 0
+    for (let above = 0; above < row; above++) y += (rowHeights[above] ?? 0) + 24
     elements.push({
       type: 'image',
-      x: (index % columns) * 240,
-      y: Math.floor(index / columns) * 190,
-      w: 220,
-      h: 165,
+      x: column * (GRID_CARD_WIDTH + 24),
+      y,
+      w: width,
+      h: height,
       ref,
     })
   }

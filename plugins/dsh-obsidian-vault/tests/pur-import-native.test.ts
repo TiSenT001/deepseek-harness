@@ -56,5 +56,6 @@ test('the native import lays the pictures out on a grid', async () => {
   assert.equal(result.skipped, 0)
   assert.deepEqual(stored, ['embedded-0.png', 'embedded-1.png', 'embedded-2.png'])
   assert.equal(result.elements[0]?.x, 0)
-  assert.equal(result.elements[1]?.x, 240)
+  // Cards are placed on a fixed grid with a 24 unit gutter.
+  assert.equal(result.elements[1]?.x, 320 + 24)
 })
