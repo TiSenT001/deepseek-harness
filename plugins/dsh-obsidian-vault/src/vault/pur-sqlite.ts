@@ -435,6 +435,33 @@ function readLeafPage(bytes: Buffer, offset: number, pageSize: number): SceneRow
  * @param bytes - the raw `.pur` file.
  * @returns the scene, or undefined when the document carries no database.
  */
+/**
+ * Turn a Qt rich-text note into the plain text a canvas card shows. PureRef stores
+ * notes as HTML, so the tags, the head block and the entities have to go.
+ * @param html - the stored note.
+ * @returns the readable text.
+ */
+export function richTextToPlain(html: string): string {
+  const withoutHead = html
+    .replace(/<!DOCTYPE[^>]*>/gi, '')
+    .replace(/<head[\s\S]*?<\/head>/gi, '')
+    .replace(/<style[\s\S]*?<\/style>/gi, '')
+  const text = withoutHead
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/(p|div|li|h[1-6])>/gi, '\n')
+    .replace(/<li[^>]*>/gi, '• ')
+    .replace(/<[^>]+>/g, '')
+  return text
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>')
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;/gi, "'")
+    .replace(/&amp;/gi, '&')
+    .replace(/[ \t]+\n/g, '\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim()
+}
 export function readPurScene(bytes: Buffer): PurSceneData | undefined {
   // Several offsets can hold a structurally plausible database, so every candidate
   // is decoded and scored by the values it produces rather than by its page headers.

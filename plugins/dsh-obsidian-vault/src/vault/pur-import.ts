@@ -8,9 +8,12 @@
 import { inflateRawSync } from 'node:zlib'
 
 /** One imported element, in canvas world coordinates. */
-import { readPurScene, salvageImages } from './pur-sqlite.ts'
+import { readPurScene, richTextToPlain, salvageImages } from './pur-sqlite.ts'
 
-export interface ImportedElement {
+export type ImportedElement = ImportedImage | ImportedText
+
+/** One picture placed on the canvas. */
+export interface ImportedImage {
   readonly type: 'image'
   readonly x: number
   readonly y: number
@@ -18,6 +21,16 @@ export interface ImportedElement {
   readonly h: number
   /** `pur-asset:<id>` reference after the picture was stored. */
   readonly ref: string
+}
+
+/** One text card, which is how a PureRef note arrives. */
+export interface ImportedText {
+  readonly type: 'text'
+  readonly x: number
+  readonly y: number
+  readonly w: number
+  readonly h: number
+  readonly text: string
 }
 
 /** Result of one import. */
@@ -356,6 +369,18 @@ export async function importNativePur(
   return { elements, skipped, placed: false }
 }
 
+/** Smallest text card the placed import will produce. */
+const TEXT_MIN_WIDTH = 220
+
+/** Shortest text card, so a one-line note stays readable. */
+const TEXT_MIN_HEIGHT = 90
+
+/** Tallest a note card grows before its text scrolls. */
+const TEXT_MAX_HEIGHT = 620
+
+/** Height one line of note text needs, including spacing. */
+const TEXT_LINE_HEIGHT = 22
+
 /** Smallest card the placed import will produce, so a heavily zoomed item stays usable. */
 const MIN_PLACED_SIZE = 24
 
@@ -386,9 +411,34 @@ async function importPlacedScene(
   const elements: ImportedElement[] = []
   let skipped = 0
   let fallbackIndex = 0
+  // Pictures no item claims, used to fill an item whose own row was lost.
+  const unused = [...byId.values()].filter((image) => !scene.items.some((item) => item.image === image.id))
+  let unusedIndex = 0
   for (const item of scene.items) {
-    if (item.image === undefined) continue
-    const image = byId.get(item.image)
+    // A note carries text instead of a picture, so it becomes a text card.
+    if (item.image === undefined) {
+      const note = richTextToPlain(item.note ?? '')
+      if (note === '') continue
+      // A note keeps a readable width whatever zoom it was last shown at; its height
+      // follows the number of lines, so a short note does not become a tall card.
+      const noteLines = note.split("\n").length
+      elements.push({
+        type: "text",
+        x: item.transform[6] ?? 0,
+        y: item.transform[7] ?? 0,
+        w: TEXT_MIN_WIDTH,
+        h: Math.max(TEXT_MIN_HEIGHT, Math.min(TEXT_MAX_HEIGHT, noteLines * TEXT_LINE_HEIGHT + 32)),
+        text: note,
+      })
+      continue
+    }
+    let image = byId.get(item.image)
+    if (image === undefined && unusedIndex < unused.length) {
+      // The images table can lose a row while the picture itself survives on some
+      // page, so a recovered picture stands in for the missing one.
+      image = unused[unusedIndex]
+      unusedIndex += 1
+    }
     let payload: Uint8Array | undefined = image?.bytes
     if (payload === undefined || payload.length === 0) {
       // The picture bytes live in pages this reader cannot place yet; fall back to

@@ -326,8 +326,10 @@ export async function deleteCodeSnippet(id: string): Promise<readonly CodeSnippe
 
 
 /** One element the host reconstructed from a PureRef document. */
-export interface ImportedPurElement {
-  /** Only images are mapped today. */
+export type ImportedPurElement = ImportedPurImage | ImportedPurText
+
+/** One picture the reader produced. */
+export interface ImportedPurImage {
   readonly type: 'image'
   /** World position and size. */
   readonly x: number
@@ -336,6 +338,18 @@ export interface ImportedPurElement {
   readonly h: number
   /** `pur-asset:<id>` reference. */
   readonly ref: string
+}
+
+/** One note the reader produced. */
+export interface ImportedPurText {
+  readonly type: 'text'
+  /** World position and size. */
+  readonly x: number
+  readonly y: number
+  readonly w: number
+  readonly h: number
+  /** Card body. */
+  readonly text: string
 }
 
 /**

@@ -29,6 +29,9 @@ import { PurImageCache, fetchNoteSummary, resolveNoteLink } from './loader.ts'
 import { fileToDataURL, insertUrlInput } from './paste-drop.ts'
 import { openPurLink } from './sink.ts'
 import type { PurEditorKind } from './sink.ts'
+
+/** Background of an imported note card, matching the canvas default. */
+const NOTE_BG = 'rgba(28,28,30,0.92)'
 import { exportCanvasFlow, exportImageFlow, exportMarkdownFlow, fileBaseName, generateCodeFlow, writeFreshDocument, writeNamedDocument } from './host-export.ts'
 
 export { exportSelectedText } from './host-export.ts'
@@ -142,6 +145,10 @@ export function createPurMenuHost(deps: () => PurMenuHostDeps): PurMenuHost {
         const data = toBase64(bytes)
         const result = await importPurFile(file.name, data)
         for (const element of result.elements) {
+          if (element.type === "text") {
+            d.run(d.controller.insertText(element.x + at.x, element.y + at.y, element.text, { w: element.w, h: element.h, bgColor: NOTE_BG }))
+            continue
+          }
           d.run(d.controller.insertImage(element.x + at.x, element.y + at.y, element.ref))
         }
         const template = result.approximate ? 'pur.importedApprox' : 'pur.importedCount'
@@ -164,16 +171,30 @@ export function createPurMenuHost(deps: () => PurMenuHostDeps): PurMenuHost {
       const folder = d.path.includes('/') ? d.path.slice(0, d.path.lastIndexOf('/')) : ''
       const target = folder === '' ? name.trim() : `${folder}/${name.trim()}`
       const document = {
-        elements: result.elements.map((element, index) => ({
-          id: `imported-${index}`,
-          type: 'image',
-          x: element.x,
-          y: element.y,
-          w: element.w,
-          h: element.h,
-          original: element.ref,
-        })),
-        viewState: { offsetX: 0, offsetY: 0, scale: 1 },
+        elements: result.elements.map((element, index) => element.type === "text"
+          ? {
+              id: `imported-${index}`,
+              type: "text",
+              x: element.x,
+              y: element.y,
+              w: element.w,
+              h: element.h,
+              content: element.text,
+              bgColor: NOTE_BG,
+              color: "#e0e0e0",
+              fontSize: 14,
+              rotation: 0,
+              opacity: 1,
+            }
+          : {
+              id: `imported-${index}`,
+              type: "image",
+              x: element.x,
+              y: element.y,
+              w: element.w,
+              h: element.h,
+              original: element.ref,
+            }),
       }
       // The canvas format is plugin-owned: it is written through the bridge route,
       // which creates the file when it does not exist yet.
