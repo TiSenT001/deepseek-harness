@@ -100,3 +100,23 @@ int  12, int 1, long 1, int 1, int 1 ...
 - `extractEmbeddedPictures`：按 JPEG 标记走动（APP/DQT/SOF/DHT/SOS），能取到可解码的场景预览图；全图与其它记录交错，跨度法得到的字节无法解码，已明确拒绝
 - `pictureSize`：从 PNG IHDR / JPEG SOFn 读真实宽高比，导入时卡片不变形
 - `importNativePur`：网格布局 + 真实宽高比，并在界面提示「近似布局」
+
+## 缓冲区 dump 试验（未成功，但有结论）
+
+尝试把读取端的字节流抓下来：
+
+| 钩子 | 结果 |
+|---|---|
+| `QDataStream(QByteArray&)` | 导出存在，但**从未被调用** |
+| `QBuffer(QByteArray&)` | 该构造函数**不存在**（只有 `QBuffer(QByteArray*, QObject*)`） |
+| `QDataStream(QIODevice*)` | 被调用；按设备 dump 时拿到的是**PNG/JPEG 图像字节**（`89 50 4e 47` 开头） |
+| `QIODevice::read`（公有） | 抓到的全是图像数据（81KB / 96KB / 104KB 的 PNG 块） |
+| `QIODevice::readData`（保护虚函数） | **未导出**，无法按名字挂钩 |
+
+结论：文档流不是通过公有 `read` 走的，也不是 QByteArray 构造的流；它用的是**某个未导出的虚函数**。
+
+### 下一步的三条可行路线
+
+1. **按地址挂钩**：在 Ghidra 里找到 `QDataStream::operator>>` 的调用者（即读取文档的函数），在其读取前把 `QDataStream` 内部的 `QIODevice*` 取出来，直接读设备缓冲区；
+2. **内存搜索**：进程内搜索那四个 double（`-1300`/`-880`/`5103.044…`/`0.1297…`）的字节，命中处即解码后的缓冲区，再反查它来自文件的哪一段；
+3. **写入端对照**：挂钩保存时的 `QIODevice` 写入（`QIODevice::write`），拿到**写出去**的字节流，与最终文件逐字节对照，缺的那层变换就是编码方式。
