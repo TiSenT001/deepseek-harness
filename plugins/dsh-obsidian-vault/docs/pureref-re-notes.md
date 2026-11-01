@@ -260,3 +260,37 @@ metadata(id INTEGER PRIMARY KEY, scene_rect TEXT, application_version TEXT,
 ### `images.data`
 
 `typeof(images.data)` = **blob**（真正的二进制），但查询该表会报 `database disk image is malformed` —— 说明这棵 B 树的溢出页还在文件尾部那 1,522 字节或别处，尚未归位。
+
+## 自写页级读取器（本轮）
+
+不再经过 SQLite 的文本接口，直接按页解析 B 树：
+
+- 表根页：`images=3, metadata=4, items=5, items_images=6, items_drawings=7, items_notes=8, items_groups=9`
+- 单元格解码要点：**文本长度是 `(type-13)/2`，blob 长度是 `(type-12)/2`**（用错会让每个字符串多一个字节）
+- 页 1 的 B 树头在 `base + 100` 处，页内指针相对页首
+- 读取结果：`items` 行 = `parent=255(有符号 -1), name=快照1, z=1, opacity=1, locked=0`
+
+### 几何 blob 的真实形态
+
+`items.transform` 原始 89 字节：
+
+```
+00 00 00 50 00 3f c3 b0 00 00 ...
+```
+
+`c3 b0` 是 **U+00F0 的 UTF-8**，说明写入方把原始字节按 **Latin-1 逐字节**转成 QString 再存成 UTF-8：
+每个 ≥0x80 的字节变成两字节，89 = 77 + 12，即原文 77 字节、含 12 个高字节。
+
+也就是说：**存储的 77 字节里，前 4 字节仍是 `00 00 00 50`（声明 80）** —— 与声明长度不符，说明写出时就已经不是"80 字节 + 长度头"的朴素结构，或者长度头另有含义。
+
+这段仍是最后一个未解点：需要确定 77 字节的字段布局（9 个 double 是 72 字节，剩 5 字节的头）。
+
+### 已可用的结论
+
+| 项 | 状态 |
+|---|---|
+| 容器 = SQLite | ✅ |
+| 页序 = 页 1 在尾 + 其余在中 | ✅ |
+| 七张表结构与行 | ✅ 可读 |
+| `images.data` | 未验证（该表 B 树遍历未做） |
+| `items.transform` 字段语义 | ⚠️ 77 字节待拆 |
