@@ -8,7 +8,7 @@
 import { inflateRawSync } from 'node:zlib'
 
 /** One imported element, in canvas world coordinates. */
-import { readPurScene } from './pur-sqlite.ts'
+import { readPurScene, salvageImages } from './pur-sqlite.ts'
 
 export interface ImportedElement {
   readonly type: 'image'
@@ -373,6 +373,15 @@ async function importPlacedScene(
   const scene = readPurScene(bytes)
   if (scene === undefined || scene.items.length === 0) return undefined
   const byId = new Map(scene.images.map((image) => [image.id, image]))
+  // Pages are not stored in logical order, so the images table can come back empty
+  // while the rows themselves sit intact on some page; recover those by scanning.
+  const missing = new Set<number>()
+  for (const item of scene.items) {
+    if (item.image !== undefined && !byId.has(item.image)) missing.add(item.image)
+  }
+  if (missing.size > 0) {
+    for (const image of salvageImages(bytes, missing)) byId.set(image.id, image)
+  }
   const pictures = extractEmbeddedPictures(bytes)
   const elements: ImportedElement[] = []
   let skipped = 0

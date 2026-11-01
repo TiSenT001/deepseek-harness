@@ -326,6 +326,110 @@ export function decodeBounds(raw: Buffer): number[] {
   return values
 }
 
+/** Picture magic that a salvaged row must carry in its data column. */
+const PICTURE_MAGIC = [
+  Buffer.from([0xff, 0xd8, 0xff]),
+  Buffer.from([0x89, 0x50, 0x4e, 0x47]),
+]
+
+/**
+ * Recover image rows directly from page-aligned leaves when the images b-tree
+ * cannot be walked. Pages are not stored in logical order, so every aligned offset
+ * is tried and a row is kept only when its data column holds a real picture.
+ * @param bytes - the raw `.pur` file.
+ * @param wanted - image ids to keep, or undefined to keep every plausible row.
+ * @returns the recovered image records.
+ */
+export function salvageImages(
+  bytes: Buffer,
+  wanted?: ReadonlySet<number>,
+): PurSceneData['images'] {
+  const marker = bytes.indexOf(SQLITE_MAGIC)
+  if (marker < 0) return []
+  const pageSize = bytes.readUInt16BE(marker + 16)
+  if (pageSize < 512 || pageSize > 65536) return []
+  const recovered: PurSceneData['images'][number][] = []
+  const seen = new Set<number>()
+  for (let offset = 0; offset + pageSize <= bytes.length; offset += pageSize) {
+    if (bytes[offset] !== 0x0d) continue
+    let rows: SceneRow[]
+    try {
+      rows = readLeafPage(bytes, offset, pageSize)
+    } catch {
+      continue
+    }
+    for (const row of rows) {
+      const values = row.values
+      if (values.length < 9) continue
+      const data = values[6]
+      if (!Buffer.isBuffer(data) || data.length === 0) continue
+      const magic = PICTURE_MAGIC.some((prefix) => data.subarray(0, prefix.length).equals(prefix))
+      if (!magic) continue
+      const width = Number(values[7] ?? 0)
+      const height = Number(values[8] ?? 0)
+      if (width <= 0 || height <= 0 || width > 100000 || height > 100000) continue
+      const id = row.rowId
+      if (wanted !== undefined && !wanted.has(id)) continue
+      if (seen.has(id)) continue
+      seen.add(id)
+      recovered.push({
+        id,
+        origin: textOf(values[2] ?? null),
+        format: textOf(values[4] ?? null),
+        bytes: Buffer.from(data),
+        width,
+        height,
+      })
+    }
+  }
+  return recovered
+}
+
+/**
+ * Decode every cell of one table leaf page.
+ * @param bytes - the raw file.
+ * @param offset - page start in the file.
+ * @param pageSize - page size in bytes.
+ * @returns the rows.
+ */
+function readLeafPage(bytes: Buffer, offset: number, pageSize: number): SceneRow[] {
+  const rows: SceneRow[] = []
+  const cellCount = bytes.readUInt16BE(offset + 3)
+  const usable = pageSize
+  const maxLocal = usable - 35
+  const minLocal = Math.floor((usable - 12) * 32 / 255) - 23
+  for (let index = 0; index < cellCount; index++) {
+    const pointer = bytes.readUInt16BE(offset + 8 + index * 2)
+    const cell = offset + pointer
+    const payload = readVarint(bytes, cell)
+    const rowId = readVarint(bytes, cell + payload.used)
+    const header = payload.used + rowId.used
+    let body: Buffer
+    if (payload.value <= maxLocal) {
+      body = Buffer.from(bytes.subarray(cell + header, cell + header + payload.value))
+    } else {
+      const local = minLocal + ((payload.value - minLocal) % (usable - 4))
+      const parts = [Buffer.from(bytes.subarray(cell + header, cell + header + local))]
+      let next = bytes.readUInt32BE(cell + header + local)
+      let remaining = payload.value - local
+      const visited = new Set<number>([next])
+      while (next > 0 && remaining > 0) {
+        const pageOffset = (next - 1) * pageSize
+        if (pageOffset + 4 > bytes.length) break
+        const take = Math.min(usable - 4, remaining)
+        parts.push(Buffer.from(bytes.subarray(pageOffset + 4, pageOffset + 4 + take)))
+        remaining -= take
+        const following = bytes.readUInt32BE(pageOffset)
+        if (visited.has(following)) break
+        visited.add(following)
+        next = following
+      }
+      body = Buffer.concat(parts)
+    }
+    rows.push({ rowId: rowId.value, values: decodeRecord(body, 0) })
+  }
+  return rows
+}
 /**
  * Read a whole scene out of a native document.
  * @param bytes - the raw `.pur` file.
