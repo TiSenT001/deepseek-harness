@@ -73,6 +73,21 @@ function insertElements(deps: PurMenuHostDeps, elements: readonly PurElement[]):
 }
 
 /** Open an OS file picker and run the chosen file through `consume`. */
+/**
+ * Encode bytes as base64 without spreading them into one call: a .pur file easily
+ * exceeds the argument limit, and the spread overflowed the stack for a 1.6MB one.
+ * @param bytes - the file contents.
+ * @returns base64 text.
+ */
+function toBase64(bytes: Uint8Array): string {
+  const chunk = 0x8000
+  let binary = ''
+  for (let offset = 0; offset < bytes.length; offset += chunk) {
+    binary += String.fromCharCode(...bytes.subarray(offset, offset + chunk))
+  }
+  return btoa(binary)
+}
+
 function pickFile(accept: string, consume: (file: File) => Promise<void>): void {
   const input = document.createElement('input')
   input.type = 'file'
@@ -124,7 +139,7 @@ export function createPurMenuHost(deps: () => PurMenuHostDeps): PurMenuHost {
       pickFile('.pur,.purz', async (file) => {
         if (file === null) return
         const bytes = new Uint8Array(await file.arrayBuffer())
-        const data = btoa(String.fromCharCode(...bytes))
+        const data = toBase64(bytes)
         const result = await importPurFile(file.name, data)
         for (const element of result.elements) {
           d.run(d.controller.insertImage(element.x + at.x, element.y + at.y, element.ref))
@@ -137,7 +152,7 @@ export function createPurMenuHost(deps: () => PurMenuHostDeps): PurMenuHost {
       if (file === null) return
       const d = deps()
       const bytes = new Uint8Array(await file.arrayBuffer())
-      const data = btoa(String.fromCharCode(...bytes))
+      const data = toBase64(bytes)
       const result = await importPurFile(file.name, data).catch(() => null)
       if (result === null || result.elements.length === 0) {
         d.notice(d.t('pur.importFailed'))
