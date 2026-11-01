@@ -8,6 +8,8 @@
 import { inflateRawSync } from 'node:zlib'
 
 /** One imported element, in canvas world coordinates. */
+import { readPurScene } from './pur-sqlite.ts'
+
 export interface ImportedElement {
   readonly type: 'image'
   readonly x: number
@@ -315,6 +317,11 @@ export async function importNativePur(
   bytes: Uint8Array,
   store: (name: string, data: Uint8Array) => Promise<string | undefined>,
 ): Promise<{ elements: readonly ImportedElement[]; skipped: number }> {
+  // The scene database carries the real placement, so it wins whenever it parses;
+  // the embedded pictures remain the fallback for documents it cannot read.
+  const placed = await importPlacedScene(Buffer.from(bytes), store)
+  if (placed !== undefined) return placed
+
   const pictures = extractEmbeddedPictures(bytes)
   const columns = Math.max(1, Math.ceil(Math.sqrt(pictures.length)))
   const elements: ImportedElement[] = []
@@ -346,5 +353,65 @@ export async function importNativePur(
       ref,
     })
   }
+  return { elements, skipped }
+}
+
+/** Smallest card the placed import will produce, so a heavily zoomed item stays usable. */
+const MIN_PLACED_SIZE = 24
+
+/**
+ * Build the canvas from the scene database: each item's transform holds its world
+ * position, and its image bounds hold the displayed size.
+ * @param bytes - the native document.
+ * @param store - callback storing one picture and returning its ref.
+ * @returns the elements, or undefined when the database does not describe a scene.
+ */
+async function importPlacedScene(
+  bytes: Buffer,
+  store: (name: string, data: Uint8Array) => Promise<string | undefined>,
+): Promise<{ elements: readonly ImportedElement[]; skipped: number } | undefined> {
+  const scene = readPurScene(bytes)
+  if (scene === undefined || scene.items.length === 0) return undefined
+  const byId = new Map(scene.images.map((image) => [image.id, image]))
+  const pictures = extractEmbeddedPictures(bytes)
+  const elements: ImportedElement[] = []
+  let skipped = 0
+  let fallbackIndex = 0
+  for (const item of scene.items) {
+    if (item.image === undefined) continue
+    const image = byId.get(item.image)
+    let payload: Uint8Array | undefined = image?.bytes
+    if (payload === undefined || payload.length === 0) {
+      // The picture bytes live in pages this reader cannot place yet; fall back to
+      // the embedded copy so the card still shows something.
+      payload = pictures[fallbackIndex]?.bytes
+      fallbackIndex += 1
+    }
+    if (payload === undefined || payload.length === 0) {
+      skipped += 1
+      continue
+    }
+    const ref = await store(`scene-${item.image}-${fallbackIndex}`, payload)
+    if (ref === undefined) {
+      skipped += 1
+      continue
+    }
+    // The item's scale times the picture's own pixel size is the size on the board.
+    const scale = Math.abs(item.transform[0] ?? 1)
+    const size = pictureSize(payload)
+    const naturalWidth = size?.width ?? 320
+    const naturalHeight = size?.height ?? 240
+    const width = Math.max(MIN_PLACED_SIZE, naturalWidth * scale)
+    const height = Math.max(MIN_PLACED_SIZE, naturalHeight * scale)
+    elements.push({
+      type: 'image',
+      x: item.transform[6] ?? 0,
+      y: item.transform[7] ?? 0,
+      w: width,
+      h: height,
+      ref,
+    })
+  }
+  if (elements.length === 0) return undefined
   return { elements, skipped }
 }
