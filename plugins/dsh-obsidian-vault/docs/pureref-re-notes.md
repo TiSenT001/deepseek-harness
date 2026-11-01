@@ -294,3 +294,31 @@ metadata(id INTEGER PRIMARY KEY, scene_rect TEXT, application_version TEXT,
 | 七张表结构与行 | ✅ 可读 |
 | `images.data` | 未验证（该表 B 树遍历未做） |
 | `items.transform` 字段语义 | ⚠️ 77 字节待拆 |
+
+## 场景数据库读取器（已落地）
+
+新增 `src/vault/pur-sqlite.ts`：
+
+| 导出 | 作用 |
+|---|---|
+| `openSceneDatabase` | 找 `SQLite format 3`、按「页 1 在尾 + 其余在中」重排，容忍声明页数大于实际 |
+| `readTable` | 自己走 B 树（叶子 `0x0d` / 内部 `0x05`），**溢出页链**已按 SQLite 规则拼接 |
+| `unescapeTextBytes` | 还原 Latin-1 展开（`c3 b0` → `f0`） |
+| `decodeTransform` | 5 字节头 + 9 个 double（QTransform），`m31/m32` 即世界坐标 |
+| `readPurScene` | 一次读出 images / items / items_images / items_notes / items_groups / metadata |
+
+### 已验证
+
+| 文件 | 结果 |
+|---|---|
+| `NewScene.pur` | 1 item @ (2523.0, 2663.1)，缩放 1.0；原图 40287×11239、1,500,137 B JPG |
+| `道具.pur` | 15 items，坐标如 (143.6, 139.4) / (411.8, 140.9)，缩放 0.354 / 0.292 |
+| `科学家人物概念设计.pur` | 15 items，坐标如 (−1350.5, 1062.0)，缩放 0.906 |
+
+**交叉验证**：`items.transform` 的 `m31/m32` 与 Frida 抓到的 QGraphicsItem scene position 完全一致。
+
+### 仍待解决
+
+1. `images` 表在 `道具.pur` / `科学家…pur` 读出 0 行 —— 大 BLOB 的溢出页链拼接仍有偏差（`NewScene.pur` 能读出 1.5MB 原图，说明链路在某类页序下成立）
+2. `items_images.image` 与 `images.id` 的对应在部分文件偏移一位，需要按 rowid 再核对
+3. `NewScene1.pur` 识别不到库（声明页数与实际长度不符）

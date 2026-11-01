@@ -188,6 +188,40 @@ export function readTable(database: SceneDatabase, rootPage: number): SceneRow[]
   const rows: SceneRow[] = []
   const pending = [rootPage]
   const visited = new Set<number>()
+  const usable = database.pageSize
+  const maxLocal = usable - 35
+  const minLocal = Math.floor((usable - 12) * 32 / 255) - 23
+
+  /**
+   * Read the whole record payload, following the overflow chain when the record
+   * does not fit on its own page.
+   * @param cell - offset of the cell header.
+   * @param payloadSize - declared record size.
+   * @param headerLength - bytes of cell header before the payload.
+   * @returns the payload bytes.
+   */
+  const payloadAt = (cell: number, payloadSize: number, headerLength: number): Buffer => {
+    if (payloadSize <= maxLocal) return Buffer.from(database.bytes.subarray(cell + headerLength, cell + headerLength + payloadSize))
+    if (cell + headerLength + maxLocal + 4 > database.bytes.length) throw new RangeError('record outside assembled pages')
+    const local = minLocal + ((payloadSize - minLocal) % (usable - 4))
+    const head = Buffer.from(database.bytes.subarray(cell + headerLength, cell + headerLength + local))
+    const parts = [head]
+    let next = database.bytes.readUInt32BE(cell + headerLength + local)
+    let remaining = payloadSize - local
+    const seen = new Set<number>([next])
+    while (next > 0 && remaining > 0) {
+      const offset = (next - 1) * database.pageSize
+      const take = Math.min(usable - 4, remaining)
+      parts.push(Buffer.from(database.bytes.subarray(offset + 4, offset + 4 + take)))
+      remaining -= take
+      const following = database.bytes.readUInt32BE(offset)
+      if (seen.has(following)) break
+      seen.add(following)
+      next = following
+    }
+    return Buffer.concat(parts)
+  }
+
   while (pending.length > 0) {
     const pageNumber = pending.pop() ?? 0
     if (pageNumber <= 0 || visited.has(pageNumber)) continue
@@ -202,7 +236,15 @@ export function readTable(database: SceneDatabase, rootPage: number): SceneRow[]
         const cell = base + pointer
         const payload = readVarint(database.bytes, cell)
         const rowId = readVarint(database.bytes, cell + payload.used)
-        rows.push({ rowId: rowId.value, values: decodeRecord(database.bytes, cell + payload.used + rowId.used) })
+        const header = payload.used + rowId.used
+        // A record that points outside the assembled pages is skipped rather than
+        // aborting the whole table, so one damaged page cannot hide the others.
+        try {
+          const record = payloadAt(cell, payload.value, header)
+          rows.push({ rowId: rowId.value, values: decodeRecord(record, 0) })
+        } catch {
+          continue
+        }
       }
       continue
     }
