@@ -179,63 +179,76 @@ const PNG_MAGIC = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]
 /** JPEG start-of-image marker. */
 const JPEG_MAGIC = [0xff, 0xd8, 0xff]
 
-/** Largest single embedded picture the reader accepts, guarding against a bogus length. */
-const MAX_PICTURE_BYTES = 64 * 1024 * 1024
+/** Markers that carry no length field and stand alone in the stream. */
+const STANDALONE = new Set([0x01, 0xd0, 0xd1, 0xd2, 0xd3, 0xd4, 0xd5, 0xd6, 0xd7])
 
 /**
- * Whether a length prefix plausibly describes an embedded picture.
- * @param bytes - the file.
- * @param offset - offset just before the picture data.
- * @param length - declared length.
- * @param magic - expected signature.
- * @returns true when the picture fits the file.
+ * Length of the JPEG that starts at one offset, or undefined when the bytes are
+ * not a structurally valid one. Markers are walked rather than searching for the
+ * first end-of-image pair, because a JPEG may embed a thumbnail whose own end
+ * marker sits inside the picture data and would cut the span short.
+ * @param bytes - file bytes.
+ * @param start - offset of the start-of-image marker.
+ * @returns the byte length including the end marker, or undefined.
  */
-function looksLikePicture(bytes: Uint8Array, offset: number, length: number, magic: readonly number[]): boolean {
-  if (length < magic.length + 8 || length > MAX_PICTURE_BYTES) return false
-  if (offset + length > bytes.byteLength) return false
-  if (!magic.every((value, index) => bytes[offset + index] === value)) return false
-  // The declared length must land exactly on the picture's own terminator; a
-  // coincidental 32-bit value inside the stream would otherwise swallow the rest
-  // of the file and hide every later picture.
-  const end = offset + length
-  if (magic === PNG_MAGIC) return endsWithPngIend(bytes, end)
-  return bytes[end - 2] === 0xff && bytes[end - 1] === 0xd9
+export function jpegLengthAt(bytes: Uint8Array, start: number): number | undefined {
+  if (bytes[start] !== 0xff || bytes[start + 1] !== 0xd8) return undefined
+  let offset = start + 2
+  while (offset + 1 < bytes.byteLength) {
+    if (bytes[offset] !== 0xff) return undefined
+    // Markers may be preceded by fill bytes that repeat ff; skip them.
+    while (bytes[offset + 1] === 0xff) offset += 1
+    const marker = bytes[offset + 1] ?? 0
+    if (marker === 0xd9) return offset + 2 - start
+    if (STANDALONE.has(marker)) {
+      offset += 2
+      continue
+    }
+    if (offset + 4 > bytes.byteLength) return undefined
+    const length = ((bytes[offset + 2] ?? 0) << 8) | (bytes[offset + 3] ?? 0)
+    if (length < 2 || offset + 2 + length > bytes.byteLength) return undefined
+    offset += 2 + length
+    if (marker !== 0xda) continue
+    // Entropy-coded data: ff is stuffed with 00, restarts are d0-d7; any other
+    // marker byte ends the scan of this segment.
+    while (offset + 1 < bytes.byteLength) {
+      if (bytes[offset] !== 0xff) {
+        offset += 1
+        continue
+      }
+      const next = bytes[offset + 1] ?? 0
+      if (next === 0x00 || next === 0xff || (next >= 0xd0 && next <= 0xd7)) {
+        offset += 2
+        continue
+      }
+      break
+    }
+  }
+  return undefined
 }
 
 /**
- * Whether the bytes just before one offset are a PNG IEND chunk.
- * @param bytes - the file.
- * @param end - offset the picture claims to end at.
- * @returns true when the IEND signature and CRC sit right before the end.
- */
-function endsWithPngIend(bytes: Uint8Array, end: number): boolean {
-  const iend = [0x49, 0x45, 0x4e, 0x44, 0xae, 0x42, 0x60, 0x82]
-  if (end < iend.length) return false
-  return iend.every((value, index) => bytes[end - iend.length + index] === value)
-}
-
-/**
- * Extract the pictures embedded in PureRef's native container. The reader does
- * not know the scene structure, but every picture is stored as
- * `[uint32 BE length][PNG or JPEG bytes]`, which is enough to recover the images.
+ * Extract the pictures embedded in PureRef's native container. Each picture is a
+ * plain JPEG: the first one is the scene preview, the rest are the full pictures.
+ * The scene layout is not decoded, so only the images are recovered.
  * @param bytes - native `.pur` contents.
  * @returns each found picture, in file order.
  */
 export function extractEmbeddedPictures(bytes: Uint8Array): readonly { name: string; bytes: Uint8Array }[] {
   const found: { name: string; bytes: Uint8Array }[] = []
-  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength)
-  for (let offset = 0; offset + 12 < bytes.byteLength; offset++) {
-    const length = view.getUint32(offset, false)
-    const start = offset + 4
-    const png = looksLikePicture(bytes, start, length, PNG_MAGIC)
-    // The JPEG branch has to run through the same length check: reading the magic
-    // alone accepted zero-length and over-long spans that merely started with it.
-    const jpeg = !png && looksLikePicture(bytes, start, length, JPEG_MAGIC)
-    if (!png && !jpeg) continue
-    const picture = bytes.subarray(start, start + length)
-    const name = png ? `embedded-${found.length}.png` : `embedded-${found.length}.jpg`
-    found.push({ name, bytes: picture })
-    offset = start + length - 1
+  let offset = 0
+  while (offset + 3 < bytes.byteLength) {
+    if (bytes[offset] !== 0xff || bytes[offset + 1] !== 0xd8 || bytes[offset + 2] !== 0xff) {
+      offset += 1
+      continue
+    }
+    const length = jpegLengthAt(bytes, offset)
+    if (length === undefined || length < 128) {
+      offset += 1
+      continue
+    }
+    found.push({ name: `embedded-${found.length}.jpg`, bytes: bytes.subarray(offset, offset + length) })
+    offset += length
   }
   return found
 }
