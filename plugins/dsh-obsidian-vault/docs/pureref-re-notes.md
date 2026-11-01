@@ -153,3 +153,49 @@ int  12, int 1, long 1, int 1, int 1 ...
 - 若写入者是「查表/解码函数」，该函数就是解码器。
 
 这是唯一还能推进的手段；纯静态与纯黑盒排除已经做到极限。
+
+## 突破：原生 `.pur` 的场景数据是 **SQLite 数据库**
+
+用 Frida 抓读取栈，定位到真正的读取函数 `FUN_1401b4550`（`PureRef.exe+0x1b4550`），反编译后一眼看清：
+
+```c
+bVar10 = QSqlQuery::next(param_3);
+QString::QString(local_118, "scene_rect");
+... QVariant::toString(...) ... QVariant::toRectF(...)   → 写进 +0x20..+0x38
+QString::QString(local_118, "view_transform");
+... 9 个 double 写进 +0x40..+0x88
+QString::QString(local_118, "horizontal_scroll"); → toInt → +0x90
+QString::QString(local_118, "vertical_scroll");   → toInt → +0x94
+```
+
+**它读的是 `QSqlQuery`，不是二进制流。** 之前抓到的 `-1300 / -880 / 5103.044 / 4090.761 / 0.1297` 就是从 `scene_rect`、`view_transform` 两列的**字符串**解析出来的，所以它们永远不可能以双精度字节形式出现在文件里 —— 这也解释了前面所有"编码排除"为什么全部落空。
+
+### 文件布局
+
+在 `NewScene.pur`（1,545,714 字节）中搜索 `SQLite format 3\0`：
+
+| 项 | 值 |
+|---|---|
+| SQLite 头偏移 | `1,540,096` |
+| 页大小 | `4096` |
+| 页数（头内声明） | `376` → 库大小 `1,540,096` 字节 |
+| 文件大小 | `1,545,714` |
+| 差值 | `5,618`（= 头部 5,618 字节，恰好等于写入流第一块） |
+
+### 已读出的表结构
+
+```
+images(id INTEGER PRIMARY KEY, source_type INTEGER, origin TEXT, source TEXT,
+       format TEXT, checksum TEXT, data BLOB, width INTEGER, height INTEGER)
+items, items_images, items_drawings, items_notes, items_groups, metadata
+```
+
+`items_images` 里应当就是每张图的位置/尺寸/变换。
+
+### 尚未解决：页序
+
+把文件按 `[尾 5618][前 1540096]` 或 `[前 1540096][尾 5618]` 重排后，SQLite 能读到 **page 1（表结构）**，但查行时报 `database disk image is malformed`，说明 `page 2..N` 的摆放还没对齐。
+
+差值 5,618 = 4,096 + 1,522，说明重排后还有 1,522 字节的错位，需要再定位一次。
+
+**重要**：现在问题从"未知二进制格式"变成了"SQLite 页如何重排"，是有明确边界的工程问题。
