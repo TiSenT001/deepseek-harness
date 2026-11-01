@@ -75,6 +75,46 @@ function insertElements(deps: PurMenuHostDeps, elements: readonly PurElement[]):
   deps.run([{ type: 'save' }, { type: 'render' }])
 }
 
+/** Room left around an imported board, in screen pixels. */
+const IMPORT_MARGIN = 40
+
+/** Viewport the framing assumes before the canvas is on screen. */
+const IMPORT_VIEWPORT = { w: 1200, h: 800 }
+
+/**
+ * Compute the view that shows a whole imported board. Opening at unit scale would
+ * park the camera at one corner of a board that can be tens of thousands of units
+ * wide, which is what made an imported canvas look empty.
+ * @param elements - the imported elements.
+ * @returns a view state that fits them on screen.
+ */
+function frameImportedScene(elements: readonly { x: number; y: number; w: number; h: number }[]): { offsetX: number; offsetY: number; scale: number } {
+  if (elements.length === 0) return { offsetX: 0, offsetY: 0, scale: 1 }
+  let minX = Infinity
+  let minY = Infinity
+  let maxX = -Infinity
+  let maxY = -Infinity
+  for (const element of elements) {
+    minX = Math.min(minX, element.x)
+    minY = Math.min(minY, element.y)
+    maxX = Math.max(maxX, element.x + element.w)
+    maxY = Math.max(maxY, element.y + element.h)
+  }
+  const width = Math.max(maxX - minX, 1)
+  const height = Math.max(maxY - minY, 1)
+  const fit = Math.min(
+    (IMPORT_VIEWPORT.w - IMPORT_MARGIN * 2) / width,
+    (IMPORT_VIEWPORT.h - IMPORT_MARGIN * 2) / height,
+  )
+  // Never magnify a small board; a single imported card keeps its own size.
+  const scale = Math.min(1, Math.max(fit, 0.001))
+  return {
+    offsetX: IMPORT_MARGIN - minX * scale,
+    offsetY: IMPORT_MARGIN - minY * scale,
+    scale,
+  }
+}
+
 /** Open an OS file picker and run the chosen file through `consume`. */
 /**
  * Encode bytes as base64 without spreading them into one call: a .pur file easily
@@ -195,6 +235,9 @@ export function createPurMenuHost(deps: () => PurMenuHostDeps): PurMenuHost {
               h: element.h,
               original: element.ref,
             }),
+        // Frame the board the way it sat on its own canvas: the coordinates are
+        // PureRef world units, so the view has to be derived from them.
+        viewState: frameImportedScene(result.elements),
       }
       // The canvas format is plugin-owned: it is written through the bridge route,
       // which creates the file when it does not exist yet.
