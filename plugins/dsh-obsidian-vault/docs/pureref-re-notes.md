@@ -70,3 +70,36 @@ decompiler.openProgram(program);
 2. 读出各字段的读取顺序与类型（double 的 x/y/w/h、QString、QByteArray 图像块）。
 3. 用真实 `.pur` 验证：解析出的图片数量与 `extractEmbeddedPictures` 一致，坐标能落在合理范围内。
 4. 把结果接进 `src/vault/pur-import.ts` 的 `importNativePur`，替换当前的网格近似布局。
+
+## 第二批事实（本轮）
+
+### ZIP + XML 不是 PureRef 的格式
+
+在 `PureRef.exe`（20.7MB）里搜字符串：
+
+| 字符串 | 命中 |
+|---|---|
+| `contents.xml` | **0** |
+| `purz` | 0 |
+| `PureRef scene` | 24 |
+| `.pur` | 82 |
+
+结论：`test.pur`（ZIP + `contents.xml`）**不是 PureRef 写出来的**，而是第三方/转换工具产生的交换格式。所以"让 PureRef 存成我们读得懂的格式"这条路不存在；精确导入原生 `.pur` 只能靠逆向。
+
+### 流操作符的导入情况
+
+- 被引用的流操作符只有 2 类：`operator<<`(2 处)、`operator>>`(1 处)，且都属于 Qt6Widgets/Qt6Gui（`QBrush`/`QFont`/`QTransform` 等），**不是** `QDataStream` 的基本类型操作符。
+- `QDataStream::operator<<(double)` 是成员函数，且**被内联**进了调用者 → 反编译里看不到成串的写调用，只能从汇编层的缓冲区写入推断字段。
+- 另外确认两个函数是 **IPC/共享内存命令通道**（`FUN_1400eeae0` 读单 bool、`FUN_14003daa0` 读命令字符串），与场景无关。
+
+### 场景写出函数
+
+`FUN_14015e710(QString*, QString*, QIODevice*, ...)`：收 `QIODevice*`、栈上构造 `QDataStream`、结尾处理 `QByteArray` —— 是**存盘**入口。其读取对应函数尚未定位（字段读取被内联，需要在汇编层比对）。
+
+### 结论与下一步
+
+精确坐标恢复需要**汇编级**阅读写盘函数的缓冲区写入序列，属于多轮工作量。若要继续，需要：
+
+1. 一份**已知布局**的极小原生 `.pur`（例如 2 张图，坐标 (0,0) 与 (500,300)，尺寸固定）作为 ground truth；
+2. 在 `FUN_14015e710` 及其调用者里逐段比对写入偏移，反推 double 字段顺序；
+3. 用该样本验证解析器后，再对 `Work(1).pur` 回归。
