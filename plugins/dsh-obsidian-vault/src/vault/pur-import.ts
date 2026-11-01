@@ -230,7 +230,9 @@ export function jpegLengthAt(bytes: Uint8Array, start: number): number | undefin
 /**
  * Extract the pictures embedded in PureRef's native container. Each picture is a
  * plain JPEG: the first one is the scene preview, the rest are the full pictures.
- * The scene layout is not decoded, so only the images are recovered.
+ * Only structurally valid ones are kept: the full-size pictures are interleaved
+ * with other records, so a span taken from the next end marker decodes as broken
+ * data and is refused here rather than imported.
  * @param bytes - native `.pur` contents.
  * @returns each found picture, in file order.
  */
