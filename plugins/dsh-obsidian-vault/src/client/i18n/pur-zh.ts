@@ -71,6 +71,7 @@ export const PUR_ZH = {
   'pur.importedCount': '已导入 {count} 张图片',
   'pur.newCanvasName': '新画布',
   'pur.importFailed': '导入失败',
+  'pur.importing': '正在读取 PureRef 文件…',
   'pur.snippetUnsupported': 'Obsidian 端暂不支持该操作',
   'pur.importPurUnsupported': 'Obsidian 端请直接用 PureRef 打开',
   'pur.snippetFailed': '代码片段操作失败',

@@ -69,6 +69,7 @@ export const PUR_EN: Record<keyof typeof PUR_ZH, string> = {
   'pur.importedCount': 'Imported {count} images',
   'pur.newCanvasName': 'New Canvas',
   'pur.importFailed': 'Import failed',
+  'pur.importing': 'Reading the PureRef document…',
   'pur.snippetUnsupported': 'Not available in Obsidian yet',
   'pur.importPurUnsupported': 'Open it in PureRef from Obsidian',
   'pur.snippetFailed': 'Snippet operation failed',

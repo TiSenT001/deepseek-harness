@@ -234,7 +234,7 @@ function now(): number {
 
 /** Decoded canvas images keyed by `dataURL || original`, with load dedupe. */
 /** Decodes allowed to run at once; more than a couple only queue for the same frame. */
-const MAX_PARALLEL_DECODES = 2
+const MAX_PARALLEL_DECODES = 4
 
 export class PurImageCache {
   private readonly images = new PurImageMap()
