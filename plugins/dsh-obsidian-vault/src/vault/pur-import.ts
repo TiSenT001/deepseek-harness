@@ -1,11 +1,10 @@
 /**
- * PureRef `.pur` import. Two containers exist in the wild: a ZIP holding
- * `contents.xml` plus image entries, and PureRef's native QDataStream form.
- * This module reads the ZIP form, which needs no guessing: the XML names each
- * picture, its position and its size.
+ * PureRef `.pur` import. Three containers exist in the wild: a ZIP holding
+ * `contents.xml` plus image entries, PureRef's native SQLite form, and a
+ * qCompress-wrapped variant (`.purz`) that is inflated before parsing.
  * @module dsh-obsidian-vault/vault/pur-import
  */
-import { inflateRawSync } from 'node:zlib'
+import { inflateRawSync, inflateSync } from 'node:zlib'
 
 /** One imported element, in canvas world coordinates. */
 import { readPurScene, richTextToPlain, salvageImages } from './pur-sqlite.ts'
@@ -45,6 +44,10 @@ export interface ImportedImage extends ImportedPlacement {
 export interface ImportedText extends ImportedPlacement {
   readonly type: 'text'
   readonly text: string
+  /** Text colour as stored by PureRef. */
+  readonly textColor?: string
+  /** Card fill as stored by PureRef. */
+  readonly bgColor?: string
 }
 
 /** One group, mirroring the nesting PureRef stores. */
@@ -349,19 +352,35 @@ export function pictureSize(bytes: Uint8Array): PictureSize | undefined {
   }
   return undefined
 }
+/**
+ * Inflate a qCompress-wrapped document. The wrapper is a zlib stream with an
+ * optional four byte size prefix; anything that does not inflate is returned as is.
+ * @param bytes - the document as read from disk.
+ * @returns the raw document.
+ */
+export function maybeInflate(bytes: Buffer): Buffer {
+  const zlibHeader = bytes.length > 2 && bytes[0] === 0x78 && [0x01, 0x5e, 0x9c, 0xda].includes(bytes[1] ?? 0)
+  if (!zlibHeader) return bytes
+  try {
+    return Buffer.from(inflateSync(bytes, { maxOutputLength: 512 * 1024 * 1024 }))
+  } catch {
+    return bytes
+  }
+}
 export async function importNativePur(
   bytes: Uint8Array,
   store: (name: string, data: Uint8Array) => Promise<string | undefined>,
 ): Promise<{ elements: readonly ImportedElement[]; skipped: number; placed: boolean }> {
+  // A `.purz` is the same document behind qCompress, so it is inflated first.
+  const document = maybeInflate(Buffer.from(bytes))
   // The scene database carries the real placement, so it wins whenever it parses;
   // the embedded pictures remain the fallback for documents it cannot read.
-  const placed = await importPlacedScene(Buffer.from(bytes), store)
+  const placed = await importPlacedScene(document, store)
   if (placed !== undefined) return { ...placed, placed: true }
 
-  const pictures = extractEmbeddedPictures(bytes)
+  const pictures = extractEmbeddedPictures(document)
   const columns = Math.max(1, Math.ceil(Math.sqrt(pictures.length)))
   const elements: ImportedElement[] = []
-  // Cards keep each picture's own aspect ratio, so a board of portrait and
   // landscape references still reads correctly even on an approximate layout.
   const rowHeights: number[] = []
   let skipped = 0
@@ -544,9 +563,13 @@ async function importPlacedScene(
       }
       const scaleX = Math.abs(item.transform[0] ?? 1)
       const scaleY = Math.abs(item.transform[4] ?? 1)
+      // The scene columns hold the original picture size, which is authoritative;
+      // the header is only a fallback for rows whose columns were lost.
       const size = pictureSize(payload)
-      const naturalWidth = size?.width ?? 320
-      const naturalHeight = size?.height ?? 240
+      const columnWidth = image?.width ?? 0
+      const columnHeight = image?.height ?? 0
+      const naturalWidth = columnWidth > 0 ? columnWidth : (size?.width ?? 320)
+      const naturalHeight = columnHeight > 0 ? columnHeight : (size?.height ?? 240)
       return {
         type: 'image',
         ...base,
