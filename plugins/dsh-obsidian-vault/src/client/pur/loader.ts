@@ -147,8 +147,15 @@ class PurImageMap extends Map<string, CanvasImageSource> implements PurImageLook
   override get(key: string): CanvasImageSource | undefined {
     const value = super.get(key)
     if (value !== undefined) {
-      this.touched.set(key, ++this.stamp)
-      this.drawn.set(key, now())
+      // The renderer asks for every visible picture on every frame; writing both
+      // maps each time churned a thousand entries per frame and showed up as a
+      // frame spike, so recency is refreshed at most four times a second.
+      const last = this.drawn.get(key) ?? 0
+      const stamp = now()
+      if (stamp - last > RECENCY_REFRESH_MS) {
+        this.touched.set(key, ++this.stamp)
+        this.drawn.set(key, stamp)
+      }
     }
     return value
   }
@@ -201,6 +208,9 @@ class PurImageMap extends Map<string, CanvasImageSource> implements PurImageLook
     }
   }
 }
+
+/** How often a drawn picture refreshes its recency, in milliseconds. */
+const RECENCY_REFRESH_MS = 250
 
 /** Decoded pixels the cache keeps before evicting the least recently drawn. */
 const IMAGE_BUDGET_BYTES = 256 * 1024 * 1024
@@ -256,24 +266,47 @@ export class PurImageCache {
   }
 
   /** Start queued decodes up to the concurrency limit. */
+  /** Start queued decodes up to the concurrency limit. */
   private pump(): void {
     while (this.active < MAX_PARALLEL_DECODES && this.queue.length > 0) {
       const next = this.queue.shift()
       if (next === undefined) return
       this.active += 1
-      const image = new Image()
-      const settle = (failed: boolean): void => {
+      const url = next.key.startsWith('data:') || /^https?:/i.test(next.key) ? next.key : purAssetUrl(next.key)
+      const settle = (decoded: CanvasImageSource | undefined): void => {
         this.active -= 1
         this.pending.delete(next.key)
-        if (failed) this.images.failedKeys.add(next.key)
-        else this.images.set(next.key, image)
+        if (decoded === undefined) this.images.failedKeys.add(next.key)
+        else this.images.set(next.key, decoded)
         next.onSettled()
         this.pump()
       }
-      image.onload = () => settle(false)
-      image.onerror = () => settle(true)
-      image.src = next.key.startsWith('data:') || /^https?:/i.test(next.key) ? next.key : purAssetUrl(next.key)
+      // createImageBitmap decodes off the main thread, so a pan does not rasterise
+      // each newly visible picture while the frame is being drawn.
+      if (typeof createImageBitmap === 'function' && !next.key.startsWith('data:')) {
+        void decodeBitmap(url).then(settle)
+        continue
+      }
+      const image = new Image()
+      image.onload = () => settle(image)
+      image.onerror = () => settle(undefined)
+      image.src = url
     }
+  }
+}
+
+/**
+ * Decode a picture into an off-thread bitmap.
+ * @param url - the asset URL.
+ * @returns the bitmap, or undefined when the fetch or decode fails.
+ */
+async function decodeBitmap(url: string): Promise<CanvasImageSource | undefined> {
+  try {
+    const response = await fetch(url)
+    if (!response.ok) return undefined
+    return await createImageBitmap(await response.blob())
+  } catch {
+    return undefined
   }
 }
 
