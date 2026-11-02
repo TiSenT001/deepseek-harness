@@ -357,6 +357,10 @@ export interface ImportedPurText extends ImportedPurPlacement {
   readonly type: 'text'
   /** Card body. */
   readonly text: string
+  /** Text colour as stored by PureRef. */
+  readonly textColor?: string
+  /** Card fill as stored by PureRef. */
+  readonly bgColor?: string
 }
 
 /** One group the reader produced, with members in relative coordinates. */

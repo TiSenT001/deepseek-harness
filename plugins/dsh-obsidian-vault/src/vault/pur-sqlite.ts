@@ -37,7 +37,16 @@ export interface PurSceneData {
     readonly image?: number
     readonly bounds: readonly number[]
     readonly group?: boolean
-    readonly note?: string
+    /** Note body and styling, when the item is a note. */
+    readonly note?: {
+      readonly text: string
+      readonly textColor?: string
+      readonly backgroundColor?: string
+      readonly style: number
+      /** Fixed size in world units; -1 means the note sizes itself. */
+      readonly width: number
+      readonly height: number
+    }
     readonly z: number
     readonly opacity: number
     readonly locked: boolean
@@ -307,6 +316,18 @@ function textOf(row: number | Buffer | null): string {
  * @param raw - stored transform text bytes.
  * @returns the transform values.
  */
+/**
+ * Decode a stored QSizeF. The blob starts with a five byte header, as the
+ * transforms do, so the doubles begin at five.
+ * @param raw - stored size text bytes.
+ * @returns width and height; -1 means the note sizes itself.
+ */
+export function decodeSize(raw: Buffer): { width: number; height: number } {
+  const bytes = unescapeTextBytes(raw)
+  if (bytes.length < 21) return { width: -1, height: -1 }
+  return { width: bytes.readDoubleBE(5), height: bytes.readDoubleBE(13) }
+}
+
 export function decodeTransform(raw: Buffer): number[] {
   const bytes = unescapeTextBytes(raw)
   const values: number[] = []
@@ -524,10 +545,22 @@ function decodeScene(database: SceneDatabase): PurSceneData | undefined {
     }
   }
 
-  const notes = new Map<number, string>()
+  const notes = new Map<number, PurSceneData['items'][number]['note']>()
   const noteRoot = roots.get('items_notes')
   if (noteRoot !== undefined) {
-    for (const row of readTable(database, noteRoot)) notes.set(row.rowId, textOf(row.values[4] ?? null))
+    for (const row of readTable(database, noteRoot)) {
+      const size = Buffer.isBuffer(row.values[2]) ? decodeSize(row.values[2]) : { width: -1, height: -1 }
+      const textColor = textOf(row.values[0] ?? null).trim()
+      const backgroundColor = textOf(row.values[3] ?? null).trim()
+      notes.set(row.rowId, {
+        text: textOf(row.values[4] ?? null),
+        ...(textColor === '' ? {} : { textColor }),
+        ...(backgroundColor === '' ? {} : { backgroundColor }),
+        style: Number(row.values[5] ?? 0),
+        width: size.width,
+        height: size.height,
+      })
+    }
   }
   const groups = new Set<number>()
   const groupRoot = roots.get('items_groups')

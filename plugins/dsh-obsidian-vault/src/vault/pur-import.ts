@@ -552,19 +552,24 @@ async function importPlacedScene(
         ref,
       }
     }
-    const note = richTextToPlain(item.note ?? '')
+    const noteInfo = item.note
+    const note = richTextToPlain(noteInfo === undefined ? '' : noteInfo.text).trim()
     if (note === '') return undefined
-    // A note keeps a readable width whatever zoom it was last shown at; its height
-    // follows the number of lines, so a short note does not become a tall card.
+    // A stored fixed size wins; otherwise the card keeps a readable width and grows
+    // with the number of lines so a short note does not become a tall card.
     const noteLines = note.split('\n').length
+    const fixedWidth = noteInfo !== undefined && noteInfo.width > 0 ? noteInfo.width : 0
+    const fixedHeight = noteInfo !== undefined && noteInfo.height > 0 ? noteInfo.height : 0
     return {
       type: 'text',
       ...base,
       x: base.x,
       y: base.y,
-      w: TEXT_MIN_WIDTH,
-      h: Math.max(TEXT_MIN_HEIGHT, Math.min(TEXT_MAX_HEIGHT, noteLines * TEXT_LINE_HEIGHT + 32)),
+      w: fixedWidth > 0 ? fixedWidth : TEXT_MIN_WIDTH,
+      h: fixedHeight > 0 ? fixedHeight : Math.max(TEXT_MIN_HEIGHT, Math.min(TEXT_MAX_HEIGHT, noteLines * TEXT_LINE_HEIGHT + 32)),
       text: note,
+      ...(noteInfo?.textColor === undefined ? {} : { textColor: noteInfo.textColor }),
+      ...(noteInfo?.backgroundColor === undefined ? {} : { bgColor: noteInfo.backgroundColor }),
     }
   }
 
