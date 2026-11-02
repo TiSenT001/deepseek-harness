@@ -445,6 +445,11 @@ async function importPlacedScene(
     list.push(item.id)
     childrenOf.set(parent, list)
   }
+  // PureRef draws items in z order; the canvas draws later elements on top, so the
+  // children lists are sorted by z to keep the same layering.
+  for (const [parent, ids] of childrenOf) {
+    childrenOf.set(parent, [...ids].sort((a, b) => (itemsById.get(a)?.z ?? 1) - (itemsById.get(b)?.z ?? 1)))
+  }
   let skipped = 0
   let fallbackIndex = 0
   // Pictures no item claims, used to fill an item whose own row was lost.
