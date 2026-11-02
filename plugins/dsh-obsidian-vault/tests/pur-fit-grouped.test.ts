@@ -100,7 +100,7 @@ test('right-clicking the grouped image then fitting frames the image, not the gr
   // Right-click lands on the picture inside the group.
   const screenX = 1120 * view.scale + view.offsetX
   const screenY = 2080 * view.scale + view.offsetY
-  controller.contextMenu(screenX, screenY, { supportsPopout: false, supportsPinTop: false, supportsReveal: false })
+  controller.contextMenu(screenX, screenY, { activeFileIsMarkdown: true, isPopout: false, isPinned: false, supportsPopout: false, supportsPinTop: false, supportsReveal: false })
   assert.deepEqual([...controller.state.selectedIds], ['child'])
   controller.fitToView()
   const env = envOf()

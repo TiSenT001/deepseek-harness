@@ -326,38 +326,51 @@ export async function deleteCodeSnippet(id: string): Promise<readonly CodeSnippe
 
 
 /** One element the host reconstructed from a PureRef document. */
-export type ImportedPurElement = ImportedPurImage | ImportedPurText
-
-/** One picture the reader produced. */
-export interface ImportedPurImage {
-  readonly type: 'image'
+/** Placement every imported kind shares. */
+interface ImportedPurPlacement {
   /** World position and size. */
   readonly x: number
   readonly y: number
   readonly w: number
   readonly h: number
+  /** Rotation in degrees. */
+  readonly rotation?: number
+  /** Mirrored horizontally. */
+  readonly flipH?: boolean
+  /** Mirrored vertically. */
+  readonly flipV?: boolean
+  /** Source item was locked. */
+  readonly locked?: boolean
+  /** Opacity, 0-1. */
+  readonly opacity?: number
+}
+
+/** One picture the reader produced. */
+export interface ImportedPurImage extends ImportedPurPlacement {
+  readonly type: 'image'
   /** `pur-asset:<id>` reference. */
   readonly ref: string
 }
 
 /** One note the reader produced. */
-export interface ImportedPurText {
+export interface ImportedPurText extends ImportedPurPlacement {
   readonly type: 'text'
-  /** World position and size. */
-  readonly x: number
-  readonly y: number
-  readonly w: number
-  readonly h: number
   /** Card body. */
   readonly text: string
 }
 
-/**
- * Import a ZIP-form PureRef document.
- * @param name - source file name.
- * @param data - base64 file contents.
- * @returns the elements and any tags the reader skipped.
- */
+/** One group the reader produced, with members in relative coordinates. */
+export interface ImportedPurGroup extends ImportedPurPlacement {
+  readonly type: 'group'
+  /** Group name. */
+  readonly name: string
+  /** Members. */
+  readonly children: readonly ImportedPurElement[]
+}
+
+/** One element of an imported PureRef scene. */
+export type ImportedPurElement = ImportedPurImage | ImportedPurText | ImportedPurGroup
+
 export async function importPurFile(name: string, data: string): Promise<{ elements: readonly ImportedPurElement[]; unsupported: readonly string[]; approximate: boolean }> {
   return request<{ elements: ImportedPurElement[]; unsupported: string[]; approximate: boolean }>('pur/import', {
     method: 'POST',

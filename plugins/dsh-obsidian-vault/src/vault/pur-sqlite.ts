@@ -31,11 +31,16 @@ export interface PurSceneData {
   readonly items: readonly {
     readonly id: number
     readonly name: string
+    /** Enclosing item id, or -1 at the canvas root. */
+    readonly parent: number
     readonly transform: readonly number[]
     readonly image?: number
     readonly bounds: readonly number[]
     readonly group?: boolean
     readonly note?: string
+    readonly z: number
+    readonly opacity: number
+    readonly locked: boolean
   }[]
   /** The saved scene rectangle and view transform, in the order PureRef writes them. */
   readonly sceneRect: readonly number[]
@@ -535,12 +540,17 @@ function decodeScene(database: SceneDatabase): PurSceneData | undefined {
     const link = transforms.get(id)
     return {
       id,
+      // The parent arrives as a signed byte, so a root shows up as 255 rather than -1.
+      parent: ((value) => (value > 127 && value < 256 ? value - 256 : value))(Number(row.values[0] ?? -1)),
       name: textOf(row.values[2] ?? null),
       transform: Buffer.isBuffer(row.values[3]) ? decodeTransform(row.values[3]) : [],
       image: link?.image,
       bounds: link?.bounds ?? [],
       group: groups.has(id),
       note: notes.get(id),
+      z: Number(row.values[5] ?? 1),
+      opacity: Number(row.values[6] ?? 1),
+      locked: Number(row.values[7] ?? 0) === 1,
     }
   })
 

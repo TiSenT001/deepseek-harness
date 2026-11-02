@@ -10,27 +10,50 @@ import { inflateRawSync } from 'node:zlib'
 /** One imported element, in canvas world coordinates. */
 import { readPurScene, richTextToPlain, salvageImages } from './pur-sqlite.ts'
 
-export type ImportedElement = ImportedImage | ImportedText
+export type ImportedElement = ImportedImage | ImportedText | ImportedGroup
+
+/** Placement shared by every imported kind. */
+interface ImportedPlacement {
+  /** Left edge in world units. */
+  readonly x: number
+  /** Top edge in world units. */
+  readonly y: number
+  /** Width in world units. */
+  readonly w: number
+  /** Height in world units. */
+  readonly h: number
+  /** Rotation in degrees, taken from the item transform. */
+  readonly rotation?: number
+  /** Mirrored horizontally. */
+  readonly flipH?: boolean
+  /** Mirrored vertically. */
+  readonly flipV?: boolean
+  /** The source item was locked. */
+  readonly locked?: boolean
+  /** Opacity, 0-1. */
+  readonly opacity?: number
+}
 
 /** One picture placed on the canvas. */
-export interface ImportedImage {
+export interface ImportedImage extends ImportedPlacement {
   readonly type: 'image'
-  readonly x: number
-  readonly y: number
-  readonly w: number
-  readonly h: number
   /** `pur-asset:<id>` reference after the picture was stored. */
   readonly ref: string
 }
 
 /** One text card, which is how a PureRef note arrives. */
-export interface ImportedText {
+export interface ImportedText extends ImportedPlacement {
   readonly type: 'text'
-  readonly x: number
-  readonly y: number
-  readonly w: number
-  readonly h: number
   readonly text: string
+}
+
+/** One group, mirroring the nesting PureRef stores. */
+export interface ImportedGroup extends ImportedPlacement {
+  readonly type: 'group'
+  /** Group name as stored by PureRef. */
+  readonly name: string
+  /** Members with coordinates relative to this group. */
+  readonly children: readonly ImportedElement[]
 }
 
 /** Result of one import. */
@@ -369,6 +392,9 @@ export async function importNativePur(
   return { elements, skipped, placed: false }
 }
 
+/** Padding around a group box, matching the canvas group command. */
+const GROUP_PAD = 10
+
 /** Smallest text card the placed import will produce. */
 const TEXT_MIN_WIDTH = 220
 
@@ -408,70 +434,144 @@ async function importPlacedScene(
     for (const image of salvageImages(bytes, missing)) byId.set(image.id, image)
   }
   const pictures = extractEmbeddedPictures(bytes)
-  const elements: ImportedElement[] = []
+  const itemsById = new Map(scene.items.map((item) => [item.id, item]))
+  const childrenOf = new Map<number, number[]>()
+  const isGroupItem = (id: number): boolean => itemsById.get(id)?.group === true
+  for (const item of scene.items) {
+    // Only a real group can own children; anything else that points at another item
+    // is kept at the root rather than dropped with its would-be parent.
+    const parent = item.parent !== -1 && isGroupItem(item.parent) ? item.parent : -1
+    const list = childrenOf.get(parent) ?? []
+    list.push(item.id)
+    childrenOf.set(parent, list)
+  }
   let skipped = 0
   let fallbackIndex = 0
   // Pictures no item claims, used to fill an item whose own row was lost.
   const unused = [...byId.values()].filter((image) => !scene.items.some((item) => item.image === image.id))
   let unusedIndex = 0
-  for (const item of scene.items) {
-    // A note carries text instead of a picture, so it becomes a text card.
-    if (item.image === undefined) {
-      const note = richTextToPlain(item.note ?? '')
-      if (note === '') continue
-      // A note keeps a readable width whatever zoom it was last shown at; its height
-      // follows the number of lines, so a short note does not become a tall card.
-      const noteLines = note.split("\n").length
-      elements.push({
-        type: "text",
-        x: item.transform[6] ?? 0,
-        y: item.transform[7] ?? 0,
-        w: TEXT_MIN_WIDTH,
-        h: Math.max(TEXT_MIN_HEIGHT, Math.min(TEXT_MAX_HEIGHT, noteLines * TEXT_LINE_HEIGHT + 32)),
-        text: note,
-      })
-      continue
+
+  /**
+   * Read the placement PureRef stored for one item.
+   * @param item - the item row.
+   * @returns world position, rotation, mirroring and opacity.
+   */
+  const placementOf = (item: { transform: readonly number[]; opacity: number; locked: boolean }) => {
+    const t = item.transform
+    const scaleX = t[0] ?? 1
+    const scaleY = t[4] ?? 1
+    const rotation = Math.atan2(t[1] ?? 0, scaleX) * (180 / Math.PI)
+    // A negative determinant means the item is mirrored rather than rotated.
+    const determinant = scaleX * scaleY - (t[1] ?? 0) * (t[3] ?? 0)
+    return {
+      x: t[6] ?? 0,
+      y: t[7] ?? 0,
+      rotation: Math.abs(rotation) < 0.01 ? undefined : rotation,
+      flipH: determinant < 0 ? true : undefined,
+      flipV: undefined,
+      opacity: item.opacity === 1 ? undefined : item.opacity,
+      locked: item.locked ? true : undefined,
     }
-    let image = byId.get(item.image)
-    if (image === undefined && unusedIndex < unused.length) {
-      // The images table can lose a row while the picture itself survives on some
-      // page, so a recovered picture stands in for the missing one.
-      image = unused[unusedIndex]
-      unusedIndex += 1
+  }
+
+  /**
+   * Build one item and, for a group, its members.
+   * @param id - item id.
+   * @returns the element, or undefined when it cannot be represented.
+   */
+  const build = async (id: number): Promise<ImportedElement | undefined> => {
+    const item = itemsById.get(id)
+    if (item === undefined) return undefined
+    const base = placementOf(item)
+    if (item.group === true) {
+      const children: ImportedElement[] = []
+      for (const childId of childrenOf.get(id) ?? []) {
+        const child = await build(childId)
+        if (child !== undefined) children.push(child)
+      }
+      if (children.length === 0) return undefined
+      const minX = Math.min(...children.map((child) => child.x))
+      const minY = Math.min(...children.map((child) => child.y))
+      const maxX = Math.max(...children.map((child) => child.x + child.w))
+      const maxY = Math.max(...children.map((child) => child.y + child.h))
+      return {
+        type: 'group',
+        name: item.name === '' ? '群组' : item.name,
+        x: minX - GROUP_PAD,
+        y: minY - GROUP_PAD,
+        w: maxX - minX + GROUP_PAD * 2,
+        h: maxY - minY + GROUP_PAD * 2,
+        rotation: base.rotation,
+        opacity: base.opacity,
+        locked: base.locked,
+        children: children.map((child) => ({
+          ...child,
+          x: child.x - (minX - GROUP_PAD),
+          y: child.y - (minY - GROUP_PAD),
+        })),
+      }
     }
-    let payload: Uint8Array | undefined = image?.bytes
-    if (payload === undefined || payload.length === 0) {
-      // The picture bytes live in pages this reader cannot place yet; fall back to
-      // the embedded copy so the card still shows something.
-      payload = pictures[fallbackIndex]?.bytes
-      fallbackIndex += 1
+    if (item.image !== undefined) {
+      let image = byId.get(item.image)
+      if (image === undefined && unusedIndex < unused.length) {
+        // The images table can lose a row while the picture itself survives on some
+        // page, so a recovered picture stands in for the missing one.
+        image = unused[unusedIndex]
+        unusedIndex += 1
+      }
+      let payload: Uint8Array | undefined = image?.bytes
+      if (payload === undefined || payload.length === 0) {
+        // The picture bytes live in pages this reader cannot place yet; fall back to
+        // the embedded copy so the card still shows something.
+        payload = pictures[fallbackIndex]?.bytes
+        fallbackIndex += 1
+      }
+      if (payload === undefined || payload.length === 0) {
+        skipped += 1
+        return undefined
+      }
+      // The stored name must carry an extension: the asset route keys files by it.
+      const isPng = payload[0] === 0x89 && payload[1] === 0x50
+      const ref = await store(`scene-${item.image}-${fallbackIndex}.${isPng ? 'png' : 'jpg'}`, payload)
+      if (ref === undefined) {
+        skipped += 1
+        return undefined
+      }
+      const scaleX = Math.abs(item.transform[0] ?? 1)
+      const scaleY = Math.abs(item.transform[4] ?? 1)
+      const size = pictureSize(payload)
+      const naturalWidth = size?.width ?? 320
+      const naturalHeight = size?.height ?? 240
+      return {
+        type: 'image',
+        ...base,
+        x: base.x,
+        y: base.y,
+        w: Math.max(MIN_PLACED_SIZE, naturalWidth * scaleX),
+        h: Math.max(MIN_PLACED_SIZE, naturalHeight * scaleY),
+        ref,
+      }
     }
-    if (payload === undefined || payload.length === 0) {
-      skipped += 1
-      continue
+    const note = richTextToPlain(item.note ?? '')
+    if (note === '') return undefined
+    // A note keeps a readable width whatever zoom it was last shown at; its height
+    // follows the number of lines, so a short note does not become a tall card.
+    const noteLines = note.split('\n').length
+    return {
+      type: 'text',
+      ...base,
+      x: base.x,
+      y: base.y,
+      w: TEXT_MIN_WIDTH,
+      h: Math.max(TEXT_MIN_HEIGHT, Math.min(TEXT_MAX_HEIGHT, noteLines * TEXT_LINE_HEIGHT + 32)),
+      text: note,
     }
-    // The stored name must carry an extension: the asset route keys files by it.
-    const isPng = payload[0] === 0x89 && payload[1] === 0x50
-    const ref = await store(`scene-${item.image}-${fallbackIndex}.${isPng ? 'png' : 'jpg'}`, payload)
-    if (ref === undefined) {
-      skipped += 1
-      continue
-    }
-    // The item's scale times the picture's own pixel size is the size on the board.
-    const scale = Math.abs(item.transform[0] ?? 1)
-    const size = pictureSize(payload)
-    const naturalWidth = size?.width ?? 320
-    const naturalHeight = size?.height ?? 240
-    const width = Math.max(MIN_PLACED_SIZE, naturalWidth * scale)
-    const height = Math.max(MIN_PLACED_SIZE, naturalHeight * scale)
-    elements.push({
-      type: 'image',
-      x: item.transform[6] ?? 0,
-      y: item.transform[7] ?? 0,
-      w: width,
-      h: height,
-      ref,
-    })
+  }
+
+  const elements: ImportedElement[] = []
+  for (const id of childrenOf.get(-1) ?? []) {
+    const element = await build(id)
+    if (element !== undefined) elements.push(element)
   }
   if (elements.length === 0) return undefined
   return { elements, skipped }

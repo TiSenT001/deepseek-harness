@@ -13,7 +13,7 @@ import { elementBounds, selectedBounds } from '../src/pur-kernel/view-bounds.ts'
  * @param children - group members.
  * @returns the group element.
  */
-function group(children: readonly PurElement[]): PurElement {
+function group(children: PurElement[]): PurElement {
   return { id: 'g', type: 'group', x: 1000, y: 2000, w: 400, h: 300, content: 'g', children, rotation: 0, opacity: 1 }
 }
 

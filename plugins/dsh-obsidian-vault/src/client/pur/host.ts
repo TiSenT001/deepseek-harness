@@ -23,6 +23,7 @@ import type { PurLabelBundles } from '../i18n/pur-labels.ts'
 import { fetchNote, findEmbeddingNotes, purAssetUrl, saveNote, storeImage } from '../api.ts'
 import { findElement } from '../../pur-kernel/index.ts'
 import { bridgeWriteText, deleteCodeSnippet, fetchCodeSnippets, importPurFile, openFileWith, saveCodeSnippet } from '../api.ts'
+import type { ImportedPurElement } from '../api.ts'
 import { thumbnailOf } from './loader.ts'
 import { purReader } from './labels.ts'
 import { PurImageCache, fetchNoteSummary, resolveNoteLink } from './loader.ts'
@@ -32,6 +33,77 @@ import type { PurEditorKind } from './sink.ts'
 
 /** Background of an imported note card, matching the canvas default. */
 const NOTE_BG = 'rgba(28,28,30,0.92)'
+
+/**
+ * Convert one imported element into a canvas element. Groups recurse, and their
+ * members already carry coordinates relative to the group, so the offset is only
+ * applied at the top level.
+ * @param element - the imported element.
+ * @param id - id to assign.
+ * @param offsetX - world offset added at the top level.
+ * @param offsetY - world offset added at the top level.
+ * @returns the canvas element.
+ */
+function toCanvasElement(
+  element: ImportedPurElement,
+  id: string,
+  offsetX: number,
+  offsetY: number,
+): PurElement {
+  const placement = {
+    id,
+    x: element.x + offsetX,
+    y: element.y + offsetY,
+    w: element.w,
+    h: element.h,
+    rotation: element.rotation ?? 0,
+    opacity: element.opacity ?? 1,
+    ...(element.flipH === true ? { flipH: true } : {}),
+    ...(element.flipV === true ? { flipV: true } : {}),
+    ...(element.locked === true ? { locked: true } : {}),
+  }
+  if (element.type === 'group') {
+    return {
+      ...placement,
+      type: 'group',
+      content: element.name,
+      children: element.children.map((child, index) => toCanvasElement(child, `${id}-${index}`, 0, 0)),
+    }
+  }
+  if (element.type === 'text') {
+    return {
+      ...placement,
+      type: 'text',
+      content: element.text,
+      bgColor: NOTE_BG,
+      color: '#e0e0e0',
+      fontSize: 14,
+    }
+  }
+  return { ...placement, type: 'image', original: element.ref }
+}
+
+/**
+ * Give imported pictures a small copy, so a zoomed-out board draws them instead
+ * of decoding every original. Failures are skipped: the picture still works.
+ * @param elements - imported elements, groups included.
+ */
+async function addImportedThumbnails(elements: readonly PurElement[]): Promise<void> {
+  for (const element of elements) {
+    if (element.type === 'group') {
+      await addImportedThumbnails(element.children)
+      continue
+    }
+    if (element.type !== 'image' || element.thumb !== undefined) continue
+    const source = element.original.startsWith('pur-asset:') ? purAssetUrl(element.original) : element.original
+    if (source === '') continue
+    const data = await thumbnailOf(source).catch(() => null)
+    if (data === null) continue
+    const ref = await storeImage(`${element.id}-thumb`, data).catch(() => '')
+    if (ref === '') continue
+    element.thumb = ref
+  }
+}
 import { exportCanvasFlow, exportImageFlow, exportMarkdownFlow, fileBaseName, generateCodeFlow, writeFreshDocument, writeNamedDocument } from './host-export.ts'
 
 export { exportSelectedText } from './host-export.ts'
@@ -184,13 +256,9 @@ export function createPurMenuHost(deps: () => PurMenuHostDeps): PurMenuHost {
         const bytes = new Uint8Array(await file.arrayBuffer())
         const data = toBase64(bytes)
         const result = await importPurFile(file.name, data)
-        for (const element of result.elements) {
-          if (element.type === "text") {
-            d.run(d.controller.insertText(element.x + at.x, element.y + at.y, element.text, { w: element.w, h: element.h, bgColor: NOTE_BG }))
-            continue
-          }
-          d.run(d.controller.insertImage(element.x + at.x, element.y + at.y, element.ref))
-        }
+        const placed = result.elements.map((element, index) => toCanvasElement(element, `imported-${index}`, at.x, at.y))
+        await addImportedThumbnails(placed)
+        insertElements(d, placed)
         const template = result.approximate ? 'pur.importedApprox' : 'pur.importedCount'
         d.notice(d.t(template).replace('{count}', String(result.elements.length)))
       })
@@ -210,31 +278,11 @@ export function createPurMenuHost(deps: () => PurMenuHostDeps): PurMenuHost {
       if (name === null || name.trim() === '') return
       const folder = d.path.includes('/') ? d.path.slice(0, d.path.lastIndexOf('/')) : ''
       const target = folder === '' ? name.trim() : `${folder}/${name.trim()}`
+      const placedElements = result.elements.map((element, index) => toCanvasElement(element, `imported-${index}`, 0, 0))
+      await addImportedThumbnails(placedElements)
       const document = {
-        elements: result.elements.map((element, index) => element.type === "text"
-          ? {
-              id: `imported-${index}`,
-              type: "text",
-              x: element.x,
-              y: element.y,
-              w: element.w,
-              h: element.h,
-              content: element.text,
-              bgColor: NOTE_BG,
-              color: "#e0e0e0",
-              fontSize: 14,
-              rotation: 0,
-              opacity: 1,
-            }
-          : {
-              id: `imported-${index}`,
-              type: "image",
-              x: element.x,
-              y: element.y,
-              w: element.w,
-              h: element.h,
-              original: element.ref,
-            }),
+        // Groups keep their nesting, so an imported board matches the source layer tree.
+        elements: placedElements,
         // Frame the board the way it sat on its own canvas: the coordinates are
         // PureRef world units, so the view has to be derived from them.
         viewState: frameImportedScene(result.elements),
