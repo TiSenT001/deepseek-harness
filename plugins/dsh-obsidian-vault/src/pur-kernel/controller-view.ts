@@ -3,8 +3,7 @@
  * the shared view transform, so they stay out of the element-editing commands.
  * @module dsh-obsidian-vault/pur-kernel/controller-view
  */
-import { getSelectedElements } from './controller-selection.ts'
-import { elementBounds } from './view-bounds.ts'
+import { elementBounds, selectedBounds } from './view-bounds.ts'
 import type { PurControllerEffect, PurControllerState, PurControllerTools } from './controller-types.ts'
 
 /**
@@ -26,8 +25,11 @@ export function selectAll(state: PurControllerState): PurControllerEffect[] {
  * @returns the render effect, empty when there is nothing to fit.
  */
 export function fitToView(tools: PurControllerTools): PurControllerEffect[] {
-  const targets = tools.state.selectedIds.size > 0 ? getSelectedElements(tools.state) : tools.state.elements
-  const bounds = elementBounds(targets)
+  // A selected child of a group stores a position relative to its parent, so the
+  // selection is framed through the tree walk rather than measured on its own.
+  const bounds = tools.state.selectedIds.size > 0
+    ? selectedBounds(tools.state.elements, tools.state.selectedIds)
+    : elementBounds(tools.state.elements)
   if (bounds === undefined) return []
   const pad = 40
   const worldW = bounds.maxX - bounds.minX + pad * 2
