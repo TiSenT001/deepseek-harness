@@ -5,7 +5,7 @@
  * drop routing (the kernel flow needs the container as `currentTarget`).
  * @module dsh-obsidian-vault/client/pur/pane-paint
  */
-import { buildPurScene, drawScene } from '../../pur-kernel/index.ts'
+import { buildPurScene, drawScene, prefetchKeys } from '../../pur-kernel/index.ts'
 import type { PurController, PurControllerEffect, PurControllerEnv, PurRenderLabels, PurRenderPreferences } from '../../pur-kernel/index.ts'
 import type { PurImageCache } from './loader.ts'
 import { dropIntoCanvas } from './paste-drop.ts'
@@ -59,12 +59,37 @@ export function startPurPaintLoop(container: HTMLElement, canvas: HTMLCanvasElem
     }
   }
   let frame = 0
+  /** Last moment a frame was painted, so prefetch only runs while idle. */
+  let lastPaint = 0
+  /** Last moment a prefetch pass ran. */
+  let lastPrefetch = 0
+  /**
+   * Warm the pictures just outside the viewport while nothing is moving, so a pan
+   * meets decoded bitmaps instead of starting a decode per new card.
+   */
+  const prefetch = (controller: PurController, width: number, height: number): void => {
+    const now = performance.now()
+    lastPrefetch = now
+    for (const key of prefetchKeys(controller.state.elements, controller.state.view, width, height)) {
+      deps.images.request(key, () => {
+        deps.dirtyRef.current = true
+      })
+    }
+  }
   const tick = (): void => {
     frame = requestAnimationFrame(tick)
     const controller = deps.controller()
     if (controller !== null && controller.momentumStep()) deps.dirtyRef.current = true
-    if (!deps.dirtyRef.current) return
+    const idleSince = performance.now() - lastPaint
+    if (!deps.dirtyRef.current) {
+      // Nothing to draw: spend the idle frame warming the next screenful.
+      if (controller !== null && idleSince > 200 && performance.now() - lastPrefetch > 300) {
+        prefetch(controller, container.clientWidth, container.clientHeight)
+      }
+      return
+    }
     deps.dirtyRef.current = false
+    lastPaint = performance.now()
     paint()
   }
   const observer = new ResizeObserver(() => {

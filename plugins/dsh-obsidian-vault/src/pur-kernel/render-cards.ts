@@ -79,6 +79,15 @@ export function drawImageCard(
     drawBrokenImageCard(ctx, screenW, screenH, scene.view.scale)
     return
   }
+  // While the full picture decodes, a stored thumbnail stands in for it: a slightly
+  // soft card reads better than a grey loading box during a pan.
+  const pendingThumb = element.thumb
+  const pendingThumbImage = pendingThumb === undefined ? undefined : scene.images?.get(pendingThumb)
+  if (pendingThumbImage !== undefined) {
+    ctx.drawImage(pendingThumbImage, 0, 0, screenW, screenH)
+    requestImage(key)
+    return
+  }
   ctx.fillStyle = '#333'
   ctx.fillRect(0, 0, screenW, screenH)
   ctx.fillStyle = '#888'
