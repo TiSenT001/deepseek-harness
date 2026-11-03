@@ -134,7 +134,7 @@ export function TabStrip({
               onMenu({ kind: 'tab', index, path: tab.path, preview: tab.preview }, event.clientX, event.clientY)
             }}
           >
-            <span className={css.docTabLabel}>{tabTitle(tab.path, note, path)}</span>
+            <span className={css.docTabLabel}>{tabTitle(t, tab.path, note, path)}</span>
             <button
               type="button"
               className={css.docTabClose}
@@ -189,7 +189,7 @@ export function TabStrip({
                     setOpen(false)
                   }}
                 >
-                  {tabTitle(tab.path, note, path)}
+                  {tabTitle(t, tab.path, note, path)}
                 </button>
                 <button
                   type="button"
@@ -209,8 +209,15 @@ export function TabStrip({
 }
 
 /** Tab label: the open note's title when it is the loaded one, else the file stem. */
-function tabTitle(item: string, note: NoteDto | undefined, active: string | undefined): string {
+/** Tab label: the open note's title when it is the loaded one, else a friendly name. */
+function tabTitle(t: Translate, item: string, note: NoteDto | undefined, active: string | undefined): string {
   if (note !== undefined && item === active) return note.title
+  // A plugin-owned picture is addressed as `pur-asset:<id>`; the tab shows the
+  // preview label plus a short id instead of that internal scheme.
+  if (item.startsWith('pur-asset:')) {
+    const id = item.slice('pur-asset:'.length).replace(/\.[^.]+$/, '')
+    return `${t('previewImage')} · ${id.slice(0, 8)}`
+  }
   const name = item.slice(item.lastIndexOf('/') + 1)
   return name.replace(/\.md$/i, '')
 }
