@@ -75,13 +75,15 @@ test('draws the broken-image placeholder when the element has no source', () => 
 test('keeps the loading placeholder while the cache still owes the decode', () => {
   const { recorder, loads } = render(new Map(), [imageElement('附件/待载入.png')])
   assert.ok(recorder.calls.includes('fillText("loading",10,20)'))
-  assert.deepEqual(loads, ['附件/待载入.png'])
+  // The card is 100 wide, so it asks for the 256 pixel decode rather than the full one.
+  assert.deepEqual(loads, ['附件/待载入.png#w=256'])
 })
 
 test('renders the loading card when the scene carries no image cache', () => {
   const { recorder, loads } = render(undefined, [imageElement('附件/待载入.png')])
   assert.ok(recorder.calls.includes('fillText("loading",10,20)'))
-  assert.deepEqual(loads, ['附件/待载入.png'])
+  // The card is 100 wide, so it asks for the 256 pixel decode rather than the full one.
+  assert.deepEqual(loads, ['附件/待载入.png#w=256'])
 })
 
 test('draws the cached bitmap instead of a placeholder', () => {

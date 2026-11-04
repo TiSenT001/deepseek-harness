@@ -7,6 +7,7 @@
  */
 import type { PurCanvasContext, PurScene } from './render-types.ts'
 import { fillRoundedCard, wrappedLines } from './render-shared.ts'
+import { bucketedKey, decodeBucket } from './decode-bucket.ts'
 import type { PurImageElement, PurNoteLinkElement, PurPin } from './types.ts'
 
 /** Card corner radius, in canvas pixels per zoom unit. */
@@ -47,7 +48,13 @@ export function drawImageCard(
   requestImage: (key: string) => void,
 ): void {
   const key = element.dataURL || element.original
-  const image = scene.images?.get(key)
+  // Zoomed out, a cheaper decode is indistinguishable and costs a fraction of the
+  // memory, so the resolution follows the size the card is drawn at.
+  const bucket = decodeBucket(screenW)
+  const lookupKey = bucketedKey(key, bucket)
+  // A full-resolution bitmap already in the cache is still the right pixels, so it
+  // stands in while the cheaper decode is on its way.
+  const image = scene.images?.get(lookupKey) ?? (bucket === undefined ? undefined : scene.images?.get(key))
   if (image !== undefined) {
     ctx.drawImage(image, 0, 0, screenW, screenH)
     return
@@ -85,7 +92,7 @@ export function drawImageCard(
   const pendingThumbImage = pendingThumb === undefined ? undefined : scene.images?.get(pendingThumb)
   if (pendingThumbImage !== undefined) {
     ctx.drawImage(pendingThumbImage, 0, 0, screenW, screenH)
-    requestImage(key)
+    requestImage(lookupKey)
     return
   }
   ctx.fillStyle = '#333'
@@ -93,7 +100,7 @@ export function drawImageCard(
   ctx.fillStyle = '#888'
   ctx.font = '12px sans-serif'
   ctx.fillText(scene.labels.imageLoading, 10, 20)
-  requestImage(key)
+  requestImage(lookupKey)
 }
 
 /**

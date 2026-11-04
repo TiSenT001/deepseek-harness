@@ -1067,8 +1067,8 @@ export const GOLDEN_RENDER: RenderTrace[] = [
       "restore()"
     ],
     "loads": [
-      "b.png",
-      "data:c",
+      "b.png#w=256",
+      "data:c#w=256",
       "data:c"
     ]
   },

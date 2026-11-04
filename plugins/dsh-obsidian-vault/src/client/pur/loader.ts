@@ -5,7 +5,7 @@
  * @module dsh-obsidian-vault/client/pur/loader
  */
 import { assetUrl, bridgeExists, bridgeReadText, bridgeReadTextVersion, bridgeWriteBinary, bridgeWriteText, createFolder, fetchNote, fetchTree, purAssetUrl } from '../api.ts'
-import { parseStudioDocument, serializeStudioDocument } from '../../pur-kernel/index.ts'
+import { parseStudioDocument, serializeStudioDocument, splitBucketedKey } from '../../pur-kernel/index.ts'
 import type { PurImageLookup, PurStudioDocument } from '../../pur-kernel/index.ts'
 import type { TreeNodeDto } from '../../protocol.ts'
 
@@ -272,7 +272,8 @@ export class PurImageCache {
       const next = this.queue.shift()
       if (next === undefined) return
       this.active += 1
-      const url = next.key.startsWith('data:') || /^https?:/i.test(next.key) ? next.key : purAssetUrl(next.key)
+      const { base, width } = splitBucketedKey(next.key)
+      const url = base.startsWith('data:') || /^https?:/i.test(base) ? base : purAssetUrl(base)
       const settle = (decoded: CanvasImageSource | undefined): void => {
         this.active -= 1
         this.pending.delete(next.key)
@@ -284,7 +285,7 @@ export class PurImageCache {
       // createImageBitmap decodes off the main thread, so a pan does not rasterise
       // each newly visible picture while the frame is being drawn.
       if (typeof createImageBitmap === 'function' && !next.key.startsWith('data:')) {
-        void decodeBitmap(url).then(settle)
+        void decodeBitmap(url, width).then(settle)
         continue
       }
       const image = new Image()
@@ -298,13 +299,19 @@ export class PurImageCache {
 /**
  * Decode a picture into an off-thread bitmap.
  * @param url - the asset URL.
+ * @param width - decode width, when the card is drawn smaller than the original.
  * @returns the bitmap, or undefined when the fetch or decode fails.
  */
-async function decodeBitmap(url: string): Promise<CanvasImageSource | undefined> {
+async function decodeBitmap(url: string, width?: number): Promise<CanvasImageSource | undefined> {
   try {
     const response = await fetch(url)
     if (!response.ok) return undefined
-    return await createImageBitmap(await response.blob())
+    const blob = await response.blob()
+    // A card drawn small only needs a scaled-down bitmap; resizeWidth keeps the
+    // aspect ratio, so the card's rectangle still fits it exactly.
+    return width === undefined
+      ? await createImageBitmap(blob)
+      : await createImageBitmap(blob, { resizeWidth: width, resizeQuality: 'high' })
   } catch {
     return undefined
   }

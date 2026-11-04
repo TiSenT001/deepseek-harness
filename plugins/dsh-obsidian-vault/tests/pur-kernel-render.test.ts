@@ -75,7 +75,8 @@ test('falls back to plain rectangles without roundRect', () => {
 
 test('asks for the image key before the preloaded duplicate', () => {
   const { loads } = render(inputNamed('base'), true)
-  assert.deepEqual(loads, ['b.png', 'data:c', 'data:c'])
+  // Cards are small, so the request names the decode width after the key.
+  assert.deepEqual(loads, ['b.png#w=256', 'data:c#w=256', 'data:c'])
 })
 
 test('draws the loading placeholder over an undecoded image', () => {
