@@ -96,3 +96,28 @@ test('pointer up clears the guides', () => {
   controller.pointerUp({ clientX: 314, clientY: 410, rectLeft: 0, rectTop: 0, button: 0, ctrlKey: false, metaKey: false, shiftKey: false })
   assert.deepEqual(controller.state.snapGuides, { x: null, y: null })
 })
+test('a resize snaps the dragged edge onto a neighbour', () => {
+  // The fixed card ends at x=300; the resized card starts at 100 with width 200 and
+  // its right edge is dragged to 304, inside the snap radius.
+  const controller = controllerOf(100, 400)
+  controller.state.selectedIds.add('moving')
+  controller.pointerDown({ clientX: 300, clientY: 450, rectLeft: 0, rectTop: 0, button: 0, ctrlKey: false, metaKey: false, shiftKey: false })
+  controller.pointerMove({ clientX: 304, clientY: 450, rectLeft: 0, rectTop: 0, button: 0, ctrlKey: false, metaKey: false, shiftKey: false })
+  const moving = controller.state.elements.find((element) => element.id === 'moving')
+  assert.ok(moving !== undefined)
+  // The right edge latches onto the fixed card's left edge at x=100 + width 100? No:
+  // the fixed card spans 100..300, so its right edge is 300.
+  assert.equal(moving.w, 200)
+  assert.equal(controller.state.snapGuides.x, 300)
+})
+
+test('alt keeps a resize off the snap lines', () => {
+  const controller = controllerOf(100, 400)
+  controller.state.selectedIds.add('moving')
+  controller.pointerDown({ clientX: 300, clientY: 450, rectLeft: 0, rectTop: 0, button: 0, ctrlKey: false, metaKey: false, shiftKey: false })
+  controller.pointerMove({ clientX: 304, clientY: 450, rectLeft: 0, rectTop: 0, button: 0, ctrlKey: false, metaKey: false, shiftKey: false, altKey: true })
+  const moving = controller.state.elements.find((element) => element.id === 'moving')
+  assert.ok(moving !== undefined)
+  assert.equal(moving.w, 204)
+  assert.equal(controller.state.snapGuides.x, null)
+})

@@ -10,7 +10,7 @@ import { elementAt, lineEndpointAt, pinAt } from './hit-test.ts'
 import { pushHistory } from './history.ts'
 import { finishPinDrag, local, momentumStep, reparentDragged } from './controller-gestures.ts'
 import { applyDragToPointer } from './controller-drag.ts'
-import { snapDrag } from './controller-snap.ts'
+import { snapDrag, snapResize } from './controller-snap.ts'
 import type { PurControllerEffect, PurControllerState, PurControllerTools, PurPointerEvent } from './controller-types.ts'
 import type { PurElement } from './types.ts'
 
@@ -241,6 +241,30 @@ export function pointerMove(tools: PurControllerTools, event: PurPointerEvent): 
       site.element.y = next.y
       site.element.w = next.w
       site.element.h = next.h
+      // The edge under the pointer latches onto the neighbours' edges and centres,
+      // and Alt keeps it exactly where the pointer put it.
+      state.snapGuides = { x: null, y: null }
+      if (event.altKey !== true && next.w > 0 && next.h > 0) {
+        const snapped = snapResize(state, site.element.id, next, state.resize.handle)
+        if (snapped.x !== null) {
+          if (state.resize.handle === 'w' || state.resize.handle === 'nw' || state.resize.handle === 'sw') {
+            site.element.x = (site.element.x ?? 0) + snapped.x.delta
+            site.element.w = (site.element.w ?? 0) - snapped.x.delta
+          } else {
+            site.element.w = (site.element.w ?? 0) + snapped.x.delta
+          }
+          state.snapGuides.x = snapped.x.guide
+        }
+        if (snapped.y !== null) {
+          if (state.resize.handle === 'n' || state.resize.handle === 'nw' || state.resize.handle === 'ne') {
+            site.element.y = (site.element.y ?? 0) + snapped.y.delta
+            site.element.h = (site.element.h ?? 0) - snapped.y.delta
+          } else {
+            site.element.h = (site.element.h ?? 0) + snapped.y.delta
+          }
+          state.snapGuides.y = snapped.y.guide
+        }
+      }
     }
     effects.push({ type: 'render' })
   } else if (state.dragging && state.dragStart !== null) {

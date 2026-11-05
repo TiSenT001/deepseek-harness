@@ -6,6 +6,7 @@
  */
 import { findElement } from './geometry.ts'
 import type { PurControllerState } from './controller-types.ts'
+import type { PurResizeHandle } from './resize-handles.ts'
 import type { PurElement } from './types.ts'
 
 /** Snap radius in screen pixels; converted to world units by the current zoom. */
@@ -131,5 +132,49 @@ export function snapDrag(state: PurControllerState, primaryId: string): SnapResu
     targets.flatMap((target) => [target.top, (target.top + target.bottom) / 2, target.bottom]),
     radius,
   )
+  return { x, y }
+}
+
+/**
+ * Which edges a resize handle moves.
+ * @param handle - the grabbed handle.
+ * @returns the moving edges.
+ */
+function movingEdges(handle: PurResizeHandle): { left: boolean; right: boolean; top: boolean; bottom: boolean } {
+  return {
+    left: handle === 'w' || handle === 'nw' || handle === 'sw',
+    right: handle === 'e' || handle === 'ne' || handle === 'se',
+    top: handle === 'n' || handle === 'nw' || handle === 'ne',
+    bottom: handle === 's' || handle === 'sw' || handle === 'se',
+  }
+}
+
+/**
+ * Snap the edges a resize is dragging onto the neighbours.
+ * @param state - controller state.
+ * @param resizedId - the element being resized.
+ * @param rect - the rectangle the drag produced, in world coordinates.
+ * @param handle - the grabbed handle.
+ * @returns the correction per axis; nulls when nothing matched.
+ */
+export function snapResize(
+  state: PurControllerState,
+  resizedId: string,
+  rect: { x: number; y: number; w: number; h: number },
+  handle: PurResizeHandle,
+): SnapResult {
+  const excluded = excludedIds(state.elements, [resizedId])
+  const targets = targetRects(state.elements, excluded)
+  if (targets.length === 0) return { x: null, y: null }
+  const radius = SNAP_RADIUS / state.view.scale
+  const edges = movingEdges(handle)
+  const xLines: number[] = []
+  if (edges.left) xLines.push(rect.x)
+  if (edges.right) xLines.push(rect.x + rect.w)
+  const yLines: number[] = []
+  if (edges.top) yLines.push(rect.y)
+  if (edges.bottom) yLines.push(rect.y + rect.h)
+  const x = xLines.length === 0 ? null : bestAxis(xLines, targets.flatMap((target) => [target.left, (target.left + target.right) / 2, target.right]), radius)
+  const y = yLines.length === 0 ? null : bestAxis(yLines, targets.flatMap((target) => [target.top, (target.top + target.bottom) / 2, target.bottom]), radius)
   return { x, y }
 }
