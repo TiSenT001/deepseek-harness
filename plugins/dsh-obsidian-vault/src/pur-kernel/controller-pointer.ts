@@ -223,9 +223,12 @@ export function pointerMove(tools: PurControllerTools, event: PurPointerEvent): 
     if (site !== null && site.element.type !== 'line') {
       const moveX = (event.clientX - state.resize.startX) / state.view.scale
       const moveY = (event.clientY - state.resize.startY) / state.view.scale
+      // The session start, not the live element: the pointer delta is measured from
+      // the press, so using the already-moved position counted it twice per move and
+      // a west or north drag crept away from the pointer.
       const start = {
-        x: site.element.x,
-        y: site.element.y,
+        x: state.resize.x,
+        y: state.resize.y,
         w: state.resize.w,
         h: state.resize.h,
       }
