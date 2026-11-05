@@ -44,7 +44,7 @@ const NOTE_BG = 'rgba(28,28,30,0.92)'
  * @param offsetY - world offset added at the top level.
  * @returns the canvas element.
  */
-function toCanvasElement(
+export function toCanvasElement(
   element: ImportedPurElement,
   id: string,
   offsetX: number,
@@ -75,8 +75,10 @@ function toCanvasElement(
       ...placement,
       type: 'text',
       content: element.text,
-      bgColor: NOTE_BG,
-      color: '#e0e0e0',
+      // A note that carried its own colours keeps them; the canvas defaults only fill
+      // the gaps.
+      bgColor: element.bgColor ?? NOTE_BG,
+      color: element.textColor ?? '#e0e0e0',
       fontSize: 14,
     }
   }
