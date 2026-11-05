@@ -31,6 +31,7 @@ import {
 import { fitToView, resetZoom, selectAll, zoomByStep } from './controller-view.ts'
 import { autoPanStep } from './controller-autopan.ts'
 import { cancelGesture } from './controller-cancel.ts'
+import { cycleSelection } from './controller-traverse.ts'
 import { NUDGE_STEP, NUDGE_STEP_LARGE, nudgeSelection } from './controller-nudge.ts'
 import {
   addCodeNode,
@@ -202,6 +203,11 @@ export class PurController {
     if (event.key === 'Escape') {
       const effects = cancelGesture(this.tools)
       return effects === undefined ? { handled: false, effects: [] } : { handled: true, effects }
+    }
+    // Tab keeps focus on the canvas and walks the selection; the pane consumes the
+    // key when this reports it handled.
+    if (event.key === 'Tab') {
+      return { handled: true, effects: cycleSelection(this.tools, event.shiftKey === true) }
     }
     if (event.key === 'ArrowLeft' || event.key === 'ArrowRight' || event.key === 'ArrowUp' || event.key === 'ArrowDown') {
       if (state.selectedIds.size === 0) return { handled: false, effects: [] }
