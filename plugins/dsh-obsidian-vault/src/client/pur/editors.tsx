@@ -8,7 +8,7 @@ import { useState } from 'react'
 import { findElement } from '../../pur-kernel/index.ts'
 import type { PurController, PurControllerEffect, PurLineStyle } from '../../pur-kernel/index.ts'
 import type { Translate } from '../i18n.ts'
-import { BodyArea, Field, FontSelect, numberValue, PurEditorFrame, purColorStyle, purInputStyle, purLabelStyle, Section } from './editor-frame.tsx'
+import { BodyArea, ColorField, Field, FontSelect, numberValue, PurEditorFrame, purInputStyle, purLabelStyle, Section } from './editor-frame.tsx'
 import { applySnippet, snippetOf, suggestedSnippetTitle } from './snippet-apply.ts'
 import type { SnippetDraft } from './snippet-apply.ts'
 import type { CodeSnippetDto } from '../api.ts'
@@ -129,7 +129,7 @@ export function PurTextEditor(props: PurEditorProps): JSX.Element | null {
       </Section>
       <Section title={props.t('pur.sectionStyle')} columns={3}>
         <Field label={props.t('pur.textColor')}>
-          <input type="color" style={purColorStyle} value={color} onChange={(event) => setColor(event.target.value)} />
+          <ColorField value={color} onChange={setColor} />
         </Field>
         <Field label={props.t('pur.fontSize')}>
           <input style={purInputStyle} type="number" min={8} max={100} value={fontSize} onChange={(event) => setFontSize(event.target.value)} />
@@ -226,10 +226,10 @@ export function PurGroupEditor(props: PurEditorProps): JSX.Element | null {
       </Section>
       <Section title={props.t('pur.sectionStyle')} columns={2}>
         <Field label={props.t('pur.textColor')}>
-          <input type="color" value={color} onChange={(event) => setColor(event.target.value)} />
+          <ColorField value={color} onChange={setColor} />
         </Field>
         <Field label={props.t('pur.bgColor')}>
-          <input type="color" value={border} onChange={(event) => setBorder(event.target.value)} />
+          <ColorField value={border} onChange={setBorder} />
         </Field>
       </Section>
     </PurEditorFrame>
@@ -261,7 +261,7 @@ export function PurLineEditor(props: PurEditorProps): JSX.Element | null {
       </Section>
       <Section title={props.t('pur.sectionStyle')} columns={3}>
         <Field label={props.t('pur.textColor')}>
-          <input type="color" value={color} onChange={(event) => setColor(event.target.value)} />
+          <ColorField value={color} onChange={setColor} />
         </Field>
         <Field label={props.t('pur.fontSize')}>
           <input style={purInputStyle} type="number" min={8} max={40} value={fontSize} onChange={(event) => setFontSize(event.target.value)} />
@@ -321,7 +321,7 @@ export function PurNoteLinkEditor(props: PurEditorProps): JSX.Element | null {
           <FontSelect value={fontFamily} onChange={setFontFamily} />
         </Field>
         <Field label={props.t('pur.bgColor')}>
-          <input type="color" value={cardColor} onChange={(event) => setCardColor(event.target.value)} />
+          <ColorField value={cardColor} onChange={setCardColor} />
         </Field>
       </Section>
     </PurEditorFrame>

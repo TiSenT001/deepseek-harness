@@ -120,12 +120,16 @@ export function Field(props: { label: string; children: ReactNode }): JSX.Elemen
 
 /**
  * A titled group of related fields, so every editor reads as the same form.
+ * The caption sits on its own hairline so a long form has visible structure.
  * @param props - section caption and fields; `columns` lays them out side by side.
  */
 export function Section(props: { title: string; children: ReactNode; columns?: number }): JSX.Element {
   return (
     <section style={{ display: 'flex', flexDirection: 'column', gap: FIELD_GAP }}>
-      <div style={{ fontSize: 11, letterSpacing: '0.04em', textTransform: 'uppercase', opacity: 0.5 }}>{props.title}</div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <span style={{ fontSize: 11, letterSpacing: '0.06em', textTransform: 'uppercase', opacity: 0.55, whiteSpace: 'nowrap' }}>{props.title}</span>
+        <span style={{ flex: 1, height: 1, background: 'rgba(128,128,128,0.18)' }} />
+      </div>
       <div style={{ display: 'grid', gridTemplateColumns: `repeat(${props.columns ?? 1}, minmax(0, 1fr))`, gap: FIELD_GAP }}>
         {props.children}
       </div>
@@ -203,4 +207,18 @@ export function FontSelect(props: { value: string; onChange: (value: string) => 
 export function numberValue(text: string, fallback: number): number {
   const value = Number(text)
   return Number.isFinite(value) ? value : fallback
+}
+
+/**
+ * A colour field: the native picker plus the value it holds, so the exact colour is
+ * readable and copyable instead of hidden behind a swatch.
+ * @param props - current colour and its change handler.
+ */
+export function ColorField(props: { value: string; onChange: (value: string) => void }): JSX.Element {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+      <input type="color" style={purColorStyle} value={props.value} onChange={(event) => props.onChange(event.target.value)} />
+      <span style={{ fontFamily: 'ui-monospace, SFMono-Regular, monospace', fontSize: 11, opacity: 0.7 }}>{props.value}</span>
+    </div>
+  )
 }
