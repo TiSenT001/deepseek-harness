@@ -24,7 +24,9 @@ export function applyDragToPointer(tools: PurControllerTools): boolean {
   for (const entry of drag.elements) {
     if (entry === null) continue
     const site = findElement(state.elements, entry.id)
-    if (site === null || site.element.type === 'line') continue
+    // A bound connection follows its cards; a detached one moves like a card.
+    if (site === null) continue
+    if (site.element.type === 'line' && (site.element.from !== '' || site.element.to !== '')) continue
     site.element.x = entry.x + dx - entry.parentX
     site.element.y = entry.y + dy - entry.parentY
   }

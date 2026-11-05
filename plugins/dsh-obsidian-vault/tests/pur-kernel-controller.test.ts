@@ -29,6 +29,7 @@ const LABELS: PurControllerLabels = {
   relinkedFrom: '连线起点已重连',
   relinkedTo: '连线终点已重连',
   lineCreated: '连线已创建',
+  lineDisconnected: '已取消连接',
   connectNeedsTwo: '请选择两个元素进行连线',
   selectTwoToGroup: 'select2group',
   saved: 'saved',

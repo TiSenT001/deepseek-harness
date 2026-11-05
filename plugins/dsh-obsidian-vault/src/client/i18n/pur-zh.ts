@@ -110,6 +110,8 @@ export const PUR_ZH = {
   'pur.linkNote': '关联笔记',
   'pur.modLinkNote': '修改关联笔记',
   'pur.unlinkNote': '取消关联笔记',
+  'pur.disconnectedLine': "已取消连接",
+  'pur.disconnectLine': "取消连接",
   'pur.editLine': '编辑虚线注释',
   'pur.copyLink': '复制链接',
   'pur.revealExplorer': '在资源管理器中显示',

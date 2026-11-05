@@ -52,6 +52,12 @@ export function elementAt(elements: readonly PurElement[], worldX: number, world
       const element = list[index]
       if (element === undefined) continue
       if (element.type === 'line') {
+        // A detached line has its own segment; a bound one spans its two cards.
+        if (element.from === '' && element.to === '') {
+          if (element.x === undefined || element.y === undefined) continue
+          if (distanceToSegment(worldX, worldY, element.x, element.y, element.x + (element.w ?? 0), element.y + (element.h ?? 0)) < LINE_HIT_PX / (scale || 1)) return element
+          continue
+        }
         const from = worldRect(elements, element.from)
         const to = worldRect(elements, element.to)
         if (from === null || to === null) continue
@@ -184,4 +190,24 @@ function carriesPins(element: PurNodeElement): boolean {
  */
 function distance(ax: number, ay: number, bx: number, by: number): number {
   return Math.sqrt((ax - bx) ** 2 + (ay - by) ** 2)
+}
+
+/**
+ * Distance from a point to a line segment, in world units.
+ * @param px - point x.
+ * @param py - point y.
+ * @param ax - segment start x.
+ * @param ay - segment start y.
+ * @param bx - segment end x.
+ * @param by - segment end y.
+ * @returns the distance.
+ */
+export function distanceToSegment(px: number, py: number, ax: number, ay: number, bx: number, by: number): number {
+  const dx = bx - ax
+  const dy = by - ay
+  const length = dx * dx + dy * dy
+  const t = length === 0 ? 0 : Math.max(0, Math.min(1, ((px - ax) * dx + (py - ay) * dy) / length))
+  const closestX = ax + t * dx
+  const closestY = ay + t * dy
+  return Math.hypot(px - closestX, py - closestY)
 }

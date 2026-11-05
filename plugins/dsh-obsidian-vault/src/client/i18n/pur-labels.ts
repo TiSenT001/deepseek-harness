@@ -58,6 +58,7 @@ export function buildPurLabels(read: (key: string) => string): PurLabelBundles {
       relinkedFrom: read('pur.relinkedFrom'),
       relinkedTo: read('pur.relinkedTo'),
       lineCreated: read('pur.lineCreated'),
+      lineDisconnected: read('pur.disconnectedLine'),
       connectNeedsTwo: read('pur.connectNeedsTwo'),
       selectTwoToGroup: read('pur.selectTwoToGroup'),
       saved: read('pur.saved'),

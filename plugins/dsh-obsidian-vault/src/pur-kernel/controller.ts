@@ -31,6 +31,7 @@ import {
 import { fitToView, resetZoom, selectAll, zoomByStep } from './controller-view.ts'
 import { autoPanStep } from './controller-autopan.ts'
 import { cancelPinDrop, completePinDrop } from './controller-pin-drop.ts'
+import { disconnectLine } from './controller-lines.ts'
 import { cancelGesture } from './controller-cancel.ts'
 import { cycleSelection } from './controller-traverse.ts'
 import { NUDGE_STEP, NUDGE_STEP_LARGE, nudgeSelection } from './controller-nudge.ts'
@@ -193,6 +194,15 @@ export class PurController {
    */
   completePinDrop(kind: PurDropKind): PurControllerEffect[] {
     return completePinDrop(this.tools, kind)
+  }
+
+  /**
+   * Detach a connection into a free line that keeps its path.
+   * @param id - the line to detach.
+   * @returns the commit effects.
+   */
+  disconnectLine(id: string): PurControllerEffect[] {
+    return disconnectLine(this.tools, id)
   }
 
   /**

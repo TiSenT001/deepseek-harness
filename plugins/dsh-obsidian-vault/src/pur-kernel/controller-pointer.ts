@@ -81,9 +81,9 @@ export function pointerDown(tools: PurControllerTools, event: PurPointerEvent): 
           state.selectedIds.clear()
           state.selectedIds.add(element.id)
         }
-        // Lines select on a single click, so Delete and the context menu can reach
-        // them; double-click opens the line editor.
-        if (element.type === 'line') return [{ type: 'render' }]
+        // A bound connection selects on a single click so Delete and the context menu
+        // can reach it; a detached line also drags like a card.
+        if (element.type === 'line' && (element.from !== '' || element.to !== '')) return [{ type: 'render' }]
         state.dragging = true
         state.dragStart = {
           clientX: event.clientX,

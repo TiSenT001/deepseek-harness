@@ -19,6 +19,7 @@ export const LABELS: PurControllerLabels = {
   relinkedFrom: 'from',
   relinkedTo: 'to',
   lineCreated: 'created',
+  lineDisconnected: 'disconnected',
   connectNeedsTwo: 'need two',
   selectTwoToGroup: 'need two group',
   saved: 'saved',

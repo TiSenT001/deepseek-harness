@@ -55,6 +55,14 @@ export function drawLines(ctx: PurCanvasContext, scene: PurScene): void {
   const { view, elements } = scene
   const scale = view.scale
   for (const line of collectLines(elements)) {
+    // A detached line carries its own rectangle instead of naming two cards.
+    if (line.from === '' && line.to === '') {
+      if (line.x === undefined || line.y === undefined) continue
+      const endX = line.x + (line.w ?? 0)
+      const endY = line.y + (line.h ?? 0)
+      drawLine(ctx, line, { x: screenX(view, line.x), y: screenY(view, line.y) }, { x: screenX(view, endX), y: screenY(view, endY) }, scene)
+      continue
+    }
     const fromWP = worldRect(elements, line.from)
     const toWP = worldRect(elements, line.to)
     if (fromWP === null || toWP === null) continue

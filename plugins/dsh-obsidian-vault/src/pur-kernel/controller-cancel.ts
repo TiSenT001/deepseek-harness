@@ -44,7 +44,8 @@ export function cancelGesture(tools: PurControllerTools): PurControllerEffect[] 
       for (const entry of state.dragStart.elements) {
         if (entry === null) continue
         const site = findElement(state.elements, entry.id)
-        if (site === null || site.element.type === 'line') continue
+        if (site === null) continue
+        if (site.element.type === 'line' && (site.element.from !== '' || site.element.to !== '')) continue
         // Snapshots hold world coordinates; the element stores them relative to
         // its group, so the parent offset comes back off.
         site.element.x = entry.x - entry.parentX

@@ -195,7 +195,11 @@ function elementMenu(state: PurControllerState, context: PurMenuContext, hitLock
     }
   }
 
-  if (hasLine) entries.push({ id: 'edit-line', icon: 'pencil', labelKey: 'editLine', separatorAfter: true })
+  if (hasLine) {
+    entries.push({ id: 'edit-line', icon: 'pencil', labelKey: 'editLine' })
+    const bound = selected.some((element) => element.type === 'line' && (element.from !== '' || element.to !== ''))
+    if (bound) entries.push({ id: 'disconnect-line', icon: 'unlink', labelKey: 'disconnectLine', separatorAfter: true })
+  }
 
   entries.push(
     { id: 'copy', icon: 'copy', labelKey: 'copy' },

@@ -120,6 +120,8 @@ export function runMenuAction(controller: PurController, host: PurMenuHost, acti
     case 'edit-line':
       host.editLine(requireTarget(action))
       return []
+    case 'disconnect-line':
+      return controller.disconnectLine(requireTarget(action))
     case 'edit-note-link':
       host.editNoteLink(requireTarget(action))
       return []

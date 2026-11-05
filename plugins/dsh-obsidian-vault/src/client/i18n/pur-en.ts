@@ -108,6 +108,8 @@ export const PUR_EN: Record<keyof typeof PUR_ZH, string> = {
   'pur.linkNote': 'Link Note',
   'pur.modLinkNote': 'Change Linked Note',
   'pur.unlinkNote': 'Unlink Note',
+  'pur.disconnectedLine': "Connection detached",
+  'pur.disconnectLine': "Disconnect",
   'pur.editLine': 'Edit Line Label',
   'pur.copyLink': 'Copy Link',
   'pur.revealExplorer': 'Reveal in Explorer',

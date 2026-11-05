@@ -86,6 +86,8 @@ export interface PurControllerLabels {
   relinkedTo: string
   /** Notice after creating a pin connection (`连线已创建`). */
   lineCreated: string
+  /** Notice after detaching a line into a free line (`已取消连接`). */
+  lineDisconnected: string
   /** Notice when connect is requested without exactly two elements. */
   connectNeedsTwo: string
   /** Notice when grouping fewer than two non-line elements. */
