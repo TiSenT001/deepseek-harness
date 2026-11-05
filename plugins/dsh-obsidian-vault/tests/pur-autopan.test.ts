@@ -23,9 +23,9 @@ test('the speed ramps towards the edge and stops outside the zone', () => {
   assert.equal(autoPanSpeed(env.canvasWidth / 2, env.canvasWidth), 0)
   const near = autoPanSpeed(env.canvasWidth - 8, env.canvasWidth)
   const nearest = autoPanSpeed(env.canvasWidth - 1, env.canvasWidth)
-  assert.ok(near > 0 && near <= AUTOPAN_MAX_SPEED)
-  assert.ok(nearest >= near, 'closer to the edge pans faster')
-  assert.equal(autoPanSpeed(2, env.canvasWidth), -AUTOPAN_MAX_SPEED, 'the left edge pans the other way')
+  assert.ok(near < 0 && near >= -AUTOPAN_MAX_SPEED, 'the right edge moves the offset down')
+  assert.ok(nearest <= near, 'closer to the edge pans faster')
+  assert.equal(autoPanSpeed(2, env.canvasWidth), AUTOPAN_MAX_SPEED, 'the left edge moves the offset up')
 })
 
 test('a drag held at the edge keeps the view and the card moving together', () => {
@@ -38,9 +38,9 @@ test('a drag held at the edge keeps the view and the card moving together', () =
   const cardX = controller.state.elements[0]?.x ?? 0
   const effects = controller.autoPanStep()
   assert.equal(effects.length, 1)
-  assert.ok(controller.state.view.offsetX > before, 'the view moves toward the edge')
+  assert.ok(controller.state.view.offsetX < before, 'the offset drops so the view reveals content to the right')
   const moved = controller.state.elements[0]?.x ?? 0
-  assert.ok(moved > cardX, 'the dragged card follows the view')
+  assert.ok(moved > cardX, 'the dragged card travels with the pointer')
 })
 
 test('nothing moves without a gesture', () => {

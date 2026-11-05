@@ -55,7 +55,6 @@ export function PurStudioPane({ t, path, onOpenPath }: PurStudioPaneProps): JSX.
   const labels = useMemo(() => purBundles(t), [t])
   const ask = useAsk(t)
   const [ready, setReady] = useState(false)
-  const [focused, setFocused] = useState(false)
   const [hintState, setHintState] = useState<{ x: number; y: number; text: string } | null>(null)
   const hintTimerRef = useRef<number | null>(null)
   const [menu, setMenu] = useState<PurMenuState | null>(null)
@@ -347,12 +346,8 @@ void saveStudioDocument(path, document).catch(async (error: unknown) => {
           height: '100%',
           display: 'block',
           touchAction: 'none',
-          // Keyboard users need to see where the focus went.
-          outline: focused ? '2px solid var(--dsh-accent, #6aa1ff)' : 'none',
-          outlineOffset: '-2px',
+          outline: 'none',
         }}
-        onFocus={() => setFocused(true)}
-        onBlur={() => setFocused(false)}
         onPointerLeave={() => {
           if (hintTimerRef.current !== null) window.clearTimeout(hintTimerRef.current)
           setHintState(null)

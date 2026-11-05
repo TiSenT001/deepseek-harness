@@ -14,20 +14,22 @@ export const AUTOPAN_ZONE = 32
 export const AUTOPAN_MAX_SPEED = 12
 
 /**
- * Speed for one axis, signed towards the edge the pointer is closest to.
+ * Change in the view offset for one axis. Moving the offset up shows the world to
+ * the left of the current view, so the left edge adds to the offset and the right
+ * edge subtracts from it.
  * @param position - pointer position on the axis, canvas pixels.
  * @param size - canvas size on the axis.
- * @returns pixels per frame, zero outside the edge zone.
+ * @returns offset change per frame, zero outside the edge zone.
  */
 export function autoPanSpeed(position: number, size: number): number {
   if (position < AUTOPAN_ZONE) {
     const depth = Math.min(AUTOPAN_ZONE, AUTOPAN_ZONE - Math.max(0, position))
-    return -Math.ceil((depth / AUTOPAN_ZONE) * AUTOPAN_MAX_SPEED)
+    return Math.ceil((depth / AUTOPAN_ZONE) * AUTOPAN_MAX_SPEED)
   }
   const distance = size - position
   if (distance < AUTOPAN_ZONE) {
     const depth = Math.min(AUTOPAN_ZONE, AUTOPAN_ZONE - Math.max(0, distance))
-    return Math.ceil((depth / AUTOPAN_ZONE) * AUTOPAN_MAX_SPEED)
+    return -Math.ceil((depth / AUTOPAN_ZONE) * AUTOPAN_MAX_SPEED)
   }
   return 0
 }
@@ -47,13 +49,14 @@ export function autoPanStep(tools: PurControllerTools): PurControllerEffect[] {
   state.view.offsetY += dy
   if (state.dragging && state.dragStart !== null) {
     const drag = state.dragStart
-    // The pointer did not move, so the cards follow the view by the same amount.
+    // The pointer did not move, so the world point under it does: a positive offset
+    // change pulls the world back, which means the carried cards move the other way.
     for (const entry of drag.elements) {
       if (entry === null) continue
       const site = findElement(state.elements, entry.id)
       if (site === null || site.element.type === 'line') continue
-      site.element.x = (site.element.x ?? 0) + dx / state.view.scale
-      site.element.y = (site.element.y ?? 0) + dy / state.view.scale
+      site.element.x = (site.element.x ?? 0) - dx / state.view.scale
+      site.element.y = (site.element.y ?? 0) - dy / state.view.scale
     }
   }
   return [{ type: 'render' }]
