@@ -15,6 +15,7 @@ import { createPurMenuHost, exportSelectedText } from './host.ts'
 import type { PurMenuHostDeps } from './host.ts'
 import { purBundles } from './labels.ts'
 import { PurImageCache, loadStudioDocument, resolveNoteLink, saveStudioDocument } from './loader.ts'
+import { canvasHintFor } from './hint.ts'
 import { fetchCodeSnippets, fetchOpenPrograms } from '../api.ts'
 import { refreshNoteLinks } from './refresh-links.ts'
 import { VaultWriteConflict } from '../api.ts'
@@ -43,6 +44,9 @@ export interface PurStudioPaneProps {
   readonly onOpenPath?: (path: string, destination?: PurOpenDestination) => void
 }
 
+/** How long the pointer must rest before the double-click hint appears. */
+const HINT_DELAY_MS = 600
+
 /**
  * Render one `.PurStudio` document as an interactive canvas.
  * @param props - the translator and the document path.
@@ -52,6 +56,8 @@ export function PurStudioPane({ t, path, onOpenPath }: PurStudioPaneProps): JSX.
   const ask = useAsk(t)
   const [ready, setReady] = useState(false)
   const [focused, setFocused] = useState(false)
+  const [hintState, setHintState] = useState<{ x: number; y: number; text: string } | null>(null)
+  const hintTimerRef = useRef<number | null>(null)
   const [menu, setMenu] = useState<PurMenuState | null>(null)
   const [editor, setEditor] = useState<PurEditorState | null>(null)
   const [prompt, setPrompt] = useState<PurPromptState | null>(null)
@@ -347,7 +353,13 @@ void saveStudioDocument(path, document).catch(async (error: unknown) => {
         }}
         onFocus={() => setFocused(true)}
         onBlur={() => setFocused(false)}
+        onPointerLeave={() => {
+          if (hintTimerRef.current !== null) window.clearTimeout(hintTimerRef.current)
+          setHintState(null)
+        }}
         onPointerDown={(event) => {
+          if (hintTimerRef.current !== null) window.clearTimeout(hintTimerRef.current)
+          setHintState(null)
           event.currentTarget.setPointerCapture(event.pointerId)
           event.currentTarget.focus()
           const controller = controllerRef.current
@@ -355,7 +367,21 @@ void saveStudioDocument(path, document).catch(async (error: unknown) => {
         }}
         onPointerMove={(event) => {
           const controller = controllerRef.current
-          if (controller !== null) run(controller.pointerMove(pointerEventOf(event)))
+          if (controller === null) return
+          run(controller.pointerMove(pointerEventOf(event)))
+          // The canvas has no affordance of its own, so a still pointer explains
+          // what a double click would do after a short delay.
+          const rect = event.currentTarget.getBoundingClientRect()
+          const localX = event.clientX - rect.left
+          const localY = event.clientY - rect.top
+          if (hintTimerRef.current !== null) window.clearTimeout(hintTimerRef.current)
+          hintTimerRef.current = window.setTimeout(() => {
+            const active = controllerRef.current
+            if (active === null) return
+            const world = screenToWorld(active.state.view, localX, localY)
+            const element = elementAt(active.state.elements, world.x, world.y, active.state.view.scale)
+            setHintState({ x: localX + 14, y: localY + 14, text: canvasHintFor(element, t) })
+          }, HINT_DELAY_MS)
         }}
         onPointerUp={(event) => {
           const controller = controllerRef.current
@@ -375,6 +401,25 @@ void saveStudioDocument(path, document).catch(async (error: unknown) => {
         }}
         onContextMenu={(event) => event.preventDefault()}
       />
+      {hintState === null ? null : (
+        <div
+          style={{
+            position: 'absolute',
+            left: hintState.x,
+            top: hintState.y,
+            padding: '3px 7px',
+            borderRadius: 5,
+            background: 'rgba(20,20,22,0.92)',
+            color: '#d8d8dc',
+            fontSize: 11,
+            whiteSpace: 'nowrap',
+            pointerEvents: 'none',
+            zIndex: 6,
+          }}
+        >
+          {hintState.text}
+        </div>
+      )}
       <PurPaneOverlays
         t={t}
         labels={labels}
