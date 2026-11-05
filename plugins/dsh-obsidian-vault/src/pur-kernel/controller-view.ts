@@ -44,3 +44,46 @@ export function fitToView(tools: PurControllerTools): PurControllerEffect[] {
   tools.state.view.offsetY = tools.env.canvasHeight / 2 - ((bounds.minY + bounds.maxY) / 2) * scale
   return [{ type: 'render' }]
 }
+
+/** Smallest and largest zoom the controls produce, matching the wheel. */
+const ZOOM_MIN = 0.05
+const ZOOM_MAX = 10
+
+/**
+ * Zoom around the canvas centre.
+ * @param tools - shared controller tools.
+ * @param factor - multiplier applied to the current scale.
+ * @returns the render effect.
+ */
+export function zoomByStep(tools: PurControllerTools, factor: number): PurControllerEffect[] {
+  const { state, env } = tools
+  const next = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, state.view.scale * factor))
+  const centreX = env.canvasWidth / 2
+  const centreY = env.canvasHeight / 2
+  // Keep the world point under the canvas centre where it is.
+  const worldX = (centreX - state.view.offsetX) / state.view.scale
+  const worldY = (centreY - state.view.offsetY) / state.view.scale
+  state.view.scale = next
+  state.view.offsetX = centreX - worldX * next
+  state.view.offsetY = centreY - worldY * next
+  state.showZoomUntil = env.now() + 800
+  return [{ type: 'render' }]
+}
+
+/**
+ * Return to 100% around the canvas centre.
+ * @param tools - shared controller tools.
+ * @returns the render effect.
+ */
+export function resetZoom(tools: PurControllerTools): PurControllerEffect[] {
+  const { state, env } = tools
+  const centreX = env.canvasWidth / 2
+  const centreY = env.canvasHeight / 2
+  const worldX = (centreX - state.view.offsetX) / state.view.scale
+  const worldY = (centreY - state.view.offsetY) / state.view.scale
+  state.view.scale = 1
+  state.view.offsetX = centreX - worldX
+  state.view.offsetY = centreY - worldY
+  state.showZoomUntil = env.now() + 800
+  return [{ type: 'render' }]
+}

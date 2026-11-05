@@ -28,7 +28,7 @@ import {
   setSelectionOpacity,
   toggleLock,
 } from './controller-layers.ts'
-import { fitToView, selectAll } from './controller-view.ts'
+import { fitToView, resetZoom, selectAll, zoomByStep } from './controller-view.ts'
 import { cancelGesture } from './controller-cancel.ts'
 import { NUDGE_STEP, NUDGE_STEP_LARGE, nudgeSelection } from './controller-nudge.ts'
 import {
@@ -40,6 +40,7 @@ import {
 } from './controller-edits.ts'
 import {
   copySelected,
+  cutSelected,
   duplicateSelected,
   groupSelected,
   pasteClipboard,
@@ -214,6 +215,16 @@ export class PurController {
     if (ctrl && event.key === 'c') return { handled: true, effects: copySelected(this.tools) }
     if (ctrl && event.key === 'v') return { handled: true, effects: pasteClipboard(this.tools) }
     if (ctrl && event.key === 'g') return { handled: true, effects: groupSelected(this.tools) }
+    if (ctrl && (event.key === 'G' || (event.shiftKey === true && event.key === 'g'))) {
+      return { handled: true, effects: this.ungroup() }
+    }
+    if (ctrl && event.key === 'x') return { handled: true, effects: cutSelected(this.tools) }
+    if (ctrl && event.key === 'd') return { handled: true, effects: this.duplicate() }
+    if (!ctrl && (event.key === '0' || event.key === ')' || event.key === 'Insert')) {
+      return { handled: true, effects: resetZoom(this.tools) }
+    }
+    if (!ctrl && (event.key === '+' || event.key === '=')) return { handled: true, effects: zoomByStep(this.tools, 1.15) }
+    if (!ctrl && (event.key === '-' || event.key === '_')) return { handled: true, effects: zoomByStep(this.tools, 0.85) }
     if (ctrl && event.key === 's') return { handled: true, effects: [{ type: 'save' }, { type: 'notice', text: labels.saved }] }
     if (ctrl && event.key === 'm') return { handled: true, effects: [{ type: 'export-text' }] }
     if (event.key === 'f' && !event.ctrlKey && !event.metaKey) return { handled: true, effects: fitToView(this.tools) }

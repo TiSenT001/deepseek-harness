@@ -5,6 +5,7 @@
  * @module dsh-obsidian-vault/pur-kernel/controller-clipboard
  */
 import { commit } from './controller-selection.ts'
+import { deleteSelected } from './controller-commands.ts'
 import type { PurControllerEffect, PurControllerTools } from './controller-types.ts'
 import type { PurElement } from './types.ts'
 
@@ -29,6 +30,17 @@ export function copySelected(tools: PurControllerTools): PurControllerEffect[] {
   search(tools.state.elements)
   tools.state.clipboard = selected.map(clone)
   return [{ type: 'notice', text: tools.labels.copiedElements(tools.state.clipboard.length) }]
+}
+
+/**
+ * Cut the selection: copy it into the internal clipboard and remove it.
+ * @param tools - shared controller tools.
+ * @returns the copy notice plus the delete effects, or nothing without a selection.
+ */
+export function cutSelected(tools: PurControllerTools): PurControllerEffect[] {
+  if (tools.state.selectedIds.size === 0) return []
+  const notice = copySelected(tools)
+  return [...deleteSelected(tools), ...notice]
 }
 
 /**
