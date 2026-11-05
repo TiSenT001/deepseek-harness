@@ -80,6 +80,8 @@ export function startPurPaintLoop(container: HTMLElement, canvas: HTMLCanvasElem
     frame = requestAnimationFrame(tick)
     const controller = deps.controller()
     if (controller !== null && controller.momentumStep()) deps.dirtyRef.current = true
+    // Carrying a card or a rubber band to the edge keeps the view moving.
+    if (controller !== null && controller.autoPanStep().length > 0) deps.dirtyRef.current = true
     const idleSince = performance.now() - lastPaint
     if (!deps.dirtyRef.current) {
       // Nothing to draw: spend the idle frame warming the next screenful.

@@ -25,6 +25,7 @@ export function pointerDown(tools: PurControllerTools, event: PurPointerEvent): 
   const { sx, sy } = local(event)
   const world = screenToWorld(state.view, sx, sy)
   state.lastMouse = { x: event.clientX, y: event.clientY }
+  state.lastLocal = { x: sx, y: sy }
 
   const clickedPin = pinAt(state.elements, world.x, world.y, state.view.scale)
   const clickedEndpoint = lineEndpointAt(state.elements, world.x, world.y, state.view.scale)
@@ -83,6 +84,8 @@ export function pointerDown(tools: PurControllerTools, event: PurPointerEvent): 
         state.dragStart = {
           clientX: event.clientX,
           clientY: event.clientY,
+          viewX: state.view.offsetX,
+          viewY: state.view.offsetY,
           elements: [...state.selectedIds].map((id) => {
             const site = findElement(state.elements, id)
             if (site === null) return null
@@ -142,6 +145,7 @@ export function pointerMove(tools: PurControllerTools, event: PurPointerEvent): 
   const dy = event.clientY - state.lastMouse.y
   state.lastMouse = { x: event.clientX, y: event.clientY }
   const { sx, sy } = local(event)
+  state.lastLocal = { x: sx, y: sy }
   const world = screenToWorld(state.view, sx, sy)
 
   if (state.pinDrag !== null) {

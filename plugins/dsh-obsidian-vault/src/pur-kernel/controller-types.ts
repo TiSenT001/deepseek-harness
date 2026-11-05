@@ -190,6 +190,8 @@ export interface PurControllerState {
   pinDrag: PurPinDragState | null
   /** Last pointer position in viewport coordinates. */
   lastMouse: { x: number; y: number }
+  /** Last pointer position relative to the canvas, for edge auto-pan. */
+  lastLocal: { x: number; y: number }
   /** Selection as it stood when the rubber band started, for Escape. */
   selectionBefore: Set<string> | null
   /** View offset when the pan started, for Escape. */
@@ -203,7 +205,7 @@ export interface PurControllerState {
   /** Whether an element drag is active. */
   dragging: boolean
   /** Drag start snapshots, null entries preserved like upstream. */
-  dragStart: { clientX: number; clientY: number; elements: (PurDragEntry | null)[] } | null
+  dragStart: { clientX: number; clientY: number; viewX: number; viewY: number; elements: (PurDragEntry | null)[] } | null
   /** Whether a resize drag is active. */
   resizing: boolean
   /** Resize session. */

@@ -29,6 +29,7 @@ import {
   toggleLock,
 } from './controller-layers.ts'
 import { fitToView, resetZoom, selectAll, zoomByStep } from './controller-view.ts'
+import { autoPanStep } from './controller-autopan.ts'
 import { cancelGesture } from './controller-cancel.ts'
 import { NUDGE_STEP, NUDGE_STEP_LARGE, nudgeSelection } from './controller-nudge.ts'
 import {
@@ -107,6 +108,7 @@ export class PurController {
         selectionRect: null,
         pinDrag: null,
         lastMouse: { x: 0, y: 0 },
+        lastLocal: { x: 0, y: 0 },
         selectionBefore: null,
         panStart: null,
         nudgeAt: null,
@@ -175,6 +177,14 @@ export class PurController {
     if (drag.fromNodeId !== null && drag.fromPinId !== null) preview.from = { nodeId: drag.fromNodeId, pinId: drag.fromPinId }
     if (drag.toNodeId !== undefined && drag.toPinId !== undefined) preview.to = { nodeId: drag.toNodeId, pinId: drag.toPinId }
     return preview
+  }
+
+  /**
+   * Advance one auto-pan frame while a drag or a rubber band is in flight.
+   * @returns the effects, empty when the pointer is away from the edges.
+   */
+  autoPanStep(): PurControllerEffect[] {
+    return autoPanStep(this.tools)
   }
 
   /**
