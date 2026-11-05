@@ -303,6 +303,27 @@ export function readTable(database: SceneDatabase, rootPage: number): SceneRow[]
  * @param row - a text column.
  * @returns the decoded text.
  */
+/**
+ * Convert a colour as Qt stores it into the CSS form a canvas takes. Qt writes
+ * `#AARRGGBB`, so the alpha pair moves to the end; a six digit value is already
+ * the CSS order.
+ * @param value - the stored colour text.
+ * @returns the CSS colour, or undefined when the value is empty or unrecognised.
+ */
+export function qtColorToCss(value: string): string | undefined {
+  const trimmed = value.trim()
+  if (trimmed === '') return undefined
+  const match = /^#([0-9a-f]{8})$/i.exec(trimmed)
+  if (match === null) {
+    // Six digit hex, a named colour and a functional CSS value already mean what
+    // they say; anything else is not a colour this importer understands.
+    const css = /^#[0-9a-f]{6}$/i.test(trimmed) || /^[a-z]+$/i.test(trimmed) || /^(?:rgba?|hsla?)\(/i.test(trimmed)
+    return css ? trimmed : undefined
+  }
+  const digits = match[1] ?? ''
+  return `#${digits.slice(2)}${digits.slice(0, 2)}`
+}
+
 function textOf(row: number | Buffer | null): string {
   if (!Buffer.isBuffer(row)) return ''
   const unescaped = unescapeTextBytes(row)
@@ -550,12 +571,12 @@ function decodeScene(database: SceneDatabase): PurSceneData | undefined {
   if (noteRoot !== undefined) {
     for (const row of readTable(database, noteRoot)) {
       const size = Buffer.isBuffer(row.values[2]) ? decodeSize(row.values[2]) : { width: -1, height: -1 }
-      const textColor = textOf(row.values[0] ?? null).trim()
-      const backgroundColor = textOf(row.values[3] ?? null).trim()
+      const textColor = qtColorToCss(textOf(row.values[0] ?? null))
+      const backgroundColor = qtColorToCss(textOf(row.values[3] ?? null))
       notes.set(row.rowId, {
         text: textOf(row.values[4] ?? null),
-        ...(textColor === '' ? {} : { textColor }),
-        ...(backgroundColor === '' ? {} : { backgroundColor }),
+        ...(textColor === undefined ? {} : { textColor }),
+        ...(backgroundColor === undefined ? {} : { backgroundColor }),
         style: Number(row.values[5] ?? 0),
         width: size.width,
         height: size.height,
