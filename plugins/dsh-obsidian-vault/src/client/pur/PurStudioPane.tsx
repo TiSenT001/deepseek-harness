@@ -56,6 +56,7 @@ export function PurStudioPane({ t, path, onOpenPath }: PurStudioPaneProps): JSX.
   const ask = useAsk(t)
   const [ready, setReady] = useState(false)
   const [hintState, setHintState] = useState<{ x: number; y: number; text: string } | null>(null)
+  const [canvasStatus, setCanvasStatus] = useState('')
   const hintTimerRef = useRef<number | null>(null)
   const [menu, setMenu] = useState<PurMenuState | null>(null)
   const [editor, setEditor] = useState<PurEditorState | null>(null)
@@ -310,6 +311,22 @@ void saveStudioDocument(path, document).catch(async (error: unknown) => {
     return wirePurPaneDrop(container, () => controllerRef.current, insertDeps)
   }, [ready, insertDeps])
 
+  // Assistive technology cannot read a canvas, so the selection and zoom are
+  // mirrored into a polite live region; polling keeps that out of the paint loop.
+  useEffect(() => {
+    if (!ready) return undefined
+    const timer = window.setInterval(() => {
+      const controller = controllerRef.current
+      if (controller === null) return
+      const count = controller.state.selectedIds.size
+      const zoom = Math.round(controller.state.view.scale * 100)
+      setCanvasStatus(t('ariaCanvasStatus').replace('{count}', String(count)).replace('{zoom}', String(zoom)))
+    }, 500)
+    return () => {
+      window.clearInterval(timer)
+    }
+  }, [ready, t])
+
   // The frame loop: advance momentum, repaint when dirty, repaint on resize.
   useEffect(() => {
     if (!ready) return
@@ -396,6 +413,13 @@ void saveStudioDocument(path, document).catch(async (error: unknown) => {
         }}
         onContextMenu={(event) => event.preventDefault()}
       />
+      <div
+        role="status"
+        aria-live="polite"
+        style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clipPath: 'inset(50%)', whiteSpace: 'nowrap' }}
+      >
+        {canvasStatus}
+      </div>
       {hintState === null ? null : (
         <div
           style={{

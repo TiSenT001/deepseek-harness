@@ -200,6 +200,7 @@ export const EN: Dict = {
   fileLineCap: 'Showing the first',
   loadingFile: 'Loading file…',
   canvasLabel: 'Canvas: drag to pan, scroll to zoom, double-click empty space for text, arrow keys nudge the selection',
+  ariaCanvasStatus: "{count} elements selected, zoom {zoom}%",
   canvasHintNew: "Double-click to add text",
   canvasHintEdit: "Double-click to edit",
   canvasHintGroup: "Double-click to edit the group",

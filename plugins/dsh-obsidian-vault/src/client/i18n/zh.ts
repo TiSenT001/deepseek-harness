@@ -199,6 +199,7 @@ export const ZH = {
   fileLineCap: '只显示前',
   loadingFile: '加载文件…',
   canvasLabel: '画布：拖动平移，滚轮缩放，双击空白新建文本，方向键微移选中元素',
+  ariaCanvasStatus: "已选中 {count} 个元素，缩放 {zoom}%",
   canvasHintNew: "双击新建文本",
   canvasHintEdit: "双击编辑",
   canvasHintGroup: "双击编辑群组",
