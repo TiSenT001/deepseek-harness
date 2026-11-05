@@ -123,6 +123,7 @@ export class PurController {
         showZoomUntil: null,
         clipboard: [],
         lockPulseIds: new Set<string>(),
+        snapGuides: { x: null, y: null },
       },
       history: createHistory(),
       env,

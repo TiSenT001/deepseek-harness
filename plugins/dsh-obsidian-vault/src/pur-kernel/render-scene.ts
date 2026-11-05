@@ -7,7 +7,7 @@ import { drawBackground, drawGrid } from './render-background.ts'
 import { placeElements, drawElements } from './render-elements.ts'
 import { drawGroupFrames } from './render-groups.ts'
 import { drawLines, drawPinDragPreview, drawPinEndpointDots } from './render-lines.ts'
-import { drawSelectionRect, drawZoomBadge } from './render-overlays.ts'
+import { drawSelectionRect, drawSnapGuides, drawZoomBadge } from './render-overlays.ts'
 import type { PurCanvasContext, PurRenderEffects, PurScene } from './render-types.ts'
 
 /** Canvas-widths beyond the viewport that still trigger an image preload. */
@@ -33,6 +33,7 @@ export function drawScene(ctx: PurCanvasContext, scene: PurScene): PurRenderEffe
   drawGroupFrames(ctx, scene)
   drawElements(ctx, scene, requestImage)
   if (scene.selectionRect !== null && scene.selectionRect !== undefined) drawSelectionRect(ctx, scene.selectionRect)
+  drawSnapGuides(ctx, scene)
   drawPinDragPreview(ctx, scene)
   drawPinEndpointDots(ctx, scene)
   drawZoomBadge(ctx, scene)

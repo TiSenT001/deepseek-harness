@@ -49,6 +49,7 @@ export function cancelGesture(tools: PurControllerTools): PurControllerEffect[] 
     }
     state.dragging = false
     state.dragStart = null
+    state.snapGuides = { x: null, y: null }
     return [{ type: 'render' }]
   }
   if (state.selecting) {

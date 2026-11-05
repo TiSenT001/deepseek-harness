@@ -51,6 +51,7 @@ export function PurStudioPane({ t, path, onOpenPath }: PurStudioPaneProps): JSX.
   const labels = useMemo(() => purBundles(t), [t])
   const ask = useAsk(t)
   const [ready, setReady] = useState(false)
+  const [focused, setFocused] = useState(false)
   const [menu, setMenu] = useState<PurMenuState | null>(null)
   const [editor, setEditor] = useState<PurEditorState | null>(null)
   const [prompt, setPrompt] = useState<PurPromptState | null>(null)
@@ -333,7 +334,19 @@ void saveStudioDocument(path, document).catch(async (error: unknown) => {
       <canvas
         ref={canvasRef}
         tabIndex={0}
-        style={{ width: '100%', height: '100%', display: 'block', outline: 'none', touchAction: 'none' }}
+        role="application"
+        aria-label={t('canvasLabel')}
+        style={{
+          width: '100%',
+          height: '100%',
+          display: 'block',
+          touchAction: 'none',
+          // Keyboard users need to see where the focus went.
+          outline: focused ? '2px solid var(--dsh-accent, #6aa1ff)' : 'none',
+          outlineOffset: '-2px',
+        }}
+        onFocus={() => setFocused(true)}
+        onBlur={() => setFocused(false)}
         onPointerDown={(event) => {
           event.currentTarget.setPointerCapture(event.pointerId)
           event.currentTarget.focus()

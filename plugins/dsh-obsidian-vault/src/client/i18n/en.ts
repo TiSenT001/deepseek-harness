@@ -199,6 +199,7 @@ export const EN: Dict = {
   fileTruncated: 'Large file; showing the first 1 MB.',
   fileLineCap: 'Showing the first',
   loadingFile: 'Loading file…',
+  canvasLabel: 'Canvas: drag to pan, scroll to zoom, double-click empty space for text, arrow keys nudge the selection',
   fileMetaName: 'Name',
   fileMetaType: 'Type',
   fileMetaSize: 'Size',

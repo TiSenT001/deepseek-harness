@@ -119,3 +119,37 @@ export function drawZoomBadge(ctx: PurCanvasContext, scene: PurScene): void {
   ctx.fillText(Math.round(scene.view.scale * 100) + '%', 16, scene.height - 16)
   ctx.restore()
 }
+
+/** Dash and gap of a guide line, in canvas pixels. */
+const GUIDE_DASH = 4
+const GUIDE_GAP = 4
+
+/**
+ * Draw the lines a drag has latched onto.
+ * @param ctx - drawing surface.
+ * @param scene - frame description.
+ */
+export function drawSnapGuides(ctx: PurCanvasContext, scene: PurScene): void {
+  const guides = scene.snapGuides
+  if (guides === undefined || guides === null) return
+  ctx.save()
+  ctx.strokeStyle = 'rgba(255,120,120,0.85)'
+  ctx.lineWidth = 1
+  ctx.setLineDash([GUIDE_DASH, GUIDE_GAP])
+  if (guides.x !== null) {
+    const screenX = guides.x * scene.view.scale + scene.view.offsetX
+    ctx.beginPath()
+    ctx.moveTo(screenX, 0)
+    ctx.lineTo(screenX, scene.height)
+    ctx.stroke()
+  }
+  if (guides.y !== null) {
+    const screenY = guides.y * scene.view.scale + scene.view.offsetY
+    ctx.beginPath()
+    ctx.moveTo(0, screenY)
+    ctx.lineTo(scene.width, screenY)
+    ctx.stroke()
+  }
+  ctx.setLineDash([])
+  ctx.restore()
+}

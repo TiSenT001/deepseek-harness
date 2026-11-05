@@ -9,6 +9,7 @@ import { handlePositions, RESIZE_HANDLES, resizeRect, type PurResizeHandle } fro
 import { elementAt, lineEndpointAt, pinAt } from './hit-test.ts'
 import { pushHistory } from './history.ts'
 import { finishPinDrag, local, momentumStep, reparentDragged } from './controller-gestures.ts'
+import { snapDrag } from './controller-snap.ts'
 import type { PurControllerEffect, PurControllerState, PurControllerTools, PurPointerEvent } from './controller-types.ts'
 import type { PurElement } from './types.ts'
 
@@ -248,6 +249,30 @@ export function pointerMove(tools: PurControllerTools, event: PurPointerEvent): 
       site.element.x = entry.x + moveX - entry.parentX
       site.element.y = entry.y + moveY - entry.parentY
     }
+    // Alt is the escape hatch: a drag with Alt held keeps the exact pointer offset.
+    state.snapGuides = { x: null, y: null }
+    const primary = state.dragStart.elements.find((entry) => entry !== null)
+    if (primary !== undefined && event.altKey !== true) {
+      const snap = snapDrag(state, primary.id)
+      if (snap.x !== null) {
+        for (const entry of state.dragStart.elements) {
+          if (entry === null) continue
+          const site = findElement(state.elements, entry.id)
+          if (site === null || site.element.type === 'line') continue
+          site.element.x = (site.element.x ?? 0) + snap.x.delta
+        }
+        state.snapGuides.x = snap.x.guide
+      }
+      if (snap.y !== null) {
+        for (const entry of state.dragStart.elements) {
+          if (entry === null) continue
+          const site = findElement(state.elements, entry.id)
+          if (site === null || site.element.type === 'line') continue
+          site.element.y = (site.element.y ?? 0) + snap.y.delta
+        }
+        state.snapGuides.y = snap.y.guide
+      }
+    }
     effects.push({ type: 'render' })
   } else if (state.selecting && state.selectionRect !== null) {
     state.selectionRect.w = event.clientX - event.rectLeft - state.selectionRect.x
@@ -267,6 +292,8 @@ export function pointerMove(tools: PurControllerTools, event: PurPointerEvent): 
  */
 export function pointerUp(tools: PurControllerTools, event: PurPointerEvent): PurControllerEffect[] {
   const { state } = tools
+  // Guides only exist for the duration of a drag.
+  state.snapGuides = { x: null, y: null }
   const pinEffects = finishPinDrag(tools, event)
   if (pinEffects !== null) return pinEffects
   const effects: PurControllerEffect[] = []

@@ -198,6 +198,7 @@ export const ZH = {
   fileTruncated: '文件较大，只显示前 1 MB。',
   fileLineCap: '只显示前',
   loadingFile: '加载文件…',
+  canvasLabel: '画布：拖动平移，滚轮缩放，双击空白新建文本，方向键微移选中元素',
   fileMetaName: '名称',
   fileMetaType: '类型',
   fileMetaSize: '大小',

@@ -28,6 +28,8 @@ export interface PurPointerEvent {
   metaKey: boolean
   /** Whether Shift was held. */
   shiftKey: boolean
+  /** Whether Alt was held, which turns snapping off for the drag. */
+  altKey?: boolean
 }
 
 /** Wheel event the adapter forwards, with the canvas rect origin resolved. */
@@ -220,6 +222,8 @@ export interface PurControllerState {
   clipboard: PurElement[]
   /** Elements whose lock badge pulses, filled by lock commands. */
   lockPulseIds: Set<string>
+  /** Guide lines the current drag latched onto, in world coordinates. */
+  snapGuides: { x: number | null; y: number | null }
 }
 
 /** Undo/redo stack of JSON snapshots (upstream `history` plus `historyIndex`). */

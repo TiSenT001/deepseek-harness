@@ -48,6 +48,7 @@ export function buildPurScene(controller: PurController, host: PurSceneHost): Pu
     hoveredLineId: state.hoveredLineId ?? undefined,
     hoverPin: state.hoverPin,
     selectionRect: state.selectionRect,
+    snapGuides: state.snapGuides,
     pinDrag: controller.pinDragPreview(),
     zoomBadgeAlpha: zoomBadgeAlpha(state.showZoomUntil, host.now()),
     lockPulseIds: state.lockPulseIds,
