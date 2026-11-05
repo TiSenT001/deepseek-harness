@@ -466,3 +466,19 @@ metadata(id INTEGER PRIMARY KEY, scene_rect TEXT, application_version TEXT,
 ### 注意
 
 salvage 只在「正常读表缺失所需 id」时触发（`importPlacedScene` 里判断 `missing`），因此不会覆盖已能正确读取的文件。
+
+## 附：旧版容器（无 SQLite）观察记录
+
+本机真实样本里出现了第三种 `.pur` 形态，与 SQLite 版并存，记录如下，供后续决定是否深挖。
+
+| 观察 | 证据 |
+|---|---|
+| 文件里**没有** `SQLite format 3` 头 | `G:\desktop\Work(1).pur`（89MB）全文件搜索为 0 |
+| 头部是可读的版本串 | 前 32 字节为 `00 00 00 08 00 31 00 2e 00 31 00 30 ...`，按 ASCII 读作 `1.10`，随后是哈希样字符串 |
+| 图片内嵌，且**以 PNG 为主** | 全文件 `89 50 4e 47` 出现 28 次、`ff d8 ff` 出现 8 次 |
+| 现有兜底只扫 JPEG | 因此这个文件在修复前导入结果是 0 张 |
+| PNG 分块链可以完整走到 `IEND` | 28 张全部能取出，尺寸合法 |
+
+修复后：同一文件导入 28 张卡片，按网格近似排布（`placed=false`），符合「容器不可解析时仍给用户结果」的兜底设计。
+
+**未做**：这个容器的元素坐标/层级/备注结构仍未知。要做的话需要按 QDataStream 反序列化，先确定它的类名与字段顺序（可参考 SQLite 版 `transform` 的做法：5 字节头 + 9 个 double）。
