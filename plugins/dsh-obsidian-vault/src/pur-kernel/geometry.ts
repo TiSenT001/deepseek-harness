@@ -4,6 +4,7 @@
  * positions. Pure; no canvas, DOM or host APIs.
  * @module dsh-obsidian-vault/pur-kernel/geometry
  */
+import { codeNodeRowY } from './code-node-layout.ts'
 import type { PurElement, PurPin, PurViewState } from './types.ts'
 
 /** World-space point. */
@@ -156,10 +157,7 @@ export function pinPosition(node: PurPinHost, isInput: boolean, index: number): 
   const rows = Math.max(inputs.length, outputs.length, 1)
   const w = node.w || 100
   const h = node.h || 80
-  const startY = h * 0.15
-  const endY = h * 0.85
-  const y = rows === 1 ? h / 2 : startY + index * ((endY - startY) / Math.max(rows - 1, 1))
-  return { x: isInput ? 0 : w, y }
+  return { x: isInput ? 0 : w, y: codeNodeRowY(h, rows, index) }
 }
 
 /**

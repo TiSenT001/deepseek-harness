@@ -243,60 +243,60 @@ export const GOLDEN_WORLD_RECTS: { id: string; rect: PurRect | null }[] = [
 
 /** Upstream `getPinWorldPos` results, null when the node or pin is absent. */
 export const GOLDEN_PIN_WORLD: { nodeId: string; pinId: string; result: (PurPoint & { isInput: boolean }) | null }[] = [
-  {
-    "nodeId": "n1",
-    "pinId": "o1",
-    "result": {
-      "x": 250,
-      "y": 18,
-      "isInput": false
+    {
+      "nodeId": "n1",
+      "pinId": "o1",
+      "result": {
+        "x": 250,
+        "y": 65.5,
+        "isInput": false
+      }
+    },
+    {
+      "nodeId": "n1",
+      "pinId": "i2",
+      "result": {
+        "x": 0,
+        "y": 92.5,
+        "isInput": true
+      }
+    },
+    {
+      "nodeId": "n2",
+      "pinId": "o3",
+      "result": {
+        "x": 410,
+        "y": 373,
+        "isInput": false
+      }
+    },
+    {
+      "nodeId": "n2",
+      "pinId": "i3",
+      "result": {
+        "x": 210,
+        "y": 373,
+        "isInput": true
+      }
+    },
+    {
+      "nodeId": "t1",
+      "pinId": "o1",
+      "result": null
+    },
+    {
+      "nodeId": "n1",
+      "pinId": "nope",
+      "result": null
+    },
+    {
+      "nodeId": "missing",
+      "pinId": "o1",
+      "result": null
     }
-  },
-  {
-    "nodeId": "n1",
-    "pinId": "i2",
-    "result": {
-      "x": 0,
-      "y": 102,
-      "isInput": true
-    }
-  },
-  {
-    "nodeId": "n2",
-    "pinId": "o3",
-    "result": {
-      "x": 410,
-      "y": 350,
-      "isInput": false
-    }
-  },
-  {
-    "nodeId": "n2",
-    "pinId": "i3",
-    "result": {
-      "x": 210,
-      "y": 350,
-      "isInput": true
-    }
-  },
-  {
-    "nodeId": "t1",
-    "pinId": "o1",
-    "result": null
-  },
-  {
-    "nodeId": "n1",
-    "pinId": "nope",
-    "result": null
-  },
-  {
-    "nodeId": "missing",
-    "pinId": "o1",
-    "result": null
-  }
-]
+  ]
 
-/** Upstream `getPinPosForElement` offsets for the given pin row counts. */
+/** Pin row offsets for the given pin row counts; the rows sit below the card header. */
 export const GOLDEN_PIN_OFFSETS: {
   w: number
   h: number
@@ -306,79 +306,79 @@ export const GOLDEN_PIN_OFFSETS: {
   index: number
   result: PurPoint
 }[] = [
-  {
-    "w": 250,
-    "h": 120,
-    "inputCount": 2,
-    "outputCount": 2,
-    "isInput": false,
-    "index": 0,
-    "result": {
-      "x": 250,
-      "y": 18
+    {
+      "w": 250,
+      "h": 120,
+      "inputCount": 2,
+      "outputCount": 2,
+      "isInput": false,
+      "index": 0,
+      "result": {
+        "x": 250,
+        "y": 65.5
+      }
+    },
+    {
+      "w": 250,
+      "h": 120,
+      "inputCount": 2,
+      "outputCount": 2,
+      "isInput": false,
+      "index": 1,
+      "result": {
+        "x": 250,
+        "y": 92.5
+      }
+    },
+    {
+      "w": 250,
+      "h": 120,
+      "inputCount": 2,
+      "outputCount": 2,
+      "isInput": true,
+      "index": 1,
+      "result": {
+        "x": 0,
+        "y": 92.5
+      }
+    },
+    {
+      "w": 200,
+      "h": 80,
+      "inputCount": 1,
+      "outputCount": 1,
+      "isInput": false,
+      "index": 0,
+      "result": {
+        "x": 200,
+        "y": 63
+      }
+    },
+    {
+      "w": 100,
+      "h": 60,
+      "inputCount": 0,
+      "outputCount": 1,
+      "isInput": false,
+      "index": 0,
+      "result": {
+        "x": 100,
+        "y": 63
+      }
+    },
+    {
+      "w": 0,
+      "h": 0,
+      "inputCount": 0,
+      "outputCount": 0,
+      "isInput": true,
+      "index": 0,
+      "result": {
+        "x": 0,
+        "y": 63
+      }
     }
-  },
-  {
-    "w": 250,
-    "h": 120,
-    "inputCount": 2,
-    "outputCount": 2,
-    "isInput": false,
-    "index": 1,
-    "result": {
-      "x": 250,
-      "y": 102
-    }
-  },
-  {
-    "w": 250,
-    "h": 120,
-    "inputCount": 2,
-    "outputCount": 2,
-    "isInput": true,
-    "index": 1,
-    "result": {
-      "x": 0,
-      "y": 102
-    }
-  },
-  {
-    "w": 200,
-    "h": 80,
-    "inputCount": 1,
-    "outputCount": 1,
-    "isInput": false,
-    "index": 0,
-    "result": {
-      "x": 200,
-      "y": 40
-    }
-  },
-  {
-    "w": 100,
-    "h": 60,
-    "inputCount": 0,
-    "outputCount": 1,
-    "isInput": false,
-    "index": 0,
-    "result": {
-      "x": 100,
-      "y": 30
-    }
-  },
-  {
-    "w": 0,
-    "h": 0,
-    "inputCount": 0,
-    "outputCount": 0,
-    "isInput": true,
-    "index": 0,
-    "result": {
-      "x": 0,
-      "y": 40
-    }
-  }
-]
+  ]
 
 /** Upstream grid spacing for each zoom level. */
 export const GOLDEN_GRID: { scale: number; step: number }[] = [
@@ -522,108 +522,86 @@ export const GOLDEN_ELEMENT_AT: { x: number; y: number; scale: number; id: strin
 
 /** Upstream `getPinAt` results. */
 export const GOLDEN_PIN_AT: { x: number; y: number; scale: number; hit: PurPinHit | null }[] = [
-  {
-    "x": 251,
-    "y": 19,
-    "scale": 1,
-    "hit": {
-      "nodeId": "n1",
-      "pinId": "o1",
-      "isOutput": true
+    {
+      "x": 251,
+      "y": 19,
+      "scale": 1,
+      "hit": null
+    },
+    {
+      "x": -1,
+      "y": 19,
+      "scale": 1,
+      "hit": null
+    },
+    {
+      "x": -1,
+      "y": 103,
+      "scale": 1,
+      "hit": {
+        "nodeId": "n1",
+        "pinId": "i2",
+        "isOutput": false
+      }
+    },
+    {
+      "x": 212,
+      "y": 323,
+      "scale": 1,
+      "hit": null
+    },
+    {
+      "x": 251,
+      "y": 19,
+      "scale": 0.5,
+      "hit": null
+    },
+    {
+      "x": 600,
+      "y": 10,
+      "scale": 1,
+      "hit": null
     }
-  },
-  {
-    "x": -1,
-    "y": 19,
-    "scale": 1,
-    "hit": {
-      "nodeId": "n1",
-      "pinId": "i1",
-      "isOutput": false
-    }
-  },
-  {
-    "x": -1,
-    "y": 103,
-    "scale": 1,
-    "hit": {
-      "nodeId": "n1",
-      "pinId": "i2",
-      "isOutput": false
-    }
-  },
-  {
-    "x": 212,
-    "y": 323,
-    "scale": 1,
-    "hit": null
-  },
-  {
-    "x": 251,
-    "y": 19,
-    "scale": 0.5,
-    "hit": {
-      "nodeId": "n1",
-      "pinId": "o1",
-      "isOutput": true
-    }
-  },
-  {
-    "x": 600,
-    "y": 10,
-    "scale": 1,
-    "hit": null
-  }
-]
+  ]
 
 /** Upstream `getLineEndpointAt` results. */
 export const GOLDEN_LINE_ENDPOINT_AT: { x: number; y: number; scale: number; hit: PurLineEndpointHit | null }[] = [
-  {
-    "x": 251,
-    "y": 19,
-    "scale": 1,
-    "hit": {
-      "lineId": "l1",
-      "isFrom": true,
-      "nodeId": "n1",
-      "pinId": "o1"
+    {
+      "x": 251,
+      "y": 19,
+      "scale": 1,
+      "hit": null
+    },
+    {
+      "x": 211,
+      "y": 323,
+      "scale": 1,
+      "hit": null
+    },
+    {
+      "x": 251,
+      "y": 19,
+      "scale": 0.5,
+      "hit": null
+    },
+    {
+      "x": 252,
+      "y": 104,
+      "scale": 1,
+      "hit": {
+        "lineId": "l2",
+        "isFrom": true,
+        "nodeId": "n1",
+        "pinId": "o2"
+      }
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "scale": 1,
+      "hit": null
     }
-  },
-  {
-    "x": 211,
-    "y": 323,
-    "scale": 1,
-    "hit": null
-  },
-  {
-    "x": 251,
-    "y": 19,
-    "scale": 0.5,
-    "hit": {
-      "lineId": "l1",
-      "isFrom": true,
-      "nodeId": "n1",
-      "pinId": "o1"
-    }
-  },
-  {
-    "x": 252,
-    "y": 104,
-    "scale": 1,
-    "hit": {
-      "lineId": "l2",
-      "isFrom": true,
-      "nodeId": "n1",
-      "pinId": "o2"
-    }
-  },
-  {
-    "x": 0,
-    "y": 0,
-    "scale": 1,
-    "hit": null
-  }
-]
+  ]
 
 /** Pin of the fixture's first code node, usable in tests that rebuild a node. */
 export const EXAMPLE_PIN: PurPin = { id: 'i1', label: 'a' }

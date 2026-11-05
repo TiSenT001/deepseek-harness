@@ -10,17 +10,16 @@ import type { PurCodeNodeElement, PurPin } from './types.ts'
 /** Card corner radius, in canvas pixels per zoom unit. */
 const CARD_RADIUS = 8
 
-/** Height of the header band, in world units; the divider sits at its bottom. */
-const HEADER_HEIGHT = 38
+import { CODE_BODY_BOTTOM, CODE_BODY_TOP, CODE_HEADER_HEIGHT, codeNodeRowY } from './code-node-layout.ts'
+
+/** Height of the header band, in world units. */
+const HEADER_HEIGHT = CODE_HEADER_HEIGHT
 
 /** Gap between the divider and the first pin row, in world units. */
-const BODY_TOP = 14
+const BODY_TOP = CODE_BODY_TOP
 
 /** Space kept below the last pin row, in world units. */
-const BODY_BOTTOM = 14
-
-/** Smallest row stride, in world units. */
-const ROW_MIN = 22
+const BODY_BOTTOM = CODE_BODY_BOTTOM
 
 /** Horizontal inset of the header text and the divider, in world units. */
 const INSET = 12
@@ -55,12 +54,8 @@ export function drawCodeNodeCard(ctx: PurCanvasContext, scene: PurScene, element
   ctx.stroke()
 
   const rows = Math.max(inputs.length, outputs.length, 1)
-  const top = (HEADER_HEIGHT + BODY_TOP) * scale
-  const bottom = height - BODY_BOTTOM * scale
-  const available = Math.max(ROW_MIN * scale * rows, bottom - top)
-  const stride = available / rows
-  /** Pin row centre in canvas pixels. */
-  const rowY = (index: number): number => top + stride * (index + 0.5)
+  /** Pin row centre in canvas pixels, using the layout hit-testing shares. */
+  const rowY = (index: number): number => codeNodeRowY(element.h || 80, rows, index) * scale
 
   ctx.textBaseline = 'middle'
   inputs.forEach((pin, index) => {

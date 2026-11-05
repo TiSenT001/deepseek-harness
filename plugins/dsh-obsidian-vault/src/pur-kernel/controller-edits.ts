@@ -9,7 +9,7 @@ import { codeInputNames, codeOutputKeys } from './note-raw.ts'
 import { codeNodeHeight } from './nodes.ts'
 import { commit } from './controller-selection.ts'
 import type { PurControllerEffect, PurControllerTools } from './controller-types.ts'
-import type { PurCodeNodeElement, PurPin } from './types.ts'
+import type { PurCodeNodeElement, PurElement, PurPin } from './types.ts'
 
 /**
  * Add a 200x60 text block with the locale placeholder as its body.
@@ -83,6 +83,8 @@ export function addCodeNode(tools: PurControllerTools, worldX: number, worldY: n
 
 /** The fields the code-node editor commits. */
 export interface PurCodeNodeCommit {
+  /** Code to store; defaults to the element's own body. */
+  readonly code?: string
   /** Raw title input; trimmed, with the fallback label when empty. */
   title: string
   /** Edited input pins; empty ids are regenerated. */
@@ -105,6 +107,45 @@ export function commitCodeNode(tools: PurControllerTools, nodeId: string, draft:
   node.title = draft.title.trim() || tools.labels.codeNodeFallbackTitle
   node.inputs = draft.inputs.map((pin) => ({ id: pin.id || tools.env.createId(), label: pin.label ? pin.label.trim() : '' }))
   node.outputs = draft.outputs.map((pin) => ({ id: pin.id || tools.env.createId(), label: pin.label ? pin.label.trim() : '' }))
+  return [...commit(tools), { type: 'notice', text: tools.labels.nodeUpdated }]
+}
+
+/**
+ * Turn a text card into a code node in place, keeping its position, size, colours
+ * and body. The body becomes the node's code, so text written with the text tool
+ * can be promoted to a reusable node without losing its place on the canvas.
+ * @param tools - shared controller tools.
+ * @param elementId - the text card to convert.
+ * @param draft - title and pins to apply.
+ * @returns the commit effects plus the update notice; empty for a non-text card.
+ */
+export function convertTextToCode(tools: PurControllerTools, elementId: string, draft: PurCodeNodeCommit): PurControllerEffect[] {
+  const site = findElement(tools.state.elements, elementId)
+  if (site === null || site.element.type !== 'text') return []
+  const text = site.element
+  const code = draft.code ?? text.content
+  const node: PurCodeNodeElement = {
+    ...text,
+    type: 'code-node',
+    content: code,
+    code,
+    title: draft.title.trim() || tools.labels.codeNodeFallbackTitle,
+    inputs: draft.inputs.map((pin) => ({ id: pin.id || tools.env.createId(), label: pin.label ? pin.label.trim() : '' })),
+    outputs: draft.outputs.map((pin) => ({ id: pin.id || tools.env.createId(), label: pin.label ? pin.label.trim() : '' })),
+  }
+  const replaceIn = (list: PurElement[]): boolean => {
+    for (let index = 0; index < list.length; index++) {
+      const candidate = list[index]
+      if (candidate === undefined) continue
+      if (candidate.id === elementId) {
+        list[index] = node
+        return true
+      }
+      if (candidate.type === 'group' && replaceIn(candidate.children)) return true
+    }
+    return false
+  }
+  replaceIn(tools.state.elements)
   return [...commit(tools), { type: 'notice', text: tools.labels.nodeUpdated }]
 }
 

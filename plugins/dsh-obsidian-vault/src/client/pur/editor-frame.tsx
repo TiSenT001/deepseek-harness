@@ -4,6 +4,7 @@
  * open the same looking panel.
  * @module dsh-obsidian-vault/client/pur/editor-frame
  */
+import { useEffect, useRef } from 'react'
 import type { CSSProperties, ReactNode } from 'react'
 
 /** Control style every editor field shares. */
@@ -67,6 +68,15 @@ export interface PurEditorFrameProps {
  * @param props - heading, callbacks and fields.
  */
 export function PurEditorFrame(props: PurEditorFrameProps): JSX.Element {
+  const dialogRef = useRef<HTMLDivElement | null>(null)
+  useEffect(() => {
+    // The canvas keeps the focus when the dialog opens, so without this every key —
+    // Escape included — went to the canvas instead of the form.
+    const dialog = dialogRef.current
+    if (dialog === null) return
+    const field = dialog.querySelector<HTMLElement>('input, textarea, select')
+    ;(field ?? dialog).focus()
+  }, [])
   return (
     <div
       className="ov-dialog-layer"
@@ -76,6 +86,8 @@ export function PurEditorFrame(props: PurEditorFrameProps): JSX.Element {
       }}
     >
       <div
+        ref={dialogRef}
+        tabIndex={-1}
         role="dialog"
         aria-modal="true"
         aria-label={props.title}

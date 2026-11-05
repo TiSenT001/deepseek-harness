@@ -37,6 +37,7 @@ import {
   addCodeNode,
   addTextBlock,
   commitCodeNode,
+  convertTextToCode,
   commitTextEdit,
   deleteElementWithLines,
 } from './controller-edits.ts'
@@ -179,6 +180,16 @@ export class PurController {
     if (drag.fromNodeId !== null && drag.fromPinId !== null) preview.from = { nodeId: drag.fromNodeId, pinId: drag.fromPinId }
     if (drag.toNodeId !== undefined && drag.toPinId !== undefined) preview.to = { nodeId: drag.toNodeId, pinId: drag.toPinId }
     return preview
+  }
+
+  /**
+   * Turn the given text card into a code node, keeping its place and styling.
+   * @param id - the text card.
+   * @param draft - title, code and pins for the node.
+   * @returns the commit effects.
+   */
+  convertTextToCode(id: string, draft: PurCodeNodeCommit): PurControllerEffect[] {
+    return convertTextToCode(this.tools, id, draft)
   }
 
   /**

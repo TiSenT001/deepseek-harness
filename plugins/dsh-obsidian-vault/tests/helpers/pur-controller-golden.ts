@@ -1,8 +1,10 @@
 /**
- * Golden controller traces captured by driving the upstream Pur Studio view's
- * real methods (onMouseDown/Move/Up, onWheel, onKeyDown, commands and
- * showContextMenu) over the scenarios in {@link CONTROLLER_SCENARIOS}. Ids are
- * deterministic (id0001...) and Date.now() is pinned at 1000.
+ * Golden controller traces captured by driving the real controller methods
+ * (onMouseDown/Move/Up, onWheel, onKeyDown, commands and showContextMenu) over the
+ * scenarios in {@link CONTROLLER_SCENARIOS}. Ids are deterministic (id0001...) and
+ * Date.now() is pinned at 1000. The pin scenarios were re-recorded after the
+ * code-node card moved its pin rows below the header, so their step points name
+ * where the pins are actually drawn.
  * @module dsh-obsidian-vault/tests/helpers/pur-controller-golden
  */
 import type { PurElement } from '../../src/pur-kernel/types.ts'
@@ -31387,7 +31389,7 @@ export const CONTROLLER_SCENARIOS: ControllerScenario[] = [
           "op": "down",
           "event": {
             "clientX": 260,
-            "clientY": 17.4
+            "clientY": 64.5
           }
         },
         "snapshot": {
@@ -31502,7 +31504,7 @@ export const CONTROLLER_SCENARIOS: ControllerScenario[] = [
           "op": "move",
           "event": {
             "clientX": 400,
-            "clientY": 44
+            "clientY": 63
           }
         },
         "snapshot": {
@@ -31616,7 +31618,7 @@ export const CONTROLLER_SCENARIOS: ControllerScenario[] = [
           "op": "up",
           "event": {
             "clientX": 400,
-            "clientY": 44
+            "clientY": 63
           }
         },
         "snapshot": {
@@ -31847,8 +31849,8 @@ export const CONTROLLER_SCENARIOS: ControllerScenario[] = [
         "op": {
           "op": "down",
           "event": {
-            "clientX": 400,
-            "clientY": 44
+            "clientX": 384.50088959177697,
+            "clientY": 63.16606189723096
           }
         },
         "snapshot": {
@@ -31972,7 +31974,7 @@ export const CONTROLLER_SCENARIOS: ControllerScenario[] = [
           "op": "move",
           "event": {
             "clientX": 400,
-            "clientY": 344
+            "clientY": 363
           }
         },
         "snapshot": {
@@ -32095,7 +32097,7 @@ export const CONTROLLER_SCENARIOS: ControllerScenario[] = [
           "op": "up",
           "event": {
             "clientX": 400,
-            "clientY": 344
+            "clientY": 363
           }
         },
         "snapshot": {
@@ -32326,8 +32328,8 @@ export const CONTROLLER_SCENARIOS: ControllerScenario[] = [
         "op": {
           "op": "down",
           "event": {
-            "clientX": 271,
-            "clientY": 28.4
+            "clientX": 275.49911040822303,
+            "clientY": 64.33393810276904
           }
         },
         "snapshot": {
@@ -32451,7 +32453,7 @@ export const CONTROLLER_SCENARIOS: ControllerScenario[] = [
           "op": "move",
           "event": {
             "clientX": 660,
-            "clientY": 344
+            "clientY": 363
           }
         },
         "snapshot": {
@@ -32574,7 +32576,7 @@ export const CONTROLLER_SCENARIOS: ControllerScenario[] = [
           "op": "up",
           "event": {
             "clientX": 660,
-            "clientY": 344
+            "clientY": 363
           }
         },
         "snapshot": {

@@ -179,12 +179,25 @@ export function PurTextEditor(props: PurEditorProps): JSX.Element | null {
         </Field>
         {snippetFlash === null ? null : <span style={{ ...purLabelStyle, marginBottom: 0 }}>{snippetFlash}</span>}
       </Section>
-      {isCode === true ? (
-        <Section title={props.t('pur.sectionPins')} columns={2}>
-          <PinList caption={props.t('pur.inputsTitle')} pins={inputs} onChange={setInputs} />
-          <PinList caption={props.t('pur.outputsTitle')} pins={outputs} onChange={setOutputs} />
-        </Section>
-      ) : null}
+      <Section title={props.t('pur.sectionPins')} columns={2}>
+        <PinList caption={props.t('pur.inputsTitle')} pins={inputs} onChange={setInputs} />
+        <PinList caption={props.t('pur.outputsTitle')} pins={outputs} onChange={setOutputs} />
+        {isCode === false ? (
+          <button
+            type="button"
+            className="ov-button"
+            style={{ gridColumn: '1 / -1', justifySelf: 'start' }}
+            onClick={() => {
+              // The draft becomes the node: text written here is the node's code, and
+              // the pins above are what the card will show.
+              props.run(props.controller.convertTextToCode(props.id, { title, code: body, inputs, outputs }))
+              props.onClose()
+            }}
+          >
+            {props.t('pur.convertToCode')}
+          </button>
+        ) : null}
+      </Section>
       {isCode === true ? (
         <button
           type="button"
