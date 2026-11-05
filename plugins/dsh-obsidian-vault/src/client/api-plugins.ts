@@ -66,6 +66,20 @@ export interface VaultTextRead {
  * @param path - vault-relative path.
  * @returns the text and its modification time.
  */
+/**
+ * Size and modification time of one vault file, without reading its contents.
+ * @param path - vault-relative path.
+ * @returns the metadata, or undefined when the file is absent.
+ */
+export async function bridgeInfo(path: string): Promise<{ size: number; mtime: number } | undefined> {
+  try {
+    const result = await request<{ size: number; mtime: number }>(`bridge/info?path=${encodeURIComponent(path)}`)
+    return { size: result.size, mtime: result.mtime }
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 404) return undefined
+    throw error
+  }
+}
 export async function bridgeReadTextVersion(path: string): Promise<VaultTextRead> {
   const result = await request<{ content: string; mtime?: number }>(`bridge/read-text?path=${encodeURIComponent(path)}`)
   return result.mtime === undefined ? { content: result.content } : { content: result.content, mtime: result.mtime }

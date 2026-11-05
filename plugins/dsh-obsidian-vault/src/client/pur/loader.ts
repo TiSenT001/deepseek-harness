@@ -4,12 +4,16 @@
  * `收件箱/` export writes.
  * @module dsh-obsidian-vault/client/pur/loader
  */
-import { assetUrl, bridgeExists, bridgeReadText, bridgeReadTextVersion, bridgeWriteBinary, bridgeWriteText, createFolder, fetchNote, fetchTree, purAssetUrl } from '../api.ts'
+import { assetUrl, bridgeExists, bridgeInfo, bridgeReadText, bridgeReadTextVersion, bridgeWriteBinary, bridgeWriteText, createFolder, fetchNote, fetchTree, purAssetUrl } from '../api.ts'
 import { parseStudioDocument, serializeStudioDocument, splitBucketedKey } from '../../pur-kernel/index.ts'
 import type { PurImageLookup, PurStudioDocument } from '../../pur-kernel/index.ts'
+import { DocumentCache } from './doc-cache.ts'
 import type { TreeNodeDto } from '../../protocol.ts'
 
 /** Folder every export lands in, mirroring the Obsidian adapter. */
+
+/** Parsed documents, validated by size and modification time. */
+const studioDocuments = new DocumentCache<PurStudioDocument>()
 export const PUR_EXPORT_DIR = '收件箱'
 
 /** A note as the pane needs it: path, display title and full text. */
@@ -27,20 +31,41 @@ const studioVersions = new Map<string, number>()
 
 /**
  * Read a `.PurStudio` document; an empty or unparsable file loads as an empty
- * canvas rather than failing the view.
+ * canvas rather than failing the view. A document that has not changed since it
+ * was last parsed comes from the cache, so reopening a tab is instant.
  * @param path - vault-relative document path.
  * @returns the parsed document, or an empty one.
  */
 export async function loadStudioDocument(path: string): Promise<PurStudioDocument> {
-  const read = await bridgeReadTextVersion(path)
-  if (read.mtime !== undefined) studioVersions.set(path, read.mtime)
-  const text = read.content
-  if (text.trim() === '') return { elements: [], viewState: { offsetX: 0, offsetY: 0, scale: 1 } }
-  try {
-    return parseStudioDocument(text)
-  } catch {
-    return { elements: [], viewState: { offsetX: 0, offsetY: 0, scale: 1 } }
+  // A held document is only worth a freshness probe; a new one goes straight to the
+  // read, so opening a canvas does not pay for an extra round trip.
+  const known = studioDocuments.mtimeOf(path)
+  if (known !== undefined) {
+    const info = await bridgeInfo(path).catch(() => undefined)
+    if (info !== undefined) {
+      const cached = studioDocuments.get(path, info)
+      if (cached !== undefined) {
+        studioVersions.set(path, info.mtime)
+        return cached
+      }
+    }
   }
+  const read = await bridgeReadTextVersion(path)
+  const mtime = read.mtime
+  if (mtime !== undefined) studioVersions.set(path, mtime)
+  const text = read.content
+  const empty: PurStudioDocument = { elements: [], viewState: { offsetX: 0, offsetY: 0, scale: 1 } }
+  let document = empty
+  if (text.trim() !== '') {
+    try {
+      document = parseStudioDocument(text)
+    } catch {
+      document = empty
+    }
+  }
+  // Only a document with a known version can be revalidated later.
+  if (mtime !== undefined) studioDocuments.set(path, { size: 0, mtime }, document)
+  return document
 }
 
 /**
@@ -60,8 +85,17 @@ export async function loadStudioDocument(path: string): Promise<PurStudioDocumen
  */
 export async function saveStudioDocument(path: string, document: PurStudioDocument, force = false): Promise<void> {
   const expected = force ? undefined : studioVersions.get(path)
-  const result = await bridgeWriteText(path, serializeStudioDocument(document), expected)
-  if (result.mtime !== undefined) studioVersions.set(path, result.mtime)
+  const content = serializeStudioDocument(document)
+  await bridgeWriteText(path, content, expected)
+  // The pane now knows exactly what the file holds, so the cache is refreshed with
+  // the version this write produced instead of being dropped: switching tabs would
+  // otherwise re-read and re-parse the whole document on every return. The stamp is
+  // read back rather than taken from the write response, because two saves can
+  // resolve out of order and the later answer is not always the later version.
+  const stamp = await bridgeInfo(path).catch(() => undefined)
+  if (stamp === undefined) studioDocuments.delete(path)
+  else studioDocuments.set(path, stamp, document)
+  if (stamp !== undefined) studioVersions.set(path, stamp.mtime)
 }
 
 /** Fetched note texts, so pipeline code generation can resolve linked code. */

@@ -38,7 +38,20 @@ export async function serveBridgeRoute(
         send(response, 200, { path, data: bytes.toString('base64') })
         return
       }
-      case 'bridge/read-text': {
+      case 'bridge/info': {
+        const path = new URL(request.url ?? '/', 'http://localhost').searchParams.get('path') ?? ''
+        if (path.length === 0) {
+          send(response, 400, { error: 'path is required' })
+          return
+        }
+        const info = await files.info(path)
+        if (info === undefined) {
+          send(response, 404, { path, error: 'not found' })
+          return
+        }
+        send(response, 200, { path, size: info.size, mtime: info.mtime })
+        return
+      }      case 'bridge/read-text': {
         const path = new URL(request.url ?? '/', 'http://localhost').searchParams.get('path') ?? ''
         if (path.length === 0) {
           send(response, 400, { error: 'path is required' })
