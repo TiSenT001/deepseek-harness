@@ -7,7 +7,7 @@
  * @module dsh-obsidian-vault/client/pur/PurStudioPane
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { PurController, createElementId, elementAt, executeEffects, screenToWorld } from '../../pur-kernel/index.ts'
+import { PurController, createElementId, elementAt, executeEffects, pushHistory, screenToWorld } from '../../pur-kernel/index.ts'
 import type { PurControllerEffect, PurControllerEnv, PurMenuContext, PurPointerEvent, PurRenderPreferences } from '../../pur-kernel/index.ts'
 import type { Translate } from '../i18n.ts'
 import { LoadingState } from '../ui/kit/index.ts'
@@ -235,6 +235,9 @@ void saveStudioDocument(path, document).catch(async (error: unknown) => {
     void loadStudioDocument(path).then((document) => {
       if (cancelled) return
       controllerRef.current = new PurController(env, labels.controller, document.elements, document.viewState)
+      // The loaded document becomes the first snapshot, so the first edit can be
+      // undone instead of landing on an empty stack.
+      pushHistory(controllerRef.current.history, controllerRef.current.state.elements)
       dirtyRef.current = true
       setReady(true)
     })
@@ -352,7 +355,7 @@ void saveStudioDocument(path, document).catch(async (error: unknown) => {
         onKeyDown={(event) => {
           const controller = controllerRef.current
           if (controller === null) return
-          const result = controller.keyDown({ key: event.key, ctrlKey: event.ctrlKey, metaKey: event.metaKey })
+          const result = controller.keyDown({ key: event.key, ctrlKey: event.ctrlKey, metaKey: event.metaKey, shiftKey: event.shiftKey })
           if (!result.handled) return
           event.preventDefault()
           run(result.effects)

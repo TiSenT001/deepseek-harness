@@ -8,7 +8,7 @@
  */
 import { ItemView, Notice, TFile } from 'obsidian'
 import type { EventRef, TAbstractFile, WorkspaceLeaf } from 'obsidian'
-import { PurController, createElementId, executeEffects, parseStudioDocument, serializeStudioDocument } from '../pur-kernel/index.ts'
+import { PurController, createElementId, executeEffects, parseStudioDocument, pushHistory, serializeStudioDocument } from '../pur-kernel/index.ts'
 import type { PurControllerEffect, PurControllerEnv, PurEffectSink, PurMenuHost, PurRenderPreferences, PurStudioDocument } from '../pur-kernel/index.ts'
 import type { PurLabelBundles } from '../client/i18n/pur-labels.ts'
 import { labelsFor, readerFor } from './labels.ts'
@@ -249,7 +249,10 @@ export class PurStudioView extends ItemView {
 
   /** Replace the controller's document, creating the controller on first load. */
   private adoptDocument(document: PurStudioDocument): void {
-    if (this.controller === null) this.controller = new PurController(this.env, this.labels.controller, document.elements, document.viewState)
+    if (this.controller === null) {
+      this.controller = new PurController(this.env, this.labels.controller, document.elements, document.viewState)
+      pushHistory(this.controller.history, this.controller.state.elements)
+    }
     else {
       this.controller.state.elements = document.elements
       this.controller.state.view = document.viewState

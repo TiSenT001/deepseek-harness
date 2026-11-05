@@ -52,6 +52,8 @@ export interface PurKeyEvent {
   ctrlKey: boolean
   /** Whether Meta was held. */
   metaKey: boolean
+  /** Whether Shift was held, which makes an arrow key move ten units. */
+  shiftKey?: boolean
 }
 
 /** Environment the adapter supplies once at construction. */
@@ -160,6 +162,10 @@ export interface PurResizeState {
   w: number
   /** Height at resize start. */
   h: number
+  /** Position at resize start, so Escape can restore the card. */
+  x: number
+  /** Position at resize start. */
+  y: number
   /** Enclosing-group x offset. */
   parentX: number
   /** Enclosing-group y offset. */
@@ -184,6 +190,12 @@ export interface PurControllerState {
   pinDrag: PurPinDragState | null
   /** Last pointer position in viewport coordinates. */
   lastMouse: { x: number; y: number }
+  /** Selection as it stood when the rubber band started, for Escape. */
+  selectionBefore: Set<string> | null
+  /** View offset when the pan started, for Escape. */
+  panStart: { x: number; y: number } | null
+  /** Timestamp of the last arrow-key nudge, which groups a burst into one step. */
+  nudgeAt: number | null
   /** Whether a pan drag is active. */
   panning: boolean
   /** Whether a rubber-band selection is active. */

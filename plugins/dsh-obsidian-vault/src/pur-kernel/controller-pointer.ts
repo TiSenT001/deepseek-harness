@@ -69,6 +69,8 @@ export function pointerDown(tools: PurControllerTools, event: PurPointerEvent): 
         startY: event.clientY,
         w: rect.w,
         h: rect.h,
+        x: element.x ?? 0,
+        y: element.y ?? 0,
         parentX: site.parentX,
         parentY: site.parentY,
       }
@@ -100,12 +102,14 @@ export function pointerDown(tools: PurControllerTools, event: PurPointerEvent): 
         }
       }
     } else {
+      state.selectionBefore = new Set(state.selectedIds)
       if (!event.shiftKey && !event.ctrlKey && !event.metaKey) state.selectedIds.clear()
       state.selecting = true
       state.selectionRect = { x: sx, y: sy, w: 0, h: 0 }
     }
   } else if (event.button === 1 || event.button === 2) {
     state.rightClickStart = { x: event.clientX, y: event.clientY }
+    state.panStart = { x: state.view.offsetX, y: state.view.offsetY }
     state.panning = true
   }
   return [{ type: 'render' }]

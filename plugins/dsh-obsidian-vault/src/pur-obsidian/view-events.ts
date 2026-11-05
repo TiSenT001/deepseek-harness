@@ -68,7 +68,7 @@ export function wirePurCanvas(view: PurStudioView, canvas: HTMLCanvasElement): v
   canvas.addEventListener('keydown', (event) => {
     const controller = view.controllerOrNull()
     if (controller === null) return
-    const result = controller.keyDown({ key: event.key, ctrlKey: event.ctrlKey, metaKey: event.metaKey })
+    const result = controller.keyDown({ key: event.key, ctrlKey: event.ctrlKey, metaKey: event.metaKey, shiftKey: event.shiftKey })
     if (!result.handled) return
     event.preventDefault()
     view.runEffects(result.effects)

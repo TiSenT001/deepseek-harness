@@ -29,6 +29,8 @@ import {
   toggleLock,
 } from './controller-layers.ts'
 import { fitToView, selectAll } from './controller-view.ts'
+import { cancelGesture } from './controller-cancel.ts'
+import { NUDGE_STEP, NUDGE_STEP_LARGE, nudgeSelection } from './controller-nudge.ts'
 import {
   addCodeNode,
   addTextBlock,
@@ -104,6 +106,9 @@ export class PurController {
         selectionRect: null,
         pinDrag: null,
         lastMouse: { x: 0, y: 0 },
+        selectionBefore: null,
+        panStart: null,
+        nudgeAt: null,
         panning: false,
         selecting: false,
         dragging: false,
@@ -180,6 +185,19 @@ export class PurController {
     const { state, labels } = this.tools
     if (this.tools.env.hasOpenDialog()) return { handled: false, effects: [] }
     const ctrl = event.ctrlKey || event.metaKey
+    // Escape backs out of whatever is in flight; the menu and editors handle their
+    // own dismissal before the canvas ever sees the key.
+    if (event.key === 'Escape') {
+      const effects = cancelGesture(this.tools)
+      return effects === undefined ? { handled: false, effects: [] } : { handled: true, effects }
+    }
+    if (event.key === 'ArrowLeft' || event.key === 'ArrowRight' || event.key === 'ArrowUp' || event.key === 'ArrowDown') {
+      if (state.selectedIds.size === 0) return { handled: false, effects: [] }
+      const step = event.shiftKey === true ? NUDGE_STEP_LARGE : NUDGE_STEP
+      const dx = event.key === 'ArrowLeft' ? -step : event.key === 'ArrowRight' ? step : 0
+      const dy = event.key === 'ArrowUp' ? -step : event.key === 'ArrowDown' ? step : 0
+      return { handled: true, effects: nudgeSelection(this.tools, dx, dy) }
+    }
     if (event.key === 'Delete' || event.key === 'Backspace') {
       if (state.selectedIds.size === 0) return { handled: false, effects: [] }
       return { handled: true, effects: deleteSelected(this.tools) }

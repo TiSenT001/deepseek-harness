@@ -140,11 +140,15 @@ export interface PurMenuHostDeps {
   readonly openPreview?: (id: string, destination: PurOpenDestination) => void
 }
 
-/** Push imported elements into the document with one history snapshot. */
+/** Push imported elements into the document, select them and frame them. */
 function insertElements(deps: PurMenuHostDeps, elements: readonly PurElement[]): void {
   deps.controller.state.elements.push(...elements)
   pushHistory(deps.controller.history, deps.controller.state.elements)
-  deps.run([{ type: 'save' }, { type: 'render' }])
+  // Imported coordinates are the source board's own, which can sit far from the
+  // current viewport; selecting the new cards and fitting them shows the result
+  // instead of leaving the canvas looking unchanged.
+  deps.controller.state.selectedIds = new Set(elements.map((element) => element.id))
+  deps.run([...deps.controller.fitToView(), { type: 'save' }, { type: 'render' }])
 }
 
 /** Room left around an imported board, in screen pixels. */
