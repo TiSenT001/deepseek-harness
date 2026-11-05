@@ -172,6 +172,7 @@ export const ZH = {
   cancel: '取消',
   ok: '确定',
   externalizeImages: '外部化画布图片（存入 Pur画布/附件）',
+  largeEmbeddedHint: "画布内嵌图片约 {mb} MB，打开和保存都会变慢；可用菜单「{action}」缩小文件",
   canvasSource: '画布',
   previewImage: '图片预览',
   loadingVaults: '读取知识库列表…',

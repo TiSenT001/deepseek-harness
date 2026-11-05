@@ -8,6 +8,7 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { PurController, createElementId, elementAt, executeEffects, pushHistory, screenToWorld } from '../../pur-kernel/index.ts'
+import type { PurElement } from '../../pur-kernel/index.ts'
 import type { PurControllerEffect, PurControllerEnv, PurMenuContext, PurPointerEvent, PurRenderPreferences } from '../../pur-kernel/index.ts'
 import type { Translate } from '../i18n.ts'
 import { LoadingState } from '../ui/kit/index.ts'
@@ -42,6 +43,23 @@ export interface PurStudioPaneProps {
   readonly path: string
   /** Open another vault path; newly created canvases navigate to themselves. */
   readonly onOpenPath?: (path: string, destination?: PurOpenDestination) => void
+}
+
+/** Embedded picture bytes above which the pane points at the externalize command. */
+const LARGE_EMBEDDED_BYTES = 4 * 1024 * 1024
+
+/**
+ * Count the bytes a document carries as inline data URLs.
+ * @param elements - the element tree.
+ * @returns the summed string length of inline pictures.
+ */
+function embeddedBytesOf(elements: readonly PurElement[]): number {
+  let total = 0
+  for (const element of elements) {
+    if (element.type === 'image') total += element.dataURL?.length ?? 0
+    if (element.type === 'group') total += embeddedBytesOf(element.children)
+  }
+  return total
 }
 
 /** How long the pointer must rest before the double-click hint appears. */
@@ -242,6 +260,12 @@ void saveStudioDocument(path, document).catch(async (error: unknown) => {
     void loadStudioDocument(path).then((document) => {
       if (cancelled) return
       controllerRef.current = new PurController(env, labels.controller, document.elements, document.viewState)
+      // A canvas that still embeds its pictures is tens of megabytes of JSON; say so
+      // once, because the fix is one menu entry away.
+      const embedded = embeddedBytesOf(document.elements)
+      if (embedded > LARGE_EMBEDDED_BYTES) {
+        showNotice(t('largeEmbeddedHint').replace('{mb}', String(Math.round(embedded / 1048576))).replace('{action}', t('externalizeImages')))
+      }
       // The loaded document becomes the first snapshot, so the first edit can be
       // undone instead of landing on an empty stack.
       pushHistory(controllerRef.current.history, controllerRef.current.state.elements)

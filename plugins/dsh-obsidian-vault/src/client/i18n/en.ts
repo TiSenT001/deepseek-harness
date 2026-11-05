@@ -173,6 +173,7 @@ export const EN: Dict = {
   cancel: 'Cancel',
   ok: 'OK',
   externalizeImages: 'Externalize canvas images (into Pur画布/附件)',
+  largeEmbeddedHint: "This canvas carries about {mb} MB of embedded pictures, which slows opening and saving; the \"{action}\" menu entry moves them into vault files",
   canvasSource: 'canvas',
   previewImage: 'Image preview',
   loadingVaults: 'Loading vaults…',
