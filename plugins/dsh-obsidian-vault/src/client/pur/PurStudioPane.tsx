@@ -17,7 +17,8 @@ import type { PurMenuHostDeps } from './host.ts'
 import { purBundles } from './labels.ts'
 import { PurImageCache, loadStudioDocument, resolveNoteLink, saveStudioDocument } from './loader.ts'
 import { canvasHintFor } from './hint.ts'
-import { fetchCodeSnippets, fetchOpenPrograms } from '../api.ts'
+import { fetchCodeSnippets, fetchOpenPrograms, saveCodeSnippet } from '../api.ts'
+import type { CodeSnippetDto } from '../api.ts'
 import { refreshNoteLinks } from './refresh-links.ts'
 import { VaultWriteConflict } from '../api.ts'
 import { useAsk } from '../ui/useAsk.tsx'
@@ -83,8 +84,8 @@ export function PurStudioPane({ t, path, onOpenPath }: PurStudioPaneProps): JSX.
   const [notice, setNotice] = useState<string | null>(null)
   const [openPrograms, setOpenPrograms] = useState<readonly { id: string; label: string }[]>([])
   const openProgramsRef = useRef<readonly { id: string; label: string }[]>([])
-  const [snippets, setSnippets] = useState<readonly { id: string; title: string }[]>([])
-  const snippetsRef = useRef<readonly { id: string; title: string }[]>([])
+  const [snippets, setSnippets] = useState<readonly CodeSnippetDto[]>([])
+  const snippetsRef = useRef<readonly CodeSnippetDto[]>([])
   const [preview, setPreview] = useState<{ id: string; destination: PurOpenDestination } | null>(null)
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   // Canvas size is read on demand: the controller uses it for fit-to-view and
@@ -180,7 +181,7 @@ void saveStudioDocument(path, document).catch(async (error: unknown) => {
       .then((programs) => setOpenPrograms(programs.filter((program) => program.available).map((program) => ({ id: program.id, label: program.label }))))
       .catch(() => undefined)
     void fetchCodeSnippets()
-      .then((nodes) => setSnippets(nodes.map((node) => ({ id: node.id, title: node.title }))))
+      .then((nodes) => setSnippets(nodes))
       .catch(() => undefined)
   }, [ready])
 
@@ -307,7 +308,7 @@ void saveStudioDocument(path, document).catch(async (error: unknown) => {
       ...(onOpenPath === undefined ? {} : { openPath: onOpenPath }),
       reloadSnippets: () => {
         void fetchCodeSnippets()
-          .then((nodes) => setSnippets(nodes.map((node) => ({ id: node.id, title: node.title }))))
+          .then((nodes) => setSnippets(nodes))
           .catch(() => undefined)
       },
       openPreview: (id, destination) => setPreview({ id, destination }),
@@ -466,6 +467,13 @@ void saveStudioDocument(path, document).catch(async (error: unknown) => {
       <PurPaneOverlays
         t={t}
         labels={labels}
+        snippets={snippets}
+        onSaveSnippet={async (snippet) => {
+          const nodes = await saveCodeSnippet(snippet).catch(() => null)
+          if (nodes === null) return false
+          setSnippets(nodes)
+          return true
+        }}
         menu={menu}
         editor={editor}
         prompt={prompt}

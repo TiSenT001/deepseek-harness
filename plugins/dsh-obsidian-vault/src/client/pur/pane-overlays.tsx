@@ -11,6 +11,7 @@ import type { Translate } from '../i18n.ts'
 import type { PurLabelBundles } from '../i18n/pur-labels.ts'
 import { PurGroupEditor, PurLineEditor, PurNoteLinkEditor, PurTextEditor } from './editors.tsx'
 import type { PurEditorProps } from './editors.tsx'
+import type { CodeSnippetDto } from '../api.ts'
 import { PurContextMenu } from './menu.tsx'
 import type { PurMenuState } from './menu.tsx'
 import { PurNotePicker, PurPrompt } from './picker.tsx'
@@ -70,6 +71,10 @@ export interface PurPaneOverlaysProps {
   readonly picker: PurPickerState | null
   /** The transient notice text, if any. */
   readonly notice: string | null
+  /** Saved snippets the editors can insert or extend. */
+  readonly snippets: readonly CodeSnippetDto[]
+  /** Store a snippet shaped from an editor draft; absent where the pane cannot write. */
+  readonly onSaveSnippet?: (snippet: CodeSnippetDto) => Promise<boolean>
   /** The controller, null before the document loads. @returns the controller. */
   readonly controller: () => PurController | null
   /** The menu dispatch host. */
@@ -103,7 +108,15 @@ export function PurPaneOverlays(props: PurPaneOverlaysProps): JSX.Element {
   const editorElement = (state: PurEditorState): JSX.Element | null => {
     const active = controller()
     if (active === null) return null
-    const editorProps: PurEditorProps = { t, controller: active, id: state.id, run, onClose: closeEditor }
+    const editorProps: PurEditorProps = {
+      t,
+      controller: active,
+      id: state.id,
+      run,
+      onClose: closeEditor,
+      snippets: props.snippets,
+      ...(props.onSaveSnippet === undefined ? {} : { onSaveSnippet: props.onSaveSnippet }),
+    }
     if (state.kind === 'text') return <PurTextEditor {...editorProps} />
     if (state.kind === 'group') return <PurGroupEditor {...editorProps} />
     if (state.kind === 'line') return <PurLineEditor {...editorProps} />

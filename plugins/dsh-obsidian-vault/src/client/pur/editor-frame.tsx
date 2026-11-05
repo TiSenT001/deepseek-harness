@@ -28,6 +28,20 @@ export const FIELD_GAP = 8
 /** Dialog width shared by every element editor. */
 export const EDITOR_WIDTH = 460
 
+/** Dialog width for the text and code editors, which hold a body plus snippet controls. */
+export const EDITOR_WIDTH_WIDE = 560
+
+/** A colour swatch: the native picker with the field's own border, sized to a control. */
+export const purColorStyle: CSSProperties = {
+  width: 46,
+  height: 30,
+  padding: 2,
+  border: '1px solid rgba(128,128,128,0.35)',
+  borderRadius: 4,
+  background: 'transparent',
+  cursor: 'pointer',
+}
+
 /** Props for {@link PurEditorFrame}. */
 export interface PurEditorFrameProps {
   /** Dialog heading. */
@@ -42,6 +56,8 @@ export interface PurEditorFrameProps {
   readonly cancelLabel: string
   /** Dialog fields. */
   readonly children: ReactNode
+  /** Wider dialog for the editors that need a body plus its controls. */
+  readonly wide?: boolean
 }
 
 /**
@@ -64,7 +80,7 @@ export function PurEditorFrame(props: PurEditorFrameProps): JSX.Element {
         aria-modal="true"
         aria-label={props.title}
         className="ov-dialog"
-        style={{ width: EDITOR_WIDTH, maxWidth: '92vw', maxHeight: '86vh', display: 'flex', flexDirection: 'column', background: 'var(--dsw-alias-bg-layer-1, #1b1b20)', border: '1px solid rgba(128,128,128,0.28)', borderRadius: 10, boxShadow: '0 18px 48px rgba(0,0,0,0.55)' }}
+        style={{ width: props.wide === true ? EDITOR_WIDTH_WIDE : EDITOR_WIDTH, maxWidth: '92vw', maxHeight: '86vh', display: 'flex', flexDirection: 'column', background: 'var(--dsw-alias-bg-layer-1, #1b1b20)', border: '1px solid rgba(128,128,128,0.28)', borderRadius: 10, boxShadow: '0 18px 48px rgba(0,0,0,0.55)' }}
         onKeyDown={(event) => {
           event.stopPropagation()
           if (event.key === 'Escape') props.onDiscard()

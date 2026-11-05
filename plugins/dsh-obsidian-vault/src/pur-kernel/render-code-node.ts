@@ -1,6 +1,6 @@
 /**
- * Code-node cards: the minimal dark body, a truncated title, the type badge,
- * a divider and pins whose labels sit in faint pills inside the card.
+ * Code-node cards: a dark body with a header, a divider, and pin rows laid out
+ * inside the body so a label never collides with the title or the type badge.
  * @module dsh-obsidian-vault/pur-kernel/render-code-node
  */
 import type { PurCanvasContext, PurScene } from './render-types.ts'
@@ -10,8 +10,26 @@ import type { PurCodeNodeElement, PurPin } from './types.ts'
 /** Card corner radius, in canvas pixels per zoom unit. */
 const CARD_RADIUS = 8
 
-/** Distance from the card's top edge to the title baseline, in zoom units. */
-const TITLE_Y = 19
+/** Height of the header band, in world units; the divider sits at its bottom. */
+const HEADER_HEIGHT = 38
+
+/** Gap between the divider and the first pin row, in world units. */
+const BODY_TOP = 14
+
+/** Space kept below the last pin row, in world units. */
+const BODY_BOTTOM = 14
+
+/** Smallest row stride, in world units. */
+const ROW_MIN = 22
+
+/** Horizontal inset of the header text and the divider, in world units. */
+const INSET = 12
+
+/** Gap between a pin's circle and its label pill, in world units. */
+const PIN_GAP = 9
+
+/** Horizontal padding inside a label pill, in world units. */
+const PILL_PAD = 4
 
 /**
  * Draw a code-node card.
@@ -25,33 +43,53 @@ export function drawCodeNodeCard(ctx: PurCanvasContext, scene: PurScene, element
   const scale = scene.view.scale
   const inputs = element.inputs ?? []
   const outputs = element.outputs ?? []
-  const height = element.h || 80
+  const height = (element.h || 80) * scale
   ctx.fillStyle = element.bgColor || 'rgba(32, 34, 38, 0.92)'
   fillRoundedCard(ctx, 0, 0, screenW, screenH, CARD_RADIUS * scale)
   drawHeader(ctx, scene, element, screenW, scale)
   ctx.strokeStyle = 'rgba(255, 255, 255, 0.06)'
   ctx.lineWidth = 1
   ctx.beginPath()
-  ctx.moveTo(12 * scale, 38 * scale)
-  ctx.lineTo(screenW - 12 * scale, 38 * scale)
+  ctx.moveTo(INSET * scale, HEADER_HEIGHT * scale)
+  ctx.lineTo(screenW - INSET * scale, HEADER_HEIGHT * scale)
   ctx.stroke()
+
   const rows = Math.max(inputs.length, outputs.length, 1)
-  const start = height * 0.15
-  const end = height * 0.85
-  const spacing = (end - start) / Math.max(rows - 1, 1)
-  ctx.textAlign = 'left'
+  const top = (HEADER_HEIGHT + BODY_TOP) * scale
+  const bottom = height - BODY_BOTTOM * scale
+  const available = Math.max(ROW_MIN * scale * rows, bottom - top)
+  const stride = available / rows
+  /** Pin row centre in canvas pixels. */
+  const rowY = (index: number): number => top + stride * (index + 0.5)
+
+  ctx.textBaseline = 'middle'
   inputs.forEach((pin, index) => {
-    drawPin(ctx, scene, element, pin, rows === 1 ? height / 2 : start + index * spacing, false, screenW, scale)
+    drawPin(ctx, scene, element, pin, rowY(index), false, screenW, scale)
   })
-  ctx.textAlign = 'right'
   outputs.forEach((pin, index) => {
-    drawPin(ctx, scene, element, pin, rows === 1 ? height / 2 : start + index * spacing, true, screenW, scale)
+    drawPin(ctx, scene, element, pin, rowY(index), true, screenW, scale)
   })
-  drawPinCount(ctx, inputs.length, outputs.length, end * scale + 16 * scale, screenH, screenW, scale)
+  drawPinCount(ctx, inputs.length, outputs.length, screenH - BODY_BOTTOM * scale + 4 * scale, screenH, screenW, scale)
 }
 
 /**
- * Draw the title and type badge above the divider.
+ * Truncate text to a pixel width using the current font.
+ * @param ctx - drawing surface with the font already set.
+ * @param text - the text to fit.
+ * @param maxWidth - available width in canvas pixels.
+ * @returns the text, with an ellipsis when it had to shrink.
+ */
+function fitText(ctx: PurCanvasContext, text: string, maxWidth: number): string {
+  if (maxWidth <= 0) return ''
+  if (ctx.measureText(text).width <= maxWidth) return text
+  let shortened = text
+  while (shortened.length > 1 && ctx.measureText(`${shortened}…`).width > maxWidth) shortened = shortened.slice(0, -1)
+  return `${shortened}…`
+}
+
+/**
+ * Draw the title and the type badge above the divider. The title is measured
+ * against the badge's own width, so a long title cannot run under it.
  * @param ctx - drawing surface.
  * @param scene - frame description.
  * @param element - the code node.
@@ -59,41 +97,40 @@ export function drawCodeNodeCard(ctx: PurCanvasContext, scene: PurScene, element
  * @param scale - zoom.
  */
 function drawHeader(ctx: PurCanvasContext, scene: PurScene, element: PurCodeNodeElement, screenW: number, scale: number): void {
-  ctx.fillStyle = '#ffffff'
-  ctx.font = `600 ${13 * scale}px -apple-system, "Segoe UI", sans-serif`
-  ctx.textAlign = 'left'
+  const baseline = (HEADER_HEIGHT / 2) * scale
   ctx.textBaseline = 'middle'
-  let title = element.title || scene.labels.codeNodeFallbackTitle
-  const maxWidth = screenW - 70 * scale
-  if (ctx.measureText(title).width > maxWidth) {
-    while (ctx.measureText(title + '...').width > maxWidth && title.length > 1) title = title.substring(0, title.length - 1)
-    title += '...'
-  }
-  ctx.fillText(title, 12 * scale, TITLE_Y * scale)
-  ctx.fillStyle = 'rgba(255, 255, 255, 0.35)'
   ctx.font = `${10 * scale}px -apple-system, "SF Mono", monospace`
+  const badge = scene.labels.codeNodeBadge
+  const badgeWidth = ctx.measureText(badge).width
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.35)'
   ctx.textAlign = 'right'
-  ctx.fillText(scene.labels.codeNodeBadge, screenW - 12 * scale, TITLE_Y * scale)
+  ctx.fillText(badge, screenW - INSET * scale, baseline)
+
+  ctx.font = `600 ${13 * scale}px -apple-system, "Segoe UI", sans-serif`
+  ctx.fillStyle = '#ffffff'
+  ctx.textAlign = 'left'
+  const maxWidth = screenW - 2 * INSET * scale - badgeWidth - 10 * scale
+  const title = fitText(ctx, element.title || scene.labels.codeNodeFallbackTitle, maxWidth)
+  ctx.fillText(title, INSET * scale, baseline)
 }
 
 /**
  * Draw one pin: a hollow input circle on the left or a filled output circle on
- * the right, plus its label pill.
+ * the right, plus its label pill, truncated so two facing labels cannot overlap.
  * @param ctx - drawing surface.
  * @param scene - frame description.
  * @param element - the code node owning the pin.
  * @param pin - the pin.
- * @param localY - pin row in element-local world units.
+ * @param pinY - row centre in canvas pixels.
  * @param isOutput - true for the right edge.
  * @param screenW - canvas width.
  * @param scale - zoom.
  */
-function drawPin(ctx: PurCanvasContext, scene: PurScene, element: PurCodeNodeElement, pin: PurPin, localY: number, isOutput: boolean, screenW: number, scale: number): void {
+function drawPin(ctx: PurCanvasContext, scene: PurScene, element: PurCodeNodeElement, pin: PurPin, pinY: number, isOutput: boolean, screenW: number, scale: number): void {
   const hover = scene.hoverPin
   const matched = hover !== null && hover !== undefined && hover.nodeId === element.id && hover.pinId === pin.id
   const hovering = matched && (isOutput ? hover.isOutput === true : hover.isOutput !== true)
-  const radius = hovering ? 7 * scale : 5.5 * scale
-  const pinY = localY * scale
+  const radius = (hovering ? 7 : 5.5) * scale
   ctx.beginPath()
   ctx.arc(isOutput ? screenW : 0, pinY, radius, 0, Math.PI * 2)
   if (isOutput) {
@@ -106,21 +143,27 @@ function drawPin(ctx: PurCanvasContext, scene: PurScene, element: PurCodeNodeEle
     ctx.lineWidth = 1.5 * scale
     ctx.stroke()
   }
-  const label = pin.label || pin.id || ''
-  const width = ctx.measureText(label).width
-  const anchorX = isOutput ? screenW - radius - width - 10 * scale : (radius + 10) * scale
+
+  ctx.font = `${11 * scale}px -apple-system, "Segoe UI", sans-serif`
+  ctx.textBaseline = 'middle'
+  ctx.textAlign = isOutput ? 'right' : 'left'
+  // Each side owns half the card, so two facing labels stop short of each other.
+  const half = screenW / 2 - (INSET + PIN_GAP + radius) * scale
+  const label = fitText(ctx, pin.label || pin.id || '', Math.max(0, half - PILL_PAD * scale))
+  const textWidth = ctx.measureText(label).width
+  const anchorX = isOutput ? screenW - radius - PIN_GAP * scale : radius + PIN_GAP * scale
+  const pillX = isOutput ? anchorX - textWidth - PILL_PAD * scale : anchorX - PILL_PAD * scale
   ctx.save()
-  pillPath(ctx, anchorX - 4 * scale, pinY - 8 * scale, width + 8 * scale, 16 * scale, 8 * scale)
-  ctx.fillStyle = 'rgba(255,255,255,0.04)'
+  pillPath(ctx, pillX, pinY - 8 * scale, textWidth + PILL_PAD * 2 * scale, 16 * scale, 8 * scale)
+  ctx.fillStyle = 'rgba(255,255,255,0.05)'
   ctx.fill()
   ctx.restore()
   ctx.fillStyle = 'rgba(210,210,215,0.85)'
-  ctx.font = `${11 * scale}px -apple-system, "Segoe UI", sans-serif`
-  ctx.fillText(label, anchorX, pinY + 4 * scale)
+  ctx.fillText(label, anchorX, pinY)
 }
 
 /**
- * Draw the `inputs ← · outputs →` footer when it fits above the bottom edge.
+ * Draw the `inputs ← · outputs →` footer when it fits inside the card.
  * @param ctx - drawing surface.
  * @param inputCount - number of input pins.
  * @param outputCount - number of output pins.
@@ -130,10 +173,11 @@ function drawPin(ctx: PurCanvasContext, scene: PurScene, element: PurCodeNodeEle
  * @param scale - zoom.
  */
 function drawPinCount(ctx: PurCanvasContext, inputCount: number, outputCount: number, y: number, screenH: number, screenW: number, scale: number): void {
-  if (y >= screenH - 8 * scale) return
+  if (y >= screenH - 6 * scale) return
   if (inputCount + outputCount === 0) return
   ctx.fillStyle = 'rgba(255, 255, 255, 0.28)'
   ctx.font = `${9.5 * scale}px -apple-system, "SF Mono", monospace`
   ctx.textAlign = 'center'
+  ctx.textBaseline = 'alphabetic'
   ctx.fillText(`${inputCount} ← · ${outputCount} →`, screenW / 2, y)
 }

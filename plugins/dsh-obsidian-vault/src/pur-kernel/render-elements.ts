@@ -95,7 +95,9 @@ function drawCard(
 ): void {
   const element = placed.element
   const scale = scene.view.scale
-  if ((element.type === 'text' || element.type === 'code-node') && element.title) {
+  // A code node already shows its title in the card header, so only plain text
+  // cards get the pill above them.
+  if (element.type === 'text' && element.title) {
     drawTitlePill(ctx, element.title, element, x, y, scale)
   }
   const editing = scene.editingIds?.has(element.id) ?? false
