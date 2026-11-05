@@ -281,19 +281,63 @@ export function extractEmbeddedPictures(bytes: Uint8Array): readonly { name: str
   const found: { name: string; bytes: Uint8Array }[] = []
   let offset = 0
   while (offset + 3 < bytes.byteLength) {
-    if (bytes[offset] !== 0xff || bytes[offset + 1] !== 0xd8 || bytes[offset + 2] !== 0xff) {
-      offset += 1
-      continue
+    // JPEG: start of image, then walk the segment chain to the end of image.
+    if (bytes[offset] === 0xff && bytes[offset + 1] === 0xd8 && bytes[offset + 2] === 0xff) {
+      const length = jpegLengthAt(bytes, offset)
+      if (length !== undefined && length >= 128) {
+        found.push({ name: `embedded-${found.length}.jpg`, bytes: bytes.subarray(offset, offset + length) })
+        offset += length
+        continue
+      }
+    } else if (isPngHeader(bytes, offset)) {
+      // PNG: header, then chunks until the end chunk, which closes the picture.
+      // The chunk chain already proves the picture is whole, so the size floor only
+      // rejects a header that happens to sit inside unrelated bytes.
+      const length = pngLengthAt(bytes, offset)
+      if (length !== undefined && length >= 64) {
+        found.push({ name: `embedded-${found.length}.png`, bytes: bytes.subarray(offset, offset + length) })
+        offset += length
+        continue
+      }
     }
-    const length = jpegLengthAt(bytes, offset)
-    if (length === undefined || length < 128) {
-      offset += 1
-      continue
-    }
-    found.push({ name: `embedded-${found.length}.jpg`, bytes: bytes.subarray(offset, offset + length) })
-    offset += length
+    offset += 1
   }
   return found
+}
+
+/**
+ * Whether the bytes at an offset start a PNG.
+ * @param bytes - the document.
+ * @param offset - where the header would start.
+ * @returns true for the eight byte signature.
+ */
+function isPngHeader(bytes: Uint8Array, offset: number): boolean {
+  return bytes[offset] === 0x89
+    && bytes[offset + 1] === 0x50
+    && bytes[offset + 2] === 0x4e
+    && bytes[offset + 3] === 0x47
+    && bytes[offset + 4] === 0x0d
+    && bytes[offset + 5] === 0x0a
+    && bytes[offset + 6] === 0x1a
+    && bytes[offset + 7] === 0x0a
+}
+
+/**
+ * Length of the PNG starting at an offset, read from its chunk chain.
+ * @param bytes - the document.
+ * @param start - where the signature starts.
+ * @returns the byte length, or undefined when the chunk chain is broken.
+ */
+function pngLengthAt(bytes: Uint8Array, start: number): number | undefined {
+  let offset = start + 8
+  while (offset + 8 <= bytes.byteLength) {
+    const length = ((bytes[offset] ?? 0) << 24) | ((bytes[offset + 1] ?? 0) << 16) | ((bytes[offset + 2] ?? 0) << 8) | (bytes[offset + 3] ?? 0)
+    if (length < 0 || offset + 12 + length > bytes.byteLength) return undefined
+    const type = String.fromCharCode(bytes[offset + 4] ?? 0, bytes[offset + 5] ?? 0, bytes[offset + 6] ?? 0, bytes[offset + 7] ?? 0)
+    offset += 12 + length
+    if (type === 'IEND') return offset - start
+  }
+  return undefined
 }
 
 /**

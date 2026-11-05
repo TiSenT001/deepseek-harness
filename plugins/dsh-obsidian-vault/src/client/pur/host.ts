@@ -260,6 +260,12 @@ export function createPurMenuHost(deps: () => PurMenuHostDeps): PurMenuHost {
         const bytes = new Uint8Array(await file.arrayBuffer())
         const data = toBase64(bytes)
         const result = await importPurFile(file.name, data)
+        // A container this reader cannot decode must say so; an empty insert would
+        // look like the click did nothing.
+        if (result.elements.length === 0) {
+          d.notice(d.t('pur.importFailed'))
+          return
+        }
         const placed = result.elements.map((element, index) => toCanvasElement(element, `imported-${index}`, at.x, at.y))
         await addImportedThumbnails(placed)
         insertElements(d, placed)
