@@ -139,12 +139,16 @@ function drawPin(ctx: PurCanvasContext, scene: PurScene, element: PurCodeNodeEle
     ctx.stroke()
   }
 
+  // An unlabelled pin stays a bare circle: the internal id is not something the
+  // user wrote, and printing it made a half-filled node look broken.
+  const text = (pin.label ?? '').trim()
+  if (text === '') return
   ctx.font = `${11 * scale}px -apple-system, "Segoe UI", sans-serif`
   ctx.textBaseline = 'middle'
   ctx.textAlign = isOutput ? 'right' : 'left'
   // Each side owns half the card, so two facing labels stop short of each other.
   const half = screenW / 2 - (INSET + PIN_GAP + radius) * scale
-  const label = fitText(ctx, pin.label || pin.id || '', Math.max(0, half - PILL_PAD * scale))
+  const label = fitText(ctx, text, Math.max(0, half - PILL_PAD * scale))
   const textWidth = ctx.measureText(label).width
   const anchorX = isOutput ? screenW - radius - PIN_GAP * scale : radius + PIN_GAP * scale
   const pillX = isOutput ? anchorX - textWidth - PILL_PAD * scale : anchorX - PILL_PAD * scale

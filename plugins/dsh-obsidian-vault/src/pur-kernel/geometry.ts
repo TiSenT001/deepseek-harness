@@ -39,6 +39,8 @@ export interface PurElementSite {
 
 /** Element properties pin layout reads. */
 export interface PurPinHost {
+  /** Element kind; code nodes reserve a header above their rows. */
+  readonly type?: string
   /** Element width; upstream falls back to 100. */
   w?: number | undefined
   /** Element height; upstream falls back to 80. */
@@ -157,7 +159,25 @@ export function pinPosition(node: PurPinHost, isInput: boolean, index: number): 
   const rows = Math.max(inputs.length, outputs.length, 1)
   const w = node.w || 100
   const h = node.h || 80
-  return { x: isInput ? 0 : w, y: codeNodeRowY(h, rows, index) }
+  // A code node reserves a header, so its rows start below it; text and note-link
+  // cards have no header and keep the rows they always had. A host without a kind
+  // is a code node, which is what every older caller meant.
+  const y = node.type === undefined || node.type === 'code-node' ? codeNodeRowY(h, rows, index) : rowYWithoutHeader(h, rows, index)
+  return { x: isInput ? 0 : w, y }
+}
+
+/**
+ * Pin row for cards without a header, matching their renderer.
+ * @param height - card height.
+ * @param rows - number of rows, at least one.
+ * @param index - zero-based row.
+ * @returns the row centre in world units.
+ */
+function rowYWithoutHeader(height: number, rows: number, index: number): number {
+  if (rows === 1) return height / 2
+  const start = height * 0.15
+  const end = height * 0.85
+  return start + index * ((end - start) / (rows - 1))
 }
 
 /**

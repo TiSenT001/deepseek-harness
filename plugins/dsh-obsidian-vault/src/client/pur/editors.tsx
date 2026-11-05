@@ -34,7 +34,7 @@ export interface PurEditorProps {
 }
 
 /** One editable pin row list; the draft commits as `{id, label}` pairs. */
-function PinList(props: { caption: string; pins: readonly { id: string; label: string }[]; onChange: (pins: { id: string; label: string }[]) => void }): JSX.Element {
+function PinList(props: { caption: string; placeholder: string; pins: readonly { id: string; label: string }[]; onChange: (pins: { id: string; label: string }[]) => void }): JSX.Element {
   return (
     <div>
       <span style={purLabelStyle}>{props.caption}</span>
@@ -43,6 +43,7 @@ function PinList(props: { caption: string; pins: readonly { id: string; label: s
           <div key={pin.id === '' ? `new-${index}` : pin.id} style={{ display: 'flex', gap: 8 }}>
             <input
               style={purInputStyle}
+              placeholder={props.placeholder}
               value={pin.label}
               onChange={(event) => props.onChange(props.pins.map((other, i) => (i === index ? { ...other, label: event.target.value } : other)))}
             />
@@ -100,10 +101,17 @@ export function PurTextEditor(props: PurEditorProps): JSX.Element | null {
     }).catch(() => setSnippetFlash(props.t('pur.snippetFailed')))
   }
   const commit = (): void => {
-    if (isCode) props.run(props.controller.updateElement(props.id, { code: body }))
-    else props.run(props.controller.commitTextEdit(props.id, body, title.trim() === '' ? undefined : title.trim()))
-    props.run(props.controller.updateElement(props.id, { color, fontSize: numberValue(fontSize, 14), fontFamily }))
-    if (isCode) props.run(props.controller.commitCodeNode(props.id, { title: title.trim(), inputs, outputs }))
+    if (isCode) {
+      props.run(props.controller.updateElement(props.id, { code: body }))
+      props.run(props.controller.updateElement(props.id, { color, fontSize: numberValue(fontSize, 14), fontFamily }))
+      props.run(props.controller.commitCodeNode(props.id, { title: title.trim(), inputs, outputs }))
+    } else {
+      props.run(props.controller.commitTextEdit(props.id, body, title.trim() === '' ? undefined : title.trim()))
+      props.run(props.controller.updateElement(props.id, { color, fontSize: numberValue(fontSize, 14), fontFamily }))
+      // A text card keeps its kind but may carry pins, so it can be wired without
+      // being promoted to a code node.
+      if (inputs.length > 0 || outputs.length > 0) props.run(props.controller.setPins(props.id, { inputs, outputs }))
+    }
     props.onClose()
   }
   return (
@@ -180,8 +188,8 @@ export function PurTextEditor(props: PurEditorProps): JSX.Element | null {
         {snippetFlash === null ? null : <span style={{ ...purLabelStyle, marginBottom: 0 }}>{snippetFlash}</span>}
       </Section>
       <Section title={props.t('pur.sectionPins')} columns={2}>
-        <PinList caption={props.t('pur.inputsTitle')} pins={inputs} onChange={setInputs} />
-        <PinList caption={props.t('pur.outputsTitle')} pins={outputs} onChange={setOutputs} />
+        <PinList caption={props.t('pur.inputsTitle')} placeholder={props.t('pur.pinLabelPlaceholder')} pins={inputs} onChange={setInputs} />
+        <PinList caption={props.t('pur.outputsTitle')} placeholder={props.t('pur.pinLabelPlaceholder')} pins={outputs} onChange={setOutputs} />
         {isCode === false ? (
           <button
             type="button"

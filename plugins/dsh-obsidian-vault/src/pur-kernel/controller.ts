@@ -38,6 +38,7 @@ import {
   addTextBlock,
   commitCodeNode,
   convertTextToCode,
+  setElementPins,
   commitTextEdit,
   deleteElementWithLines,
 } from './controller-edits.ts'
@@ -180,6 +181,16 @@ export class PurController {
     if (drag.fromNodeId !== null && drag.fromPinId !== null) preview.from = { nodeId: drag.fromNodeId, pinId: drag.fromPinId }
     if (drag.toNodeId !== undefined && drag.toPinId !== undefined) preview.to = { nodeId: drag.toNodeId, pinId: drag.toPinId }
     return preview
+  }
+
+  /**
+   * Replace a card's pins without changing its kind.
+   * @param id - the card.
+   * @param draft - input and output pins.
+   * @returns the commit effects.
+   */
+  setPins(id: string, draft: { inputs: readonly { id: string; label: string }[]; outputs: readonly { id: string; label: string }[] }): PurControllerEffect[] {
+    return setElementPins(this.tools, id, draft)
   }
 
   /**

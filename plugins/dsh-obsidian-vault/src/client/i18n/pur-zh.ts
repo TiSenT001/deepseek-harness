@@ -96,6 +96,7 @@ export const PUR_ZH = {
   'pur.sectionContent': '内容',
   'pur.sectionStyle': '样式',
   'pur.sectionPins': '引脚',
+  'pur.pinLabelPlaceholder': "引脚名称",
   'pur.convertToCode': "转为代码节点",
   'pur.sectionSnippets': "代码片段",
   'pur.insertSnippet': "插入片段",

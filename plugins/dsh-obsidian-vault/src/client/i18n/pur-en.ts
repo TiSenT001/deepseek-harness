@@ -94,6 +94,7 @@ export const PUR_EN: Record<keyof typeof PUR_ZH, string> = {
   'pur.sectionContent': 'Content',
   'pur.sectionStyle': 'Style',
   'pur.sectionPins': 'Pins',
+  'pur.pinLabelPlaceholder': "Pin label",
   'pur.convertToCode': "Convert to code node",
   'pur.sectionSnippets': "Snippets",
   'pur.insertSnippet': "Insert snippet",

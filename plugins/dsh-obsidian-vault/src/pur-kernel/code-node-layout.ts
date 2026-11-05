@@ -27,9 +27,21 @@ export const CODE_ROW_MIN = 22
  */
 export function codeNodeRowY(height: number, rows: number, index: number): number {
   const safeRows = Math.max(rows, 1)
-  const top = CODE_HEADER_HEIGHT + CODE_BODY_TOP
-  const bottom = height - CODE_BODY_BOTTOM
-  const available = Math.max(CODE_ROW_MIN * safeRows, bottom - top)
+  // Rows live between the divider and the bottom padding. A card too short for its
+  // pins compresses the rows instead of drawing them past its own edge.
+  const start = Math.min(CODE_HEADER_HEIGHT + CODE_BODY_TOP, Math.max(height - 10, 0))
+  const end = Math.max(start, height - 6)
+  const available = end - start
   const stride = available / safeRows
-  return top + stride * (index + 0.5)
+  return start + stride * (index + 0.5)
+}
+
+/**
+ * Height a code node needs so its rows keep the standard stride.
+ * @param rows - number of pin rows, at least one.
+ * @returns the minimum height in world units.
+ */
+export function codeNodeMinHeight(rows: number): number {
+  const safeRows = Math.max(rows, 1)
+  return CODE_HEADER_HEIGHT + CODE_BODY_TOP + safeRows * CODE_ROW_MIN + CODE_BODY_BOTTOM
 }

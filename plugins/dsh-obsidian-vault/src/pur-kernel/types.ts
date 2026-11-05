@@ -67,6 +67,10 @@ export interface PurTextElement extends PurElementBase {
   type: 'text'
   /** Card text; newlines are preserved. */
   content: string
+  /** Input pins the card declares; a card with pins can be wired. */
+  inputs?: PurPin[]
+  /** Output pins the card declares. */
+  outputs?: PurPin[]
   /** When true the body renders bold. */
   bold?: boolean
   /** Body fill alpha, defaulting to 0.92. */

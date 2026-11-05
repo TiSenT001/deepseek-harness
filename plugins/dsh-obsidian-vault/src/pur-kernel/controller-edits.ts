@@ -6,6 +6,7 @@
  */
 import { findElement } from './geometry.ts'
 import { codeInputNames, codeOutputKeys } from './note-raw.ts'
+import { codeNodeMinHeight } from './code-node-layout.ts'
 import { codeNodeHeight } from './nodes.ts'
 import { commit } from './controller-selection.ts'
 import type { PurControllerEffect, PurControllerTools } from './controller-types.ts'
@@ -107,7 +108,33 @@ export function commitCodeNode(tools: PurControllerTools, nodeId: string, draft:
   node.title = draft.title.trim() || tools.labels.codeNodeFallbackTitle
   node.inputs = draft.inputs.map((pin) => ({ id: pin.id || tools.env.createId(), label: pin.label ? pin.label.trim() : '' }))
   node.outputs = draft.outputs.map((pin) => ({ id: pin.id || tools.env.createId(), label: pin.label ? pin.label.trim() : '' }))
+  // A node that gained pins needs room for them; growing the card is less
+  // surprising than letting rows squeeze together.
+  const rows = Math.max(node.inputs.length, node.outputs.length, 1)
+  node.h = Math.max(node.h ?? 80, codeNodeMinHeight(rows))
   return [...commit(tools), { type: 'notice', text: tools.labels.nodeUpdated }]
+}
+
+/**
+ * Give any pin-capable card a fresh pin list. Text cards and note links draw pins
+ * without a header, so they stay text cards; only a code node needs the height
+ * guarantee that comes with its header band.
+ * @param tools - shared controller tools.
+ * @param elementId - the card to update.
+ * @param draft - input and output pins.
+ * @returns the commit effects; empty for lines and missing cards.
+ */
+export function setElementPins(tools: PurControllerTools, elementId: string, draft: { inputs: readonly { id: string; label: string }[]; outputs: readonly { id: string; label: string }[] }): PurControllerEffect[] {
+  const site = findElement(tools.state.elements, elementId)
+  if (site === null || site.element.type === 'line') return []
+  const element = site.element
+  element.inputs = draft.inputs.map((pin) => ({ id: pin.id || tools.env.createId(), label: pin.label ? pin.label.trim() : '' }))
+  element.outputs = draft.outputs.map((pin) => ({ id: pin.id || tools.env.createId(), label: pin.label ? pin.label.trim() : '' }))
+  if (element.type === 'code-node') {
+    const rows = Math.max(element.inputs.length, element.outputs.length, 1)
+    element.h = Math.max(element.h ?? 80, codeNodeMinHeight(rows))
+  }
+  return commit(tools)
 }
 
 /**
@@ -133,6 +160,8 @@ export function convertTextToCode(tools: PurControllerTools, elementId: string, 
     inputs: draft.inputs.map((pin) => ({ id: pin.id || tools.env.createId(), label: pin.label ? pin.label.trim() : '' })),
     outputs: draft.outputs.map((pin) => ({ id: pin.id || tools.env.createId(), label: pin.label ? pin.label.trim() : '' })),
   }
+  const rows = Math.max(node.inputs?.length ?? 0, node.outputs?.length ?? 0, 1)
+  node.h = Math.max(node.h ?? 80, codeNodeMinHeight(rows))
   const replaceIn = (list: PurElement[]): boolean => {
     for (let index = 0; index < list.length; index++) {
       const candidate = list[index]
