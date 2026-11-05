@@ -44,6 +44,10 @@ export interface ImportedImage extends ImportedPlacement {
 export interface ImportedText extends ImportedPlacement {
   readonly type: 'text'
   readonly text: string
+  /** Body is bold in the source note. */
+  readonly bold?: boolean
+  /** Body size in pixels, when the source note set one. */
+  readonly fontSize?: number
   /** Text colour as stored by PureRef. */
   readonly textColor?: string
   /** Card fill as stored by PureRef. */
@@ -640,6 +644,8 @@ async function importPlacedScene(
       w: fixedWidth > 0 ? fixedWidth : TEXT_MIN_WIDTH,
       h: fixedHeight > 0 ? fixedHeight : Math.max(TEXT_MIN_HEIGHT, Math.min(TEXT_MAX_HEIGHT, noteLines * TEXT_LINE_HEIGHT + 32)),
       text: note,
+      ...(noteInfo?.bold === true ? { bold: true } : {}),
+      ...(noteInfo?.fontSize === undefined ? {} : { fontSize: noteInfo.fontSize }),
       ...(noteInfo?.textColor === undefined ? {} : { textColor: noteInfo.textColor }),
       ...(noteInfo?.backgroundColor === undefined ? {} : { bgColor: noteInfo.backgroundColor }),
     }

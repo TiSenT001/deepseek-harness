@@ -79,7 +79,8 @@ export function toCanvasElement(
       // the gaps.
       bgColor: element.bgColor ?? NOTE_BG,
       color: element.textColor ?? '#e0e0e0',
-      fontSize: 14,
+      fontSize: element.fontSize ?? 14,
+      ...(element.bold === true ? { bold: true } : {}),
     }
   }
   return { ...placement, type: 'image', original: element.ref }

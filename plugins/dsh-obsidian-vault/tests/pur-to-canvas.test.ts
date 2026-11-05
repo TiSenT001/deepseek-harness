@@ -11,7 +11,7 @@ import type { ImportedPurElement } from '../src/client/api-vault.ts'
 test('a text card keeps the colours it was imported with', () => {
   const imported: ImportedPurElement = { type: 'text', x: 10, y: 20, w: 220, h: 90, text: 'hello', bgColor: '#11223380', textColor: '#ff0000' }
   const element = toCanvasElement(imported, 'id', 0, 0)
-  assert.equal(element.type, 'text')
+  assert.ok(element.type === 'text')
   assert.equal(element.bgColor, '#11223380')
   assert.equal(element.color, '#ff0000')
   assert.equal(element.content, 'hello')
@@ -20,6 +20,7 @@ test('a text card keeps the colours it was imported with', () => {
 test('a text card without colours falls back to the canvas default', () => {
   const imported: ImportedPurElement = { type: 'text', x: 0, y: 0, w: 220, h: 90, text: 'plain' }
   const element = toCanvasElement(imported, 'id', 0, 0)
+  assert.ok(element.type === 'text')
   assert.ok(element.bgColor !== undefined && element.bgColor !== '')
   assert.equal(element.color, '#e0e0e0')
 })
@@ -55,4 +56,19 @@ test('rotation, opacity and lock carry over', () => {
   assert.equal(element.rotation, 45)
   assert.equal(element.opacity, 0.5)
   assert.equal(element.locked, true)
+})
+test('bold and a size from the source note reach the card', () => {
+  const imported: ImportedPurElement = { type: 'text', x: 0, y: 0, w: 220, h: 90, text: 'bold', bold: true, fontSize: 21 }
+  const element = toCanvasElement(imported, 'id', 0, 0)
+  assert.ok(element.type === 'text')
+  assert.equal(element.bold, true)
+  assert.equal(element.fontSize, 21)
+})
+
+test('a note without a size keeps the canvas default', () => {
+  const imported: ImportedPurElement = { type: 'text', x: 0, y: 0, w: 220, h: 90, text: 'plain' }
+  const element = toCanvasElement(imported, 'id', 0, 0)
+  assert.ok(element.type === 'text')
+  assert.equal(element.fontSize, 14)
+  assert.equal(element.bold, undefined)
 })

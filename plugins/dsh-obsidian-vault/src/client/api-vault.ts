@@ -357,6 +357,10 @@ export interface ImportedPurText extends ImportedPurPlacement {
   readonly type: 'text'
   /** Card body. */
   readonly text: string
+  /** Body is bold in the source note. */
+  readonly bold?: boolean
+  /** Body size in pixels, when the source note set one. */
+  readonly fontSize?: number
   /** Text colour as stored by PureRef. */
   readonly textColor?: string
   /** Card fill as stored by PureRef. */

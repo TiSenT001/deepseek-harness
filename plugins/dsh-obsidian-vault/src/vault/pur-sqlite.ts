@@ -40,6 +40,8 @@ export interface PurSceneData {
     /** Note body and styling, when the item is a note. */
     readonly note?: {
       readonly text: string
+      readonly bold?: boolean
+      readonly fontSize?: number
       readonly textColor?: string
       readonly backgroundColor?: string
       readonly style: number
@@ -488,6 +490,26 @@ function readLeafPage(bytes: Buffer, offset: number, pageSize: number): SceneRow
  * @param html - the stored note.
  * @returns the readable text.
  */
+/**
+ * Read the few text attributes Qt stores in a note's rich text: whether the body is
+ * bold and the first explicit font size.
+ * @param html - the stored HTML.
+ * @returns the attributes that were present.
+ */
+export function richTextStyle(html: string): { bold?: boolean; fontSize?: number } {
+  const bold = /<b[\s>]|<strong[\s>]|font-weight:\s*(?:bold|[6-9]00)/i.test(html)
+  const size = /font-size:\s*(\d+(?:\.\d+)?)\s*(pt|px)/i.exec(html)
+  const style: { bold?: boolean; fontSize?: number } = {}
+  if (bold) style.bold = true
+  if (size !== null) {
+    const value = Number(size[1])
+    // CSS takes pixels; Qt notes write points, and 1pt is 4/3 of a pixel.
+    const pixels = size[2]?.toLowerCase() === 'pt' ? Math.round((value * 4) / 3) : Math.round(value)
+    if (Number.isFinite(pixels) && pixels >= 6 && pixels <= 96) style.fontSize = pixels
+  }
+  return style
+}
+
 export function richTextToPlain(html: string): string {
   const withoutHead = html
     .replace(/<!DOCTYPE[^>]*>/gi, '')
@@ -573,8 +595,11 @@ function decodeScene(database: SceneDatabase): PurSceneData | undefined {
       const size = Buffer.isBuffer(row.values[2]) ? decodeSize(row.values[2]) : { width: -1, height: -1 }
       const textColor = qtColorToCss(textOf(row.values[0] ?? null))
       const backgroundColor = qtColorToCss(textOf(row.values[3] ?? null))
+      const body = textOf(row.values[4] ?? null)
+      const style = richTextStyle(body)
       notes.set(row.rowId, {
-        text: textOf(row.values[4] ?? null),
+        text: body,
+        ...style,
         ...(textColor === undefined ? {} : { textColor }),
         ...(backgroundColor === undefined ? {} : { backgroundColor }),
         style: Number(row.values[5] ?? 0),
