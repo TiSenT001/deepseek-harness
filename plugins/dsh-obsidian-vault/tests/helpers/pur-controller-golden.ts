@@ -31389,7 +31389,7 @@ export const CONTROLLER_SCENARIOS: ControllerScenario[] = [
           "op": "down",
           "event": {
             "clientX": 260,
-            "clientY": 64.5
+            "clientY": 66.5
           }
         },
         "snapshot": {
@@ -31504,7 +31504,7 @@ export const CONTROLLER_SCENARIOS: ControllerScenario[] = [
           "op": "move",
           "event": {
             "clientX": 400,
-            "clientY": 63
+            "clientY": 67
           }
         },
         "snapshot": {
@@ -31618,7 +31618,7 @@ export const CONTROLLER_SCENARIOS: ControllerScenario[] = [
           "op": "up",
           "event": {
             "clientX": 400,
-            "clientY": 63
+            "clientY": 67
           }
         },
         "snapshot": {
@@ -31724,7 +31724,8 @@ export const CONTROLLER_SCENARIOS: ControllerScenario[] = [
               "fromPin": "ao0",
               "to": "b",
               "toPin": "bi0",
-              "content": ""
+              "content": "",
+              "arrow": false
             }
           ],
           "selected": [],
@@ -31849,8 +31850,8 @@ export const CONTROLLER_SCENARIOS: ControllerScenario[] = [
         "op": {
           "op": "down",
           "event": {
-            "clientX": 384.50088959177697,
-            "clientY": 63.16606189723096
+            "clientX": 384.5000988510952,
+            "clientY": 66.94464321018248
           }
         },
         "snapshot": {
@@ -31974,7 +31975,7 @@ export const CONTROLLER_SCENARIOS: ControllerScenario[] = [
           "op": "move",
           "event": {
             "clientX": 400,
-            "clientY": 363
+            "clientY": 367
           }
         },
         "snapshot": {
@@ -32097,7 +32098,7 @@ export const CONTROLLER_SCENARIOS: ControllerScenario[] = [
           "op": "up",
           "event": {
             "clientX": 400,
-            "clientY": 363
+            "clientY": 367
           }
         },
         "snapshot": {
@@ -32328,8 +32329,8 @@ export const CONTROLLER_SCENARIOS: ControllerScenario[] = [
         "op": {
           "op": "down",
           "event": {
-            "clientX": 275.49911040822303,
-            "clientY": 64.33393810276904
+            "clientX": 275.4999011489048,
+            "clientY": 66.55535678981752
           }
         },
         "snapshot": {
@@ -32453,7 +32454,7 @@ export const CONTROLLER_SCENARIOS: ControllerScenario[] = [
           "op": "move",
           "event": {
             "clientX": 660,
-            "clientY": 363
+            "clientY": 367
           }
         },
         "snapshot": {
@@ -32576,7 +32577,7 @@ export const CONTROLLER_SCENARIOS: ControllerScenario[] = [
           "op": "up",
           "event": {
             "clientX": 660,
-            "clientY": 363
+            "clientY": 367
           }
         },
         "snapshot": {
@@ -33616,7 +33617,7 @@ export const CONTROLLER_SCENARIOS: ControllerScenario[] = [
     ]
   },
   {
-    "name": "line-click-edit",
+    "name": "line-click-select",
     "setup": {
       "elements": [
         {
@@ -33667,7 +33668,7 @@ export const CONTROLLER_SCENARIOS: ControllerScenario[] = [
         },
         "snapshot": {
           "calls": [
-            "edit-line:l1"
+            "render"
           ],
           "elements": [
             {

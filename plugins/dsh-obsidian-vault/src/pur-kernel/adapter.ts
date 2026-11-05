@@ -54,6 +54,10 @@ export function runMenuAction(controller: PurController, host: PurMenuHost, acti
   if (id.startsWith('del-in-pin:')) return controller.removeInputPin(requireTarget(action), id.slice('del-in-pin:'.length))
   if (id.startsWith('del-out-pin:')) return controller.removeOutputPin(requireTarget(action), id.slice('del-out-pin:'.length))
 
+  if (id === 'pin-drop-text') return controller.completePinDrop('text')
+  if (id === 'pin-drop-code') return controller.completePinDrop('code')
+  if (id === 'pin-drop-cancel') return controller.cancelPinDrop()
+
   switch (id) {
     case 'new-text':
       return controller.addTextBlock(world.x, world.y)

@@ -15,6 +15,10 @@ import type { PurControllerEffect, PurControllerTools } from './controller-types
  */
 export function cancelGesture(tools: PurControllerTools): PurControllerEffect[] | undefined {
   const { state } = tools
+  if (state.pinDrop !== null) {
+    state.pinDrop = null
+    return [{ type: 'render' }]
+  }
   if (state.pinDrag !== null) {
     state.pinDrag = null
     state.hoverPin = null

@@ -5,7 +5,7 @@
  * @module dsh-obsidian-vault/pur-kernel/controller-gestures
  */
 import { findElement, screenToWorld, worldRect } from './geometry.ts'
-import { pinAt } from './hit-test.ts'
+import { elementAt, pinAt } from './hit-test.ts'
 import { pushHistory } from './history.ts'
 import type { PurControllerEffect, PurControllerTools, PurPointerEvent, PurWheelEvent } from './controller-types.ts'
 import type { PurElement } from './types.ts'
@@ -76,9 +76,21 @@ export function finishPinDrag(tools: PurControllerTools, event: PurPointerEvent)
       if (el.type !== 'line') return true
       return !(el.to === target.nodeId && el.toPin === target.pinId)
     })
-    state.elements.push({ id: tools.env.createId(), type: 'line', from: drag.fromNodeId ?? '', fromPin: drag.fromPinId ?? undefined, to: target.nodeId, toPin: target.pinId, content: '' })
+    state.elements.push({ id: tools.env.createId(), type: 'line', from: drag.fromNodeId ?? '', fromPin: drag.fromPinId ?? undefined, to: target.nodeId, toPin: target.pinId, content: '', arrow: false })
     pushHistory(tools.history, state.elements)
     effects.push({ type: 'save' }, { type: 'notice', text: labels.lineCreated })
+  } else if (target === null && elementAt(state.elements, world.x, world.y, state.view.scale) === null) {
+    // Dropped on empty canvas: remember the connection and let the user pick the
+    // node kind, which is less surprising than silently creating a text card.
+    state.pinDrop = {
+      nodeId: drag.fromNodeId ?? '',
+      pinId: drag.fromPinId ?? '',
+      clientX: event.clientX,
+      clientY: event.clientY,
+      worldX: world.x,
+      worldY: world.y,
+    }
+    effects.push({ type: 'context-menu', clientX: event.clientX, clientY: event.clientY })
   }
   effects.push({ type: 'render' })
   return effects

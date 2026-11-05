@@ -18,6 +18,7 @@ export const purInputStyle: CSSProperties = {
   padding: '6px 8px',
   fontSize: 13,
   lineHeight: 1.5,
+  colorScheme: 'dark',
 }
 
 /** Caption style above every field. */
@@ -92,7 +93,7 @@ export function PurEditorFrame(props: PurEditorFrameProps): JSX.Element {
         aria-modal="true"
         aria-label={props.title}
         className="ov-dialog"
-        style={{ width: props.wide === true ? EDITOR_WIDTH_WIDE : EDITOR_WIDTH, maxWidth: '92vw', maxHeight: '86vh', display: 'flex', flexDirection: 'column', background: 'var(--dsw-alias-bg-layer-1, #1b1b20)', border: '1px solid rgba(128,128,128,0.28)', borderRadius: 10, boxShadow: '0 18px 48px rgba(0,0,0,0.55)' }}
+        style={{ width: props.wide === true ? EDITOR_WIDTH_WIDE : EDITOR_WIDTH, maxWidth: '92vw', maxHeight: '86vh', display: 'flex', flexDirection: 'column', colorScheme: 'dark', background: 'var(--dsw-alias-bg-layer-1, #1b1b20)', border: '1px solid rgba(128,128,128,0.28)', borderRadius: 10, boxShadow: '0 18px 48px rgba(0,0,0,0.55)' }}
         onKeyDown={(event) => {
           event.stopPropagation()
           if (event.key === 'Escape') props.onDiscard()

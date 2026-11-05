@@ -136,6 +136,22 @@ export interface PurPinDragState {
   dragMode?: 'relink-from' | 'relink-to'
 }
 
+/** A connection that ended on empty canvas. */
+export interface PurPinDropState {
+  /** Node the connection leaves. */
+  readonly nodeId: string
+  /** Output pin the connection leaves. */
+  readonly pinId: string
+  /** Drop point in canvas pixels, for the menu. */
+  readonly clientX: number
+  /** Drop point in canvas pixels, for the menu. */
+  readonly clientY: number
+  /** Drop point in world coordinates, where the new node goes. */
+  readonly worldX: number
+  /** Drop point in world coordinates. */
+  readonly worldY: number
+}
+
 /** One element snapshot taken when a drag starts (upstream `dragStart.elements`). */
 export interface PurDragEntry {
   /** Element id. */
@@ -190,6 +206,8 @@ export interface PurControllerState {
   selectionRect: PurScreenRect | null
   /** Pin connection being dragged. */
   pinDrag: PurPinDragState | null
+  /** A connection dropped on empty canvas, waiting for the user to pick a node kind. */
+  pinDrop: PurPinDropState | null
   /** Last pointer position in viewport coordinates. */
   lastMouse: { x: number; y: number }
   /** Last pointer position relative to the canvas, for edge auto-pan. */

@@ -282,6 +282,20 @@ export function contextMenuModel(
   canvasY: number,
   context: PurMenuContext,
 ): { model: PurMenuModel; effects: PurControllerEffect[] } {
+  // A connection dropped on empty canvas asks for a node kind instead of the
+  // regular blank-canvas menu.
+  if (state.pinDrop !== null) {
+    return {
+      model: {
+        entries: [
+          { id: 'pin-drop-text', icon: 'file-text', labelKey: 'newText' },
+          { id: 'pin-drop-code', icon: 'terminal', labelKey: 'addCodeNodes', separatorAfter: true },
+          { id: 'pin-drop-cancel', icon: 'x', labelKey: 'cancel' },
+        ],
+      },
+      effects: [],
+    }
+  }
   const world = screenToWorld(state.view, canvasX, canvasY)
   const element = elementAt(state.elements, world.x, world.y, state.view.scale)
   if (element === null) return { model: { entries: blankMenu(context) }, effects: [] }

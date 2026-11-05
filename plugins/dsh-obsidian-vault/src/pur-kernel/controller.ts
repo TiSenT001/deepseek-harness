@@ -30,6 +30,7 @@ import {
 } from './controller-layers.ts'
 import { fitToView, resetZoom, selectAll, zoomByStep } from './controller-view.ts'
 import { autoPanStep } from './controller-autopan.ts'
+import { cancelPinDrop, completePinDrop } from './controller-pin-drop.ts'
 import { cancelGesture } from './controller-cancel.ts'
 import { cycleSelection } from './controller-traverse.ts'
 import { NUDGE_STEP, NUDGE_STEP_LARGE, nudgeSelection } from './controller-nudge.ts'
@@ -60,6 +61,7 @@ import { elementAt } from './hit-test.ts'
 import { createHistory, pushHistory, redoHistory, undoHistory } from './history.ts'
 import type { PurAlignMode } from './controller-commands.ts'
 import type { PurCodeNodeCommit, PurCodeNodeDraft } from './controller-edits.ts'
+import type { PurDropKind } from './controller-pin-drop.ts'
 import type { PurElementPatch } from './controller-props.ts'
 import type {
   PurControllerEffect,
@@ -110,6 +112,7 @@ export class PurController {
         hoverPin: null,
         selectionRect: null,
         pinDrag: null,
+        pinDrop: null,
         lastMouse: { x: 0, y: 0 },
         lastLocal: { x: 0, y: 0 },
         selectionBefore: null,
@@ -181,6 +184,23 @@ export class PurController {
     if (drag.fromNodeId !== null && drag.fromPinId !== null) preview.from = { nodeId: drag.fromNodeId, pinId: drag.fromPinId }
     if (drag.toNodeId !== undefined && drag.toPinId !== undefined) preview.to = { nodeId: drag.toNodeId, pinId: drag.toPinId }
     return preview
+  }
+
+  /**
+   * Create the chosen card at a dropped connection and wire it.
+   * @param kind - text card or code node.
+   * @returns the commit effects.
+   */
+  completePinDrop(kind: PurDropKind): PurControllerEffect[] {
+    return completePinDrop(this.tools, kind)
+  }
+
+  /**
+   * Drop a pending connection without creating anything.
+   * @returns the render effect.
+   */
+  cancelPinDrop(): PurControllerEffect[] {
+    return cancelPinDrop(this.tools)
   }
 
   /**

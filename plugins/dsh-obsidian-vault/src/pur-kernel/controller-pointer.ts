@@ -81,7 +81,9 @@ export function pointerDown(tools: PurControllerTools, event: PurPointerEvent): 
           state.selectedIds.clear()
           state.selectedIds.add(element.id)
         }
-        if (element.type === 'line') return [{ type: 'edit-line', id: element.id }]
+        // Lines select on a single click, so Delete and the context menu can reach
+        // them; double-click opens the line editor.
+        if (element.type === 'line') return [{ type: 'render' }]
         state.dragging = true
         state.dragStart = {
           clientX: event.clientX,

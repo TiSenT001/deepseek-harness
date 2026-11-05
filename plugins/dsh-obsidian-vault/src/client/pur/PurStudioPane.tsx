@@ -482,7 +482,12 @@ void saveStudioDocument(path, document).catch(async (error: unknown) => {
         controller={() => controllerRef.current}
         menuHost={menuHost}
         run={run}
-        closeMenu={() => setMenu(null)}
+        closeMenu={() => {
+          // Dismissing the drop menu without a choice cancels the pending connection.
+          const active = controllerRef.current
+          if (active !== null) run(active.cancelPinDrop())
+          setMenu(null)
+        }}
         closeEditor={() => setEditor(null)}
         closePrompt={() => setPrompt(null)}
         closePicker={() => setPicker(null)}
