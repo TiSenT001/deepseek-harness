@@ -2405,6 +2405,47 @@ try {
     await sleep(300)
     assert((await page.locator('.ov-menu').count()) === 0, 'Escape did not dismiss the canvas menu')
 
+    // The canvas is opaque to assistive technology, so it carries a role and a
+    // label, and its selection and zoom are mirrored into a live status.
+    assert((await canvas.getAttribute('role')) === 'application', 'canvas role missing')
+    const canvasLabel = await canvas.getAttribute('aria-label')
+    assert(canvasLabel !== null && canvasLabel.length > 0, 'canvas label missing')
+    const pane = canvas.locator('xpath=..')
+    const statusOf = async () => (await pane.locator('[role="status"]').first().textContent()) ?? ''
+    await sleep(600)
+    assert(/\d/.test(await statusOf()), 'live status is empty')
+
+    // Double-click adds a text card, then the selection and Escape are observable.
+    const box = await canvas.boundingBox()
+    await page.mouse.dblclick(box.x + 240, box.y + 220)
+    await sleep(700)
+    await page.keyboard.press('Escape')
+    await sleep(500)
+    await page.mouse.click(box.x + 640, box.y + 420)
+    await sleep(300)
+    await page.keyboard.press('Control+a')
+    await sleep(700)
+    assert(/1/.test(await statusOf()), `select-all status: ${await statusOf()}`)
+    await page.keyboard.press('Escape')
+    await sleep(700)
+    assert(/0/.test(await statusOf()), 'Escape did not clear the selection')
+    await page.keyboard.press('Tab')
+    await sleep(700)
+    assert(/1/.test(await statusOf()), 'Tab did not select an element')
+
+    // A resting pointer explains the double click and offers the move cursor.
+    // The card's top-left corner is under the creation point, which is a resize
+    // handle; aim at its middle so the assertion is about the body cursor.
+    await page.mouse.move(box.x + 350, box.y + 265)
+    await sleep(900)
+    const hint = await pane.evaluate((node) => {
+      const found = [...node.querySelectorAll('div')].find((child) => child.style.pointerEvents === 'none' && /双击|Double-click/.test(child.textContent ?? ''))
+      return found === undefined ? null : found.textContent
+    })
+    assert(hint !== null, 'hover hint did not appear')
+    const hoverCursor = await canvas.evaluate((node) => node.style.cursor)
+    assert(hoverCursor === 'move', `hover cursor: ${hoverCursor}`)
+
     const created = await tab.getAttribute('title')
     await tab.locator('.ov-doctab-close').click()
     await sleep(400)
