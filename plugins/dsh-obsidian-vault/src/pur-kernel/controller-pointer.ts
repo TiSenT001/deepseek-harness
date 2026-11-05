@@ -9,6 +9,7 @@ import { handlePositions, RESIZE_HANDLES, resizeRect, type PurResizeHandle } fro
 import { elementAt, lineEndpointAt, pinAt } from './hit-test.ts'
 import { pushHistory } from './history.ts'
 import { finishPinDrag, local, momentumStep, reparentDragged } from './controller-gestures.ts'
+import { applyDragToPointer } from './controller-drag.ts'
 import { snapDrag } from './controller-snap.ts'
 import type { PurControllerEffect, PurControllerState, PurControllerTools, PurPointerEvent } from './controller-types.ts'
 import type { PurElement } from './types.ts'
@@ -85,8 +86,8 @@ export function pointerDown(tools: PurControllerTools, event: PurPointerEvent): 
         state.dragStart = {
           clientX: event.clientX,
           clientY: event.clientY,
-          viewX: state.view.offsetX,
-          viewY: state.view.offsetY,
+          pointerWorldX: world.x,
+          pointerWorldY: world.y,
           elements: [...state.selectedIds].map((id) => {
             const site = findElement(state.elements, id)
             if (site === null) return null
@@ -240,15 +241,7 @@ export function pointerMove(tools: PurControllerTools, event: PurPointerEvent): 
     }
     effects.push({ type: 'render' })
   } else if (state.dragging && state.dragStart !== null) {
-    const moveX = (event.clientX - state.dragStart.clientX) / state.view.scale
-    const moveY = (event.clientY - state.dragStart.clientY) / state.view.scale
-    for (const entry of state.dragStart.elements) {
-      if (entry === null) continue
-      const site = findElement(state.elements, entry.id)
-      if (site === null || site.element.type === 'line') continue
-      site.element.x = entry.x + moveX - entry.parentX
-      site.element.y = entry.y + moveY - entry.parentY
-    }
+    applyDragToPointer(tools)
     // Alt is the escape hatch: a drag with Alt held keeps the exact pointer offset.
     state.snapGuides = { x: null, y: null }
     const primary = state.dragStart.elements.find((entry) => entry !== null)

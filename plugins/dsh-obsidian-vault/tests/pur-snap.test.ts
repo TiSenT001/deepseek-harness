@@ -82,7 +82,7 @@ test('the radius shrinks with the zoom', () => {
   const controller = controllerOf(340, 400)
   controller.state.view.scale = 8
   controller.state.selectedIds.add('moving')
-  const result = snapDrag({ ...controller.state, dragStart: { clientX: 0, clientY: 0, viewX: 0, viewY: 0, elements: [{ id: 'moving', x: 340, y: 400, parentX: 0, parentY: 0 }] } }, 'moving')
+  const result = snapDrag({ ...controller.state, dragStart: { clientX: 0, clientY: 0, pointerWorldX: 340, pointerWorldY: 400, elements: [{ id: 'moving', x: 340, y: 400, parentX: 0, parentY: 0 }] } }, 'moving')
   // At 8x the 8px radius is one world unit, so the 40-unit gap cannot latch.
   assert.equal(result.x, null)
   assert.ok(SNAP_RADIUS / 8 < 2)

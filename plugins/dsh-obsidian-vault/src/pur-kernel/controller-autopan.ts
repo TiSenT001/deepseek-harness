@@ -4,7 +4,7 @@
  * visible area without letting go.
  * @module dsh-obsidian-vault/pur-kernel/controller-autopan
  */
-import { findElement } from './geometry.ts'
+import { applyDragToPointer } from './controller-drag.ts'
 import type { PurControllerEffect, PurControllerTools } from './controller-types.ts'
 
 /** How deep the edge zone is, in canvas pixels. */
@@ -47,17 +47,8 @@ export function autoPanStep(tools: PurControllerTools): PurControllerEffect[] {
   if (dx === 0 && dy === 0) return []
   state.view.offsetX += dx
   state.view.offsetY += dy
-  if (state.dragging && state.dragStart !== null) {
-    const drag = state.dragStart
-    // The pointer did not move, so the world point under it does: a positive offset
-    // change pulls the world back, which means the carried cards move the other way.
-    for (const entry of drag.elements) {
-      if (entry === null) continue
-      const site = findElement(state.elements, entry.id)
-      if (site === null || site.element.type === 'line') continue
-      site.element.x = (site.element.x ?? 0) - dx / state.view.scale
-      site.element.y = (site.element.y ?? 0) - dy / state.view.scale
-    }
-  }
+  // Moving the view moves the world point under the still pointer, so the carried
+  // cards are re-derived from it instead of being nudged by a hand-computed delta.
+  applyDragToPointer(tools)
   return [{ type: 'render' }]
 }

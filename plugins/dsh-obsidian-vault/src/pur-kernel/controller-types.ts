@@ -207,7 +207,7 @@ export interface PurControllerState {
   /** Whether an element drag is active. */
   dragging: boolean
   /** Drag start snapshots, null entries preserved like upstream. */
-  dragStart: { clientX: number; clientY: number; viewX: number; viewY: number; elements: (PurDragEntry | null)[] } | null
+  dragStart: { clientX: number; clientY: number; pointerWorldX: number; pointerWorldY: number; elements: (PurDragEntry | null)[] } | null
   /** Whether a resize drag is active. */
   resizing: boolean
   /** Resize session. */
