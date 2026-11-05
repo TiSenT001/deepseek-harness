@@ -9,7 +9,7 @@ import { handlePositions, RESIZE_HANDLES, resizeRect, type PurResizeHandle } fro
 import { elementAt, lineEndpointAt, pinAt } from './hit-test.ts'
 import { pushHistory } from './history.ts'
 import { finishPinDrag, local, momentumStep, reparentDragged } from './controller-gestures.ts'
-import type { PurControllerEffect, PurControllerTools, PurPointerEvent } from './controller-types.ts'
+import type { PurControllerEffect, PurControllerState, PurControllerTools, PurPointerEvent } from './controller-types.ts'
 import type { PurElement } from './types.ts'
 
 /**
@@ -46,35 +46,24 @@ export function pointerDown(tools: PurControllerTools, event: PurPointerEvent): 
     }
   }
 
-  for (const id of state.selectedIds) {
-    const site = findElement(state.elements, id)
-    const element = site?.element
-    if (site === null || element === undefined || element.locked || element.type === 'line') continue
-    const rect = {
-      x: element.x + site.parentX,
-      y: element.y + site.parentY,
-      w: element.w ?? 0,
-      h: element.h ?? 0,
-    }
-    const tolerance = 9 / state.view.scale
-    const points = handlePositions(rect)
-    for (const handle of RESIZE_HANDLES) {
-      const point = points[handle]
-      if (Math.abs(world.x - point.x) > tolerance || Math.abs(world.y - point.y) > tolerance) continue
+  const grabbed = resizeHandleAt(state, world.x, world.y)
+  if (grabbed !== null) {
+    const site = findElement(state.elements, grabbed.elementId)
+    if (site !== null && site.element.type !== 'line') {
       state.resizing = true
       state.resize = {
-        elementId: element.id,
-        handle,
+        elementId: site.element.id,
+        handle: grabbed.handle,
         startX: event.clientX,
         startY: event.clientY,
-        w: rect.w,
-        h: rect.h,
-        x: element.x ?? 0,
-        y: element.y ?? 0,
+        w: site.element.w ?? 0,
+        h: site.element.h ?? 0,
+        x: site.element.x ?? 0,
+        y: site.element.y ?? 0,
         parentX: site.parentX,
         parentY: site.parentY,
       }
-      return [{ type: 'cursor', cursor: cursorForHandle(handle) }]
+      return [{ type: 'cursor', cursor: cursorForHandle(grabbed.handle) }]
     }
   }
 
@@ -113,6 +102,30 @@ export function pointerDown(tools: PurControllerTools, event: PurPointerEvent): 
     state.panning = true
   }
   return [{ type: 'render' }]
+}
+
+
+/**
+ * Which resize handle of the current selection sits under a world point.
+ * @param state - controller state.
+ * @param x - world x.
+ * @param y - world y.
+ * @returns the element and handle, or null when the point misses every handle.
+ */
+function resizeHandleAt(state: PurControllerState, x: number, y: number): { elementId: string; handle: PurResizeHandle } | null {
+  for (const id of state.selectedIds) {
+    const site = findElement(state.elements, id)
+    const element = site?.element
+    if (site === null || element === undefined || element.locked || element.type === 'line') continue
+    const points = handlePositions({ x: element.x + site.parentX, y: element.y + site.parentY, w: element.w ?? 0, h: element.h ?? 0 })
+    const tolerance = 9 / state.view.scale
+    for (const handle of RESIZE_HANDLES) {
+      const point = points[handle]
+      if (Math.abs(x - point.x) > tolerance || Math.abs(y - point.y) > tolerance) continue
+      return { elementId: element.id, handle }
+    }
+  }
+  return null
 }
 
 /**
@@ -179,6 +192,18 @@ export function pointerMove(tools: PurControllerTools, event: PurPointerEvent): 
     if (state.hoveredLineId !== nearest) {
       state.hoveredLineId = nearest
       effects.push({ type: 'render' })
+    }
+  }
+
+  if (!state.panning && !state.resizing && !state.dragging && !state.selecting && state.pinDrag === null) {
+    // Hover feedback: the pointer must say whether it would grab a handle, move a
+    // card or start a rubber band before the user commits to a drag.
+    const grabbed = resizeHandleAt(state, world.x, world.y)
+    if (grabbed !== null) {
+      effects.push({ type: 'cursor', cursor: cursorForHandle(grabbed.handle) })
+    } else {
+      const hovered = elementAt(state.elements, world.x, world.y, state.view.scale)
+      effects.push({ type: 'cursor', cursor: hovered === null ? 'default' : hovered.type === 'line' ? 'pointer' : 'move' })
     }
   }
 

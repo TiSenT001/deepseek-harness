@@ -39,12 +39,12 @@ test('importing far away frames the new cards instead of leaving the view empty'
   let maxX = Number.NEGATIVE_INFINITY
   let maxY = Number.NEGATIVE_INFINITY
   for (const element of imported) {
-    const left = element.x * view.scale + view.offsetX
-    const top = element.y * view.scale + view.offsetY
+    const left = (element.x ?? 0) * view.scale + view.offsetX
+    const top = (element.y ?? 0) * view.scale + view.offsetY
     minX = Math.min(minX, left)
     minY = Math.min(minY, top)
-    maxX = Math.max(maxX, left + element.w * view.scale)
-    maxY = Math.max(maxY, top + element.h * view.scale)
+    maxX = Math.max(maxX, left + (element.w ?? 0) * view.scale)
+    maxY = Math.max(maxY, top + (element.h ?? 0) * view.scale)
   }
   assert.ok(minX >= -1 && minY >= -1, `imported box starts outside the canvas at ${minX},${minY}`)
   assert.ok(maxX <= env.canvasWidth + 1 && maxY <= env.canvasHeight + 1, `imported box ends outside the canvas at ${maxX},${maxY}`)
