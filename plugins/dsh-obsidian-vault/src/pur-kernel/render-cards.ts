@@ -6,7 +6,7 @@
  * @module dsh-obsidian-vault/pur-kernel/render-cards
  */
 import type { PurCanvasContext, PurScene } from './render-types.ts'
-import { fillRoundedCard, wrappedLines } from './render-shared.ts'
+import { fillRoundedCard, roundedRectPath, wrappedLines } from './render-shared.ts'
 import { bucketedKey, decodeBucket } from './decode-bucket.ts'
 import type { PurImageElement, PurNoteLinkElement, PurPin } from './types.ts'
 
@@ -150,27 +150,25 @@ export function drawNoteLinkCard(ctx: PurCanvasContext, scene: PurScene, element
   ctx.save()
   ctx.fillStyle = element.cardColor || 'rgba(72, 54, 153, 0.95)'
   fillRoundedCard(ctx, 0, 0, screenW, screenH, CARD_RADIUS * scale)
+  // The card is a label, not a reader: it keeps the note's title and leaves the body
+  // to the editor, so a long note can never spill past the card edge.
+  ctx.beginPath()
+  roundedRectPath(ctx, 0, 0, screenW, screenH, CARD_RADIUS * scale)
+  ctx.clip()
   ctx.fillStyle = '#ffffff'
   const titleSize = 14 * scale
   ctx.font = `600 ${titleSize}px -apple-system, "Segoe UI", sans-serif`
+  const lineHeight = titleSize * 1.3
+  // A stale card may still carry the whole note; its first line minus any markdown
+  // heading marker is the title the user expects to see.
+  const firstLine = (element.content || '').split('\n').map((line) => line.trim()).find((line) => line !== '')
+  const title = (firstLine ?? '').replace(/^#+\s*/, '') || scene.labels.noteLinkFallback
   let y = titleSize + 10
-  const isCodeCard = element.content !== '' && (element.content.includes('function process') || element.content.includes('return {'))
-  const fileName = ((element.link || '').split('/').pop() || '').replace('.md', '')
-  const displayText = isCodeCard ? scene.labels.codeCardPrefix + fileName : element.content || scene.labels.noteLinkFallback
-  for (const paragraph of displayText.split('\n')) {
-    for (const line of wrappedLines(ctx, paragraph, screenW - 20)) {
-      ctx.fillText(line, 12, y)
-      y += titleSize * 1.3
-    }
-  }
-  if (element.note) {
-    ctx.fillStyle = 'rgba(255,255,255,0.75)'
-    const noteSize = (element.noteFontSize || 11) * scale
-    ctx.font = noteSize + 'px ' + (element.noteFontFamily || 'sans-serif')
-    for (const line of wrappedLines(ctx, element.note, screenW - 20)) {
-      y += noteSize
-      ctx.fillText(line.substring(0, Math.floor(screenW / (noteSize * 0.55))), 12, y)
-    }
+  const bottom = screenH - 10
+  for (const line of wrappedLines(ctx, title, screenW - 24)) {
+    if (y > bottom) break
+    ctx.fillText(line, 12, y)
+    y += lineHeight
   }
   ctx.restore()
   drawNoteLinkPins(ctx, element, screenW, screenH, scale)

@@ -292,6 +292,19 @@ export function PurLineEditor(props: PurEditorProps): JSX.Element | null {
         </Field>
       </Section>
       <Section title={props.t('pur.sectionLine')}>
+        {element.from !== '' || element.to !== '' ? (
+          <button
+            type="button"
+            className="ov-button"
+            style={{ justifySelf: 'start' }}
+            onClick={() => {
+              props.run(props.controller.disconnectLine(props.id))
+              props.onClose()
+            }}
+          >
+            {props.t('pur.disconnectLine')}
+          </button>
+        ) : null}
         <Field label={props.t('pur.lineStyle')}>
           <select style={purInputStyle} value={style} onChange={(event) => setStyle(event.target.value as PurLineStyle)}>
             <option value="curve">{props.t('pur.lineStyleCurve')}</option>

@@ -56,8 +56,10 @@ export async function refreshNoteLinks(controller: PurController): Promise<NoteL
       unresolved += 1
       continue
     }
-    if (summary.content === card.content) continue
-    controller.updateElement(card.id, { content: summary.content })
+    // The card shows a title only; storing the whole body is what made it overflow.
+    const title = summary.title.trim() === '' ? card.content : summary.title.trim()
+    if (title === card.content) continue
+    controller.updateElement(card.id, { content: title })
     updated += 1
   }
   return { updated, unresolved }
