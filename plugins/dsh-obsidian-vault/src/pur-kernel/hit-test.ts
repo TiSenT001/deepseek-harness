@@ -5,7 +5,7 @@
  * @module dsh-obsidian-vault/pur-kernel/hit-test
  */
 import { pinPosition, pinWorldPosition, worldRect } from './geometry.ts'
-import type { PurElement, PurNodeElement } from './types.ts'
+import type { PurElement, PurLineElement, PurLineStyle, PurNodeElement } from './types.ts'
 
 /** A pin found under the pointer. */
 export interface PurPinHit {
@@ -47,24 +47,26 @@ const ENDPOINT_HIT_PX = 16
  * @returns the element, the deepest unlocked group child, or null.
  */
 export function elementAt(elements: readonly PurElement[], worldX: number, worldY: number, scale: number): PurElement | null {
+  // Lines are drawn below cards, so a card always wins a point both cover; the
+  // first line that matches is returned only when nothing else does.
+  const lineHits: PurElement[] = []
   const check = (list: readonly PurElement[], offsetX: number, offsetY: number): PurElement | null => {
     for (let index = list.length - 1; index >= 0; index--) {
       const element = list[index]
       if (element === undefined) continue
       if (element.type === 'line') {
         // A detached line has its own segment; a bound one spans its two cards.
+        const tolerance = LINE_HIT_PX / (scale || 1)
         if (element.from === '' && element.to === '') {
           if (element.x === undefined || element.y === undefined) continue
-          if (distanceToSegment(worldX, worldY, element.x, element.y, element.x + (element.w ?? 0), element.y + (element.h ?? 0)) < LINE_HIT_PX / (scale || 1)) return element
+          const start = { x: element.x, y: element.y }
+          const end = { x: element.x + (element.w ?? 0), y: element.y + (element.h ?? 0) }
+          if (distanceToLinePath(element.style, start, end, worldX, worldY) < tolerance) lineHits.push(element)
           continue
         }
-        const from = worldRect(elements, element.from)
-        const to = worldRect(elements, element.to)
-        if (from === null || to === null) continue
-        const centerX = from.x + from.w / 2 + (to.x + to.w / 2 - (from.x + from.w / 2)) / 2
-        const centerY = from.y + from.h / 2 + (to.y + to.h / 2 - (from.y + from.h / 2)) / 2
-        const dist = Math.sqrt((worldX - centerX) ** 2 + (worldY - centerY) ** 2)
-        if (dist < LINE_HIT_PX / (scale || 1)) return element
+        const endpoints = boundLineEndpoints(elements, element)
+        if (endpoints === null) continue
+        if (distanceToLinePath(element.style, endpoints.start, endpoints.end, worldX, worldY) < tolerance) lineHits.push(element)
         continue
       }
       const left = element.x + offsetX
@@ -79,7 +81,7 @@ export function elementAt(elements: readonly PurElement[], worldX: number, world
     }
     return null
   }
-  return check(elements, 0, 0)
+  return check(elements, 0, 0) ?? lineHits[0] ?? null
 }
 
 /**
@@ -190,6 +192,65 @@ function carriesPins(element: PurNodeElement): boolean {
  */
 function distance(ax: number, ay: number, bx: number, by: number): number {
   return Math.sqrt((ax - bx) ** 2 + (ay - by) ** 2)
+}
+
+/**
+ * World points a bound line's rendered path runs between: its pin when the end
+ * names one, otherwise the card centre.
+ * @param elements - top-level elements.
+ * @param line - the connection.
+ * @returns the endpoints, or null when a card is gone.
+ */
+function boundLineEndpoints(elements: readonly PurElement[], line: PurLineElement): { start: { x: number; y: number }; end: { x: number; y: number } } | null {
+  const from = worldRect(elements, line.from)
+  const to = worldRect(elements, line.to)
+  if (from === null || to === null) return null
+  const startPin = line.fromPin === undefined ? null : pinWorldPosition(elements, line.from, line.fromPin)
+  const endPin = line.toPin === undefined ? null : pinWorldPosition(elements, line.to, line.toPin)
+  return {
+    start: startPin === null ? { x: from.x + from.w / 2, y: from.y + from.h / 2 } : { x: startPin.x, y: startPin.y },
+    end: endPin === null ? { x: to.x + to.w / 2, y: to.y + to.h / 2 } : { x: endPin.x, y: endPin.y },
+  }
+}
+
+/**
+ * Distance from a point to the path a line is drawn along, in world units. The
+ * curve is sampled with the same control points the renderer uses, so a click
+ * anywhere on a long arc lands on the line instead of only near its midpoint.
+ * @param style - stroke pattern; absent means the default curve.
+ * @param start - path start in world units.
+ * @param end - path end in world units.
+ * @param px - point x.
+ * @param py - point y.
+ * @returns the shortest distance.
+ */
+export function distanceToLinePath(style: PurLineStyle | undefined, start: { x: number; y: number }, end: { x: number; y: number }, px: number, py: number): number {
+  if (style === 'straight') return distanceToSegment(px, py, start.x, start.y, end.x, end.y)
+  if (style === 'rect') {
+    const midX = (start.x + end.x) / 2
+    return Math.min(
+      distanceToSegment(px, py, start.x, start.y, midX, start.y),
+      distanceToSegment(px, py, midX, start.y, midX, end.y),
+      distanceToSegment(px, py, midX, end.y, end.x, end.y),
+    )
+  }
+  const control = Math.max(50, Math.abs(end.x - start.x) * 0.5)
+  const p1 = { x: start.x + control, y: start.y }
+  const p2 = { x: end.x - control, y: end.y }
+  const samples = 24
+  let best = Number.POSITIVE_INFINITY
+  let previous = start
+  for (let index = 1; index <= samples; index += 1) {
+    const t = index / samples
+    const u = 1 - t
+    const point = {
+      x: u * u * u * start.x + 3 * u * u * t * p1.x + 3 * u * t * t * p2.x + t * t * t * end.x,
+      y: u * u * u * start.y + 3 * u * u * t * p1.y + 3 * u * t * t * p2.y + t * t * t * end.y,
+    }
+    best = Math.min(best, distanceToSegment(px, py, previous.x, previous.y, point.x, point.y))
+    previous = point
+  }
+  return best
 }
 
 /**
