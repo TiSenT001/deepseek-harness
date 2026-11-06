@@ -13,6 +13,9 @@ const MAX_VALUE_CHARS = 200
 /** Longest error message kept on a node, in characters. */
 const MAX_ERROR_CHARS = 200
 
+/** How many past runs a node keeps, newest first. */
+export const MAX_RUN_HISTORY = 5
+
 /**
  * Find a code node by id.
  * @param tools - shared controller tools.
@@ -132,6 +135,8 @@ export function applyRunResult(
   const values: Record<string, string> = {}
   for (const [label, value] of Object.entries(outcome.values ?? {})) values[label] = clamp(value)
   node.values = values
+  const history = node.history ?? []
+  node.history = [{ ok: outcome.ok, ms: Math.max(0, Math.round(outcome.ms)), at: tools.env.now(), values: { ...values } }, ...history].slice(0, MAX_RUN_HISTORY)
   node.run = {
     ok: outcome.ok,
     ms: Math.max(0, Math.round(outcome.ms)),

@@ -213,6 +213,28 @@ export function PurTextEditor(props: PurEditorProps): JSX.Element | null {
           ))}
         </Section>
       ) : null}
+      {isCode === true && (element.history?.length ?? 0) > 0 ? (
+        <Section title={props.t('pur.sectionRunHistory')} columns={1}>
+          {element.history?.map((entry, index) => (
+            <div key={`${entry.at}-${index}`} style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <span style={{ ...purLabelStyle, marginBottom: 0, flex: 1 }}>
+                {entry.ok ? '✓' : '✗'} {entry.ms}ms · {Object.entries(entry.values).map(([key, value]) => `${key}=${displayRunValue(value)}`).join(' · ') || '—'}
+              </span>
+              <button
+                type="button"
+                className="ov-button"
+                onClick={() => {
+                  const next: Record<string, string> = { ...runValues }
+                  for (const [key, value] of Object.entries(entry.values)) next[key] = displayRunValue(value)
+                  setRunValues(next)
+                }}
+              >
+                {props.t('pur.loadHistoryEntry')}
+              </button>
+            </div>
+          ))}
+        </Section>
+      ) : null}
       <Section title={props.t('pur.sectionPins')} columns={2}>
         <PinList caption={props.t('pur.inputsTitle')} placeholder={props.t('pur.pinLabelPlaceholder')} pins={inputs} onChange={setInputs} />
         <PinList caption={props.t('pur.outputsTitle')} placeholder={props.t('pur.pinLabelPlaceholder')} pins={outputs} onChange={setOutputs} />

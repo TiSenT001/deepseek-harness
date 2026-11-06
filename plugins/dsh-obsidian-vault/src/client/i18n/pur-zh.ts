@@ -108,6 +108,8 @@ export const PUR_ZH = {
   'pur.runEmpty': "没有可运行的代码节点",
   'pur.sectionRunValues': "运行结果",
   'pur.runValueHint': "可手动填值（留空清除）",
+  'pur.sectionRunHistory': "运行历史",
+  'pur.loadHistoryEntry': "载入",
   'pur.convertToCode': "转为代码节点",
   'pur.sectionSnippets': "代码片段",
   'pur.insertSnippet': "插入片段",

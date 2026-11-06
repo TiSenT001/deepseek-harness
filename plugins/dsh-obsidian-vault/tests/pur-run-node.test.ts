@@ -7,7 +7,7 @@
  */
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { PurController, displayRunValue, executeEffects, parseStudioDocument, serializeStudioDocument } from '../src/pur-kernel/index.ts'
+import { MAX_RUN_HISTORY, PurController, displayRunValue, executeEffects, parseStudioDocument, serializeStudioDocument } from '../src/pur-kernel/index.ts'
 import type { PurElement } from '../src/pur-kernel/index.ts'
 import { LABELS, envOf, sinkOf } from './helpers/pur-adapter-fixtures.ts'
 
@@ -219,4 +219,46 @@ test('a stored value round-trips into editor text', () => {
   assert.equal(displayRunValue('"hi"'), 'hi')
   assert.equal(displayRunValue('{"k":1}'), '{"k":1}')
   assert.equal(displayRunValue(undefined), '')
+})
+test('each run prepends a history entry', () => {
+  const controller = controllerOf()
+  controller.applyRunResult('a', { ok: true, values: { sum: '5' }, ms: 2 })
+  controller.applyRunResult('a', { ok: false, error: 'boom', ms: 1 })
+  const node = controller.state.elements[0]
+  assert.ok(node !== undefined && node.type === 'code-node')
+  if (node === undefined || node.type !== 'code-node') return
+  assert.equal(node.history?.length, 2)
+  assert.equal(node.history?.[0]?.ok, false)
+  assert.deepEqual(node.history?.[1]?.values, { sum: '5' })
+  assert.equal(node.history?.[0]?.at, 1000)
+})
+
+test('history is capped at the kernel limit', () => {
+  const controller = controllerOf()
+  for (let index = 0; index < MAX_RUN_HISTORY + 3; index++) controller.applyRunResult('a', { ok: true, values: { sum: String(index) }, ms: index })
+  const node = controller.state.elements[0]
+  assert.ok(node !== undefined && node.type === 'code-node')
+  if (node === undefined || node.type !== 'code-node') return
+  assert.equal(node.history?.length, MAX_RUN_HISTORY)
+  assert.deepEqual(node.history?.[0]?.values, { sum: String(MAX_RUN_HISTORY + 2) })
+})
+
+test('typed values do not enter the run history', () => {
+  const controller = controllerOf()
+  controller.setNodeValue('a', 'sum', '7')
+  const node = controller.state.elements[0]
+  assert.ok(node !== undefined && node.type === 'code-node')
+  if (node === undefined || node.type !== 'code-node') return
+  assert.equal(node.history, undefined)
+})
+
+test('history survives a document round trip', () => {
+  const controller = controllerOf()
+  controller.applyRunResult('a', { ok: true, values: { sum: '5' }, ms: 2 })
+  const text = serializeStudioDocument({ elements: controller.state.elements, viewState: controller.state.view })
+  const parsed = parseStudioDocument(text)
+  const node = parsed.elements[0]
+  assert.ok(node !== undefined && node.type === 'code-node')
+  if (node === undefined || node.type !== 'code-node') return
+  assert.deepEqual(node.history, [{ ok: true, ms: 2, at: 1000, values: { sum: '5' } }])
 })

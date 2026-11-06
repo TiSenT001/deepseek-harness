@@ -106,6 +106,8 @@ export const PUR_EN: Record<keyof typeof PUR_ZH, string> = {
   'pur.runEmpty': "No runnable code node",
   'pur.sectionRunValues': "Run values",
   'pur.runValueHint': "Type a value; leave empty to clear",
+  'pur.sectionRunHistory': "Run history",
+  'pur.loadHistoryEntry': "Load",
   'pur.convertToCode': "Convert to code node",
   'pur.sectionSnippets': "Snippets",
   'pur.insertSnippet': "Insert snippet",

@@ -62,6 +62,18 @@ export interface PurElementBase {
   outputs?: PurPin[]
 }
 
+/** One past run of a code node. */
+export interface PurRunHistoryEntry {
+  /** Whether the run returned without throwing. */
+  ok: boolean
+  /** Duration in milliseconds. */
+  ms: number
+  /** Wall-clock time of the run. */
+  at: number
+  /** Values the run produced, keyed by output label. */
+  values: Record<string, string>
+}
+
 /** A free-text card. */
 export interface PurTextElement extends PurElementBase {
   type: 'text'
@@ -122,6 +134,8 @@ export interface PurCodeNodeElement extends PurElementBase {
   values?: Record<string, string>
   /** Outcome of the last run, drawn on the card. */
   run?: { ok: boolean; ms: number; error?: string }
+  /** Most recent runs, newest first; bounded by the kernel. */
+  history?: PurRunHistoryEntry[]
 }
 
 /** A frame that owns child elements positioned relative to its origin. */
