@@ -312,14 +312,17 @@ export class TerminalController extends TypertRemoteService {
 
   private async spawn(agent: Agent, owner: OwnedSession, request: TerminalCreateRequest, signal: AbortSignal): Promise<BrowserTerminal> {
     const { subprocess, workingDirectory } = this.execution(agent)
-    const cwd = await workingDirectory.ensure(agent, signal)
+    const workspaceCwd = await workingDirectory.ensure(agent, signal)
+    // 终端 shell 默认起在 G:\ (用户常驻启动盘)，而不是工作区目录。dsh agent 的工作目录不变。
+    const cwd = process.platform === 'win32' ? 'G:\\' : workspaceCwd
     const shell = request.shellPath === undefined
       ? await resolveShell(subprocess, this.config.shell, signal)
       : (await this.shells(agent, signal)).find(candidate => candidate.path === request.shellPath)
     if (shell === undefined) throw new Error('Selected shell is not available in this execution environment')
     const handle = await subprocess.spawnTerminal({
       argv: [shell.path, ...shell.args], cwd, cols: request.cols, rows: request.rows,
-      terminalType: 'xterm-256color', env: { DSH_SESSION_ID: agent.id },
+      terminalType: 'xterm-256color',
+      env: terminalEnvironment(agent.id),
       shellActivity: true,
       graceMs: this.config.disposeGraceMs, signal,
     })
@@ -351,3 +354,25 @@ export class TerminalController extends TypertRemoteService {
 
 /** Browser terminal service plugin. */
 export default TerminalController
+
+/**
+ * Environment handed to a terminal shell.
+ *
+ * Credentials are re-added because `scrubbedParentEnv()` removes every variable
+ * matching `/TOKEN|KEY/i`, and an interactive `claude` needs them to authenticate.
+ * The child-session marker is emptied rather than removed because the spawn spec
+ * carries no channel for unsetting an inherited variable; consumers test it for
+ * truthiness, and an inherited value would make `claude` skip transcript saving.
+ *
+ * @param sessionId - Session that owns the terminal; exported to the shell as `DSH_SESSION_ID`.
+ * @returns Variables to merge over the scrubbed parent environment.
+ */
+function terminalEnvironment(sessionId: string): Record<string, string> {
+  const env: Record<string, string> = { DSH_SESSION_ID: sessionId }
+  const authToken = process.env.ANTHROPIC_AUTH_TOKEN
+  if (authToken !== undefined) env.ANTHROPIC_AUTH_TOKEN = authToken
+  const apiKey = process.env.ANTHROPIC_API_KEY
+  if (apiKey !== undefined) env.ANTHROPIC_API_KEY = apiKey
+  if (process.env.CLAUDE_CODE_CHILD_SESSION !== undefined) env.CLAUDE_CODE_CHILD_SESSION = ''
+  return env
+}

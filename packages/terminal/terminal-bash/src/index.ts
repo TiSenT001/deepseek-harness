@@ -61,7 +61,7 @@ function ensureSandboxModeFence(ctx: Context, owner: Agent): void {
 function childEnvironment(spec: TerminalBackendSpawnSpec, dialect: ShellDialect): Record<string, string> {
   // The subprocess provider supplies its own scrubbed ambient base; these are
   // deliberate terminal-specific overrides layered after it.
-  const common = {
+  const common: Record<string, string> = {
     TERM: 'dumb',
     PAGER: 'cat',
     GIT_PAGER: 'cat',
@@ -69,6 +69,11 @@ function childEnvironment(spec: TerminalBackendSpawnSpec, dialect: ShellDialect)
     DSH_SESSION_ID: spec.owner.id,
     DSH_PTY_SESSION_ID: spec.sessionId,
   }
+  // Re-inject Claude Code credentials that scrubbedParentEnv() strips
+  // (SENSITIVE_ENV_PATTERN matches /TOKEN|KEY/i), so an interactive `claude`
+  // launched in this terminal can authenticate against the configured endpoint.
+  if (process.env.ANTHROPIC_AUTH_TOKEN) common.ANTHROPIC_AUTH_TOKEN = process.env.ANTHROPIC_AUTH_TOKEN
+  if (process.env.ANTHROPIC_API_KEY) common.ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY
   if (dialect === 'pwsh') {
     // pwsh ignores PS1/PROMPT_COMMAND; its prompt is installed by the startup
     // bootstrap instead, and NO_COLOR keeps the renderer quiet.
