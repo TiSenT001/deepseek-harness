@@ -108,6 +108,7 @@ export const PUR_EN: Record<keyof typeof PUR_ZH, string> = {
   'pur.runValueHint': "Type a value; leave empty to clear",
   'pur.sectionRunHistory': "Run history",
   'pur.loadHistoryEntry': "Load",
+  'pur.runDisabled': "Code execution is off in plugin settings",
   'pur.convertToCode': "Convert to code node",
   'pur.sectionSnippets': "Snippets",
   'pur.insertSnippet': "Insert snippet",

@@ -18,3 +18,6 @@ export const PUR_ASSETS_FOLDER = join(PACKAGE_ROOT, '.data', 'images')
 
 /** Plugin-owned data folder: canvas assets and the code snippet library. */
 export const PLUGIN_DATA_FOLDER = join(PACKAGE_ROOT, '.data')
+
+/** Canvas settings the plugin's settings dialog writes. */
+export const SETTINGS_FILE = join(PLUGIN_DATA_FOLDER, 'settings.json')

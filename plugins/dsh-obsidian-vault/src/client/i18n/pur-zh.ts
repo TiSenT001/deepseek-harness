@@ -110,6 +110,7 @@ export const PUR_ZH = {
   'pur.runValueHint': "可手动填值（留空清除）",
   'pur.sectionRunHistory': "运行历史",
   'pur.loadHistoryEntry': "载入",
+  'pur.runDisabled': "运行已在插件设置中关闭",
   'pur.convertToCode': "转为代码节点",
   'pur.sectionSnippets': "代码片段",
   'pur.insertSnippet': "插入片段",

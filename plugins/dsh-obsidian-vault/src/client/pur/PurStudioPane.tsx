@@ -16,7 +16,7 @@ import { createPurMenuHost, exportSelectedText } from './host.ts'
 import type { PurMenuHostDeps } from './host.ts'
 import { purBundles } from './labels.ts'
 import { PurImageCache, loadStudioDocument, resolveNoteLink, saveStudioDocument } from './loader.ts'
-import { runPurCode } from '../api-vault.ts'
+import { fetchPurClientSettings, runPurCode } from '../api-vault.ts'
 import { canvasHintFor } from './hint.ts'
 import { fetchCodeSnippets, fetchOpenPrograms, saveCodeSnippet } from '../api.ts'
 import type { CodeSnippetDto } from '../api.ts'
@@ -47,8 +47,17 @@ export interface PurStudioPaneProps {
   readonly onOpenPath?: (path: string, destination?: PurOpenDestination) => void
 }
 
-/** Embedded picture bytes above which the pane points at the externalize command. */
-const LARGE_EMBEDDED_BYTES = 4 * 1024 * 1024
+// Defaults used until the Host answers with the configured settings.
+const DEFAULT_CLIENT_SETTINGS = { saveDelayMs: 400, largeCanvasHintMb: 4, showGrid: true, allowCodeExecution: true }
+
+/**
+ * Render preferences derived from the configured grid visibility.
+ * @param showGrid - whether the grid is drawn.
+ * @returns the render preferences.
+ */
+function preferencesOf(showGrid: boolean): PurRenderPreferences {
+  return { backgroundColor: 'transparent', gridColor: '#333333', showGrid }
+}
 
 /**
  * Count the bytes a document carries as inline data URLs.
@@ -110,6 +119,15 @@ export function PurStudioPane({ t, path, onOpenPath }: PurStudioPaneProps): JSX.
   const dialogRef = useRef(false)
   // Code nodes currently being evaluated; the paint loop reads this set per frame.
   const runningIdsRef = useRef(new Set<string>())
+  const [clientSettings, setClientSettings] = useState(DEFAULT_CLIENT_SETTINGS)
+  const clientSettingsRef = useRef(DEFAULT_CLIENT_SETTINGS)
+  useEffect(() => {
+    clientSettingsRef.current = clientSettings
+  }, [clientSettings])
+  useEffect(() => {
+    void fetchPurClientSettings().then((next) => setClientSettings(next)).catch(() => undefined)
+  }, [])
+  const preferences = useMemo(() => preferencesOf(clientSettings.showGrid), [clientSettings.showGrid])
   const dirtyRef = useRef(true)
   const saveTimerRef = useRef<number | null>(null)
   const noticeTimerRef = useRef<number | null>(null)
@@ -140,7 +158,7 @@ void saveStudioDocument(path, document).catch(async (error: unknown) => {
         }
         showNotice(t('pur.saveFailed'))
       })
-    }, 400)
+    }, clientSettingsRef.current.saveDelayMs)
   }, [path, t, showNotice])
 
   const sink = useMemo(
@@ -168,6 +186,10 @@ void saveStudioDocument(path, document).catch(async (error: unknown) => {
           dirtyRef.current = true
         },
         runCode: (id, code, inputs) => {
+          if (!clientSettingsRef.current.allowCodeExecution) {
+            showNotice(t('pur.runDisabled'))
+            return
+          }
           runningIdsRef.current.add(id)
           dirtyRef.current = true
           void runPurCode(code, inputs)
@@ -292,7 +314,8 @@ void saveStudioDocument(path, document).catch(async (error: unknown) => {
       // A canvas that still embeds its pictures is tens of megabytes of JSON; say so
       // once, because the fix is one menu entry away.
       const embedded = embeddedBytesOf(document.elements)
-      if (embedded > LARGE_EMBEDDED_BYTES) {
+      const hintBytes = clientSettingsRef.current.largeCanvasHintMb * 1024 * 1024
+      if (embedded > hintBytes) {
         showNotice(t('largeEmbeddedHint').replace('{mb}', String(Math.round(embedded / 1048576))).replace('{action}', t('externalizeImages')))
       }
       // The loaded document becomes the first snapshot, so the first edit can be
@@ -327,7 +350,7 @@ void saveStudioDocument(path, document).catch(async (error: unknown) => {
       controller,
       path,
       images,
-      preferences: PREFERENCES,
+      preferences,
       notice: showNotice,
       run,
       openEditor: (kind, id) => setEditor({ kind, id }),
@@ -389,7 +412,7 @@ void saveStudioDocument(path, document).catch(async (error: unknown) => {
     return startPurPaintLoop(container, canvas, {
       env,
       images,
-      preferences: PREFERENCES,
+      preferences,
       controller: () => controllerRef.current,
       labels: () => labels.render,
       dirtyRef,

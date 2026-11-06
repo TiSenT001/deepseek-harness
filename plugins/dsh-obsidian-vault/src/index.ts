@@ -9,6 +9,8 @@ import { dirname, join, resolve as resolvePath } from 'node:path'
 import { mountVaultRoutes, type RouteHost } from './routes.ts'
 import type { FsLike } from './vault/index.ts'
 import { VaultRegistry } from './vault/registry.ts'
+import { Config, clientSettings, resolveSettings } from './settings.ts'
+import type { Settings } from './settings.ts'
 
 /** Cordis plugin name. */
 export const name = 'obsidian-vault'
@@ -16,27 +18,8 @@ export const name = 'obsidian-vault'
 /** Services the Host half needs before it can mount. */
 export const inject = ['webServer', 'fs']
 
-/** Plugin configuration read from `cordis.yml`. */
-export interface Config {
-  /** Absolute vault directory; defaults to the nearest `.obsidian` ancestor of the working directory. */
-  readonly vault?: string
-  /** Directory names skipped while walking. */
-  readonly ignore?: readonly string[]
-  /** Largest note parsed into the index, in bytes. */
-  readonly maxFileBytes?: number
-  /** Total note text kept in memory, in bytes; larger vaults read notes on demand. */
-  readonly maxIndexBytes?: number
-  /** Depth limit for the directory walk. */
-  readonly maxDepth?: number
-}
-
-const DEFAULTS = {
-  ignore: ['.obsidian', '.trash', '.git', 'node_modules', '.DS_Store', '__pycache__'],
-  maxFileBytes: 2 * 1024 * 1024,
-  maxIndexBytes: 64 * 1024 * 1024,
-  maxDepth: 12,
-} as const
-
+export { Config }
+export type { Settings }
 /** The plugin context members this Host half uses. */
 export interface HostContext {
   readonly fs: FsLike
@@ -51,17 +34,23 @@ export interface HostContext {
  * @param ctx - plugin context carrying the filesystem and Web carrier.
  * @param config - optional vault settings.
  */
-export async function apply(ctx: HostContext, config?: Config): Promise<void> {
-  const settings = resolveConfig(config)
+export async function apply(ctx: HostContext, config?: unknown): Promise<void> {
+  const settings = resolveSettings(config)
   const abort = new AbortController()
-  const registry = new VaultRegistry(ctx.fs, settings, {
+  const registry = new VaultRegistry(ctx.fs, {
+    root: settings.vault.trim().length > 0 ? resolvePath(settings.vault) : detectVault(),
+    ignore: settings.ignore,
+    maxFileBytes: settings.maxFileBytes,
+    maxIndexBytes: settings.maxIndexBytes,
+    maxDepth: settings.maxDepth,
+  }, {
     storePath: join(dshHome(), 'obsidian-vault', 'vaults.json'),
     emptyVaultPath: join(dshHome(), 'obsidian-vault', 'empty-vault'),
     report: (error) => { ctx.logger?.warn?.(`obsidian-vault: ${error.message}`) },
     signal: abort.signal,
   })
 
-  ctx.effect(() => mountVaultRoutes(ctx as unknown as RouteHost, registry), 'obsidian-vault: routes')
+  ctx.effect(() => mountVaultRoutes(ctx as unknown as RouteHost, registry, settings), 'obsidian-vault: routes')
   ctx.effect(() => () => {
     abort.abort()
     void registry.close()
@@ -89,25 +78,6 @@ function messageOf(error: unknown): string {
   return error instanceof Error ? error.message : String(error)
 }
 
-function resolveConfig(config: Config | undefined): {
-  root: string
-  ignore: readonly string[]
-  maxFileBytes: number
-  maxIndexBytes: number
-  maxDepth: number
-} {
-  const root = config?.vault !== undefined && config.vault.trim().length > 0
-    ? resolvePath(config.vault)
-    : detectVault()
-  return {
-    root,
-    ignore: config?.ignore ?? DEFAULTS.ignore,
-    maxFileBytes: positive(config?.maxFileBytes, DEFAULTS.maxFileBytes),
-    maxIndexBytes: positive(config?.maxIndexBytes, DEFAULTS.maxIndexBytes),
-    maxDepth: positive(config?.maxDepth, DEFAULTS.maxDepth),
-  }
-}
-
 /** Walk up from the working directory looking for a vault marker. */
 function detectVault(): string {
   let directory = process.cwd()
@@ -118,8 +88,4 @@ function detectVault(): string {
     directory = parent
   }
   return process.cwd()
-}
-
-function positive(value: number | undefined, fallback: number): number {
-  return value !== undefined && Number.isFinite(value) && value > 0 ? value : fallback
 }

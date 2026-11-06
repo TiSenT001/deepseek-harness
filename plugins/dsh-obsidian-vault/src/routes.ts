@@ -16,7 +16,7 @@ import { serveConfigRoute } from './config-endpoints.ts'
 import { servePluginRoute } from './plugin-endpoints.ts'
 import { VaultFiles } from './vault/files.ts'
 import { resolvePurImage } from './vault/pur-image.ts'
-import { PACKAGE_ROOT, PLUGIN_DATA_FOLDER, PUR_ASSETS_FOLDER } from './package-root.ts'
+import { PACKAGE_ROOT, PLUGIN_DATA_FOLDER, PUR_ASSETS_FOLDER, SETTINGS_FILE } from './package-root.ts'
 import { launchProgram, listOpenPrograms, resolveOpenTarget } from './system-open.ts'
 import { deleteCodeSnippet, readCodeSnippets, saveCodeSnippet } from './code-snippets.ts'
 import { importNativePur, importZipPur, isZipPur } from './vault/pur-import.ts'
@@ -24,6 +24,8 @@ import { storePurBytes } from './vault/pur-store.ts'
 import type { CodeSnippet } from './code-snippets.ts'
 import { findEmbeddingNotes } from './vault/pur-embedders.ts'
 import { externalizeCanvas } from './vault/pur-externalize.ts'
+import { mergeSettings, readSettingsPatch, settingsDialogOf, writeSettingsPatch } from './vault/plugin-settings.ts'
+import { clientSettings } from './settings.ts'
 import { runCodeSnippet } from './vault/run-code.ts'
 import { PUR_ASSET_SCHEME, readPurImage, storePurImage } from './vault/pur-store.ts'
 import { serveVaultRoute } from './vault-endpoints.ts'
@@ -31,6 +33,7 @@ import type { VaultIndex } from './vault/index.ts'
 import type { VaultRegistry } from './vault/registry.ts'
 import { CONTENT_TYPES, dispositionOf, extensionOf, logNoteOpen } from './routes-shared.ts'
 import type { RouteHost, TrustGate } from './routes-shared.ts'
+import type { Settings } from './settings.ts'
 
 /** Bundle the standalone popout page loads, shipped next to the workspace one. */
 const POPOUT_BUNDLE = join(PACKAGE_ROOT, 'lib', 'popout.js')
@@ -43,10 +46,10 @@ export type { RouteHost } from './routes-shared.ts'
  * @param registry - live vault registry the routes read and switch.
  * @returns the disposer removing every route.
  */
-export function mountVaultRoutes(host: RouteHost, registry: VaultRegistry): () => void {
+export function mountVaultRoutes(host: RouteHost, registry: VaultRegistry, settings: Settings): () => void {
   const gate = host.get('connection') as TrustGate | undefined
   const handler = (request: IncomingMessage, response: ServerResponse): Promise<void> =>
-    serve(host, registry, gate, request, response)
+    serve(host, registry, gate, settings, request, response)
   return host.webServer.register({ kind: 'prefix', path: API_BASE, handler })
 }
 
@@ -54,6 +57,7 @@ async function serve(
   host: RouteHost,
   registry: VaultRegistry,
   gate: TrustGate | undefined,
+  settings: Settings,
   request: IncomingMessage,
   response: ServerResponse,
 ): Promise<void> {
@@ -81,7 +85,7 @@ async function serve(
       await serveBridgeRoute(registry, route, request, response)
       return
     }
-    await dispatch(host, registry, route, url, request, response)
+    await dispatch(host, registry, route, url, request, response, settings)
   } catch (error) {
     send(response, 500, { error: error instanceof Error ? error.message : String(error) })
   }
@@ -94,6 +98,7 @@ async function dispatch(
   url: URL,
   request: IncomingMessage,
   response: ServerResponse,
+  settings: Settings,
 ): Promise<void> {
   const vault = registry.vault
   switch (route) {
@@ -261,10 +266,27 @@ async function dispatch(
       send(response, 200, { notes })
       return
     }
+    case 'pur/settings': {
+      // The dialog's saved overrides win field by field over the Loader config.
+      const effective = mergeSettings(settings, await readSettingsPatch(SETTINGS_FILE))
+      if (request.method === 'POST') {
+        const body = await readJson(request)
+        const saved = await writeSettingsPatch(SETTINGS_FILE, body)
+        send(response, 200, settingsDialogOf(mergeSettings(settings, saved)))
+        return
+      }
+      send(response, 200, settingsDialogOf(effective))
+      return
+    }
     case 'pur/run-code': {
+      const effective = mergeSettings(settings, await readSettingsPatch(SETTINGS_FILE))
+      if (!effective.allowCodeExecution) {
+        send(response, 403, { error: 'code execution is disabled in the plugin settings' })
+        return
+      }
       const body = await readJson(request)
       const code = typeof body['code'] === 'string' ? body['code'] : ''
-      const result = runCodeSnippet(code, body['inputs'])
+      const result = runCodeSnippet(code, body['inputs'], effective.runTimeoutMs)
       send(response, 200, result)
       return
     }

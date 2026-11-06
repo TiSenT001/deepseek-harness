@@ -412,3 +412,38 @@ export function runPurCode(code: string, inputs: Record<string, unknown>): Promi
     body: JSON.stringify({ code, inputs }),
   })
 }
+
+/** Settings the canvas honours; defaults are applied by the Host. */
+export interface PurClientSettingsDto {
+  /** Wall-clock limit for one evaluation, in milliseconds. */
+  runTimeoutMs: number
+  /** Delay before an edit is written to disk, in milliseconds. */
+  saveDelayMs: number
+  /** Embedded-image size above which the pane suggests externalizing, in MB. */
+  largeCanvasHintMb: number
+  /** Initial grid visibility. */
+  showGrid: boolean
+  /** Whether code nodes may run. */
+  allowCodeExecution: boolean
+}
+
+/**
+ * Read the canvas settings the Host resolved from the plugin config.
+ * @returns the settings subset.
+ */
+export function fetchPurClientSettings(): Promise<PurClientSettingsDto> {
+  return request<PurClientSettingsDto>('pur/settings')
+}
+
+/**
+ * Store the settings the dialog edited and read back the effective values.
+ * @param patch - fields to change; omitted fields keep their stored value.
+ * @returns the effective settings after the write.
+ */
+export function savePurClientSettings(patch: Partial<Omit<PurClientSettingsDto, 'defaults'>>): Promise<PurClientSettingsDto> {
+  return request<PurClientSettingsDto>('pur/settings', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(patch),
+  })
+}
