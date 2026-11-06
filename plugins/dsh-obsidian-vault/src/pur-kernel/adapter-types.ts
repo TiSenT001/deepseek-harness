@@ -51,6 +51,8 @@ export type PurOpenDestination = 'current' | 'new-tab' | 'right'
 export interface PurMenuHost {
   /** Localized title of a code-node preset. @param presetId - the preset id. @returns the title. */
   presetTitle(presetId: string): string
+  /** Run every code node in dependency order, feeding each result downstream. */
+  runAllNodes(): void
   /** Create a fresh canvas document. */
   newCanvas(): void
   /** Open the note picker and insert a note-link card at the point. */

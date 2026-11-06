@@ -29,6 +29,7 @@ import { purReader } from './labels.ts'
 import { PurImageCache, fetchNoteSummary, resolveNoteLink } from './loader.ts'
 import { fileToDataURL, insertUrlInput } from './paste-drop.ts'
 import { openPurLink } from './sink.ts'
+import { runPurCode } from '../api-vault.ts'
 import type { PurEditorKind } from './sink.ts'
 
 /** Background of an imported note card, matching the canvas default. */
@@ -242,6 +243,35 @@ export function createPurMenuHost(deps: () => PurMenuHostDeps): PurMenuHost {
   const unsupported = (): void => deps().notice(deps().t('pur.unsupportedFeature'))
   return {
     presetTitle: (presetId) => purReader(deps().t)(`pur.preset.${presetId}`),
+    runAllNodes: () => {
+      const d = deps()
+      const plan = d.controller.planRunAll()
+      if (plan.cycle) {
+        d.notice(d.t('pur.runCycle'))
+        return
+      }
+      if (plan.order.length === 0) {
+        d.notice(d.t('pur.runEmpty'))
+        return
+      }
+      void (async () => {
+        let failed = 0
+        for (const id of plan.order) {
+          const effect = d.controller.runCodeNode(id).find((candidate) => candidate.type === 'run-code')
+          if (effect === undefined || effect.type !== 'run-code') continue
+          try {
+            const result = await runPurCode(effect.code, effect.inputs)
+            d.run(d.controller.applyRunResult(id, result))
+            if (!result.ok) failed += 1
+          } catch {
+            failed += 1
+          }
+        }
+        d.notice(failed === 0
+          ? d.t('pur.runAllDone').replace('{count}', String(plan.order.length))
+          : d.t('pur.runAllFailed').replace('{count}', String(plan.order.length)).replace('{failed}', String(failed)))
+      })()
+    },
     newCanvas: () => void writeFreshDocument(deps()),
     addNoteLink: (at) => void insertPickedNote(deps(), at),
     importLocal: (at) => pickFile('image/*', async (file) => {

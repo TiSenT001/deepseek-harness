@@ -183,6 +183,7 @@ function elementMenu(state: PurControllerState, context: PurMenuContext, hitLock
     if (editable !== undefined && (editable.outputs?.length ?? 0) > 0) pinChildren.push({ id: 'del-out-pin', icon: 'minus', labelKey: 'delOutPin', children: pinEntries(editable, 'del-out-pin') })
     entries.push({ id: 'pin-group', icon: 'git-commit', labelKey: 'pinGroup', children: pinChildren, separatorAfter: true })
     if (hasCodeNode) entries.push({ id: 'run-node', icon: 'play', labelKey: 'runNode' })
+    if (hasCodeNode) entries.push({ id: 'run-all-nodes', icon: 'play-circle', labelKey: 'runAllNodes' })
     if (hasCodeNode) entries.push({ id: 'save-snippet', icon: 'save', labelKey: 'saveSnippet' })
   }
 

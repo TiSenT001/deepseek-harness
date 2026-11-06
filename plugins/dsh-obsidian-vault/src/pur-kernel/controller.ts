@@ -32,7 +32,7 @@ import { fitToView, resetZoom, selectAll, zoomByStep } from './controller-view.t
 import { autoPanStep } from './controller-autopan.ts'
 import { cancelPinDrop, completePinDrop } from './controller-pin-drop.ts'
 import { disconnectLine } from './controller-lines.ts'
-import { applyRunResult, runCodeNode } from './controller-run.ts'
+import { applyRunResult, planRunAll, runCodeNode } from './controller-run.ts'
 import { cancelGesture } from './controller-cancel.ts'
 import { cycleSelection } from './controller-traverse.ts'
 import { NUDGE_STEP, NUDGE_STEP_LARGE, nudgeSelection } from './controller-nudge.ts'
@@ -64,6 +64,7 @@ import { createHistory, pushHistory, redoHistory, undoHistory } from './history.
 import type { PurAlignMode } from './controller-commands.ts'
 import type { PurCodeNodeCommit, PurCodeNodeDraft } from './controller-edits.ts'
 import type { PurDropKind } from './controller-pin-drop.ts'
+import type { PurRunPlan } from './controller-run.ts'
 import type { PurElementPatch } from './controller-props.ts'
 import type {
   PurControllerEffect,
@@ -213,6 +214,14 @@ export class PurController {
    */
   runCodeNode(id: string): PurControllerEffect[] {
     return runCodeNode(this.tools, id)
+  }
+
+  /**
+   * Order the code nodes so a run-all pass follows the connections.
+   * @returns the execution order, or a cycle marker.
+   */
+  planRunAll(): PurRunPlan {
+    return planRunAll(this.tools)
   }
 
   /**

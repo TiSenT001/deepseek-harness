@@ -169,6 +169,7 @@ export function createViewMenuHost(deps: () => PurMenuDeps): PurMenuHost {
   }
   return {
     presetTitle: (presetId) => deps().read(`pur.preset.${presetId}`),
+    runAllNodes: () => new Notice('Run node needs the DSH pane'),
     newCanvas: () => void newCanvasFlow(deps()),
     addNoteLink: (at) => void insertPickedNote(deps(), at),
     importLocal: (at) => importLocalImage(deps().insertHost(), at),

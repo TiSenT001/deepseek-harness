@@ -151,3 +151,55 @@ export function pinValueText(node: PurCodeNodeElement, pin: PurPin): string {
   if (value === undefined) return ''
   return ` = ${value}`
 }
+
+/** The order a run-all pass would execute, or why it cannot. */
+export interface PurRunPlan {
+  /** Code-node ids in dependency order; empty when the graph has a cycle. */
+  order: string[]
+  /** True when the connections between code nodes contain a cycle. */
+  cycle: boolean
+}
+
+/**
+ * Order every code node so upstream nodes run before the nodes they feed.
+ * Nodes without a dependency keep their document order.
+ * @param tools - shared controller tools.
+ * @returns the execution order, or a cycle marker.
+ */
+export function planRunAll(tools: PurControllerTools): PurRunPlan {
+  const nodes: PurCodeNodeElement[] = []
+  for (const element of tools.state.elements) if (element.type === 'code-node') nodes.push(element)
+  const ids = new Set(nodes.map((node) => node.id))
+  const edges = new Set<string>()
+  const outgoing = new Map<string, string[]>()
+  for (const element of tools.state.elements) {
+    if (element.type !== 'line') continue
+    if (!ids.has(element.from) || !ids.has(element.to) || element.from === element.to) continue
+    const key = `${element.from}>${element.to}`
+    if (edges.has(key)) continue
+    edges.add(key)
+    const list = outgoing.get(element.from) ?? []
+    list.push(element.to)
+    outgoing.set(element.from, list)
+  }
+  const indegree = new Map<string, number>()
+  for (const node of nodes) indegree.set(node.id, 0)
+  for (const key of edges) {
+    const to = key.slice(key.indexOf('>') + 1)
+    indegree.set(to, (indegree.get(to) ?? 0) + 1)
+  }
+  const order: string[] = []
+  const done = new Set<string>()
+  while (true) {
+    // Always take the ready node that comes first in the document, so the order is
+    // deterministic and independent nodes run in the order the user sees.
+    const next = nodes.find((node) => !done.has(node.id) && (indegree.get(node.id) ?? 0) === 0)
+    if (next === undefined) break
+    done.add(next.id)
+    order.push(next.id)
+    for (const target of outgoing.get(next.id) ?? []) {
+      indegree.set(target, (indegree.get(target) ?? 0) - 1)
+    }
+  }
+  return { order: order.length === nodes.length ? order : [], cycle: order.length !== nodes.length }
+}

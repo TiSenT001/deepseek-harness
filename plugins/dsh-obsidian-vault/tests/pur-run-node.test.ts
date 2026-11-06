@@ -131,3 +131,49 @@ test('the context menu offers running a code node', () => {
   walk(model.entries)
   assert.ok(ids.includes('run-node'), 'no run-node entry in the menu')
 })
+
+test('the run-all plan follows the connections upstream first', () => {
+  const plan = controllerOf().planRunAll()
+  assert.deepEqual(plan, { order: ['a', 'b'], cycle: false })
+})
+
+test('independent nodes keep their document order', () => {
+  const controller = controllerOf()
+  const extra: PurElement = { id: 'c', type: 'code-node', title: 'c', x: 900, y: 0, w: 200, h: 80, code: '', content: '', rotation: 0, opacity: 1 }
+  controller.state.elements.push(extra)
+  assert.deepEqual(controller.planRunAll(), { order: ['a', 'b', 'c'], cycle: false })
+})
+
+test('a cycle is reported instead of ordered', () => {
+  const controller = controllerOf()
+  controller.state.elements.push({ id: 'back', type: 'line', from: 'b', to: 'a', fromPin: 'bo', toPin: 'ai', content: '', arrow: false })
+  assert.deepEqual(controller.planRunAll(), { order: [], cycle: true })
+})
+
+test('a run-all pass feeds each result to the next node', () => {
+  const controller = controllerOf()
+  for (const id of controller.planRunAll().order) {
+    const effect = controller.runCodeNode(id).find((candidate) => candidate.type === 'run-code')
+    assert.ok(effect !== undefined && effect.type === 'run-code')
+    if (effect === undefined || effect.type !== 'run-code') return
+    if (id === 'a') {
+      controller.applyRunResult('a', { ok: true, values: { sum: '5' }, ms: 1 })
+      continue
+    }
+    assert.deepEqual(effect.inputs, { sum: 5 })
+  }
+})
+
+test('the menu offers running every node', () => {
+  const controller = controllerOf()
+  controller.state.selectedIds.add('a')
+  const model = controller.contextMenu(10, 10, {
+    activeFileIsMarkdown: true,
+    isPopout: false,
+    isPinned: false,
+    supportsPopout: false,
+    supportsPinTop: false,
+    supportsReveal: false,
+  }).model
+  assert.ok(model.entries.some((entry) => entry.id === 'run-all-nodes'), 'no run-all-nodes entry')
+})

@@ -4771,6 +4771,7 @@ export const CATEGORY_TITLES: Record<string, string> = {
 export const LITERAL_TITLES: Record<string, string> = {
   "fitViewF": "适应视图 (F)",
   "runNode": "运行节点",
+  "runAllNodes": "运行全部",
   "addCodeNodes": "添加代码节点",
   "importIr": "导入 UAsset IR",
   "importCanvas": "导入 JSON Canvas (.canvas)",

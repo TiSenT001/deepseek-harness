@@ -94,6 +94,7 @@ export function hostOf(): { host: PurMenuHost; calls: string[] } {
     host: {
       presetTitle: (id) => `title:${id}`,
       newCanvas: record('newCanvas'),
+      runAllNodes: record('runAllNodes'),
       addNoteLink: record('addNoteLink'),
       importLocal: record('importLocal'),
       importPur: (at: { x: number; y: number }) => record('importPur') ?? `${at.x},${at.y}`,

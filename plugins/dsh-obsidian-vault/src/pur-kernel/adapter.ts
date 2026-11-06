@@ -116,6 +116,9 @@ export function runMenuAction(controller: PurController, host: PurMenuHost, acti
     }
     case 'run-node':
       return controller.runCodeNode(requireTarget(action))
+    case 'run-all-nodes':
+      host.runAllNodes()
+      return []
     case 'edit-label':
       host.editGroup(requireTarget(action))
       return []
