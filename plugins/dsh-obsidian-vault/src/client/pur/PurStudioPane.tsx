@@ -504,7 +504,15 @@ void saveStudioDocument(path, document).catch(async (error: unknown) => {
             if (active === null) return
             const world = screenToWorld(active.state.view, localX, localY)
             const element = elementAt(active.state.elements, world.x, world.y, active.state.view.scale)
-            setHintState({ x: localX + 14, y: localY + 14, text: canvasHintFor(element, t) })
+            // Keep the chip inside the canvas instead of clipping it at an edge.
+            const box = containerRef.current
+            const maxX = (box?.clientWidth ?? 0) - 180
+            const maxY = (box?.clientHeight ?? 0) - 40
+            setHintState({
+              x: Math.max(4, Math.min(maxX, localX + 14)),
+              y: Math.max(4, Math.min(maxY, localY + 14)),
+              text: canvasHintFor(element, t),
+            })
           }, HINT_DELAY_MS)
         }}
         onPointerUp={(event) => {
@@ -540,10 +548,15 @@ void saveStudioDocument(path, document).catch(async (error: unknown) => {
             top: hintState.y,
             padding: '3px 7px',
             borderRadius: 5,
-            background: 'rgba(20,20,22,0.92)',
-            color: '#d8d8dc',
-            fontSize: 11,
+            background: 'rgba(20,20,22,0.94)',
+            border: '1px solid rgba(255,255,255,0.12)',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.35)',
+            color: '#e6e6ea',
             whiteSpace: 'nowrap',
+            maxWidth: 220,
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            fontSize: 11,
             pointerEvents: 'none',
             zIndex: 6,
           }}

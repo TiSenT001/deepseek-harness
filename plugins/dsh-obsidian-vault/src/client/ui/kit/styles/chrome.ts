@@ -165,8 +165,15 @@ button.ov-plugin-info {
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.ov-settings-control { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.ov-settings-control { display: flex; align-items: center; gap: 6px; min-width: 0; min-height: 26px; }
+.ov-settings-input::-webkit-outer-spin-button,
+.ov-settings-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
 .ov-settings-input {
+  appearance: textfield;
+  -moz-appearance: textfield;
   width: 100%;
   max-width: 200px;
   box-sizing: border-box;
@@ -193,6 +200,12 @@ button.ov-plugin-info {
   line-height: 1.5;
   font-family: inherit;
   color-scheme: dark;
+}
+.ov-settings-input:focus,
+.ov-settings-textarea:focus {
+  outline: 1px solid var(--dsw-alias-brand-primary, #4d6bfe);
+  outline-offset: 1px;
+  border-color: var(--dsw-alias-brand-primary, #4d6bfe);
 }
 .ov-settings-unit { font-size: 11px; color: var(--dsw-alias-label-tertiary, #8b8b94); }
 .ov-settings-hint { font-size: 10.5px; color: var(--dsw-alias-label-tertiary, #8b8b94); }

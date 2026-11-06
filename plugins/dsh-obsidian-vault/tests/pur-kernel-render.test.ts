@@ -108,9 +108,11 @@ test('draws the lock badge only while the pulse window is open', () => {
 
 test('draws the zoom badge only when an alpha is present', () => {
   const shown = render(inputNamed('pin-modes'), true).recorder.calls
-  assert.ok(shown.includes('fillText("75%",16,284)'))
+  // The badge now sits on its own chip, so only the label position is asserted.
+  assert.ok(shown.some((call) => call.startsWith('fillText("75%",')), 'the zoom label was not drawn')
+  assert.ok(shown.some((call) => call.startsWith('fillStyle=rgba(24,24,28,0.92)')), 'the badge chip was not drawn')
   const hidden = render(inputNamed('interaction'), true).recorder.calls
-  assert.ok(!hidden.includes('fillText("100%",16,284)'))
+  assert.ok(!hidden.some((call) => call.startsWith('fillText("100%",')), 'the hidden badge was drawn')
 })
 
 test('honours the group title after the frame is stroked', () => {

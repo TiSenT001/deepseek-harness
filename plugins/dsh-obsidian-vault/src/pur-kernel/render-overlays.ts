@@ -3,6 +3,7 @@
  * rubber-band selection rectangle and the zoom percentage badge.
  * @module dsh-obsidian-vault/pur-kernel/render-overlays
  */
+import { roundedRectPath } from './render-shared.ts'
 import type { PurCanvasContext, PurScene, PurScreenRect } from './render-types.ts'
 import type { PurElementBase } from './types.ts'
 
@@ -110,13 +111,27 @@ export function drawSelectionRect(ctx: PurCanvasContext, rect: PurScreenRect): v
 export function drawZoomBadge(ctx: PurCanvasContext, scene: PurScene): void {
   const alpha = scene.zoomBadgeAlpha
   if (alpha === undefined) return
+  const label = Math.round(scene.view.scale * 100) + '%'
   ctx.save()
-  ctx.fillStyle = `rgba(255,255,255,${(alpha * 0.55).toFixed(2)})`
-  ctx.font = 'bold 15px -apple-system, sans-serif'
+  // The badge sits on whichever background the canvas has, so it carries its own
+  // chip; the fade multiplies the whole chip rather than weakening the text alone.
+  ctx.globalAlpha = Math.max(0, Math.min(1, alpha))
+  ctx.font = '600 12px -apple-system, "Segoe UI", sans-serif'
   ctx.textAlign = 'left'
-  ctx.shadowColor = 'rgba(0,0,0,0.4)'
-  ctx.shadowBlur = 3
-  ctx.fillText(Math.round(scene.view.scale * 100) + '%', 16, scene.height - 16)
+  const width = ctx.measureText(label).width + 16
+  const height = 22
+  const x = 12
+  const y = scene.height - height - 12
+  ctx.beginPath()
+  roundedRectPath(ctx, x, y, width, height, 6)
+  ctx.fillStyle = 'rgba(24,24,28,0.92)'
+  ctx.fill()
+  ctx.strokeStyle = 'rgba(255,255,255,0.12)'
+  ctx.lineWidth = 1
+  ctx.stroke()
+  ctx.fillStyle = '#f2f2f5'
+  ctx.textBaseline = 'middle'
+  ctx.fillText(label, x + 8, y + height / 2 + 0.5)
   ctx.restore()
 }
 
