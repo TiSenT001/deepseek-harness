@@ -108,6 +108,8 @@ export function PurStudioPane({ t, path, onOpenPath }: PurStudioPaneProps): JSX.
   const hostDepsRef = useRef<PurMenuHostDeps | null>(null)
   const openMenuRef = useRef<(clientX: number, clientY: number) => void>(() => undefined)
   const dialogRef = useRef(false)
+  // Code nodes currently being evaluated; the paint loop reads this set per frame.
+  const runningIdsRef = useRef(new Set<string>())
   const dirtyRef = useRef(true)
   const saveTimerRef = useRef<number | null>(null)
   const noticeTimerRef = useRef<number | null>(null)
@@ -160,7 +162,14 @@ void saveStudioDocument(path, document).catch(async (error: unknown) => {
           const hostDeps = hostDepsRef.current
           if (hostDeps !== null) exportSelectedText(hostDeps)
         },
+        markRunning: (id: string, running: boolean) => {
+          if (running) runningIdsRef.current.add(id)
+          else runningIdsRef.current.delete(id)
+          dirtyRef.current = true
+        },
         runCode: (id, code, inputs) => {
+          runningIdsRef.current.add(id)
+          dirtyRef.current = true
           void runPurCode(code, inputs)
             .then((result) => {
               const controller = controllerRef.current
@@ -171,6 +180,10 @@ void saveStudioDocument(path, document).catch(async (error: unknown) => {
                 : t('pur.runFailed').replace('{error}', result.error ?? ''))
             })
             .catch(() => showNotice(t('pur.runFailed').replace('{error}', t('pur.runNetwork'))))
+            .finally(() => {
+              runningIdsRef.current.delete(id)
+              dirtyRef.current = true
+            })
         },
       })),
     [scheduleSave, showNotice, t],
@@ -380,6 +393,7 @@ void saveStudioDocument(path, document).catch(async (error: unknown) => {
       controller: () => controllerRef.current,
       labels: () => labels.render,
       dirtyRef,
+      runningIds: () => runningIdsRef.current,
     })
   }, [ready, labels, env, images])
 

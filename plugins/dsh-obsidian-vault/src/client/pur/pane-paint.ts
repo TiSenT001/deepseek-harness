@@ -25,6 +25,8 @@ export interface PurPaintDeps {
   labels(): PurRenderLabels
   /** The pane's dirty flag. */
   readonly dirtyRef: { current: boolean }
+  /** Code nodes whose evaluation is in flight. @returns their ids. */
+  runningIds(): ReadonlySet<string>
 }
 
 /**
@@ -51,7 +53,7 @@ export function startPurPaintLoop(container: HTMLElement, canvas: HTMLCanvasElem
       deps.env.canvasHeight = height
     }
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
-    const effects = drawScene(ctx, buildPurScene(controller, { width, height, preferences: deps.preferences, labels: deps.labels(), images: deps.images.map, now: () => Date.now() }))
+    const effects = drawScene(ctx, buildPurScene(controller, { width, height, preferences: deps.preferences, labels: deps.labels(), images: deps.images.map, now: () => Date.now(), runningIds: deps.runningIds() }))
     for (const key of effects.loadImages) {
       deps.images.request(key, () => {
         deps.dirtyRef.current = true

@@ -198,6 +198,8 @@ export interface PurScene {
   lockPulseIds?: ReadonlySet<string>
   /** Elements replaced by their editor, so no body is drawn. */
   editingIds?: ReadonlySet<string>
+  /** Code nodes whose evaluation is in flight; they draw a waiting outline. */
+  runningIds?: ReadonlySet<string>
   /** Guide lines the current drag latched onto, in world coordinates. */
   snapGuides?: { x: number | null; y: number | null } | null
 }

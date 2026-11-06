@@ -4,7 +4,7 @@
  * @module dsh-obsidian-vault/pur-kernel/render-code-node
  */
 import type { PurCanvasContext, PurScene } from './render-types.ts'
-import { fillRoundedCard, pillPath } from './render-shared.ts'
+import { fillRoundedCard, pillPath, roundedRectPath } from './render-shared.ts'
 import type { PurCodeNodeElement, PurPin } from './types.ts'
 import { pinValueText } from './controller-run.ts'
 
@@ -68,6 +68,7 @@ export function drawCodeNodeCard(ctx: PurCanvasContext, scene: PurScene, element
   const footerY = screenH - BODY_BOTTOM * scale + 4 * scale
   if (element.run === undefined) drawPinCount(ctx, inputs.length, outputs.length, footerY, screenH, screenW, scale)
   else drawRunStatus(ctx, element, footerY, screenH, screenW, scale)
+  drawRunOutline(ctx, scene, element, screenW, screenH, scale)
 }
 
 /**
@@ -203,4 +204,28 @@ function drawRunStatus(ctx: PurCanvasContext, element: PurCodeNodeElement, y: nu
   ctx.textBaseline = 'alphabetic'
   const label = run.ok ? `✓ ${run.ms}ms` : `✗ ${run.error === undefined ? '失败' : run.error}`
   ctx.fillText(fitText(ctx, label, screenW - 16 * scale), screenW / 2, y)
+}
+
+/**
+ * Outline the card: red after a failed run, dashed blue while the snippet is being
+ * evaluated, so a slow node is visibly busy instead of merely unresponsive.
+ * @param ctx - drawing surface.
+ * @param scene - frame description.
+ * @param element - the code node.
+ * @param screenW - card width in canvas pixels.
+ * @param screenH - card height in canvas pixels.
+ * @param scale - zoom.
+ */
+function drawRunOutline(ctx: PurCanvasContext, scene: PurScene, element: PurCodeNodeElement, screenW: number, screenH: number, scale: number): void {
+  const failed = element.run !== undefined && !element.run.ok
+  const running = scene.runningIds?.has(element.id) === true
+  if (!failed && !running) return
+  ctx.save()
+  ctx.beginPath()
+  roundedRectPath(ctx, 1 * scale, 1 * scale, screenW - 2 * scale, screenH - 2 * scale, CARD_RADIUS * scale)
+  ctx.strokeStyle = failed ? 'rgba(240,120,120,0.85)' : 'rgba(120,170,255,0.9)'
+  ctx.lineWidth = 1.6 * scale
+  if (running) ctx.setLineDash([6 * scale, 4 * scale])
+  ctx.stroke()
+  ctx.restore()
 }

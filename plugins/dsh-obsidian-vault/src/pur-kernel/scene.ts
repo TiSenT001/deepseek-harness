@@ -24,6 +24,8 @@ export interface PurSceneHost {
   images?: ReadonlyMap<string, CanvasImageSource>
   /** Elements replaced by their editor, so no body is drawn. */
   editingIds?: ReadonlySet<string>
+  /** Code nodes whose evaluation is in flight. */
+  runningIds?: ReadonlySet<string>
   /** Wall clock in ms, for the zoom badge window. */
   now: () => number
 }
@@ -53,6 +55,7 @@ export function buildPurScene(controller: PurController, host: PurSceneHost): Pu
     zoomBadgeAlpha: zoomBadgeAlpha(state.showZoomUntil, host.now()),
     lockPulseIds: state.lockPulseIds,
     editingIds: host.editingIds,
+    runningIds: host.runningIds,
   }
 }
 

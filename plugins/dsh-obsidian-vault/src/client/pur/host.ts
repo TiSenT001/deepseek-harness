@@ -142,6 +142,8 @@ export interface PurMenuHostDeps {
   readonly openPath?: (path: string, destination?: PurOpenDestination) => void
   /** Show a full-size preview of one plugin-owned asset. */
   readonly openPreview?: (id: string, destination: PurOpenDestination) => void
+  /** Flag a code node as evaluating, so the canvas can outline it. */
+  readonly markRunning?: (id: string, running: boolean) => void
 }
 
 /** Push imported elements into the document, select them and frame them. */
@@ -259,12 +261,15 @@ export function createPurMenuHost(deps: () => PurMenuHostDeps): PurMenuHost {
         for (const id of plan.order) {
           const effect = d.controller.runCodeNode(id).find((candidate) => candidate.type === 'run-code')
           if (effect === undefined || effect.type !== 'run-code') continue
+          d.markRunning?.(id, true)
           try {
             const result = await runPurCode(effect.code, effect.inputs)
             d.run(d.controller.applyRunResult(id, result))
             if (!result.ok) failed += 1
           } catch {
             failed += 1
+          } finally {
+            d.markRunning?.(id, false)
           }
         }
         d.notice(failed === 0
