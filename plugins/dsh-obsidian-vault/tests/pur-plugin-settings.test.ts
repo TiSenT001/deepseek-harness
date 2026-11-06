@@ -19,10 +19,24 @@ import {
 import { DEFAULT_SETTINGS } from '../src/settings.ts'
 
 test('only the dialog fields survive a patch', () => {
-  assert.deepEqual(settingsPatchOf({ runTimeoutMs: 900, vault: '/tmp/x', ignore: ['a'], showGrid: false }), {
+  assert.deepEqual(settingsPatchOf({ runTimeoutMs: 900, vault: '/tmp/x', ignore: ['a'], showGrid: false, junk: 1 }), {
+    vault: '/tmp/x',
+    ignore: ['a'],
     runTimeoutMs: 900,
     showGrid: false,
   })
+})
+
+test('the vault and index fields validate their own types', () => {
+  assert.deepEqual(settingsPatchOf({ vault: 3, ignore: ['a', 2], maxDepth: 'x', maxFileBytes: 1024 }), { ignore: ['a'], maxFileBytes: 1024 })
+})
+
+test('the dialog payload carries the vault and index fields', () => {
+  const payload = settingsDialogOf(mergeSettings({}, { vault: '/vault', ignore: ['.git'], maxDepth: 4 }))
+  assert.equal(payload.vault, '/vault')
+  assert.deepEqual(payload.ignore, ['.git'])
+  assert.equal(payload.maxDepth, 4)
+  assert.equal(payload.defaults.maxFileBytes, DEFAULT_SETTINGS.maxFileBytes)
 })
 
 test('wrongly typed fields are dropped', () => {

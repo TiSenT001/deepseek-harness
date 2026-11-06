@@ -6,10 +6,12 @@
 import { existsSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { dirname, join, resolve as resolvePath } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { mountVaultRoutes, type RouteHost } from './routes.ts'
 import type { FsLike } from './vault/index.ts'
 import { VaultRegistry } from './vault/registry.ts'
-import { Config, clientSettings, resolveSettings } from './settings.ts'
+import { mergeSettings, readSettingsPatch } from './vault/plugin-settings.ts'
+import { Config, resolveSettings } from './settings.ts'
 import type { Settings } from './settings.ts'
 
 /** Cordis plugin name. */
@@ -35,7 +37,10 @@ export interface HostContext {
  * @param config - optional vault settings.
  */
 export async function apply(ctx: HostContext, config?: unknown): Promise<void> {
-  const settings = resolveSettings(config)
+  // The dialog's saved overrides win over the Loader config, so a restart applies
+  // the vault path, ignore list and index limits the user saved in the panel.
+  const saved = await readSettingsPatch(join(packageRoot(), '.data', 'settings.json'))
+  const settings = mergeSettings(config, saved)
   const abort = new AbortController()
   const registry = new VaultRegistry(ctx.fs, {
     root: settings.vault.trim().length > 0 ? resolvePath(settings.vault) : detectVault(),
@@ -88,4 +93,9 @@ function detectVault(): string {
     directory = parent
   }
   return process.cwd()
+}
+
+/** Package root, resolved like the bundled entry does. */
+function packageRoot(): string {
+  return resolvePath(dirname(fileURLToPath(import.meta.url)), '..')
 }

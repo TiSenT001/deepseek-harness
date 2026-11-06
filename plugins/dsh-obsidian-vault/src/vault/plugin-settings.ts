@@ -12,6 +12,16 @@ import type { ClientSettings, Settings } from '../settings.ts'
 
 /** Fields the settings dialog may change. */
 export interface SettingsPatch {
+  /** Vault root; empty keeps auto-detection. Applies on the next start. */
+  vault?: string
+  /** Directory names skipped while walking. Applies on the next start. */
+  ignore?: string[]
+  /** Largest note parsed into the index, in bytes. Applies on the next start. */
+  maxFileBytes?: number
+  /** Total note text kept in memory, in bytes. Applies on the next start. */
+  maxIndexBytes?: number
+  /** Depth limit for the directory walk. Applies on the next start. */
+  maxDepth?: number
   /** Wall-clock limit for one evaluation, in milliseconds. */
   runTimeoutMs?: number
   /** Whether code nodes may run. */
@@ -25,7 +35,7 @@ export interface SettingsPatch {
 }
 
 /** Keys a patch may carry. */
-const PATCH_KEYS = ['runTimeoutMs', 'allowCodeExecution', 'saveDelayMs', 'largeCanvasHintMb', 'showGrid'] as const
+const PATCH_KEYS = ['vault', 'ignore', 'maxFileBytes', 'maxIndexBytes', 'maxDepth', 'runTimeoutMs', 'allowCodeExecution', 'saveDelayMs', 'largeCanvasHintMb', 'showGrid'] as const
 
 /**
  * Keep only the keys the dialog owns, dropping anything else the file may hold.
@@ -40,6 +50,14 @@ export function settingsPatchOf(value: unknown): SettingsPatch {
     const entry = source[key]
     if (key === 'allowCodeExecution' || key === 'showGrid') {
       if (typeof entry === 'boolean') patch[key] = entry
+      continue
+    }
+    if (key === 'vault') {
+      if (typeof entry === 'string') patch.vault = entry
+      continue
+    }
+    if (key === 'ignore') {
+      if (Array.isArray(entry)) patch.ignore = entry.filter((item): item is string => typeof item === 'string')
       continue
     }
     if (typeof entry === 'number' && Number.isFinite(entry)) patch[key] = entry
@@ -91,14 +109,44 @@ export async function writeSettingsPatch(file: string, patch: SettingsPatch): Pr
  * @param settings - effective settings.
  * @returns the dialog payload.
  */
-export function settingsDialogOf(settings: Settings): ClientSettings & { defaults: SettingsPatch } {
+export interface SettingsDialog extends ClientSettings {
+  /** Vault root; empty means auto-detect. */
+  vault: string
+  /** Directory names skipped while walking. */
+  ignore: string[]
+  /** Largest note parsed into the index, in bytes. */
+  maxFileBytes: number
+  /** Total note text kept in memory, in bytes. */
+  maxIndexBytes: number
+  /** Depth limit for the directory walk. */
+  maxDepth: number
+  /** Values the dialog's reset offers. */
+  defaults: SettingsPatch
+}
+
+/**
+ * The fields the settings dialog displays.
+ * @param settings - effective settings.
+ * @returns the dialog payload.
+ */
+export function settingsDialogOf(settings: Settings): SettingsDialog {
   return {
+    vault: settings.vault,
+    ignore: [...settings.ignore],
+    maxFileBytes: settings.maxFileBytes,
+    maxIndexBytes: settings.maxIndexBytes,
+    maxDepth: settings.maxDepth,
     runTimeoutMs: settings.runTimeoutMs,
     saveDelayMs: settings.saveDelayMs,
     largeCanvasHintMb: settings.largeCanvasHintMb,
     showGrid: settings.showGrid,
     allowCodeExecution: settings.allowCodeExecution,
     defaults: {
+      vault: DEFAULT_SETTINGS.vault,
+      ignore: [...DEFAULT_SETTINGS.ignore],
+      maxFileBytes: DEFAULT_SETTINGS.maxFileBytes,
+      maxIndexBytes: DEFAULT_SETTINGS.maxIndexBytes,
+      maxDepth: DEFAULT_SETTINGS.maxDepth,
       runTimeoutMs: DEFAULT_SETTINGS.runTimeoutMs,
       allowCodeExecution: DEFAULT_SETTINGS.allowCodeExecution,
       saveDelayMs: DEFAULT_SETTINGS.saveDelayMs,

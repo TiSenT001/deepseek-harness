@@ -425,6 +425,16 @@ export interface PurClientSettingsDto {
   showGrid: boolean
   /** Whether code nodes may run. */
   allowCodeExecution: boolean
+  /** Vault root; empty means auto-detect. */
+  vault: string
+  /** Directory names skipped while walking. */
+  ignore: string[]
+  /** Largest note parsed into the index, in bytes. */
+  maxFileBytes: number
+  /** Total note text kept in memory, in bytes. */
+  maxIndexBytes: number
+  /** Depth limit for the directory walk. */
+  maxDepth: number
 }
 
 /**
@@ -435,12 +445,36 @@ export function fetchPurClientSettings(): Promise<PurClientSettingsDto> {
   return request<PurClientSettingsDto>('pur/settings')
 }
 
+/** Fields the settings dialog may write. */
+export interface PurSettingsPatch {
+  /** Wall-clock limit for one evaluation, in milliseconds. */
+  runTimeoutMs?: number
+  /** Whether code nodes may run. */
+  allowCodeExecution?: boolean
+  /** Delay before an edit is written to disk, in milliseconds. */
+  saveDelayMs?: number
+  /** Embedded-image size that triggers the externalize hint, in MB. */
+  largeCanvasHintMb?: number
+  /** Initial grid visibility. */
+  showGrid?: boolean
+  /** Vault root; empty means auto-detect. */
+  vault?: string
+  /** Directory names skipped while walking. */
+  ignore?: string[]
+  /** Largest note parsed into the index, in bytes. */
+  maxFileBytes?: number
+  /** Total note text kept in memory, in bytes. */
+  maxIndexBytes?: number
+  /** Depth limit for the directory walk. */
+  maxDepth?: number
+}
+
 /**
  * Store the settings the dialog edited and read back the effective values.
  * @param patch - fields to change; omitted fields keep their stored value.
  * @returns the effective settings after the write.
  */
-export function savePurClientSettings(patch: Partial<Omit<PurClientSettingsDto, 'defaults'>>): Promise<PurClientSettingsDto> {
+export function savePurClientSettings(patch: PurSettingsPatch): Promise<PurClientSettingsDto> {
   return request<PurClientSettingsDto>('pur/settings', {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
