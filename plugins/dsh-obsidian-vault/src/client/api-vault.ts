@@ -441,6 +441,14 @@ export interface PurClientSettingsDto {
   exportTransparent: boolean
   /** JPEG quality for image exports. */
   exportJpgQuality: number
+  /** Whether dragging latches onto neighbours. */
+  snapEnabled: boolean
+  /** Snap radius in screen pixels. */
+  snapDistance: number
+  /** Auto-pan speed ceiling in world units per frame. */
+  autoPanMaxSpeed: number
+  /** Click tolerance for connections, in screen pixels. */
+  lineHitTolerance: number
 }
 
 /**
@@ -479,6 +487,14 @@ export interface PurSettingsPatch {
   exportTransparent?: boolean
   /** JPEG quality for image exports. */
   exportJpgQuality?: number
+  /** Whether dragging latches onto neighbours. */
+  snapEnabled?: boolean
+  /** Snap radius in screen pixels. */
+  snapDistance?: number
+  /** Auto-pan speed ceiling in world units per frame. */
+  autoPanMaxSpeed?: number
+  /** Click tolerance for connections, in screen pixels. */
+  lineHitTolerance?: number
 }
 
 /**

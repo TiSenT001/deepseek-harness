@@ -260,4 +260,13 @@ export const ZH = {
   settingExportTransparentHint: "关闭则用画布底色填充",
   settingJpgQuality: "JPG 质量",
   settingJpgQualityHint: "0.4–1，步长 0.05",
+  settingsGroupInteraction: "画布交互",
+  settingSnap: "吸附对齐",
+  settingSnapHint: "拖动卡片时吸附到相邻卡片的边缘与中心",
+  settingSnapDistance: "吸附半径",
+  settingSnapDistanceHint: "0 表示关闭吸附（0–40）",
+  settingAutoPan: "自动平移上限",
+  settingAutoPanHint: "拖到边缘时每帧最多平移多少单位（1–60）",
+  settingLineHit: "连线命中容差",
+  settingLineHitHint: "点击选中连线时的容差（8–60）",
 } as const

@@ -54,6 +54,10 @@ const DEFAULT_CLIENT_SETTINGS = {
   exportScale: 1,
   exportTransparent: true,
   exportJpgQuality: 0.9,
+  snapEnabled: true,
+  snapDistance: 8,
+  autoPanMaxSpeed: 12,
+  lineHitTolerance: 25,
 }
 
 /**
@@ -129,6 +133,16 @@ export function PurStudioPane({ t, path, onOpenPath }: PurStudioPaneProps): JSX.
   const clientSettingsRef = useRef(DEFAULT_CLIENT_SETTINGS)
   useEffect(() => {
     clientSettingsRef.current = clientSettings
+    // Canvas behaviour is read from the controller's shared options object, so a
+    // saved change reaches an already-open canvas without recreating it.
+    const controller = controllerRef.current
+    if (controller !== null) {
+      controller.canvasOptions.snapEnabled = clientSettings.snapEnabled
+      controller.canvasOptions.snapDistance = clientSettings.snapDistance
+      controller.canvasOptions.autoPanMaxSpeed = clientSettings.autoPanMaxSpeed
+      controller.canvasOptions.lineHitTolerance = clientSettings.lineHitTolerance
+      dirtyRef.current = true
+    }
   }, [clientSettings])
   useEffect(() => {
     void fetchPurClientSettings().then((next) => setClientSettings(next)).catch(() => undefined)
@@ -316,7 +330,13 @@ void saveStudioDocument(path, document).catch(async (error: unknown) => {
     controllerRef.current = null
     void loadStudioDocument(path).then((document) => {
       if (cancelled) return
-      controllerRef.current = new PurController(env, labels.controller, document.elements, document.viewState)
+      const settings = clientSettingsRef.current
+      controllerRef.current = new PurController(env, labels.controller, document.elements, document.viewState, {
+        snapEnabled: settings.snapEnabled,
+        snapDistance: settings.snapDistance,
+        autoPanMaxSpeed: settings.autoPanMaxSpeed,
+        lineHitTolerance: settings.lineHitTolerance,
+      })
       // A canvas that still embeds its pictures is tens of megabytes of JSON; say so
       // once, because the fix is one menu entry away.
       const embedded = embeddedBytesOf(document.elements)

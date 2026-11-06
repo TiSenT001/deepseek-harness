@@ -38,6 +38,10 @@ interface CanvasSettingsDraft {
   exportScale: string
   exportTransparent: boolean
   exportJpgQuality: string
+  snapEnabled: boolean
+  snapDistance: string
+  autoPanMaxSpeed: string
+  lineHitTolerance: string
 }
 
 /**
@@ -62,6 +66,10 @@ function draftOf(dto: PurClientSettingsDto): CanvasSettingsDraft {
     exportScale: dto.exportScale === undefined ? '1' : String(dto.exportScale),
     exportTransparent: dto.exportTransparent ?? true,
     exportJpgQuality: dto.exportJpgQuality === undefined ? '0.9' : String(dto.exportJpgQuality),
+    snapEnabled: dto.snapEnabled ?? true,
+    snapDistance: dto.snapDistance === undefined ? '8' : String(dto.snapDistance),
+    autoPanMaxSpeed: dto.autoPanMaxSpeed === undefined ? '12' : String(dto.autoPanMaxSpeed),
+    lineHitTolerance: dto.lineHitTolerance === undefined ? '25' : String(dto.lineHitTolerance),
   }
 }
 
@@ -85,6 +93,10 @@ function patchOf(draft: CanvasSettingsDraft): PurSettingsPatch {
     exportScale: Number(draft.exportScale),
     exportTransparent: draft.exportTransparent,
     exportJpgQuality: Number(draft.exportJpgQuality),
+    snapEnabled: draft.snapEnabled,
+    snapDistance: Number(draft.snapDistance),
+    autoPanMaxSpeed: Number(draft.autoPanMaxSpeed),
+    lineHitTolerance: Number(draft.lineHitTolerance),
   }
 }
 
@@ -279,6 +291,20 @@ function CanvasSettingsSection({ t }: { readonly t: Translate }): JSX.Element | 
       </SettingsRow>
       <SettingsRow label={t('settingAllowRun')} hint={t('settingAllowRunHint')}>
         <Toggle checked={draft.allowCodeExecution} label="" ariaLabel={t('settingAllowRun')} onChange={(allowCodeExecution) => setDraft({ ...draft, allowCodeExecution })} />
+      </SettingsRow>
+
+      <div className={css.settingsGroup}>{t('settingsGroupInteraction')}</div>
+      <SettingsRow label={t('settingSnap')} hint={t('settingSnapHint')}>
+        <Toggle checked={draft.snapEnabled} label="" ariaLabel={t('settingSnap')} onChange={(snapEnabled) => setDraft({ ...draft, snapEnabled })} />
+      </SettingsRow>
+      <SettingsRow label={t('settingSnapDistance')} hint={t('settingSnapDistanceHint')} unit="px">
+        <input className={css.settingsInput} type="number" min={0} max={40} value={draft.snapDistance} onChange={(event) => setDraft({ ...draft, snapDistance: event.target.value })} />
+      </SettingsRow>
+      <SettingsRow label={t('settingAutoPan')} hint={t('settingAutoPanHint')}>
+        <input className={css.settingsInput} type="number" min={1} max={60} value={draft.autoPanMaxSpeed} onChange={(event) => setDraft({ ...draft, autoPanMaxSpeed: event.target.value })} />
+      </SettingsRow>
+      <SettingsRow label={t('settingLineHit')} hint={t('settingLineHitHint')} unit="px">
+        <input className={css.settingsInput} type="number" min={8} max={60} value={draft.lineHitTolerance} onChange={(event) => setDraft({ ...draft, lineHitTolerance: event.target.value })} />
       </SettingsRow>
 
       <div className={css.settingsGroup}>{t('settingsGroupSaving')}</div>

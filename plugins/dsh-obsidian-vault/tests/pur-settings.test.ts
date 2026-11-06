@@ -55,5 +55,5 @@ test('booleans pass through', () => {
 
 test('the client subset carries only what the canvas reads', () => {
   const dto = clientSettings(resolveSettings({ saveDelayMs: 900, largeCanvasHintMb: 8, showGrid: false, runTimeoutMs: 50 }))
-  assert.deepEqual(dto, { runTimeoutMs: 200, saveDelayMs: 900, largeCanvasHintMb: 8, showGrid: false, allowCodeExecution: true, exportScale: 1, exportTransparent: true, exportJpgQuality: 0.9 })
+  assert.deepEqual(dto, { runTimeoutMs: 200, saveDelayMs: 900, largeCanvasHintMb: 8, showGrid: false, allowCodeExecution: true, exportScale: 1, exportTransparent: true, exportJpgQuality: 0.9, snapEnabled: true, snapDistance: 8, autoPanMaxSpeed: 12, lineHitTolerance: 25 })
 })

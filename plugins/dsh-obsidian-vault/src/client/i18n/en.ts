@@ -261,4 +261,13 @@ export const EN: Dict = {
   settingExportTransparentHint: "Off fills with the canvas background",
   settingJpgQuality: "JPEG quality",
   settingJpgQualityHint: "0.4 to 1, step 0.05",
+  settingsGroupInteraction: "Canvas interaction",
+  settingSnap: "Snap to neighbours",
+  settingSnapHint: "Latches edges and centres onto nearby cards while dragging",
+  settingSnapDistance: "Snap radius",
+  settingSnapDistanceHint: "0 turns snapping off (0-40)",
+  settingAutoPan: "Auto-pan ceiling",
+  settingAutoPanHint: "World units moved per frame at the edge (1-60)",
+  settingLineHit: "Line hit tolerance",
+  settingLineHitHint: "Click tolerance for selecting a connection (8-60)",
 }

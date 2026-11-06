@@ -258,9 +258,31 @@ export interface PurHistory {
 }
 
 /** Shared tool bundle every controller operation receives. */
+/** Tunable canvas behaviour; adapters mutate the shared object at runtime. */
+export interface PurCanvasOptions {
+  /** Whether dragging latches onto neighbours. */
+  snapEnabled: boolean
+  /** Snap radius in screen pixels. */
+  snapDistance: number
+  /** Auto-pan speed ceiling in world units per frame. */
+  autoPanMaxSpeed: number
+  /** Click tolerance for connections, in screen pixels. */
+  lineHitTolerance: number
+}
+
+/** Defaults used when an adapter passes no options. */
+export const DEFAULT_CANVAS_OPTIONS: PurCanvasOptions = {
+  snapEnabled: true,
+  snapDistance: 8,
+  autoPanMaxSpeed: 12,
+  lineHitTolerance: 25,
+}
+
 export interface PurControllerTools {
   /** Mutable controller state. */
   state: PurControllerState
+  /** Canvas behaviour the adapter can tune. */
+  options: PurCanvasOptions
   /** Undo/redo stack. */
   history: PurHistory
   /** Adapter-supplied environment. */

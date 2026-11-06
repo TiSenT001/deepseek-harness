@@ -106,7 +106,8 @@ function bestAxis(lines: readonly number[], targetLines: readonly number[], radi
  * @param primaryId - the card the snap is measured from.
  * @returns the correction for both axes; nulls when nothing matched.
  */
-export function snapDrag(state: PurControllerState, primaryId: string): SnapResult {
+export function snapDrag(state: PurControllerState, primaryId: string, snapPixels: number = SNAP_RADIUS): SnapResult {
+  if (snapPixels <= 0) return { x: null, y: null }
   const site = findElement(state.elements, primaryId)
   if (site === null || site.element.type === 'line') return { x: null, y: null }
   const draggedIds = state.dragStart === null
@@ -121,7 +122,7 @@ export function snapDrag(state: PurControllerState, primaryId: string): SnapResu
   }
   const targets = targetRects(state.elements, excluded)
   if (targets.length === 0) return { x: null, y: null }
-  const radius = SNAP_RADIUS / state.view.scale
+  const radius = snapPixels / state.view.scale
   const x = bestAxis(
     [rect.left, (rect.left + rect.right) / 2, rect.right],
     targets.flatMap((target) => [target.left, (target.left + target.right) / 2, target.right]),
@@ -162,11 +163,13 @@ export function snapResize(
   resizedId: string,
   rect: { x: number; y: number; w: number; h: number },
   handle: PurResizeHandle,
+  snapPixels: number = SNAP_RADIUS,
 ): SnapResult {
+  if (snapPixels <= 0) return { x: null, y: null }
   const excluded = excludedIds(state.elements, [resizedId])
   const targets = targetRects(state.elements, excluded)
   if (targets.length === 0) return { x: null, y: null }
-  const radius = SNAP_RADIUS / state.view.scale
+  const radius = snapPixels / state.view.scale
   const edges = movingEdges(handle)
   const xLines: number[] = []
   if (edges.left) xLines.push(rect.x)

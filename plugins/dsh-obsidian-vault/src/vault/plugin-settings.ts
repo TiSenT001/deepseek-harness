@@ -38,10 +38,18 @@ export interface SettingsPatch {
   exportTransparent?: boolean
   /** JPEG quality for image exports. */
   exportJpgQuality?: number
+  /** Whether dragging latches onto neighbours. */
+  snapEnabled?: boolean
+  /** Snap radius in screen pixels. */
+  snapDistance?: number
+  /** Auto-pan speed ceiling in world units per frame. */
+  autoPanMaxSpeed?: number
+  /** Click tolerance for connections, in screen pixels. */
+  lineHitTolerance?: number
 }
 
 /** Keys a patch may carry. */
-const PATCH_KEYS = ['vault', 'ignore', 'maxFileBytes', 'maxIndexBytes', 'maxDepth', 'runTimeoutMs', 'allowCodeExecution', 'saveDelayMs', 'largeCanvasHintMb', 'showGrid', 'exportScale', 'exportTransparent', 'exportJpgQuality'] as const
+const PATCH_KEYS = ['vault', 'ignore', 'maxFileBytes', 'maxIndexBytes', 'maxDepth', 'runTimeoutMs', 'allowCodeExecution', 'saveDelayMs', 'largeCanvasHintMb', 'showGrid', 'exportScale', 'exportTransparent', 'exportJpgQuality', 'snapEnabled', 'snapDistance', 'autoPanMaxSpeed', 'lineHitTolerance'] as const
 
 /**
  * Keep only the keys the dialog owns, dropping anything else the file may hold.
@@ -54,7 +62,7 @@ export function settingsPatchOf(value: unknown): SettingsPatch {
   const patch: SettingsPatch = {}
   for (const key of PATCH_KEYS) {
     const entry = source[key]
-    if (key === 'allowCodeExecution' || key === 'showGrid' || key === 'exportTransparent') {
+    if (key === 'allowCodeExecution' || key === 'showGrid' || key === 'exportTransparent' || key === 'snapEnabled') {
       if (typeof entry === 'boolean') patch[key] = entry
       continue
     }
@@ -150,6 +158,10 @@ export function settingsDialogOf(settings: Settings): SettingsDialog {
     exportScale: settings.exportScale,
     exportTransparent: settings.exportTransparent,
     exportJpgQuality: settings.exportJpgQuality,
+    snapEnabled: settings.snapEnabled,
+    snapDistance: settings.snapDistance,
+    autoPanMaxSpeed: settings.autoPanMaxSpeed,
+    lineHitTolerance: settings.lineHitTolerance,
     defaults: {
       vault: DEFAULT_SETTINGS.vault,
       ignore: [...DEFAULT_SETTINGS.ignore],
@@ -164,6 +176,10 @@ export function settingsDialogOf(settings: Settings): SettingsDialog {
       exportScale: DEFAULT_SETTINGS.exportScale,
       exportTransparent: DEFAULT_SETTINGS.exportTransparent,
       exportJpgQuality: DEFAULT_SETTINGS.exportJpgQuality,
+      snapEnabled: DEFAULT_SETTINGS.snapEnabled,
+      snapDistance: DEFAULT_SETTINGS.snapDistance,
+      autoPanMaxSpeed: DEFAULT_SETTINGS.autoPanMaxSpeed,
+      lineHitTolerance: DEFAULT_SETTINGS.lineHitTolerance,
     },
   }
 }

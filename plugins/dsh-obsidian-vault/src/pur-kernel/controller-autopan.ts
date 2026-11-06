@@ -21,15 +21,15 @@ export const AUTOPAN_MAX_SPEED = 12
  * @param size - canvas size on the axis.
  * @returns offset change per frame, zero outside the edge zone.
  */
-export function autoPanSpeed(position: number, size: number): number {
+export function autoPanSpeed(position: number, size: number, maxSpeed: number = AUTOPAN_MAX_SPEED): number {
   if (position < AUTOPAN_ZONE) {
     const depth = Math.min(AUTOPAN_ZONE, AUTOPAN_ZONE - Math.max(0, position))
-    return Math.ceil((depth / AUTOPAN_ZONE) * AUTOPAN_MAX_SPEED)
+    return Math.ceil((depth / AUTOPAN_ZONE) * maxSpeed)
   }
   const distance = size - position
   if (distance < AUTOPAN_ZONE) {
     const depth = Math.min(AUTOPAN_ZONE, AUTOPAN_ZONE - Math.max(0, distance))
-    return -Math.ceil((depth / AUTOPAN_ZONE) * AUTOPAN_MAX_SPEED)
+    return -Math.ceil((depth / AUTOPAN_ZONE) * maxSpeed)
   }
   return 0
 }
@@ -41,9 +41,10 @@ export function autoPanSpeed(position: number, size: number): number {
  */
 export function autoPanStep(tools: PurControllerTools): PurControllerEffect[] {
   const { state, env } = tools
+  const maxSpeed = tools.options.autoPanMaxSpeed
   if (!state.dragging && !state.selecting) return []
-  const dx = autoPanSpeed(state.lastLocal.x, env.canvasWidth)
-  const dy = autoPanSpeed(state.lastLocal.y, env.canvasHeight)
+  const dx = autoPanSpeed(state.lastLocal.x, env.canvasWidth, maxSpeed)
+  const dy = autoPanSpeed(state.lastLocal.y, env.canvasHeight, maxSpeed)
   if (dx === 0 && dy === 0) return []
   state.view.offsetX += dx
   state.view.offsetY += dy

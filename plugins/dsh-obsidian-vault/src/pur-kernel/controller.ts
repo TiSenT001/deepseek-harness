@@ -64,6 +64,8 @@ import { createHistory, pushHistory, redoHistory, undoHistory } from './history.
 import type { PurAlignMode } from './controller-commands.ts'
 import type { PurCodeNodeCommit, PurCodeNodeDraft } from './controller-edits.ts'
 import type { PurDropKind } from './controller-pin-drop.ts'
+import { DEFAULT_CANVAS_OPTIONS } from './controller-types.ts'
+import type { PurCanvasOptions } from './controller-types.ts'
 import type { PurRunPlan } from './controller-run.ts'
 import type { PurElementPatch } from './controller-props.ts'
 import type {
@@ -105,8 +107,26 @@ export class PurController {
    * @param elements - initial top-level elements.
    * @param view - initial pan and zoom.
    */
-  constructor(env: PurControllerEnv, labels: PurControllerLabels, elements: PurElement[] = [], view: PurViewState = { offsetX: 0, offsetY: 0, scale: 1 }) {
+  /** Canvas behaviour shared with the adapter, mutable at runtime. */
+  readonly canvasOptions: PurCanvasOptions
+
+  /**
+   * @param env - adapter environment.
+   * @param labels - display copy.
+   * @param elements - initial top-level elements.
+   * @param view - initial pan and zoom.
+   * @param options - initial canvas behaviour.
+   */
+  constructor(
+    env: PurControllerEnv,
+    labels: PurControllerLabels,
+    elements: PurElement[] = [],
+    view: PurViewState = { offsetX: 0, offsetY: 0, scale: 1 },
+    options: Partial<PurCanvasOptions> = {},
+  ) {
+    this.canvasOptions = { ...DEFAULT_CANVAS_OPTIONS, ...options }
     this.tools = {
+      options: this.canvasOptions,
       state: {
         elements,
         view,
@@ -350,7 +370,7 @@ export class PurController {
     const { state, labels } = this.tools
     const worldX = (event.clientX - event.rectLeft - state.view.offsetX) / state.view.scale
     const worldY = (event.clientY - event.rectTop - state.view.offsetY) / state.view.scale
-    const element = elementAtForClick(state, worldX, worldY)
+    const element = elementAtForClick(state, worldX, worldY, this.canvasOptions.lineHitTolerance)
     if (element === null) return addTextBlock(this.tools, worldX, worldY)
     if (element.locked === true) return [{ type: 'notice', text: labels.lockedNotice }]
     if (element.type === 'text' || element.type === 'code-node') return [{ type: 'edit-text', id: element.id }]
@@ -601,8 +621,8 @@ export class PurController {
 }
 
 /** Hit-test a double click. */
-function elementAtForClick(state: PurControllerState, worldX: number, worldY: number): PurElement | null {
-  return elementAt(state.elements, worldX, worldY, state.view.scale)
+function elementAtForClick(state: PurControllerState, worldX: number, worldY: number, lineTolerance: number): PurElement | null {
+  return elementAt(state.elements, worldX, worldY, state.view.scale, lineTolerance)
 }
 
 /** Push a history snapshot for the insertion helpers. */

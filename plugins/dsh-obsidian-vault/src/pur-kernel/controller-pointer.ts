@@ -11,6 +11,15 @@ import { pushHistory } from './history.ts'
 import { finishPinDrag, local, momentumStep, reparentDragged } from './controller-gestures.ts'
 import { applyDragToPointer } from './controller-drag.ts'
 import { snapDrag, snapResize } from './controller-snap.ts'
+
+/**
+ * Snap radius to use for this controller: zero when snapping is switched off.
+ * @param tools - shared controller tools.
+ * @returns the radius in screen pixels.
+ */
+function snapPixels(tools: PurControllerTools): number {
+  return tools.options.snapEnabled ? tools.options.snapDistance : 0
+}
 import type { PurControllerEffect, PurControllerState, PurControllerTools, PurPointerEvent } from './controller-types.ts'
 import type { PurElement } from './types.ts'
 
@@ -70,7 +79,7 @@ export function pointerDown(tools: PurControllerTools, event: PurPointerEvent): 
     }
   }
 
-  const element = elementAt(state.elements, world.x, world.y, state.view.scale)
+  const element = elementAt(state.elements, world.x, world.y, state.view.scale, tools.options.lineHitTolerance)
   if (event.button === 0) {
     if (element !== null) {
       if (event.ctrlKey || event.metaKey) {
@@ -210,7 +219,7 @@ export function pointerMove(tools: PurControllerTools, event: PurPointerEvent): 
     if (grabbed !== null) {
       effects.push({ type: 'cursor', cursor: cursorForHandle(grabbed.handle) })
     } else {
-      const hovered = elementAt(state.elements, world.x, world.y, state.view.scale)
+      const hovered = elementAt(state.elements, world.x, world.y, state.view.scale, tools.options.lineHitTolerance)
       effects.push({ type: 'cursor', cursor: hovered === null ? 'default' : hovered.type === 'line' ? 'pointer' : 'move' })
     }
   }
@@ -247,7 +256,7 @@ export function pointerMove(tools: PurControllerTools, event: PurPointerEvent): 
       // and Alt keeps it exactly where the pointer put it.
       state.snapGuides = { x: null, y: null }
       if (event.altKey !== true && next.w > 0 && next.h > 0) {
-        const snapped = snapResize(state, site.element.id, next, state.resize.handle)
+        const snapped = snapResize(state, site.element.id, next, state.resize.handle, snapPixels(tools))
         if (snapped.x !== null) {
           if (state.resize.handle === 'w' || state.resize.handle === 'nw' || state.resize.handle === 'sw') {
             site.element.x = (site.element.x ?? 0) + snapped.x.delta
@@ -275,7 +284,7 @@ export function pointerMove(tools: PurControllerTools, event: PurPointerEvent): 
     state.snapGuides = { x: null, y: null }
     const primary = state.dragStart.elements.find((entry) => entry !== null)
     if (primary !== undefined && event.altKey !== true) {
-      const snap = snapDrag(state, primary.id)
+      const snap = snapDrag(state, primary.id, snapPixels(tools))
       if (snap.x !== null) {
         for (const entry of state.dragStart.elements) {
           if (entry === null) continue

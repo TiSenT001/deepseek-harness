@@ -79,7 +79,7 @@ export function finishPinDrag(tools: PurControllerTools, event: PurPointerEvent)
     state.elements.push({ id: tools.env.createId(), type: 'line', from: drag.fromNodeId ?? '', fromPin: drag.fromPinId ?? undefined, to: target.nodeId, toPin: target.pinId, content: '', arrow: false })
     pushHistory(tools.history, state.elements)
     effects.push({ type: 'save' }, { type: 'notice', text: labels.lineCreated })
-  } else if (target === null && elementAt(state.elements, world.x, world.y, state.view.scale) === null) {
+  } else if (target === null && elementAt(state.elements, world.x, world.y, state.view.scale, tools.options.lineHitTolerance) === null) {
     // Dropped on empty canvas: remember the connection and let the user pick the
     // node kind, which is less surprising than silently creating a text card.
     state.pinDrop = {

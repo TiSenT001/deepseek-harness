@@ -103,3 +103,15 @@ test('the dialog carries the export fields and accepts a patch', () => {
     exportJpgQuality: 0.75,
   })
 })
+test('interaction settings validate and reach the dialog', () => {
+  assert.equal(resolveSettings({ snapDistance: -5 }).snapDistance, 0)
+  assert.equal(resolveSettings({ autoPanMaxSpeed: 999 }).autoPanMaxSpeed, 60)
+  assert.equal(resolveSettings({ lineHitTolerance: 2 }).lineHitTolerance, 8)
+  assert.equal(resolveSettings({ snapEnabled: false }).snapEnabled, false)
+  const payload = settingsDialogOf(mergeSettings({}, { snapEnabled: false, snapDistance: 4, autoPanMaxSpeed: 20, lineHitTolerance: 40 }))
+  assert.equal(payload.snapEnabled, false)
+  assert.equal(payload.snapDistance, 4)
+  assert.equal(payload.autoPanMaxSpeed, 20)
+  assert.equal(payload.lineHitTolerance, 40)
+  assert.deepEqual(settingsPatchOf({ snapEnabled: false, snapDistance: 4, junk: true }), { snapEnabled: false, snapDistance: 4 })
+})

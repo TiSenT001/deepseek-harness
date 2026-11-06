@@ -46,7 +46,7 @@ const ENDPOINT_HIT_PX = 16
  * @param scale - zoom, so the line-midpoint tolerance keeps a constant screen size.
  * @returns the element, the deepest unlocked group child, or null.
  */
-export function elementAt(elements: readonly PurElement[], worldX: number, worldY: number, scale: number): PurElement | null {
+export function elementAt(elements: readonly PurElement[], worldX: number, worldY: number, scale: number, lineTolerance: number = LINE_HIT_PX): PurElement | null {
   // Lines are drawn below cards, so a card always wins a point both cover; the
   // first line that matches is returned only when nothing else does.
   const lineHits: PurElement[] = []
@@ -56,7 +56,7 @@ export function elementAt(elements: readonly PurElement[], worldX: number, world
       if (element === undefined) continue
       if (element.type === 'line') {
         // A detached line has its own segment; a bound one spans its two cards.
-        const tolerance = LINE_HIT_PX / (scale || 1)
+        const tolerance = lineTolerance / (scale || 1)
         if (element.from === '' && element.to === '') {
           if (element.x === undefined || element.y === undefined) continue
           const start = { x: element.x, y: element.y }
