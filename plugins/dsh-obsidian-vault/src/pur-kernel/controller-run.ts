@@ -203,3 +203,50 @@ export function planRunAll(tools: PurControllerTools): PurRunPlan {
   }
   return { order: order.length === nodes.length ? order : [], cycle: order.length !== nodes.length }
 }
+
+/**
+ * Store a value the user typed for one output pin, so a node can act as a constant.
+ * The text is parsed as JSON when it is valid JSON; otherwise it is stored as a
+ * string. An empty text clears the value.
+ * @param tools - shared controller tools.
+ * @param id - the code node.
+ * @param label - output pin label.
+ * @param text - typed text.
+ * @returns the save and render effects, empty when the pin does not exist.
+ */
+export function setNodeValue(tools: PurControllerTools, id: string, label: string, text: string): PurControllerEffect[] {
+  const node = codeNodeOf(tools, id)
+  if (node === null) return []
+  if (!(node.outputs ?? []).some((pin) => pin.label === label)) return []
+  const trimmed = text.trim()
+  if (trimmed === '') {
+    if (node.values !== undefined) {
+      delete node.values[label]
+      if (Object.keys(node.values).length === 0) delete node.values
+    }
+    return [{ type: 'save' }, { type: 'render' }]
+  }
+  let serialized: string
+  try {
+    serialized = JSON.stringify(JSON.parse(trimmed) as unknown) ?? 'null'
+  } catch {
+    serialized = JSON.stringify(trimmed)
+  }
+  node.values = { ...(node.values ?? {}), [label]: serialized.length <= MAX_VALUE_CHARS ? serialized : serialized.slice(0, MAX_VALUE_CHARS - 1) + '…' }
+  return [{ type: 'save' }, { type: 'render' }]
+}
+
+/**
+ * Turn a stored value into the text an editor shows.
+ * @param serialized - stored JSON text.
+ * @returns the display text, or an empty string when there is no value.
+ */
+export function displayRunValue(serialized: string | undefined): string {
+  if (serialized === undefined) return ''
+  try {
+    const parsed = JSON.parse(serialized) as unknown
+    return typeof parsed === 'string' ? parsed : (JSON.stringify(parsed) ?? '')
+  } catch {
+    return serialized
+  }
+}

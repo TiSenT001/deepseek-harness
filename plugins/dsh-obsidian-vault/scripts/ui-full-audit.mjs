@@ -8,7 +8,7 @@ import { fileURLToPath } from 'node:url'
 // feature in the UI, records per-check pass/fail, and collects console errors.
 // Fixtures are created/deleted through the plugin API and UI paths only.
 const args = process.argv.slice(2)
-const url = args.find(arg => !arg.startsWith('--'))
+let url = args.find(arg => !arg.startsWith('--'))
 if (url === undefined) {
   console.error('usage: node ui-full-audit.mjs <url> [--only=name1,name2]')
   process.exit(1)
@@ -21,6 +21,24 @@ const only = onlyArg === undefined
   : new Set(onlyArg.slice('--only='.length).split(',').filter(name => name.length > 0))
 const origin = new URL(url).origin
 const API = `${origin}/obsidian/api`
+
+// A restarted host rotates the URL token, and the token file a caller reads can be
+// older than the one the running server accepts. The launch log always holds the
+// current URL, so a blank page retries with it before failing the audit.
+const LOG_URL = fileURLToPath(new URL('../../../.dsh-home/dsh-web.log', import.meta.url))
+const urlFromLog = () => {
+  try {
+    if (!existsSync(LOG_URL)) return undefined
+    const lines = readFileSync(LOG_URL, 'utf8').split('\n')
+    for (let index = lines.length - 1; index >= 0; index -= 1) {
+      const match = lines[index].match(/dsh web: (http:\/\/\S+)/)
+      if (match !== null) return match[1].trim()
+    }
+  } catch {
+    // A missing or unreadable log is not an audit failure.
+  }
+  return undefined
+}
 const SHOTS = '.artifacts/ui/audit'
 mkdirSync(SHOTS, { recursive: true })
 
@@ -403,13 +421,24 @@ try {
     // A rotated token leaves the page blank, which otherwise surfaces as a
     // 30s locator timeout on every check and hides the real cause.
     if ((await entry.count()) === 0) {
-      const title = await page.title()
-      throw new Error(
-        `workspace did not render (page title "${title}"): the URL token probably expired after a restart — `
-        + 'use the full URL in .dsh-home/dsh_web_token.txt',
-      )
+      const fromLog = urlFromLog()
+      if (fromLog !== undefined && new URL(fromLog).origin === origin && fromLog !== url) {
+        url = fromLog
+        await page.goto(url, { waitUntil: 'domcontentloaded' })
+        await sleep(2500)
+      }
+      const retry = page.locator('button', { hasText: '知识库' }).first()
+      if ((await retry.count()) === 0) {
+        const title = await page.title()
+        throw new Error(
+          `workspace did not render (page title "${title}"): the URL token probably expired after a restart — `
+          + 'pass the URL printed in .dsh-home/dsh-web.log',
+        )
+      }
+      await retry.click()
+    } else {
+      await entry.click()
     }
-    await entry.click()
   }
   await page.locator('.ov-root').waitFor({ timeout: 15000 })
   // Refresh the index so the fixtures written to disk are picked up.

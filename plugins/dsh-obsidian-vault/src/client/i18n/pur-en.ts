@@ -104,6 +104,8 @@ export const PUR_EN: Record<keyof typeof PUR_ZH, string> = {
   'pur.runAllFailed': "{failed} of {count} nodes failed",
   'pur.runCycle': "The connections form a cycle; cannot order the run",
   'pur.runEmpty': "No runnable code node",
+  'pur.sectionRunValues': "Run values",
+  'pur.runValueHint': "Type a value; leave empty to clear",
   'pur.convertToCode': "Convert to code node",
   'pur.sectionSnippets': "Snippets",
   'pur.insertSnippet': "Insert snippet",

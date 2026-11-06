@@ -5,7 +5,7 @@
  * @module dsh-obsidian-vault/client/pur/editors
  */
 import { useState } from 'react'
-import { findElement } from '../../pur-kernel/index.ts'
+import { displayRunValue, findElement } from '../../pur-kernel/index.ts'
 import type { PurController, PurControllerEffect, PurLineStyle } from '../../pur-kernel/index.ts'
 import type { Translate } from '../i18n.ts'
 import { BodyArea, ColorField, Field, FontSelect, numberValue, PurEditorFrame, purInputStyle, purLabelStyle, Section } from './editor-frame.tsx'
@@ -72,6 +72,13 @@ export function PurTextEditor(props: PurEditorProps): JSX.Element | null {
   const [fontFamily, setFontFamily] = useState(element?.fontFamily ?? 'sans-serif')
   const [inputs, setInputs] = useState(() => (element?.inputs ?? []).map((pin) => ({ id: pin.id, label: pin.label })))
   const [outputs, setOutputs] = useState(() => (element?.outputs ?? []).map((pin) => ({ id: pin.id, label: pin.label })))
+  const [runValues, setRunValues] = useState<Record<string, string>>(() => {
+    const initial: Record<string, string> = {}
+    if (element !== null && element.type === 'code-node') {
+      for (const pin of element.outputs ?? []) initial[pin.label] = displayRunValue(element.values?.[pin.label])
+    }
+    return initial
+  })
   const [snippetName, setSnippetName] = useState<string | null>(null)
   const [snippetFlash, setSnippetFlash] = useState<string | null>(null)
   if (element === null) return null
@@ -105,6 +112,11 @@ export function PurTextEditor(props: PurEditorProps): JSX.Element | null {
       props.run(props.controller.updateElement(props.id, { code: body }))
       props.run(props.controller.updateElement(props.id, { color, fontSize: numberValue(fontSize, 14), fontFamily }))
       props.run(props.controller.commitCodeNode(props.id, { title: title.trim(), inputs, outputs }))
+      // Values typed here act as constants until the next run overwrites them.
+      for (const pin of outputs) {
+        const text = runValues[pin.label]
+        if (text !== undefined) props.run(props.controller.setNodeValue(props.id, pin.label, text))
+      }
     } else {
       props.run(props.controller.commitTextEdit(props.id, body, title.trim() === '' ? undefined : title.trim()))
       props.run(props.controller.updateElement(props.id, { color, fontSize: numberValue(fontSize, 14), fontFamily }))
@@ -187,6 +199,20 @@ export function PurTextEditor(props: PurEditorProps): JSX.Element | null {
         </Field>
         {snippetFlash === null ? null : <span style={{ ...purLabelStyle, marginBottom: 0 }}>{snippetFlash}</span>}
       </Section>
+      {isCode === true && outputs.length > 0 ? (
+        <Section title={props.t('pur.sectionRunValues')} columns={2}>
+          {outputs.map((pin) => (
+            <Field key={pin.label} label={pin.label}>
+              <input
+                style={purInputStyle}
+                placeholder={props.t('pur.runValueHint')}
+                value={runValues[pin.label] ?? ''}
+                onChange={(event) => setRunValues({ ...runValues, [pin.label]: event.target.value })}
+              />
+            </Field>
+          ))}
+        </Section>
+      ) : null}
       <Section title={props.t('pur.sectionPins')} columns={2}>
         <PinList caption={props.t('pur.inputsTitle')} placeholder={props.t('pur.pinLabelPlaceholder')} pins={inputs} onChange={setInputs} />
         <PinList caption={props.t('pur.outputsTitle')} placeholder={props.t('pur.pinLabelPlaceholder')} pins={outputs} onChange={setOutputs} />

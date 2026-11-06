@@ -106,6 +106,8 @@ export const PUR_ZH = {
   'pur.runAllFailed': "{count} 个节点中有 {failed} 个失败",
   'pur.runCycle': "连接存在环，无法按顺序运行",
   'pur.runEmpty': "没有可运行的代码节点",
+  'pur.sectionRunValues': "运行结果",
+  'pur.runValueHint': "可手动填值（留空清除）",
   'pur.convertToCode': "转为代码节点",
   'pur.sectionSnippets': "代码片段",
   'pur.insertSnippet': "插入片段",

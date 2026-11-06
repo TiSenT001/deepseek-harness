@@ -7,7 +7,7 @@
  */
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { PurController, executeEffects, parseStudioDocument, serializeStudioDocument } from '../src/pur-kernel/index.ts'
+import { PurController, displayRunValue, executeEffects, parseStudioDocument, serializeStudioDocument } from '../src/pur-kernel/index.ts'
 import type { PurElement } from '../src/pur-kernel/index.ts'
 import { LABELS, envOf, sinkOf } from './helpers/pur-adapter-fixtures.ts'
 
@@ -176,4 +176,47 @@ test('the menu offers running every node', () => {
     supportsReveal: false,
   }).model
   assert.ok(model.entries.some((entry) => entry.id === 'run-all-nodes'), 'no run-all-nodes entry')
+})
+test('a typed value is stored as JSON when it parses', () => {
+  const controller = controllerOf()
+  assert.deepEqual(controller.setNodeValue('a', 'sum', '42'), [{ type: 'save' }, { type: 'render' }])
+  const node = controller.state.elements[0]
+  assert.ok(node !== undefined && node.type === 'code-node')
+  if (node === undefined || node.type !== 'code-node') return
+  assert.deepEqual(node.values, { sum: '42' })
+})
+
+test('plain text that is not JSON is stored as a string', () => {
+  const controller = controllerOf()
+  controller.setNodeValue('a', 'sum', 'hello')
+  const node = controller.state.elements[0]
+  assert.ok(node !== undefined && node.type === 'code-node')
+  if (node === undefined || node.type !== 'code-node') return
+  assert.deepEqual(node.values, { sum: '"hello"' })
+})
+
+test('an unknown pin is ignored', () => {
+  const controller = controllerOf()
+  assert.deepEqual(controller.setNodeValue('a', 'nope', '1'), [])
+  const node = controller.state.elements[0]
+  assert.ok(node !== undefined && node.type === 'code-node')
+  if (node === undefined || node.type !== 'code-node') return
+  assert.equal(node.values, undefined)
+})
+
+test('an empty value clears the stored one', () => {
+  const controller = controllerOf()
+  controller.setNodeValue('a', 'sum', '42')
+  controller.setNodeValue('a', 'sum', '   ')
+  const node = controller.state.elements[0]
+  assert.ok(node !== undefined && node.type === 'code-node')
+  if (node === undefined || node.type !== 'code-node') return
+  assert.equal(node.values, undefined)
+})
+
+test('a stored value round-trips into editor text', () => {
+  assert.equal(displayRunValue('42'), '42')
+  assert.equal(displayRunValue('"hi"'), 'hi')
+  assert.equal(displayRunValue('{"k":1}'), '{"k":1}')
+  assert.equal(displayRunValue(undefined), '')
 })

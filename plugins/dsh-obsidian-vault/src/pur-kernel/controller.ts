@@ -32,7 +32,7 @@ import { fitToView, resetZoom, selectAll, zoomByStep } from './controller-view.t
 import { autoPanStep } from './controller-autopan.ts'
 import { cancelPinDrop, completePinDrop } from './controller-pin-drop.ts'
 import { disconnectLine } from './controller-lines.ts'
-import { applyRunResult, planRunAll, runCodeNode } from './controller-run.ts'
+import { applyRunResult, planRunAll, runCodeNode, setNodeValue } from './controller-run.ts'
 import { cancelGesture } from './controller-cancel.ts'
 import { cycleSelection } from './controller-traverse.ts'
 import { NUDGE_STEP, NUDGE_STEP_LARGE, nudgeSelection } from './controller-nudge.ts'
@@ -222,6 +222,17 @@ export class PurController {
    */
   planRunAll(): PurRunPlan {
     return planRunAll(this.tools)
+  }
+
+  /**
+   * Set or clear one output value by hand.
+   * @param id - the code node.
+   * @param label - output pin label.
+   * @param text - typed text; empty clears it.
+   * @returns the save and render effects.
+   */
+  setNodeValue(id: string, label: string, text: string): PurControllerEffect[] {
+    return setNodeValue(this.tools, id, label, text)
   }
 
   /**
