@@ -2468,8 +2468,12 @@ try {
     await page.mouse.move(box.x + 350, box.y + 265)
     await sleep(900)
     const hint = await pane.evaluate((node) => {
-      const found = [...node.querySelectorAll('div')].find((child) => child.style.pointerEvents === 'none' && /双击|Double-click/.test(child.textContent ?? ''))
-      return found === undefined ? null : found.textContent
+      // The hint is a kit class now, so match the class or the marker instead of an
+      // inline style that no longer exists.
+      const found = node.querySelector('[data-pur-hint]')
+        ?? node.querySelector('.ov-pur-hint')
+        ?? [...node.querySelectorAll('div')].find((child) => /双击|Double-click/.test(child.textContent ?? ''))
+      return found === undefined || found === null ? null : found.textContent
     })
     assert(hint !== null, 'hover hint did not appear')
     const hoverCursor = await canvas.evaluate((node) => node.style.cursor)

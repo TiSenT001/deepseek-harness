@@ -543,6 +543,7 @@ void saveStudioDocument(path, document).catch(async (error: unknown) => {
       {hintState === null ? null : (
         <div
           className={css.purHint}
+          data-pur-hint="true"
           style={{ left: hintState.x, top: hintState.y }}
         >
           {hintState.text}
