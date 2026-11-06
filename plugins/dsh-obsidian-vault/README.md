@@ -120,7 +120,7 @@ dsh plugin --profile <profile> add /path/to/plugins/dsh-obsidian-vault
 
 ### 画布设置（面板）
 
-「设置 → 插件 → Pur Studio」顶部新增**画布设置**，改完点「保存」，重开画布生效：
+「设置 → 插件」**点开 Pur Studio 卡片**，详情里就是该插件的**画布设置**；改完点「保存」，重开画布生效：
 
 | 设置 | 默认 | 作用 |
 |---|---|---|
