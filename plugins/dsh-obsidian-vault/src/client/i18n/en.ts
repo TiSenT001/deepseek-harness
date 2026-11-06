@@ -238,4 +238,5 @@ export const EN: Dict = {
   canvasSettingsSaved: "Saved; reopen the canvas to apply",
   canvasSettingsFailed: "Save failed",
   save: "Save",
+  canvasSettingsLoadFailed: "Could not read settings: the Host has not loaded the settings route yet; restart DSH, then press Refresh",
 }

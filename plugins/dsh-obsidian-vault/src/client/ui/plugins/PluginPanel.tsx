@@ -169,8 +169,10 @@ function CanvasSettingsSection({ t }: { readonly t: Translate }): JSX.Element | 
   const [draft, setDraft] = useState<CanvasSettingsDraft | undefined>()
   const [pending, setPending] = useState(false)
   const [notice, setNotice] = useState<string | undefined>()
+  const [unavailable, setUnavailable] = useState(false)
 
-  useEffect(() => {
+  const load = useCallback(() => {
+    setUnavailable(false)
     void fetchPurClientSettings()
       .then((next) => setDraft({
         runTimeoutMs: String(next.runTimeoutMs),
@@ -179,8 +181,12 @@ function CanvasSettingsSection({ t }: { readonly t: Translate }): JSX.Element | 
         largeCanvasHintMb: String(next.largeCanvasHintMb),
         showGrid: next.showGrid,
       }))
-      .catch(() => setNotice(t('canvasSettingsFailed')))
-  }, [t])
+      .catch(() => setUnavailable(true))
+  }, [])
+
+  useEffect(() => {
+    load()
+  }, [load])
 
   const save = useCallback(() => {
     if (draft === undefined) return
@@ -199,7 +205,17 @@ function CanvasSettingsSection({ t }: { readonly t: Translate }): JSX.Element | 
   }, [draft, t])
 
   if (draft === undefined) {
-    return notice === undefined ? null : <div className={css.dialogError}>{notice}</div>
+    if (!unavailable) return null
+    return (
+      <>
+        <div className={css.dialogError}>{t('canvasSettingsLoadFailed')}</div>
+        <div className={css.pluginDetailRow}>
+          <button type="button" className={css.iconButton} style={{ width: 'auto', padding: '4px 12px' }} onClick={load}>
+            {t('pluginRefresh')}
+          </button>
+        </div>
+      </>
+    )
   }
   return (
     <>

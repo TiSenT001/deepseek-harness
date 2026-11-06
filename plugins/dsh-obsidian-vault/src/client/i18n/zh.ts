@@ -237,4 +237,5 @@ export const ZH = {
   canvasSettingsSaved: "已保存，重新打开画布后生效",
   canvasSettingsFailed: "保存失败",
   save: "保存",
+  canvasSettingsLoadFailed: "读取设置失败：宿主尚未加载设置接口，请重启 DSH 后点「刷新」",
 } as const
