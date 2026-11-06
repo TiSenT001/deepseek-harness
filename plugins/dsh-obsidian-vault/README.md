@@ -150,6 +150,22 @@ CHROMIUM_PATH=<chrome.exe> node scripts/ui-check.mjs 'http://127.0.0.1:3080/?tok
 
 截图输出到 `.artifacts/ui/`。
 
+## 大画布压测
+
+内联图片会让文档涨到几十上百 MB，加载与保存的成本都在这里。用固定尺寸的合成文档量一次，超预算即失败：
+
+```sh
+# 300 张 200KB 内联图（约 59MB），用完自动删除临时画布
+npm run bench:large -- 'http://127.0.0.1:3080/?token=...'
+
+# 自定义规模
+node --experimental-strip-types scripts/pur-large-doc-bench.mjs '<url>' --elements 500 --image-kb 256
+```
+
+本机基线（59MB / 300 图）：读取 1587ms、解析 32ms、序列化 46ms、写回 523ms。
+
+真实样本参考：117.8MB 画布（523 张内联图）打开约 3.2s、保存约 1.65s；执行「外部化画布图片」后文档降到 **127KB**、读取 **15ms**，图片改存到 `.data/images`（内容寻址）。所以遇到大画布优先外部化，压测用来盯住不回归。
+
 ## 黄金用例（golden）
 
 三类回归基线都有人可执行的重录脚本；**布局或几何是有意改动时，重录并审阅 diff**，不要手改：
