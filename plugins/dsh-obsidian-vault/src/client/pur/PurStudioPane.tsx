@@ -16,6 +16,7 @@ import { createPurMenuHost, exportSelectedText } from './host.ts'
 import type { PurMenuHostDeps } from './host.ts'
 import { purBundles } from './labels.ts'
 import { PurImageCache, loadStudioDocument, resolveNoteLink, saveStudioDocument } from './loader.ts'
+import { runPurCode } from '../api-vault.ts'
 import { canvasHintFor } from './hint.ts'
 import { fetchCodeSnippets, fetchOpenPrograms, saveCodeSnippet } from '../api.ts'
 import type { CodeSnippetDto } from '../api.ts'
@@ -159,11 +160,25 @@ void saveStudioDocument(path, document).catch(async (error: unknown) => {
           const hostDeps = hostDepsRef.current
           if (hostDeps !== null) exportSelectedText(hostDeps)
         },
+        runCode: (id, code, inputs) => {
+          void runPurCode(code, inputs)
+            .then((result) => {
+              const controller = controllerRef.current
+              if (controller === null) return
+              runRef.current(controller.applyRunResult(id, result))
+              showNotice(result.ok
+                ? t('pur.runOk').replace('{ms}', String(result.ms))
+                : t('pur.runFailed').replace('{error}', result.error ?? ''))
+            })
+            .catch(() => showNotice(t('pur.runFailed').replace('{error}', t('pur.runNetwork'))))
+        },
       })),
-    [scheduleSave, showNotice],
+    [scheduleSave, showNotice, t],
   )
 
   const run = useCallback((effects: readonly PurControllerEffect[]) => executeEffects(effects, sink), [sink])
+  const runRef = useRef(run)
+  runRef.current = run
 
   // The snippet library lives in plugin data, so it is read once per mount and
   // refreshed whenever the user saves a node.

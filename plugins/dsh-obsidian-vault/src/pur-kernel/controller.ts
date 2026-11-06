@@ -32,6 +32,7 @@ import { fitToView, resetZoom, selectAll, zoomByStep } from './controller-view.t
 import { autoPanStep } from './controller-autopan.ts'
 import { cancelPinDrop, completePinDrop } from './controller-pin-drop.ts'
 import { disconnectLine } from './controller-lines.ts'
+import { applyRunResult, runCodeNode } from './controller-run.ts'
 import { cancelGesture } from './controller-cancel.ts'
 import { cycleSelection } from './controller-traverse.ts'
 import { NUDGE_STEP, NUDGE_STEP_LARGE, nudgeSelection } from './controller-nudge.ts'
@@ -203,6 +204,25 @@ export class PurController {
    */
   disconnectLine(id: string): PurControllerEffect[] {
     return disconnectLine(this.tools, id)
+  }
+
+  /**
+   * Evaluate a code node with the values its connected inputs carry.
+   * @param id - the code node.
+   * @returns the run request effect, or a notice when there is no code.
+   */
+  runCodeNode(id: string): PurControllerEffect[] {
+    return runCodeNode(this.tools, id)
+  }
+
+  /**
+   * Store what the adapter's evaluation produced.
+   * @param id - the code node that ran.
+   * @param outcome - per-label values, success and duration.
+   * @returns the save and render effects.
+   */
+  applyRunResult(id: string, outcome: { ok: boolean; values?: Record<string, string>; error?: string; ms: number }): PurControllerEffect[] {
+    return applyRunResult(this.tools, id, outcome)
   }
 
   /**

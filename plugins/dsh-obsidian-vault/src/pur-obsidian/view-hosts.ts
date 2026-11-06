@@ -35,6 +35,9 @@ export function createViewSink(view: PurStudioView): PurEffectSink {
     editNoteLink: (id) => openViewEditor(view, 'note-link', id),
     showContextMenu: (clientX, clientY) => openViewContextMenu(view, clientX, clientY),
     exportText: () => void exportMarkdown(viewExporterHost(view), true, true),
+    // The DSH pane evaluates snippets through its host route; the Obsidian view has
+    // no such route, so running a node says so rather than doing nothing.
+    runCode: () => new Notice('Run node needs the DSH pane'),
   }
 }
 

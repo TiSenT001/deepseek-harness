@@ -46,6 +46,9 @@ export function executeEffects(effects: readonly PurControllerEffect[], sink: Pu
       case 'export-text':
         sink.exportText()
         break
+      case 'run-code':
+        sink.runCode(effect.id, effect.code, effect.inputs)
+        break
       default:
         assertNever(effect)
     }

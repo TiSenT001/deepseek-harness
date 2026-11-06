@@ -117,6 +117,15 @@ dsh plugin --profile <profile> add /path/to/plugins/dsh-obsidian-vault
 - 撤销只覆盖元素，不覆盖视口。
 
 
+### 运行节点
+
+选中代码节点 → 右键「运行节点」：宿主用 `node:vm` 在独立上下文里执行 `function process(inputs)`，1.5 秒超时，输入取自连线另一端的输出值（未连接为 `null`）。结果写在输出引脚旁（`result = 0`），卡片底部显示 `✓ 1ms` 或 `✗ 原因`，并随文档持久化，可直接喂给下游节点。
+
+- 同一节点可反复运行，输出值覆盖旧值；
+- 代码为空时不执行，只提示；
+- 宿主路由新增后需要重启 DSH 才生效；
+- Obsidian 适配器没有该路由，会提示「Run node needs the DSH pane」。
+
 ## 架构
 
 ```

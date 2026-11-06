@@ -114,6 +114,8 @@ export function runMenuAction(controller: PurController, host: PurMenuHost, acti
       else if (element.type === 'note-link') host.editNoteLink(element.id)
       return []
     }
+    case 'run-node':
+      return controller.runCodeNode(requireTarget(action))
     case 'edit-label':
       host.editGroup(requireTarget(action))
       return []

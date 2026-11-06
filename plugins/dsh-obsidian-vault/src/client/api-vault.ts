@@ -386,3 +386,29 @@ export async function importPurFile(name: string, data: string): Promise<{ eleme
     body: JSON.stringify({ name, data }),
   })
 }
+
+/** Result of evaluating a code node's snippet in the host. */
+export interface PurRunResultDto {
+  /** Whether the snippet returned without throwing. */
+  ok: boolean
+  /** Serialized values keyed by output label. */
+  values: Record<string, string>
+  /** Failure message, present when `ok` is false. */
+  error?: string
+  /** Evaluation time in milliseconds. */
+  ms: number
+}
+
+/**
+ * Evaluate a code node's snippet in the host process.
+ * @param code - function declaration text, such as `function process(inputs) {...}`.
+ * @param inputs - values the connected input pins carry.
+ * @returns the serialized outputs and the outcome.
+ */
+export function runPurCode(code: string, inputs: Record<string, unknown>): Promise<PurRunResultDto> {
+  return request<PurRunResultDto>('pur/run-code', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ code, inputs }),
+  })
+}

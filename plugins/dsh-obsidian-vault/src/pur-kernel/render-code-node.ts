@@ -6,6 +6,7 @@
 import type { PurCanvasContext, PurScene } from './render-types.ts'
 import { fillRoundedCard, pillPath } from './render-shared.ts'
 import type { PurCodeNodeElement, PurPin } from './types.ts'
+import { pinValueText } from './controller-run.ts'
 
 /** Card corner radius, in canvas pixels per zoom unit. */
 const CARD_RADIUS = 8
@@ -64,7 +65,9 @@ export function drawCodeNodeCard(ctx: PurCanvasContext, scene: PurScene, element
   outputs.forEach((pin, index) => {
     drawPin(ctx, scene, element, pin, rowY(index), true, screenW, scale)
   })
-  drawPinCount(ctx, inputs.length, outputs.length, screenH - BODY_BOTTOM * scale + 4 * scale, screenH, screenW, scale)
+  const footerY = screenH - BODY_BOTTOM * scale + 4 * scale
+  if (element.run === undefined) drawPinCount(ctx, inputs.length, outputs.length, footerY, screenH, screenW, scale)
+  else drawRunStatus(ctx, element, footerY, screenH, screenW, scale)
 }
 
 /**
@@ -141,7 +144,8 @@ function drawPin(ctx: PurCanvasContext, scene: PurScene, element: PurCodeNodeEle
 
   // An unlabelled pin stays a bare circle: the internal id is not something the
   // user wrote, and printing it made a half-filled node look broken.
-  const text = (pin.label ?? '').trim()
+  const base = (pin.label ?? '').trim()
+  const text = base === '' ? '' : base + (isOutput ? pinValueText(element, pin) : '')
   if (text === '') return
   ctx.font = `${11 * scale}px -apple-system, "Segoe UI", sans-serif`
   ctx.textBaseline = 'middle'
@@ -179,4 +183,24 @@ function drawPinCount(ctx: PurCanvasContext, inputCount: number, outputCount: nu
   ctx.textAlign = 'center'
   ctx.textBaseline = 'alphabetic'
   ctx.fillText(`${inputCount} ← · ${outputCount} →`, screenW / 2, y)
+}
+
+/**
+ * Draw the last run's outcome in the footer: a check or cross plus the duration.
+ * @param ctx - drawing surface.
+ * @param element - the code node.
+ * @param y - baseline, in canvas pixels.
+ * @param screenH - canvas height.
+ * @param screenW - canvas width.
+ * @param scale - zoom.
+ */
+function drawRunStatus(ctx: PurCanvasContext, element: PurCodeNodeElement, y: number, screenH: number, screenW: number, scale: number): void {
+  const run = element.run
+  if (run === undefined || y >= screenH - 6 * scale) return
+  ctx.fillStyle = run.ok ? 'rgba(140, 220, 160, 0.75)' : 'rgba(240, 150, 150, 0.85)'
+  ctx.font = `${9.5 * scale}px -apple-system, "SF Mono", monospace`
+  ctx.textAlign = 'center'
+  ctx.textBaseline = 'alphabetic'
+  const label = run.ok ? `✓ ${run.ms}ms` : `✗ ${run.error === undefined ? '失败' : run.error}`
+  ctx.fillText(fitText(ctx, label, screenW - 16 * scale), screenW / 2, y)
 }

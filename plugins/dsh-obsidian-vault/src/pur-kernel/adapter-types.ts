@@ -29,6 +29,11 @@ export interface PurEffectSink {
   showContextMenu(clientX: number, clientY: number): void
   /** Run the export-as-text flow. */
   exportText(): void
+  /**
+   * Evaluate a code node's snippet and report the outcome through
+   * {@link PurController.applyRunResult}.
+   */
+  runCode(id: string, code: string, inputs: Record<string, unknown>): void
 }
 
 /** A world-space point, for menu commands that create elements. */

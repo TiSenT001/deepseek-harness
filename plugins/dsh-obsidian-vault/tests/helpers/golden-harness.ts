@@ -77,6 +77,7 @@ export function callOf(effect: PurControllerEffect): string {
     case 'edit-note-link': return `edit-note-link:${effect.id}`
     case 'context-menu': return `menu:${effect.clientX},${effect.clientY}`
     case 'export-text': return 'export-text'
+    case 'run-code': return `run:${effect.id}`
   }
 }
 

@@ -118,6 +118,10 @@ export interface PurCodeNodeElement extends PurElementBase {
   code?: string
   /** Node title shown on the card. */
   title?: string
+  /** Values the last run produced, keyed by output pin label and serialized as JSON text. */
+  values?: Record<string, string>
+  /** Outcome of the last run, drawn on the card. */
+  run?: { ok: boolean; ms: number; error?: string }
 }
 
 /** A frame that owns child elements positioned relative to its origin. */

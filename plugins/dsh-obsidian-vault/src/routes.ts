@@ -24,6 +24,7 @@ import { storePurBytes } from './vault/pur-store.ts'
 import type { CodeSnippet } from './code-snippets.ts'
 import { findEmbeddingNotes } from './vault/pur-embedders.ts'
 import { externalizeCanvas } from './vault/pur-externalize.ts'
+import { runCodeSnippet } from './vault/run-code.ts'
 import { PUR_ASSET_SCHEME, readPurImage, storePurImage } from './vault/pur-store.ts'
 import { serveVaultRoute } from './vault-endpoints.ts'
 import type { VaultIndex } from './vault/index.ts'
@@ -258,6 +259,13 @@ async function dispatch(
       }
       const notes = await findEmbeddingNotes(vault, canvas, file)
       send(response, 200, { notes })
+      return
+    }
+    case 'pur/run-code': {
+      const body = await readJson(request)
+      const code = typeof body['code'] === 'string' ? body['code'] : ''
+      const result = runCodeSnippet(code, body['inputs'])
+      send(response, 200, result)
       return
     }
     case 'pur/externalize': {

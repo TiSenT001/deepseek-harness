@@ -117,6 +117,7 @@ export type PurControllerEffect =
   | { type: 'edit-note-link'; id: string }
   | { type: 'context-menu'; clientX: number; clientY: number }
   | { type: 'export-text' }
+  | { type: 'run-code'; id: string; code: string; inputs: Record<string, unknown> }
 
 /** A pin connection in flight (upstream `_pinDrag`). */
 export interface PurPinDragState {

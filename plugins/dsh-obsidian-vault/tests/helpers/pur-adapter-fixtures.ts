@@ -75,6 +75,7 @@ export function sinkOf(): { sink: PurEffectSink; calls: string[] } {
       editNoteLink: (id) => calls.push(`edit-note-link:${id}`),
       showContextMenu: (x, y) => calls.push(`menu:${x},${y}`),
       exportText: () => calls.push('export-text'),
+      runCode: (id, code) => calls.push(`run-code:${id}:${code.length}`),
     },
   }
 }

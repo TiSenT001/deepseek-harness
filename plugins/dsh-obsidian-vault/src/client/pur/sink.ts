@@ -28,6 +28,8 @@ export interface PurSinkDeps {
   readonly exportText: () => void
   /** Navigate the workspace to a vault path; absent when the pane cannot navigate. */
   readonly openPath?: (path: string) => void
+  /** Evaluate a code node's snippet and report the outcome to the controller. */
+  readonly runCode: (id: string, code: string, inputs: Record<string, unknown>) => void
 }
 
 /**
@@ -64,5 +66,6 @@ export function createPurSink(deps: () => PurSinkDeps): PurEffectSink {
     editNoteLink: (id) => deps().openEditor('note-link', id),
     showContextMenu: (clientX, clientY) => deps().openMenu(clientX, clientY),
     exportText: () => deps().exportText(),
+    runCode: (id, code, inputs) => deps().runCode(id, code, inputs),
   }
 }
