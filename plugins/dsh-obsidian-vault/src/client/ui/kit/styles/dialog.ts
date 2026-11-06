@@ -34,6 +34,15 @@ export const DIALOG_STYLE = `
   padding-top: 10vh;
   z-index: 45;
 }
+.ov-dialog.ov-settings-dialog { width: min(760px, 94vw); max-height: 82vh; }
+.ov-plugin-chevron {
+  display: inline-block;
+  margin-right: 2px;
+  font-size: 10px;
+  opacity: .55;
+  transition: transform .12s ease;
+}
+.ov-plugin-chevron[data-open="true"] { transform: rotate(90deg); }
 .ov-dialog {
   width: min(620px, 94vw);
   max-height: 72vh;

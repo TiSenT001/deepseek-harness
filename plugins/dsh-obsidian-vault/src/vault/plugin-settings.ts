@@ -32,10 +32,16 @@ export interface SettingsPatch {
   largeCanvasHintMb?: number
   /** Initial grid visibility. */
   showGrid?: boolean
+  /** Bitmap export multiplier. */
+  exportScale?: number
+  /** Whether PNG exports keep a transparent background. */
+  exportTransparent?: boolean
+  /** JPEG quality for image exports. */
+  exportJpgQuality?: number
 }
 
 /** Keys a patch may carry. */
-const PATCH_KEYS = ['vault', 'ignore', 'maxFileBytes', 'maxIndexBytes', 'maxDepth', 'runTimeoutMs', 'allowCodeExecution', 'saveDelayMs', 'largeCanvasHintMb', 'showGrid'] as const
+const PATCH_KEYS = ['vault', 'ignore', 'maxFileBytes', 'maxIndexBytes', 'maxDepth', 'runTimeoutMs', 'allowCodeExecution', 'saveDelayMs', 'largeCanvasHintMb', 'showGrid', 'exportScale', 'exportTransparent', 'exportJpgQuality'] as const
 
 /**
  * Keep only the keys the dialog owns, dropping anything else the file may hold.
@@ -48,7 +54,7 @@ export function settingsPatchOf(value: unknown): SettingsPatch {
   const patch: SettingsPatch = {}
   for (const key of PATCH_KEYS) {
     const entry = source[key]
-    if (key === 'allowCodeExecution' || key === 'showGrid') {
+    if (key === 'allowCodeExecution' || key === 'showGrid' || key === 'exportTransparent') {
       if (typeof entry === 'boolean') patch[key] = entry
       continue
     }
@@ -141,6 +147,9 @@ export function settingsDialogOf(settings: Settings): SettingsDialog {
     largeCanvasHintMb: settings.largeCanvasHintMb,
     showGrid: settings.showGrid,
     allowCodeExecution: settings.allowCodeExecution,
+    exportScale: settings.exportScale,
+    exportTransparent: settings.exportTransparent,
+    exportJpgQuality: settings.exportJpgQuality,
     defaults: {
       vault: DEFAULT_SETTINGS.vault,
       ignore: [...DEFAULT_SETTINGS.ignore],
@@ -152,6 +161,9 @@ export function settingsDialogOf(settings: Settings): SettingsDialog {
       saveDelayMs: DEFAULT_SETTINGS.saveDelayMs,
       largeCanvasHintMb: DEFAULT_SETTINGS.largeCanvasHintMb,
       showGrid: DEFAULT_SETTINGS.showGrid,
+      exportScale: DEFAULT_SETTINGS.exportScale,
+      exportTransparent: DEFAULT_SETTINGS.exportTransparent,
+      exportJpgQuality: DEFAULT_SETTINGS.exportJpgQuality,
     },
   }
 }

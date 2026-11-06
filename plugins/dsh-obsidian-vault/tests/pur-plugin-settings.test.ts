@@ -16,7 +16,7 @@ import {
   settingsPatchOf,
   writeSettingsPatch,
 } from '../src/vault/plugin-settings.ts'
-import { DEFAULT_SETTINGS } from '../src/settings.ts'
+import { DEFAULT_SETTINGS, resolveSettings } from '../src/settings.ts'
 
 test('only the dialog fields survive a patch', () => {
   assert.deepEqual(settingsPatchOf({ runTimeoutMs: 900, vault: '/tmp/x', ignore: ['a'], showGrid: false, junk: 1 }), {
@@ -83,4 +83,23 @@ test('the dialog payload carries effective values and defaults', () => {
   assert.equal(payload.runTimeoutMs, 800)
   assert.equal(payload.defaults.runTimeoutMs, DEFAULT_SETTINGS.runTimeoutMs)
   assert.equal(payload.defaults.saveDelayMs, DEFAULT_SETTINGS.saveDelayMs)
+})
+test('export defaults are validated and clamped', () => {
+  assert.equal(resolveSettings({ exportScale: 9 }).exportScale, 3)
+  assert.equal(resolveSettings({ exportScale: 0 }).exportScale, 1)
+  assert.equal(resolveSettings({ exportJpgQuality: 0.1 }).exportJpgQuality, 0.4)
+  assert.equal(resolveSettings({ exportJpgQuality: 1.4 }).exportJpgQuality, 1)
+  assert.equal(resolveSettings({ exportTransparent: false }).exportTransparent, false)
+})
+
+test('the dialog carries the export fields and accepts a patch', () => {
+  const payload = settingsDialogOf(mergeSettings({}, { exportScale: 2, exportTransparent: false, exportJpgQuality: 0.75 }))
+  assert.equal(payload.exportScale, 2)
+  assert.equal(payload.exportTransparent, false)
+  assert.equal(payload.exportJpgQuality, 0.75)
+  assert.deepEqual(settingsPatchOf({ exportScale: 2, exportTransparent: false, exportJpgQuality: 0.75, junk: 1 }), {
+    exportScale: 2,
+    exportTransparent: false,
+    exportJpgQuality: 0.75,
+  })
 })

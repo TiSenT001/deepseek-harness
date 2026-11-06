@@ -254,4 +254,11 @@ export const EN: Dict = {
   settingMaxDepth: "Walk depth",
   settingMaxDepthHint: "Maximum directory depth",
   settingsRestartHint: "Vault and index settings apply after a DSH restart; running and display settings apply immediately.",
+  settingsGroupExport: "Export",
+  settingExportScale: "Export scale",
+  settingExportScaleHint: "1 keeps pixel size, 2 doubles it (1-3)",
+  settingExportTransparent: "Transparent PNG",
+  settingExportTransparentHint: "Off fills with the canvas background",
+  settingJpgQuality: "JPEG quality",
+  settingJpgQualityHint: "0.4 to 1, step 0.05",
 }

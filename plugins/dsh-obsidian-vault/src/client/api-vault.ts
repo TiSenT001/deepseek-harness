@@ -435,6 +435,12 @@ export interface PurClientSettingsDto {
   maxIndexBytes: number
   /** Depth limit for the directory walk. */
   maxDepth: number
+  /** Bitmap export multiplier. */
+  exportScale: number
+  /** Whether PNG exports keep a transparent background. */
+  exportTransparent: boolean
+  /** JPEG quality for image exports. */
+  exportJpgQuality: number
 }
 
 /**
@@ -467,6 +473,12 @@ export interface PurSettingsPatch {
   maxIndexBytes?: number
   /** Depth limit for the directory walk. */
   maxDepth?: number
+  /** Bitmap export multiplier. */
+  exportScale?: number
+  /** Whether PNG exports keep a transparent background. */
+  exportTransparent?: boolean
+  /** JPEG quality for image exports. */
+  exportJpgQuality?: number
 }
 
 /**

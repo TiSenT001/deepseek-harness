@@ -18,6 +18,9 @@ export const DEFAULT_SETTINGS = {
   saveDelayMs: 400,
   largeCanvasHintMb: 4,
   showGrid: true,
+  exportScale: 1,
+  exportTransparent: true,
+  exportJpgQuality: 0.9,
 } as const
 
 /** Settings after defaults are applied and numbers are clamped. */
@@ -42,6 +45,12 @@ export interface Settings {
   largeCanvasHintMb: number
   /** Initial grid visibility for a canvas without its own preference. */
   showGrid: boolean
+  /** Bitmap export multiplier: 1 is pixel-exact, 2 is a retina copy. */
+  exportScale: number
+  /** Whether PNG exports keep a transparent background. */
+  exportTransparent: boolean
+  /** JPEG quality for image exports, 0.4 to 1. */
+  exportJpgQuality: number
 }
 
 /** The subset the browser half needs. */
@@ -56,6 +65,12 @@ export interface ClientSettings {
   showGrid: boolean
   /** Whether code nodes may run. */
   allowCodeExecution: boolean
+  /** Bitmap export multiplier. */
+  exportScale: number
+  /** Whether PNG exports keep a transparent background. */
+  exportTransparent: boolean
+  /** JPEG quality for image exports. */
+  exportJpgQuality: number
 }
 
 /** Schema the settings panel renders. */
@@ -70,6 +85,9 @@ export const Config = z.object({
   saveDelayMs: z.natural().default(DEFAULT_SETTINGS.saveDelayMs).description('编辑后写盘的防抖延迟（毫秒，100–5000）'),
   largeCanvasHintMb: z.natural().default(DEFAULT_SETTINGS.largeCanvasHintMb).description('提示外部化图片的文档体积阈值（MB）'),
   showGrid: z.boolean().default(DEFAULT_SETTINGS.showGrid).description('新画布默认显示网格'),
+  exportScale: z.natural().default(DEFAULT_SETTINGS.exportScale).description('导出位图的缩放倍率（1–3）'),
+  exportTransparent: z.boolean().default(DEFAULT_SETTINGS.exportTransparent).description('PNG 导出保留透明背景'),
+  exportJpgQuality: z.number().default(DEFAULT_SETTINGS.exportJpgQuality).description('JPG 导出质量（0.4–1，步长 0.05）'),
 })
 
 /**
@@ -83,6 +101,19 @@ export const Config = z.object({
 function clamp(value: unknown, fallback: number, min: number, max: number): number {
   if (typeof value !== 'number' || !Number.isFinite(value)) return fallback
   return Math.min(max, Math.max(min, Math.round(value)))
+}
+
+/**
+ * Clamp a fractional setting into a range.
+ * @param value - candidate value.
+ * @param fallback - value used when the candidate is not a finite number.
+ * @param min - smallest accepted value.
+ * @param max - largest accepted value.
+ * @returns the clamped value, rounded to two decimals.
+ */
+function clampFloat(value: unknown, fallback: number, min: number, max: number): number {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return fallback
+  return Math.round(Math.min(max, Math.max(min, value)) * 100) / 100
 }
 
 /**
@@ -103,6 +134,9 @@ export function resolveSettings(input: unknown): Settings {
     maxDepth: clamp(raw['maxDepth'], DEFAULT_SETTINGS.maxDepth, 1, 64),
     runTimeoutMs: clamp(raw['runTimeoutMs'], DEFAULT_SETTINGS.runTimeoutMs, 200, 10_000),
     allowCodeExecution: typeof raw['allowCodeExecution'] === 'boolean' ? raw['allowCodeExecution'] : DEFAULT_SETTINGS.allowCodeExecution,
+    exportScale: clamp(raw['exportScale'], DEFAULT_SETTINGS.exportScale, 1, 3),
+    exportTransparent: typeof raw['exportTransparent'] === 'boolean' ? raw['exportTransparent'] : DEFAULT_SETTINGS.exportTransparent,
+    exportJpgQuality: clampFloat(raw['exportJpgQuality'], DEFAULT_SETTINGS.exportJpgQuality, 0.4, 1),
     saveDelayMs: clamp(raw['saveDelayMs'], DEFAULT_SETTINGS.saveDelayMs, 100, 5_000),
     largeCanvasHintMb: clamp(raw['largeCanvasHintMb'], DEFAULT_SETTINGS.largeCanvasHintMb, 1, 500),
     showGrid: typeof raw['showGrid'] === 'boolean' ? raw['showGrid'] : DEFAULT_SETTINGS.showGrid,
@@ -121,5 +155,8 @@ export function clientSettings(settings: Settings): ClientSettings {
     largeCanvasHintMb: settings.largeCanvasHintMb,
     showGrid: settings.showGrid,
     allowCodeExecution: settings.allowCodeExecution,
+    exportScale: settings.exportScale,
+    exportTransparent: settings.exportTransparent,
+    exportJpgQuality: settings.exportJpgQuality,
   }
 }

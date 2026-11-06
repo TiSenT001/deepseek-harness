@@ -34,9 +34,6 @@ import { pasteIntoCanvas } from './paste-drop.ts'
 import type { PurInsertDeps } from './paste-drop.ts'
 import { createPurSink } from './sink.ts'
 
-/** Canvas colours and grid toggle, fixed for the web client. */
-const PREFERENCES: PurRenderPreferences = { backgroundColor: 'transparent', gridColor: '#333333', showGrid: true }
-
 /** Props for {@link PurStudioPane}. */
 export interface PurStudioPaneProps {
   /** The workspace translator. */
@@ -48,7 +45,16 @@ export interface PurStudioPaneProps {
 }
 
 // Defaults used until the Host answers with the configured settings.
-const DEFAULT_CLIENT_SETTINGS = { saveDelayMs: 400, largeCanvasHintMb: 4, showGrid: true, allowCodeExecution: true }
+const DEFAULT_CLIENT_SETTINGS = {
+  runTimeoutMs: 1500,
+  saveDelayMs: 400,
+  largeCanvasHintMb: 4,
+  showGrid: true,
+  allowCodeExecution: true,
+  exportScale: 1,
+  exportTransparent: true,
+  exportJpgQuality: 0.9,
+}
 
 /**
  * Render preferences derived from the configured grid visibility.
@@ -351,6 +357,11 @@ void saveStudioDocument(path, document).catch(async (error: unknown) => {
       path,
       images,
       preferences,
+      exportOptions: {
+        scale: clientSettingsRef.current.exportScale,
+        transparent: clientSettingsRef.current.exportTransparent,
+        jpgQuality: clientSettingsRef.current.exportJpgQuality,
+      },
       notice: showNotice,
       run,
       openEditor: (kind, id) => setEditor({ kind, id }),

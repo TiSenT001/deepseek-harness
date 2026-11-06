@@ -156,22 +156,31 @@ export async function exportImageFlow(deps: PurMenuHostDeps, format: 'png' | 'jp
   const padding = 20
   const width = maxX - minX + padding * 2
   const height = maxY - minY + padding * 2
+  const options = deps.exportOptions
+  const scale = Math.min(3, Math.max(1, Math.round(options.scale)))
   const canvas = document.createElement('canvas')
-  canvas.width = width
-  canvas.height = height
+  canvas.width = Math.round(width * scale)
+  canvas.height = Math.round(height * scale)
   const ctx = canvas.getContext('2d')
   if (ctx === null) return
   const preferences = deps.preferences
+  const transparentPng = format === 'png' && options.transparent
   drawScene(ctx, {
     elements,
-    view: { offsetX: padding - minX, offsetY: padding - minY, scale: 1 },
-    width,
-    height,
-    preferences: { ...preferences, backgroundColor: format === 'jpg' && (preferences.backgroundColor === 'transparent' || preferences.backgroundColor === 'obsidian') ? '#1e1e1e' : preferences.backgroundColor, showGrid: false },
+    view: { offsetX: padding - minX, offsetY: padding - minY, scale },
+    width: canvas.width,
+    height: canvas.height,
+    preferences: {
+      ...preferences,
+      backgroundColor: format === 'jpg' || !transparentPng
+        ? (preferences.backgroundColor === 'transparent' || preferences.backgroundColor === 'obsidian' ? '#1e1e1e' : preferences.backgroundColor)
+        : 'transparent',
+      showGrid: false,
+    },
     labels: deps.labels.render,
     images: deps.images.map,
   })
-  const dataURL = canvas.toDataURL(format === 'jpg' ? 'image/jpeg' : 'image/png', format === 'jpg' ? 0.9 : 1)
+  const dataURL = canvas.toDataURL(format === 'jpg' ? 'image/jpeg' : 'image/png', format === 'jpg' ? Math.min(1, Math.max(0.4, options.jpgQuality)) : 1)
   await ensureExportDir()
   const path = await uniqueExportPath(fileBaseName(deps.path) ?? deps.t('pur.untitled'), format)
   try {

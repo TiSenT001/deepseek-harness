@@ -234,6 +234,8 @@ export const css = {
   pluginDetail: 'ov-plugin-detail',
   pluginDetailRow: 'ov-plugin-detail-row',
   pluginDetailLabel: 'ov-plugin-detail-label',
+  settingsDialog: 'ov-settings-dialog',
+  pluginChevron: 'ov-plugin-chevron',
   settings: 'ov-settings',
   settingsGroup: 'ov-settings-group',
   settingsRow: 'ov-settings-row',

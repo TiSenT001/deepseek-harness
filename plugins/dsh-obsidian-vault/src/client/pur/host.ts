@@ -126,6 +126,8 @@ export interface PurMenuHostDeps {
   readonly images: PurImageCache
   /** Resolved colours and grid toggle, for bitmap exports. */
   readonly preferences: PurRenderPreferences
+  /** Defaults for bitmap exports: multiplier, transparency and JPEG quality. */
+  readonly exportOptions: { readonly scale: number; readonly transparent: boolean; readonly jpgQuality: number }
   /** Show a transient notice. */
   readonly notice: (text: string) => void
   /** Drain controller effects into the pane's sink. */

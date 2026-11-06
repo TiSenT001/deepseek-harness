@@ -61,6 +61,7 @@ function depsOf(path: string, promptAnswer: string | null = null, withOpenPath =
       path,
       images: new PurImageCache(),
       preferences: { backgroundColor: '#1e1e1e', gridColor: '#333333', showGrid: false },
+      exportOptions: { scale: 1, transparent: true, jpgQuality: 0.9 },
       notice: (text) => notices.push(text),
       run: (effects) => runs.push([...effects]),
       openEditor: () => undefined,

@@ -32,7 +32,7 @@ export function SettingsDialog({ t, onClose }: SettingsDialogProps): JSX.Element
       }}
     >
       <div
-        className={css.dialog}
+        className={`${css.dialog} ${css.settingsDialog}`}
         role="dialog"
         aria-label={t('settings')}
         onMouseDown={event => event.stopPropagation()}

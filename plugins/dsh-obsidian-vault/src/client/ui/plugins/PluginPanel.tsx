@@ -35,6 +35,9 @@ interface CanvasSettingsDraft {
   maxFileBytesMb: string
   maxIndexBytesMb: string
   maxDepth: string
+  exportScale: string
+  exportTransparent: boolean
+  exportJpgQuality: string
 }
 
 /**
@@ -56,6 +59,9 @@ function draftOf(dto: PurClientSettingsDto): CanvasSettingsDraft {
     maxFileBytesMb: dto.maxFileBytes === undefined ? '2' : String(Math.round((dto.maxFileBytes / MB) * 10) / 10),
     maxIndexBytesMb: dto.maxIndexBytes === undefined ? '64' : String(Math.round(dto.maxIndexBytes / MB)),
     maxDepth: dto.maxDepth === undefined ? '12' : String(dto.maxDepth),
+    exportScale: dto.exportScale === undefined ? '1' : String(dto.exportScale),
+    exportTransparent: dto.exportTransparent ?? true,
+    exportJpgQuality: dto.exportJpgQuality === undefined ? '0.9' : String(dto.exportJpgQuality),
   }
 }
 
@@ -76,6 +82,9 @@ function patchOf(draft: CanvasSettingsDraft): PurSettingsPatch {
     maxFileBytes: Math.round(Number(draft.maxFileBytesMb) * MB),
     maxIndexBytes: Math.round(Number(draft.maxIndexBytesMb) * MB),
     maxDepth: Number(draft.maxDepth),
+    exportScale: Number(draft.exportScale),
+    exportTransparent: draft.exportTransparent,
+    exportJpgQuality: Number(draft.exportJpgQuality),
   }
 }
 
@@ -190,6 +199,7 @@ function PluginRow({ t, plugin }: { readonly t: Translate; readonly plugin: Plug
           onClick={() => setOpen(value => !value)}
         >
           <span className={css.pluginName}>
+            <span className={css.pluginChevron} data-open={open}>▸</span>
             {plugin.name}
             {plugin.version === undefined ? null : <span className={css.pluginVersion}>{plugin.version}</span>}
           </span>
@@ -280,6 +290,17 @@ function CanvasSettingsSection({ t }: { readonly t: Translate }): JSX.Element | 
       </SettingsRow>
       <SettingsRow label={t('settingShowGrid')} hint={t('settingShowGridHint')}>
         <Toggle checked={draft.showGrid} label="" ariaLabel={t('settingShowGrid')} onChange={(showGrid) => setDraft({ ...draft, showGrid })} />
+      </SettingsRow>
+
+      <div className={css.settingsGroup}>{t('settingsGroupExport')}</div>
+      <SettingsRow label={t('settingExportScale')} hint={t('settingExportScaleHint')} unit="×">
+        <input className={css.settingsInput} type="number" min={1} max={3} step={1} value={draft.exportScale} onChange={(event) => setDraft({ ...draft, exportScale: event.target.value })} />
+      </SettingsRow>
+      <SettingsRow label={t('settingExportTransparent')} hint={t('settingExportTransparentHint')}>
+        <Toggle checked={draft.exportTransparent} label="" ariaLabel={t('settingExportTransparent')} onChange={(exportTransparent) => setDraft({ ...draft, exportTransparent })} />
+      </SettingsRow>
+      <SettingsRow label={t('settingJpgQuality')} hint={t('settingJpgQualityHint')}>
+        <input className={css.settingsInput} type="number" min={0.4} max={1} step={0.05} value={draft.exportJpgQuality} onChange={(event) => setDraft({ ...draft, exportJpgQuality: event.target.value })} />
       </SettingsRow>
 
       <div className={css.settingsGroup}>{t('settingsGroupIndex')}</div>

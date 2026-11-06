@@ -253,4 +253,11 @@ export const ZH = {
   settingMaxDepth: "遍历深度",
   settingMaxDepthHint: "目录遍历的最大层数",
   settingsRestartHint: "库与索引设置保存后需重启 DSH 生效；运行与显示设置保存后立即生效。",
+  settingsGroupExport: "导出",
+  settingExportScale: "导出倍率",
+  settingExportScaleHint: "1 为原始像素，2 为高清副本（1–3）",
+  settingExportTransparent: "PNG 透明背景",
+  settingExportTransparentHint: "关闭则用画布底色填充",
+  settingJpgQuality: "JPG 质量",
+  settingJpgQualityHint: "0.4–1，步长 0.05",
 } as const
