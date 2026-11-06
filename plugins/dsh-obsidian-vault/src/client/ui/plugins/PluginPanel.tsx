@@ -38,6 +38,7 @@ interface CanvasSettingsDraft {
   exportScale: string
   exportTransparent: boolean
   exportJpgQuality: string
+  gridOpacity: string
   snapEnabled: boolean
   snapDistance: string
   autoPanMaxSpeed: string
@@ -66,6 +67,7 @@ function draftOf(dto: PurClientSettingsDto): CanvasSettingsDraft {
     exportScale: dto.exportScale === undefined ? '1' : String(dto.exportScale),
     exportTransparent: dto.exportTransparent ?? true,
     exportJpgQuality: dto.exportJpgQuality === undefined ? '0.9' : String(dto.exportJpgQuality),
+    gridOpacity: dto.gridOpacity === undefined ? '1' : String(dto.gridOpacity),
     snapEnabled: dto.snapEnabled ?? true,
     snapDistance: dto.snapDistance === undefined ? '8' : String(dto.snapDistance),
     autoPanMaxSpeed: dto.autoPanMaxSpeed === undefined ? '12' : String(dto.autoPanMaxSpeed),
@@ -93,6 +95,7 @@ function patchOf(draft: CanvasSettingsDraft): PurSettingsPatch {
     exportScale: Number(draft.exportScale),
     exportTransparent: draft.exportTransparent,
     exportJpgQuality: Number(draft.exportJpgQuality),
+    gridOpacity: Number(draft.gridOpacity),
     snapEnabled: draft.snapEnabled,
     snapDistance: Number(draft.snapDistance),
     autoPanMaxSpeed: Number(draft.autoPanMaxSpeed),
@@ -316,6 +319,9 @@ function CanvasSettingsSection({ t }: { readonly t: Translate }): JSX.Element | 
       </SettingsRow>
       <SettingsRow label={t('settingShowGrid')} hint={t('settingShowGridHint')}>
         <Toggle checked={draft.showGrid} label="" ariaLabel={t('settingShowGrid')} onChange={(showGrid) => setDraft({ ...draft, showGrid })} />
+      </SettingsRow>
+      <SettingsRow label={t('settingGridOpacity')} hint={t('settingGridOpacityHint')}>
+        <input className={css.settingsInput} type="number" min={0} max={1} step={0.05} value={draft.gridOpacity} onChange={(event) => setDraft({ ...draft, gridOpacity: event.target.value })} />
       </SettingsRow>
 
       <div className={css.settingsGroup}>{t('settingsGroupExport')}</div>

@@ -21,6 +21,7 @@ export const DEFAULT_SETTINGS = {
   exportScale: 1,
   exportTransparent: true,
   exportJpgQuality: 0.9,
+  gridOpacity: 1,
   snapEnabled: true,
   snapDistance: 8,
   autoPanMaxSpeed: 12,
@@ -55,6 +56,8 @@ export interface Settings {
   exportTransparent: boolean
   /** JPEG quality for image exports, 0.4 to 1. */
   exportJpgQuality: number
+  /** Grid opacity, 0 to 1. */
+  gridOpacity: number
   /** Whether dragging latches onto neighbours. */
   snapEnabled: boolean
   /** Snap radius in screen pixels. */
@@ -83,6 +86,8 @@ export interface ClientSettings {
   exportTransparent: boolean
   /** JPEG quality for image exports. */
   exportJpgQuality: number
+  /** Grid opacity, 0 to 1. */
+  gridOpacity: number
   /** Whether dragging latches onto neighbours. */
   snapEnabled: boolean
   /** Snap radius in screen pixels. */
@@ -108,6 +113,7 @@ export const Config = z.object({
   exportScale: z.natural().default(DEFAULT_SETTINGS.exportScale).description('导出位图的缩放倍率（1–3）'),
   exportTransparent: z.boolean().default(DEFAULT_SETTINGS.exportTransparent).description('PNG 导出保留透明背景'),
   exportJpgQuality: z.number().default(DEFAULT_SETTINGS.exportJpgQuality).description('JPG 导出质量（0.4–1，步长 0.05）'),
+  gridOpacity: z.number().default(DEFAULT_SETTINGS.gridOpacity).description('网格透明度（0–1）'),
   snapEnabled: z.boolean().default(DEFAULT_SETTINGS.snapEnabled).description('拖动时吸附到相邻卡片'),
   snapDistance: z.natural().default(DEFAULT_SETTINGS.snapDistance).description('吸附半径（屏幕像素，0–40）'),
   autoPanMaxSpeed: z.natural().default(DEFAULT_SETTINGS.autoPanMaxSpeed).description('拖到边缘时每帧最大平移量（1–60）'),
@@ -161,6 +167,7 @@ export function resolveSettings(input: unknown): Settings {
     exportScale: clamp(raw['exportScale'], DEFAULT_SETTINGS.exportScale, 1, 3),
     exportTransparent: typeof raw['exportTransparent'] === 'boolean' ? raw['exportTransparent'] : DEFAULT_SETTINGS.exportTransparent,
     exportJpgQuality: clampFloat(raw['exportJpgQuality'], DEFAULT_SETTINGS.exportJpgQuality, 0.4, 1),
+    gridOpacity: clampFloat(raw['gridOpacity'], DEFAULT_SETTINGS.gridOpacity, 0, 1),
     snapEnabled: typeof raw['snapEnabled'] === 'boolean' ? raw['snapEnabled'] : DEFAULT_SETTINGS.snapEnabled,
     snapDistance: clamp(raw['snapDistance'], DEFAULT_SETTINGS.snapDistance, 0, 40),
     autoPanMaxSpeed: clamp(raw['autoPanMaxSpeed'], DEFAULT_SETTINGS.autoPanMaxSpeed, 1, 60),
@@ -186,6 +193,7 @@ export function clientSettings(settings: Settings): ClientSettings {
     exportScale: settings.exportScale,
     exportTransparent: settings.exportTransparent,
     exportJpgQuality: settings.exportJpgQuality,
+    gridOpacity: settings.gridOpacity,
     snapEnabled: settings.snapEnabled,
     snapDistance: settings.snapDistance,
     autoPanMaxSpeed: settings.autoPanMaxSpeed,

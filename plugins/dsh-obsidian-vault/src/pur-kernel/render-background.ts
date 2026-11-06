@@ -26,6 +26,12 @@ export function drawBackground(ctx: PurCanvasContext, scene: PurScene): void {
  */
 export function drawGrid(ctx: PurCanvasContext, scene: PurScene): void {
   if (!scene.preferences.showGrid) return
+  const opacity = scene.preferences.gridOpacity
+  const faded = opacity !== undefined && opacity < 1
+  if (faded) {
+    ctx.save()
+    ctx.globalAlpha = Math.max(0, Math.min(1, opacity))
+  }
   const { offsetX, offsetY, scale } = scene.view
   const step = gridStep(scale) * scale
   ctx.strokeStyle = scene.preferences.gridColor
@@ -42,4 +48,5 @@ export function drawGrid(ctx: PurCanvasContext, scene: PurScene): void {
     ctx.lineTo(scene.width, y)
   }
   ctx.stroke()
+  if (faded) ctx.restore()
 }

@@ -115,3 +115,11 @@ test('interaction settings validate and reach the dialog', () => {
   assert.equal(payload.lineHitTolerance, 40)
   assert.deepEqual(settingsPatchOf({ snapEnabled: false, snapDistance: 4, junk: true }), { snapEnabled: false, snapDistance: 4 })
 })
+test('grid opacity is clamped and reaches the dialog', () => {
+  assert.equal(resolveSettings({ gridOpacity: 2 }).gridOpacity, 1)
+  assert.equal(resolveSettings({ gridOpacity: -1 }).gridOpacity, 0)
+  assert.equal(resolveSettings({ gridOpacity: 0.35 }).gridOpacity, 0.35)
+  const payload = settingsDialogOf(mergeSettings({}, { gridOpacity: 0.4 }))
+  assert.equal(payload.gridOpacity, 0.4)
+  assert.deepEqual(settingsPatchOf({ gridOpacity: 0.4, junk: 1 }), { gridOpacity: 0.4 })
+})

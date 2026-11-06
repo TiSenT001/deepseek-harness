@@ -441,6 +441,8 @@ export interface PurClientSettingsDto {
   exportTransparent: boolean
   /** JPEG quality for image exports. */
   exportJpgQuality: number
+  /** Grid opacity, 0 to 1. */
+  gridOpacity: number
   /** Whether dragging latches onto neighbours. */
   snapEnabled: boolean
   /** Snap radius in screen pixels. */
@@ -487,6 +489,8 @@ export interface PurSettingsPatch {
   exportTransparent?: boolean
   /** JPEG quality for image exports. */
   exportJpgQuality?: number
+  /** Grid opacity, 0 to 1. */
+  gridOpacity?: number
   /** Whether dragging latches onto neighbours. */
   snapEnabled?: boolean
   /** Snap radius in screen pixels. */

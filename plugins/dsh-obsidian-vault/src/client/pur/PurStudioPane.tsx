@@ -54,6 +54,7 @@ const DEFAULT_CLIENT_SETTINGS = {
   exportScale: 1,
   exportTransparent: true,
   exportJpgQuality: 0.9,
+  gridOpacity: 1,
   snapEnabled: true,
   snapDistance: 8,
   autoPanMaxSpeed: 12,
@@ -65,8 +66,8 @@ const DEFAULT_CLIENT_SETTINGS = {
  * @param showGrid - whether the grid is drawn.
  * @returns the render preferences.
  */
-function preferencesOf(showGrid: boolean): PurRenderPreferences {
-  return { backgroundColor: 'transparent', gridColor: '#333333', showGrid }
+function preferencesOf(showGrid: boolean, gridOpacity: number): PurRenderPreferences {
+  return { backgroundColor: 'transparent', gridColor: '#333333', showGrid, gridOpacity }
 }
 
 /**
@@ -147,7 +148,10 @@ export function PurStudioPane({ t, path, onOpenPath }: PurStudioPaneProps): JSX.
   useEffect(() => {
     void fetchPurClientSettings().then((next) => setClientSettings(next)).catch(() => undefined)
   }, [])
-  const preferences = useMemo(() => preferencesOf(clientSettings.showGrid), [clientSettings.showGrid])
+  const preferences = useMemo(
+    () => preferencesOf(clientSettings.showGrid, clientSettings.gridOpacity),
+    [clientSettings.showGrid, clientSettings.gridOpacity],
+  )
   const dirtyRef = useRef(true)
   const saveTimerRef = useRef<number | null>(null)
   const noticeTimerRef = useRef<number | null>(null)

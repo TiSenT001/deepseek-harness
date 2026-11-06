@@ -77,3 +77,33 @@ test('a wider line tolerance makes the connection selectable from farther away',
   assert.equal(elementAt(elements, point.x, point.y, 1, 8)?.id ?? null, null)
   assert.equal(elementAt(elements, point.x, point.y, 1, 60)?.id, 'l1')
 })
+test('grid opacity only fades the grid lines', async () => {
+  const { drawGrid } = await import('../src/pur-kernel/render-background.ts')
+  const { RenderRecorder } = await import('./helpers/pur-render-recorder.ts')
+  const recorder = new RenderRecorder()
+  drawGrid(recorder, {
+    elements: [],
+    view: { offsetX: 0, offsetY: 0, scale: 1 },
+    width: 200,
+    height: 100,
+    preferences: { backgroundColor: 'transparent', gridColor: '#333333', showGrid: true, gridOpacity: 0.4 },
+    labels: { imageLoading: 'x', codeNodeFallbackTitle: 'x', codeNodeBadge: 'x', noteLinkFallback: 'x', codeCardPrefix: '' },
+  })
+  assert.ok(recorder.calls.includes('globalAlpha=0.4'), 'opacity was not applied')
+  assert.equal(recorder.calls.filter((call) => call === 'restore()').length, 1)
+})
+
+test('an opaque grid records no alpha change', async () => {
+  const { drawGrid } = await import('../src/pur-kernel/render-background.ts')
+  const { RenderRecorder } = await import('./helpers/pur-render-recorder.ts')
+  const recorder = new RenderRecorder()
+  drawGrid(recorder, {
+    elements: [],
+    view: { offsetX: 0, offsetY: 0, scale: 1 },
+    width: 200,
+    height: 100,
+    preferences: { backgroundColor: 'transparent', gridColor: '#333333', showGrid: true, gridOpacity: 1 },
+    labels: { imageLoading: 'x', codeNodeFallbackTitle: 'x', codeNodeBadge: 'x', noteLinkFallback: 'x', codeCardPrefix: '' },
+  })
+  assert.equal(recorder.calls.some((call) => call.startsWith('globalAlpha=')), false)
+})

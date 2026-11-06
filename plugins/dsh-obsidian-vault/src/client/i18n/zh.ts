@@ -269,4 +269,6 @@ export const ZH = {
   settingAutoPanHint: "拖到边缘时每帧最多平移多少单位（1–60）",
   settingLineHit: "连线命中容差",
   settingLineHitHint: "点击选中连线时的容差（8–60）",
+  settingGridOpacity: "网格透明度",
+  settingGridOpacityHint: "0–1，越小越淡（仅影响网格线）",
 } as const

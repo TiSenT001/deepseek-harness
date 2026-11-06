@@ -38,6 +38,8 @@ export interface SettingsPatch {
   exportTransparent?: boolean
   /** JPEG quality for image exports. */
   exportJpgQuality?: number
+  /** Grid opacity, 0 to 1. */
+  gridOpacity?: number
   /** Whether dragging latches onto neighbours. */
   snapEnabled?: boolean
   /** Snap radius in screen pixels. */
@@ -49,7 +51,7 @@ export interface SettingsPatch {
 }
 
 /** Keys a patch may carry. */
-const PATCH_KEYS = ['vault', 'ignore', 'maxFileBytes', 'maxIndexBytes', 'maxDepth', 'runTimeoutMs', 'allowCodeExecution', 'saveDelayMs', 'largeCanvasHintMb', 'showGrid', 'exportScale', 'exportTransparent', 'exportJpgQuality', 'snapEnabled', 'snapDistance', 'autoPanMaxSpeed', 'lineHitTolerance'] as const
+const PATCH_KEYS = ['vault', 'ignore', 'maxFileBytes', 'maxIndexBytes', 'maxDepth', 'runTimeoutMs', 'allowCodeExecution', 'saveDelayMs', 'largeCanvasHintMb', 'showGrid', 'exportScale', 'exportTransparent', 'exportJpgQuality', 'gridOpacity', 'snapEnabled', 'snapDistance', 'autoPanMaxSpeed', 'lineHitTolerance'] as const
 
 /**
  * Keep only the keys the dialog owns, dropping anything else the file may hold.
@@ -158,6 +160,7 @@ export function settingsDialogOf(settings: Settings): SettingsDialog {
     exportScale: settings.exportScale,
     exportTransparent: settings.exportTransparent,
     exportJpgQuality: settings.exportJpgQuality,
+    gridOpacity: settings.gridOpacity,
     snapEnabled: settings.snapEnabled,
     snapDistance: settings.snapDistance,
     autoPanMaxSpeed: settings.autoPanMaxSpeed,
@@ -176,6 +179,7 @@ export function settingsDialogOf(settings: Settings): SettingsDialog {
       exportScale: DEFAULT_SETTINGS.exportScale,
       exportTransparent: DEFAULT_SETTINGS.exportTransparent,
       exportJpgQuality: DEFAULT_SETTINGS.exportJpgQuality,
+      gridOpacity: DEFAULT_SETTINGS.gridOpacity,
       snapEnabled: DEFAULT_SETTINGS.snapEnabled,
       snapDistance: DEFAULT_SETTINGS.snapDistance,
       autoPanMaxSpeed: DEFAULT_SETTINGS.autoPanMaxSpeed,

@@ -270,4 +270,6 @@ export const EN: Dict = {
   settingAutoPanHint: "World units moved per frame at the edge (1-60)",
   settingLineHit: "Line hit tolerance",
   settingLineHitHint: "Click tolerance for selecting a connection (8-60)",
+  settingGridOpacity: "Grid opacity",
+  settingGridOpacityHint: "0 to 1; affects the grid lines only",
 }

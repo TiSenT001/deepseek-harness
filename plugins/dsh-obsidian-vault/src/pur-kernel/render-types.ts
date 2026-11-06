@@ -104,6 +104,8 @@ export interface PurRenderPreferences {
   gridColor: string
   /** Whether to draw the grid. */
   showGrid: boolean
+  /** Grid opacity, 0–1; absent means fully opaque. */
+  gridOpacity?: number
 }
 
 /** Display copy the renderer interpolates, supplied by the adapter locale. */
