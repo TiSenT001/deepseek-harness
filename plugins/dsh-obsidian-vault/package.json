@@ -17,7 +17,8 @@
   "scripts": {
     "build": "tsdown --config tsdown.config.ts && tsdown --config tsdown.popout.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "node --test --experimental-strip-types \"tests/**/*.test.ts\""
+    "test": "node --test --experimental-strip-types \"tests/**/*.test.ts\"",
+    "regen:goldens": "node --experimental-strip-types scripts/regen-goldens.mjs"
   },
   "dsh": {
     "bundle": {

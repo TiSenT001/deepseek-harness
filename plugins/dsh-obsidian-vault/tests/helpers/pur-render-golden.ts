@@ -1091,7 +1091,11 @@ export const GOLDEN_RENDER: RenderTrace[] = [
       "fillText(\"100%\",16,464)",
       "restore()"
     ],
-    "loads": ["b.png#w=256", "data:c#w=256", "data:c"]
+    "loads": [
+      "b.png#w=256",
+      "data:c#w=256",
+      "data:c"
+    ]
   },
   {
     "name": "interaction",
