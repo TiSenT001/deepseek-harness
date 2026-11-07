@@ -53,6 +53,11 @@ page.on('pageerror', (e) => pageErrors.push(String(e).slice(0, 200)))
 await page.route('**/actions/prune-backups', (r) => r.fulfill({ status: 200, contentType: 'application/json', body: '{"ok":true,"removed":[],"freed_mb":0,"kept":[]}' }))
 await page.route('**/actions/caches/prune', (r) => r.fulfill({ status: 200, contentType: 'application/json', body: '{"ok":true,"freed_mb":0,"items":[]}' }))
 await page.route('**/actions/backup', (r) => r.fulfill({ status: 200, contentType: 'application/json', body: '{"ok":true}' }))
+await page.route('**/units/start-batch', (r) => r.fulfill({ status: 200, contentType: 'application/json', body: '{"ok":true,"group":"","started":[],"failed":[]}' }))
+await page.route('**/units/restart-batch', (r) => r.fulfill({ status: 200, contentType: 'application/json', body: '{"ok":true,"group":"","restarted":[],"failed":[]}' }))
+await page.route('**/units/*/start', (r) => r.fulfill({ status: 200, contentType: 'application/json', body: '{"ok":true}' }))
+await page.route('**/units/*/stop', (r) => r.fulfill({ status: 200, contentType: 'application/json', body: '{"ok":true}' }))
+await page.route('**/units/*/restart', (r) => r.fulfill({ status: 200, contentType: 'application/json', body: '{"ok":true}' }))
 
 /** 等卡片出现；管理器刚好在重启时（另一个窗口改后端）等一等再判失败。 */
 const waitForCards = async (timeout = 8000) => {
@@ -156,6 +161,51 @@ try {
     if (!dock) throw new Error('日志控制台没出现')
     await page.getByRole('button', { name: '收起日志' }).click().catch(() => {})
     return '已展开'
+  })
+
+  await soft('失败边明细对话框能打开', async () => {
+    // 入口是两跳：失败边 KPI → 趋势对话框 → 「查看失败边明细」
+    const kpi = page.locator('.bc-kpi-action', { hasText: '失败边' }).first()
+    if (!(await kpi.count())) throw new Error('没有可点的「失败边」指标')
+    await kpi.click()
+    await page.waitForTimeout(1000)
+    const detailBtn = page.getByRole('button', { name: '查看失败边明细' })
+    if (!(await detailBtn.count())) throw new Error('趋势对话框里没有「查看失败边明细」')
+    await detailBtn.click()
+    await page.waitForTimeout(800)
+    const dialog = page.getByRole('dialog')
+    const text = await dialog.innerText()
+    if (!text.includes('失败边')) throw new Error(`标题不是「失败边」: ${text.slice(0, 40)}`)
+    await page.waitForSelector('.bc-failed-row', { timeout: 6000 }).catch(() => {})
+    const rows = await dialog.locator('.bc-failed-row').count()
+    const empty = (await dialog.innerText()).includes('没有失败边')
+    await closeOverlay()
+    if (rows === 0 && !empty) throw new Error('既没有明细行也不是空态')
+    return `${rows} 条${empty ? '（空态）' : ''}`
+  })
+
+  await soft('趋势对话框能打开', async () => {
+    const kpi = page.locator('.bc-kpi-action', { hasText: '数据库' }).first()
+    if (!(await kpi.count())) throw new Error('没有可点的「数据库」指标')
+    await kpi.click()
+    await page.waitForTimeout(1200)
+    const dialog = page.getByRole('dialog')
+    if (!(await dialog.count())) throw new Error('对话框没打开')
+    const text = await dialog.innerText()
+    if (!text.includes('趋势')) throw new Error(`标题不含「趋势」: ${text.slice(0, 40)}`)
+    await closeOverlay()
+    return '已打开'
+  })
+
+  await soft('单元 ⋯ 菜单能打开', async () => {
+    const btn = page.locator('article.bc-card').first().getByRole('button', { name: '单元更多操作' })
+    if (!(await btn.count())) throw new Error('卡片上没有单元菜单按钮')
+    await btn.first().click()
+    await page.waitForTimeout(600)
+    const menu = page.locator('[role="menu"]')
+    if (!(await menu.count())) throw new Error('菜单没弹出')
+    await closeOverlay()
+    return '已弹出'
   })
 
   record('运行期间无 pageerror', pageErrors.length === 0, pageErrors.join(' | ').slice(0, 200))

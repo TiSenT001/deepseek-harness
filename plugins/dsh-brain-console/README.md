@@ -137,7 +137,8 @@ icon: (size: number) => <BrainConsoleIcon size={size} />
 
 ## 冒烟测试
 
-`tests/smoke.mjs`：只读验证面板能加载、卡片/KPI 渲染、⋯ 菜单齐全、备份与缓存对话框能列出条目。
+`tests/smoke.mjs`：只读验证面板能加载、卡片/KPI 渲染、⋯ 菜单齐全、备份与缓存对话框能列出条目，
+以及失败边明细（两跳入口：KPI → 趋势 → 明细）、趋势对话框、单元 ⋯ 菜单。共 11 项。
 所有会改数据的端点（`/actions/backup`、`/actions/prune-backups`、`/actions/caches/prune`）
 在测试里都拦截成假应答——跑一百遍也不会删任何东西。
 
