@@ -117,7 +117,7 @@ export const DIALOG_STYLE = `
   color: var(--dsw-alias-brand-primary, #7d94ff);
 }
 .ov-dialog-button-primary:hover {
-  border-color: var(--dsw-alias-brand-primary, #4d6bfe);
+  border-color: var(--ov-focus, #4d6bfe);
   color: var(--dsw-alias-brand-primary, #7d94ff);
 }
 .ov-dialog-hint { font-size: 12px; color: var(--dsw-alias-label-tertiary, #8b8b94); }
@@ -250,9 +250,9 @@ export const DIALOG_STYLE = `
   color-scheme: dark;
 }
 .ov-input:focus {
-  outline: 1px solid var(--dsw-alias-brand-primary, #4d6bfe);
+  outline: 2px solid var(--ov-focus, #4d6bfe);
   outline-offset: 1px;
-  border-color: var(--dsw-alias-brand-primary, #4d6bfe);
+  border-color: var(--ov-focus, #4d6bfe);
 }
 textarea.ov-input { resize: vertical; }
 .ov-color-swatch {

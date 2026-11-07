@@ -110,7 +110,7 @@ export const CONTENT_STYLE = `/* Document typography, closer to Obsidian's readi
   cursor: text;
 }
 .ov-property-editable:hover { border-color: var(--dsw-alias-border-l1, #2a2a30); background: var(--dsw-alias-bg-layer-2, #24242a); }
-.ov-property-editable:focus-visible { outline: 1px solid var(--dsw-alias-brand-primary, #4d6bfe); outline-offset: 1px; }
+.ov-property-editable:focus-visible { outline: 2px solid var(--ov-focus, #4d6bfe); outline-offset: 1px; }
 .ov-property-edit { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; min-width: 0; }
 .ov-property-input {
   min-width: 140px;
@@ -122,7 +122,7 @@ export const CONTENT_STYLE = `/* Document typography, closer to Obsidian's readi
   color: var(--dsw-alias-label-primary, #e8e8ea);
   font: inherit;
 }
-.ov-property-input:focus { outline: 1px solid var(--dsw-alias-brand-primary, #4d6bfe); outline-offset: 1px; }
+.ov-property-input:focus { outline: 2px solid var(--ov-focus, #4d6bfe); outline-offset: 1px; }
 .ov-property-error { color: var(--dsw-alias-state-error-primary, #f85149); font-size: 11.5px; }
 .ov-tag-row { margin: 0 0 14px; display: flex; flex-wrap: wrap; gap: 6px; }
 .ov-tag-row .ov-chip { margin: 0; cursor: pointer; border: 0; font: inherit; font-size: 11px; }

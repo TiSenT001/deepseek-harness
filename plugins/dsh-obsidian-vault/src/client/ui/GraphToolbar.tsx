@@ -7,6 +7,7 @@ import type { TagCountDto } from '../../protocol.ts'
 import type { Translate } from '../i18n.ts'
 import { TagPicker } from './graph/TagPicker.tsx'
 import { Icon } from './Icon.tsx'
+import { Select } from './kit/select.tsx'
 import { css } from './theme.ts'
 
 /** Props for {@link GraphToolbar}. */
@@ -58,14 +59,13 @@ export function GraphToolbar(props: GraphToolbarProps): JSX.Element {
       />
       <TagPicker t={t} options={tagOptions} value={tag} onChange={onTag} />
       {center === undefined ? null : (
-        <select
+        <Select
           className={css.graphSelect}
-          value={depth}
-          aria-label={t('hops')}
-          onChange={(event) => onDepth(Number(event.target.value))}
-        >
-          {[1, 2, 3].map(value => <option key={value} value={value}>{value} {t('hops')}</option>)}
-        </select>
+          value={String(depth)}
+          options={[1, 2, 3].map(value => ({ value: String(value), label: `${value} ${t('hops')}` }))}
+          ariaLabel={t('hops')}
+          onChange={(value) => onDepth(Number(value))}
+        />
       )}
       <button
         type="button"

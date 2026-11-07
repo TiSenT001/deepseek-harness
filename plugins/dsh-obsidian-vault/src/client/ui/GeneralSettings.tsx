@@ -10,6 +10,7 @@ import { fetchPurClientSettings, savePurClientSettings } from '../api-vault.ts'
 import type { PurClientSettingsDto, PurSettingsPatch } from '../api-vault.ts'
 import type { Translate } from '../i18n.ts'
 import { css, SettingsRow, Toggle } from './kit/index.ts'
+import { Select } from './kit/select.tsx'
 import { DEFAULT_WIDTHS, WIDTHS_KEY, clampPane, parseWidths, serializeWidths } from './layoutPrefs.ts'
 import { INLINE_BACKLINKS_KEY, parseInlineBacklinks, serializeInlineBacklinks } from './notePrefs.ts'
 import { SEARCH_OPTIONS_KEY, parseSearchOptions, serializeSearchOptions } from './searchPrefs.ts'
@@ -196,14 +197,15 @@ export function GeneralSettings({ t }: GeneralSettingsProps): JSX.Element {
         <Toggle checked={search.regex} label="" ariaLabel={t('settingSearchRegex')} onChange={regex => updateSearch({ regex })} />
       </SettingsRow>
       <SettingsRow label={t('settingSearchSort')}>
-        <select
-          className={css.settingsInput}
+        <Select
           value={search.sort}
-          onChange={(event) => updateSearch({ sort: event.target.value === 'name' ? 'name' : 'relevance' })}
-        >
-          <option value="relevance">{t('settingSearchSortRelevance')}</option>
-          <option value="name">{t('settingSearchSortName')}</option>
-        </select>
+          options={[
+            { value: 'relevance', label: t('settingSearchSortRelevance') },
+            { value: 'name', label: t('settingSearchSortName') },
+          ]}
+          ariaLabel={t('settingSearchSort')}
+          onChange={(value) => updateSearch({ sort: value === 'name' ? 'name' : 'relevance' })}
+        />
       </SettingsRow>
       <SettingsRow label={t('settingSearchCompact')} hint={t('settingSearchCompactHint')}>
         <Toggle checked={search.compact} label="" ariaLabel={t('settingSearchCompact')} onChange={compact => updateSearch({ compact })} />

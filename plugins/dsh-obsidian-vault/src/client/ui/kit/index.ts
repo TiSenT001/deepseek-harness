@@ -14,6 +14,7 @@ import { FRAME_STYLE } from './styles/frame.ts'
 import { GRAPH_STYLE } from './styles/graph.ts'
 import { PUR_STYLE } from './styles/pur.ts'
 import { RESPONSIVE_STYLE } from './styles/responsive.ts'
+import { SELECT_STYLE } from './styles/select.ts'
 import { SHELL_STYLE } from './styles/shell.ts'
 import { WORKSPACE_STYLE } from './styles/workspace.ts'
 import { TOKEN_CSS } from './tokens.ts'
@@ -22,6 +23,7 @@ import { VARIANT_CSS } from './variants.ts'
 export { css } from './classes.ts'
 export { AskDialog, useAsk, type Ask, type AskDialogProps, type AskRequest } from './ask.tsx'
 export { SettingsRow, Slider, Toggle, type SettingsRowProps } from './controls.tsx'
+export { Select, type SelectOption, type SelectProps } from './select.tsx'
 export { EmptyState, ErrorState, LoadingState, type EmptyStateProps, type ErrorStateProps, type LoadingStateProps } from './states.tsx'
 export { RAIL_SURFACES, VIEW_SURFACES, railSurface, type RailId, type RailSurface, type ViewSurface } from './registry.ts'
 export { CHROME, EASE, LAYOUT as LAYOUT_TOKENS, MOTION, RADIUS, SPACE, TOKEN_CSS, TYPE } from './tokens.ts'
@@ -41,6 +43,7 @@ export const STYLE = [
   GRAPH_STYLE,
   PUR_STYLE,
   CONTROLS_STYLE,
+  SELECT_STYLE,
   RESPONSIVE_STYLE,
   VARIANT_CSS,
 ].join('\n')

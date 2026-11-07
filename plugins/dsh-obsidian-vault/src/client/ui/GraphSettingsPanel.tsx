@@ -18,6 +18,7 @@ import type { Translate } from '../i18n.ts'
 import { Icon } from './Icon.tsx'
 import { css } from './theme.ts'
 import { Slider, Toggle } from './kit/controls.tsx'
+import { Select } from './kit/select.tsx'
 
 /** Props for {@link GraphSettingsPanel}. */
 export interface GraphSettingsPanelProps {
@@ -117,7 +118,10 @@ export function GraphSettingsPanel({ t, settings, onChange, onClose }: GraphSett
   )
 }
 
-/** One select row: the stored value is a string, rendered as its option label. */
+/**
+ * One select row: the stored value is a string, rendered as its option label
+ * through the kit dropdown so the open list matches the panel chrome.
+ */
 function renderSelect(
   control: Extract<GraphControl, { kind: 'select' }>,
   settings: GraphSettings,
@@ -126,19 +130,15 @@ function renderSelect(
 ): JSX.Element {
   const current = String(readPath(settings, control.path) ?? '')
   return (
-    <label key={control.path} className={css.graphField}>
+    <div key={control.path} className={css.graphField}>
       <span>{t(control.label)}</span>
-      <select
-        className={css.graphText}
+      <Select
         value={current}
-        aria-label={t(control.label)}
-        onChange={(event) => onChange(writePath(settings, control.path, event.target.value))}
-      >
-        {control.options.map(option => (
-          <option key={option.value} value={option.value}>{t(option.label)}</option>
-        ))}
-      </select>
-    </label>
+        options={control.options.map(option => ({ value: option.value, label: t(option.label) }))}
+        ariaLabel={t(control.label)}
+        onChange={(value) => onChange(writePath(settings, control.path, value))}
+      />
+    </div>
   )
 }
 

@@ -29,7 +29,7 @@ export const WORKSPACE_NOTE_STYLE = `
   font: inherit;
   font-size: 12px;
 }
-.ov-filter:focus { outline: 1px solid var(--dsw-alias-brand-primary, #4d6bfe); }
+.ov-filter:focus { outline: 2px solid var(--ov-focus, #4d6bfe); }
 .ov-tree { overflow: auto; padding: 0 4px 8px; min-height: 0; flex: 1 1 auto; }
 .ov-dir, .ov-file {
   display: flex;
