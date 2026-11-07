@@ -1723,6 +1723,28 @@ try {
     assert(await page.locator('.ov-note').isVisible(), 'reading view not restored')
   })
 
+  await check('note.editor-colour-and-find', async () => {
+    await openViaFilter('审核夹具')
+    await page.locator('.ov-note').waitFor({ timeout: 10000 })
+    await page.locator('.ov-note button[title="源码"]').click()
+    const area = page.locator('.ov-editor-area')
+    await area.waitFor({ timeout: 10000 })
+    const coloured = await page.locator('.ov-editor-highlight [class^="ov-md-"]').count()
+    assert(coloured > 0, 'the colour layer painted no markdown token')
+    await area.click()
+    await page.keyboard.press('Control+f')
+    const bar = page.locator('.ov-editor-find')
+    await bar.waitFor({ timeout: 5000 })
+    assert((await page.locator('.ov-quick-input').count()) === 0, 'global search opened instead of the editor find bar')
+    await page.locator('.ov-editor-find-input').first().fill('审核')
+    const counter = await page.locator('.ov-editor-find-count').first().textContent()
+    assert(/^\d+\/\d+$/.test(counter ?? ''), `find counter missing: ${counter}`)
+    await page.keyboard.press('Escape')
+    await bar.waitFor({ state: 'detached', timeout: 3000 })
+    await page.locator('.ov-editor-view button[aria-label="阅读"]').click()
+    await sleep(800)
+  })
+
   await check('files.drag-move-into-dir-and-back', async () => {
     await explorerFilter.fill('')
     await sleep(400)

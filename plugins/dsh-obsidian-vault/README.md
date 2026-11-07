@@ -231,7 +231,7 @@ node --experimental-strip-types scripts/regen-goldens.mjs --suite controller --s
 | 能力 | 状态 |
 |---|---|
 | 笔记阅读 | 标题层级、callout、脚注、任务、表格、代码高亮；骨架屏；属性列表（点击复制） |
-| 笔记编辑 | **源码编辑**：整篇 textarea + 800ms 防抖自动保存 + `Ctrl+S`/`Ctrl+E` + 外部修改冲突条；不做行内 Live Preview |
+| 笔记编辑 | **源码编辑**：Markdown 语法着色（标题/列表/引用/代码/链接/标签）、`Ctrl+F` 查找替换、`Tab`/`Shift+Tab` 缩进、`Ctrl+B/I/K` 包裹、列表/引用回车续行、800ms 防抖自动保存、`Ctrl+S`/`Ctrl+E`、外部修改冲突条；不做行内 Live Preview |
 | 标签页 | 预览/固定、拖拽排序、右键关闭、分屏、**每标签独立前进/后退历史**、按路径记忆滚动位置 |
 | 文件树 | 新建笔记/文件夹、重命名、删除进 `.trash`、拖拽移动、批量选择、附件不在树内 |
 | 搜索 | 快速切换器（文件/命令/搜索/提问模式）；算子 `file:` `path:` `content:` `tag:` `line:` `block:` `section:` `task:` `task-todo:` `task-done:` |

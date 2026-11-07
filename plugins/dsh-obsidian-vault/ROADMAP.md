@@ -1,3 +1,11 @@
+## 第九十四轮：源码编辑器补上高亮与查找（2026-11-07）
+
+- **色彩层**：`SourceEditor` 改为「镜像 `<pre>` + 透明 textarea」——两者字体、行高、字距、内边距、换行规则完全一致，token 只改颜色不改字宽，光标与字形不漂移；`markdown-tokens.ts` 按行切 frontmatter / 围栏代码 / 标题 / 列表 / 引用，再叠行内代码、双链、链接、粗斜体、标签，范围不重叠。
+- **查找替换**：工具条「查找」与 `Ctrl+F` 打开编辑器内查找条，显示 `当前/总数`，支持上一个/下一个、替换、全部替换、Esc 关闭；编辑器根节点拦截 `Ctrl+F` 并阻止冒泡，避免和页面全文搜索同时打开。
+- **编辑快捷键**：`Tab`/`Shift+Tab` 整行缩进/反缩进，`Ctrl+B/I/K` 包裹选区，回车自动续列表/任务/引用并递增序号。
+- **纯函数**：查找/替换/缩进/包裹/续行全部落在 `source-edit.ts`，新增 7 条 token 测试 + 7 条编辑测试；审核新增 `note.editor-colour-and-find`（token 数、查找计数、不误开全文搜索）。
+- **验证**：`tsc` 0、`660/660`、`check:boundaries` 通过、审核 100/100；真实笔记实测 41117 字符，token 计数 67 标题 / 160 粗体 / 709 代码 / 17 链接，字体与内边距对齐。
+
 ## 第九十三轮：把画布与笔记的边界写进代码（2026-11-07）
 
 - **公开入口收敛**：新增 `client/pur/integration.ts`，工作区只通过它使用画布（`PurStudioPane` 与命令注册）；`useAsk`/`AskDialog` 从 `client/ui` 移到 `client/ui/kit`，画布不再 import 工作区内部；宿主对内核的深层 import（`studio-file`、`controller-run`、`types`）全部改走 `pur-kernel/index.ts`。
