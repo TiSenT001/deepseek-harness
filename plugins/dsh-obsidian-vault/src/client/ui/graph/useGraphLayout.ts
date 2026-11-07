@@ -83,12 +83,15 @@ export function useGraphLayout({ visible, forces, animate }: GraphLayoutInput): 
   /** The live force session; null before the first graph arrives. */
   const simRef = useRef<SimulationHandle | null>(null)
   const forcesRef = useRef(forces)
+  /** Latest animate flag for callbacks captured before its effect runs. */
+  const animateRef = useRef(animate)
   const previousSignature = useRef('')
   const hasLayout = useRef(false)
   /** The forces effect skips its first run: a fresh simulation is already hot. */
   const forcesReady = useRef(false)
 
   forcesRef.current = forces
+  animateRef.current = animate
 
   const nodeInfo = useMemo(() => new Map(visible.nodes.map(node => [node.path, node])), [visible.nodes])
   const nodeInfoRef = useRef<ReadonlyMap<string, GraphNodeDto>>(new Map())
@@ -112,8 +115,10 @@ export function useGraphLayout({ visible, forces, animate }: GraphLayoutInput): 
     }
     const signature = visible.nodes.map(node => node.path).sort().join('|')
     if (hasLayout.current && signature === previousSignature.current
-      && positionsRef.current.length === visible.nodes.length) {
+      && positionsRef.current.length === visible.nodes.length && simRef.current !== null) {
       // Same node set (a filter or tag change): the running simulation stays.
+      // `simRef.current !== null` also covers a remount after the unmount
+      // cleanup stopped the session, which must be rebuilt instead of reused.
       return undefined
     }
     // Only reuse positions after a real layout; seeding a fresh graph with the
@@ -125,7 +130,6 @@ export function useGraphLayout({ visible, forces, animate }: GraphLayoutInput): 
     try {
       handle = startSimulation(visible.nodes, visible.edges, forcesRef.current, {
         onTick: () => {
-          ;(window as unknown as { __ovTicks?: number }).__ovTicks = ((window as unknown as { __ovTicks?: number }).__ovTicks ?? 0) + 1
           // Node positions bypass the stage, so a live simulation must wake
           // the canvas loop itself.
           settledRef.current = false
@@ -158,11 +162,16 @@ export function useGraphLayout({ visible, forces, animate }: GraphLayoutInput): 
     setPositions(handle.nodes)
     hasLayout.current = true
     previousSignature.current = signature
-    return () => {
-      if (simRef.current === handle) simRef.current = null
-      handle.stop()
-    }
+    return undefined
   }, [visible])
+
+  // A refetch with the same node set keeps the running session: the layout
+  // effect early-returns and must not run a cleanup that stops it. Only leaving
+  // the view ends the session, so the graph never freezes after a refresh.
+  useEffect(() => () => {
+    simRef.current?.stop()
+    simRef.current = null
+  }, [])
 
   // Force sliders hot-update the running simulation instead of rebuilding it.
   useEffect(() => {
@@ -181,7 +190,13 @@ export function useGraphLayout({ visible, forces, animate }: GraphLayoutInput): 
 
   // Time-lapse reveal: nodes appear in degree order over a short window.
   useEffect(() => {
-    if (reveal >= 1) return
+    if (reveal >= 1) {
+      // The reveal just finished (or this is the first paint): re-arm the warm
+      // session so a replay never ends with the continuous motion asleep.
+      simRef.current?.setAnimate(animateRef.current)
+      loopRef.current?.()
+      return
+    }
     let frame = 0
     const started = performance.now()
     const duration = Math.min(3000, Math.max(600, positions.length * 6))
