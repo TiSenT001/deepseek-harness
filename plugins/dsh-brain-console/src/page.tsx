@@ -148,6 +148,12 @@ export function ConsolePage(): JSX.Element {
   const detailUnit = detailName === null ? undefined : feed.units.find((unit) => unit.name === detailName)
   const openLog = logDock.log
 
+  // 管理器没起来时首次拉历史会失败；面板一旦恢复（overview 到手）就自动补拉一次，
+  // 否则 KPI 卡的趋势线要手动刷新页面才出现。
+  useEffect(() => {
+    if (feed.overview !== null && history === null) void refreshHistory()
+  }, [feed.overview, history, refreshHistory])
+
   // 快捷键：r 刷新、/ 聚焦日志过滤、Esc 收起日志（有对话框时让对话框自己处理）
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent): void => {

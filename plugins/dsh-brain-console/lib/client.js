@@ -3143,6 +3143,13 @@ window.__ModuleLoader__.load({
 			const detailUnit = detailName === null ? void 0 : feed.units.find((unit) => unit.name === detailName);
 			const openLog = logDock.log;
 			(0, react.useEffect)(() => {
+				if (feed.overview !== null && history === null) refreshHistory();
+			}, [
+				feed.overview,
+				history,
+				refreshHistory
+			]);
+			(0, react.useEffect)(() => {
 				const onKeyDown = (event) => {
 					const target = event.target instanceof HTMLElement ? event.target : null;
 					const typing = target !== null && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable);
