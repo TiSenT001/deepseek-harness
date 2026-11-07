@@ -137,6 +137,7 @@ export const css = {
   tagPopItem: 'ov-tagpop-item',
   tagPopActive: 'ov-tagpop-active',
   tagPopCount: 'ov-tagpop-count',
+  graphHint: 'ov-graph-hint',
   graphLegend: 'ov-graph-legend',
   graphLegendItem: 'ov-graph-legend-item',
   graphLegendItemActive: 'ov-graph-legend-item-active',

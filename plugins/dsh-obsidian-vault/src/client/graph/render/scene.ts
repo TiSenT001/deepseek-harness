@@ -5,7 +5,8 @@
  */
 import type { GraphNodeDto } from '../../../protocol.ts'
 import type { GraphEdgeInput, SimNode } from '../layout.ts'
-import { groupColorOf, type GraphSettings } from '../settings.ts'
+import type { GraphSettings } from '../settings.ts'
+import { groupColorOf } from './group-color.ts'
 import { colorByKey, type GraphColorBy } from './colors.ts'
 import { labelAlpha, type LabelBox } from './labels.ts'
 import { screenRadius } from './node-size.ts'
@@ -190,7 +191,7 @@ export function drawScene(scene: SceneInput): SceneStats {
     const active = hover === node.path
     const faded = hovering && !neighbours.has(node.path)
     const isCenter = scene.hasCenter && node.depth === 0
-    const group = groupColorOf(settings, node.title, node.path)
+    const group = groupColorOf(settings, node.title, node.path, info?.tags ?? [])
     // Explicit groups win; otherwise ordinary notes take the configured colour
     // mode so folders or tags read without any configuration.
     const mode: GraphColorBy = settings.display.colorBy ?? 'folder'

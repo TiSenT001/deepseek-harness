@@ -106,6 +106,7 @@ export function GraphSettingsPanel({ t, settings, onChange, onClose }: GraphSett
                   >
                     {t('addGroup')}
                   </button>
+                  <p className={css.graphHint}>{t('groupsHint')}</p>
                 </>
               )
               : section.controls.map(control => renderControl(control, settings, onChange, t))}

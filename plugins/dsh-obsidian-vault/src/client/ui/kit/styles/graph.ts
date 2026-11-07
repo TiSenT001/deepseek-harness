@@ -24,6 +24,12 @@ export const GRAPH_STYLE = `/* Graph filter controls. */
 }
 
 /* Graph settings popover. */
+.ov-graph-hint {
+  margin: 6px 0 0;
+  color: var(--dsw-alias-label-tertiary, #8b8b94);
+  font-size: 10.5px;
+  line-height: 1.5;
+}
 .ov-graph-legend {
   display: flex;
   flex-wrap: wrap;
