@@ -161,3 +161,11 @@ export interface BatchStopResult {
   stopped: string[]
   failed: { name: string; error: string }[]
 }
+
+/** `/units/restart-batch` 的结果：管理器侧批量重启。 */
+export interface BatchRestartResult {
+  ok: boolean
+  group: string
+  restarted: string[]
+  failed: { name: string; error: string }[]
+}

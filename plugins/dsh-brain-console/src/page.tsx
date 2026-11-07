@@ -15,17 +15,18 @@ import { BrainConsoleIcon } from './icon.tsx'
 import { BackupDialog } from './ui/BackupDialog.tsx'
 import { CacheDialog } from './ui/CacheDialog.tsx'
 import { FailedEdgesDialog } from './ui/FailedEdgesDialog.tsx'
+import { GroupActionDialog } from './ui/GroupActionDialog.tsx'
 import { formatClock } from './ui/format.ts'
 import { IconButton } from './ui/IconButton.tsx'
 import { LogDock } from './ui/LogDock.tsx'
 import { MoreMenu } from './ui/MoreMenu.tsx'
 import { Button, IconPlay, IconRefresh, IconStop, StateDot, Tooltip } from './ui/primitives.ts'
 import { ServiceCard } from './ui/ServiceCard.tsx'
-import { StopGroupDialog } from './ui/StopGroupDialog.tsx'
 import { OverviewTiles } from './ui/StatTiles.tsx'
 import { ensureConsoleStyles } from './ui/styles.ts'
 import type {
-  BackupListing, BatchStartResult, BatchStopResult, CacheListing, CachePruneResult, FailedEdgesListing, Overview, PruneResult, Unit, UnitAction,
+  BackupListing, BatchRestartResult, BatchStartResult, BatchStopResult, CacheListing, CachePruneResult,
+  FailedEdgesListing, Overview, PruneResult, Unit, UnitAction,
 } from './ui/types.ts'
 
 ensureConsoleStyles()
@@ -112,6 +113,8 @@ interface UnitSectionProps {
   onStartAll: (group: string) => void
   /** 停止该分组里所有正在运行的单元（先确认） */
   onStopAll: (group: string) => void
+  /** 重启该分组里所有正在运行的单元（先确认） */
+  onRestartAll: (group: string) => void
   /** 切换单个单元的「随管理器启动」 */
   onToggleEnabled: (name: string, enabled: boolean) => void
   /** 把单个外部进程接管为管理器子进程 */
@@ -119,7 +122,7 @@ interface UnitSectionProps {
 }
 
 function UnitSection({
-  group, members, now, busy, logName, onLog, onAction, onStartAll, onStopAll, onToggleEnabled, onAdopt,
+  group, members, now, busy, logName, onLog, onAction, onStartAll, onStopAll, onRestartAll, onToggleEnabled, onAdopt,
 }: UnitSectionProps): JSX.Element {
   const running = members.filter((unit) => unit.running).length
   const stopped = members.length - running
@@ -136,6 +139,15 @@ function UnitSection({
             disabled={busy !== null}
             busy={busy === `group:${group}`}
             onClick={() => onStartAll(group)}
+          />
+        )}
+        {running > 0 && (
+          <IconButton
+            label="全部重启"
+            icon={IconRefresh}
+            disabled={busy !== null}
+            busy={busy === `restart-group:${group}`}
+            onClick={() => onRestartAll(group)}
           />
         )}
         {running > 0 && (
@@ -186,6 +198,7 @@ export function ConsolePage(): JSX.Element {
   const [cacheOpen, setCacheOpen] = useState(false)
   const [failedOpen, setFailedOpen] = useState(false)
   const [stopGroup, setStopGroup] = useState<{ group: string; names: string[] } | null>(null)
+  const [restartGroup, setRestartGroup] = useState<{ group: string; names: string[] } | null>(null)
 
   const load = useCallback(async (manual = false): Promise<void> => {
     if (manual) setRefreshing(true)
@@ -329,6 +342,39 @@ export function ConsolePage(): JSX.Element {
       setStopGroup(null)
     }
     if (failures.length > 0) setActionError(`${group}有 ${failures.length} 个没停下来：${failures.join('；')}`)
+  }
+
+  // 分组批量重启：同样先走管理器侧批量接口，老版本管理器 404 时退回逐个重启
+  const restartGroupNow = async (group: string, names: string[]): Promise<void> => {
+    setBusy(`restart-group:${group}`)
+    setActionError(null)
+    const failures: string[] = []
+    try {
+      const batch = await postJson<BatchRestartResult>('/units/restart-batch', { group }).catch((error: unknown) => {
+        if (error instanceof Error && error.message === 'HTTP 404') return null
+        throw error
+      })
+      if (batch === null) {
+        for (const name of names) {
+          try {
+            await postManager(`/units/${name}/restart`)
+          } catch (error) {
+            failures.push(`${name}：${reasonOf(error)}`)
+          }
+        }
+      } else {
+        for (const item of batch.failed) failures.push(`${item.name}：${item.error}`)
+      }
+      await load()
+      if (log !== null && names.includes(log.name)) await readLog(log.name, true)
+    } catch (error) {
+      setActionError(`${group}批量重启失败：${reasonOf(error)}`)
+      return
+    } finally {
+      setBusy(null)
+      setRestartGroup(null)
+    }
+    if (failures.length > 0) setActionError(`${group}有 ${failures.length} 个没重启：${failures.join('；')}`)
   }
 
   // 单元级设置：随管理器启动（只改持久意愿，不立即起停）
@@ -498,6 +544,10 @@ export function ConsolePage(): JSX.Element {
                   group,
                   names: units.filter((unit) => unit.group === group && unit.running).map((unit) => unit.name),
                 })}
+                onRestartAll={(group) => setRestartGroup({
+                  group,
+                  names: units.filter((unit) => unit.group === group && unit.running).map((unit) => unit.name),
+                })}
                 onToggleEnabled={(name, enabled) => void setUnitEnabled(name, enabled)}
                 onAdopt={(name) => void adoptUnit(name)}
               />
@@ -528,12 +578,30 @@ export function ConsolePage(): JSX.Element {
       )}
 
       {stopGroup !== null && (
-        <StopGroupDialog
-          group={stopGroup.group}
+        <GroupActionDialog
+          title={`停止「${stopGroup.group}」`}
+          description={`将停止 ${stopGroup.names.length} 个正在运行的单元，并写入抑制清单`}
           names={stopGroup.names}
+          note="停止后它们不会随管理器启动自动恢复，需要手动再点启动"
+          confirmLabel={`停止 ${stopGroup.names.length} 个`}
+          busyLabel="停止中…"
           busy={busy === `stop-group:${stopGroup.group}`}
           onCancel={() => setStopGroup(null)}
           onConfirm={() => void stopGroupNow(stopGroup.group, stopGroup.names)}
+        />
+      )}
+
+      {restartGroup !== null && (
+        <GroupActionDialog
+          title={`重启「${restartGroup.group}」`}
+          description={`将重启 ${restartGroup.names.length} 个正在运行的单元`}
+          names={restartGroup.names}
+          note="重启会中断它们几秒到十几秒；期间依赖它们的调用可能失败"
+          confirmLabel={`重启 ${restartGroup.names.length} 个`}
+          busyLabel="重启中…"
+          busy={busy === `restart-group:${restartGroup.group}`}
+          onCancel={() => setRestartGroup(null)}
+          onConfirm={() => void restartGroupNow(restartGroup.group, restartGroup.names)}
         />
       )}
 

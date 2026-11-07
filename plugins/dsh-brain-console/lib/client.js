@@ -648,6 +648,49 @@ window.__ModuleLoader__.load({
 			});
 		}
 		//#endregion
+		//#region src/ui/GroupActionDialog.tsx
+		/**
+		* 分组动作确认框：批量停止 / 批量重启共用。
+		* 先把会被影响的单元列清楚、说清后果，确认后才下发。
+		*/
+		/**
+		* 渲染分组动作确认框。
+		* @param props - 标题、单元名单与回调
+		* @returns 对话框元素（挂载即打开）
+		*/
+		function GroupActionDialog({ title, description, names, note, confirmLabel, busyLabel, busy, onCancel, onConfirm }) {
+			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)(Modal, {
+				open: true,
+				onClose: busy ? () => {} : onCancel,
+				title,
+				closeLabel: "关闭",
+				description,
+				footer: /* @__PURE__ */ (0, react_jsx_runtime.jsxs)(react_jsx_runtime.Fragment, { children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)(Button, {
+					size: "sm",
+					variant: "ghost",
+					disabled: busy,
+					onClick: onCancel,
+					children: "取消"
+				}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)(Button, {
+					size: "sm",
+					variant: "primary",
+					disabled: busy,
+					onClick: onConfirm,
+					children: busy ? busyLabel : confirmLabel
+				})] }),
+				children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("ul", {
+					className: "bc-stop-list",
+					children: names.map((name) => /* @__PURE__ */ (0, react_jsx_runtime.jsx)("li", {
+						className: "bc-stop-item",
+						children: name
+					}, name))
+				}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+					className: "bc-stop-note",
+					children: note
+				})]
+			});
+		}
+		//#endregion
 		//#region src/ui/IconButton.tsx
 		/**
 		* 渲染一个图标按钮。
@@ -1010,50 +1053,6 @@ window.__ModuleLoader__.load({
 						})]
 					})
 				]
-			});
-		}
-		//#endregion
-		//#region src/ui/StopGroupDialog.tsx
-		/**
-		* 分组停止确认：停止会写抑制清单并把持久意愿置为 False，
-		* 所以先把要停的单元列清楚，确认后才下发。
-		*/
-		/**
-		* 渲染分组停止确认框。
-		* @param props - 分组、单元名单与回调
-		* @returns 对话框元素（挂载即打开）
-		*/
-		function StopGroupDialog({ group, names, busy, onCancel, onConfirm }) {
-			const footer = /* @__PURE__ */ (0, react_jsx_runtime.jsxs)(react_jsx_runtime.Fragment, { children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)(Button, {
-				size: "sm",
-				variant: "ghost",
-				disabled: busy,
-				onClick: onCancel,
-				children: "取消"
-			}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)(Button, {
-				size: "sm",
-				variant: "primary",
-				disabled: busy,
-				onClick: onConfirm,
-				children: busy ? "停止中…" : `停止 ${names.length} 个`
-			})] });
-			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)(Modal, {
-				open: true,
-				onClose: busy ? () => {} : onCancel,
-				title: `停止「${group}」`,
-				closeLabel: "关闭",
-				description: `将停止 ${names.length} 个正在运行的单元，并写入抑制清单`,
-				footer,
-				children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("ul", {
-					className: "bc-stop-list",
-					children: names.map((name) => /* @__PURE__ */ (0, react_jsx_runtime.jsx)("li", {
-						className: "bc-stop-item",
-						children: name
-					}, name))
-				}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
-					className: "bc-stop-note",
-					children: "停止后它们不会随管理器启动自动恢复，需要手动再点启动"
-				})]
 			});
 		}
 		//#endregion
@@ -1932,7 +1931,7 @@ window.__ModuleLoader__.load({
 			if (unit !== name) return null;
 			return action === "start" || action === "stop" || action === "restart" ? action : null;
 		}
-		function UnitSection({ group, members, now, busy, logName, onLog, onAction, onStartAll, onStopAll, onToggleEnabled, onAdopt }) {
+		function UnitSection({ group, members, now, busy, logName, onLog, onAction, onStartAll, onStopAll, onRestartAll, onToggleEnabled, onAdopt }) {
 			const running = members.filter((unit) => unit.running).length;
 			const stopped = members.length - running;
 			const abnormal = members.filter((unit) => unit.state !== "运行中" && unit.state !== "已停止").length;
@@ -1960,6 +1959,13 @@ window.__ModuleLoader__.load({
 							disabled: busy !== null,
 							busy: busy === `group:${group}`,
 							onClick: () => onStartAll(group)
+						}),
+						running > 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsx)(IconButton, {
+							label: "全部重启",
+							icon: IconRefresh,
+							disabled: busy !== null,
+							busy: busy === `restart-group:${group}`,
+							onClick: () => onRestartAll(group)
 						}),
 						running > 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsx)(IconButton, {
 							label: "全部停止",
@@ -2006,6 +2012,7 @@ window.__ModuleLoader__.load({
 			const [cacheOpen, setCacheOpen] = (0, react.useState)(false);
 			const [failedOpen, setFailedOpen] = (0, react.useState)(false);
 			const [stopGroup, setStopGroup] = (0, react.useState)(null);
+			const [restartGroup, setRestartGroup] = (0, react.useState)(null);
 			const load = (0, react.useCallback)(async (manual = false) => {
 				if (manual) setRefreshing(true);
 				try {
@@ -2137,6 +2144,32 @@ window.__ModuleLoader__.load({
 					setStopGroup(null);
 				}
 				if (failures.length > 0) setActionError(`${group}有 ${failures.length} 个没停下来：${failures.join("；")}`);
+			};
+			const restartGroupNow = async (group, names) => {
+				setBusy(`restart-group:${group}`);
+				setActionError(null);
+				const failures = [];
+				try {
+					const batch = await postJson("/units/restart-batch", { group }).catch((error) => {
+						if (error instanceof Error && error.message === "HTTP 404") return null;
+						throw error;
+					});
+					if (batch === null) for (const name of names) try {
+						await postManager(`/units/${name}/restart`);
+					} catch (error) {
+						failures.push(`${name}：${reasonOf(error)}`);
+					}
+					else for (const item of batch.failed) failures.push(`${item.name}：${item.error}`);
+					await load();
+					if (log !== null && names.includes(log.name)) await readLog(log.name, true);
+				} catch (error) {
+					setActionError(`${group}批量重启失败：${reasonOf(error)}`);
+					return;
+				} finally {
+					setBusy(null);
+					setRestartGroup(null);
+				}
+				if (failures.length > 0) setActionError(`${group}有 ${failures.length} 个没重启：${failures.join("；")}`);
 			};
 			const setUnitEnabled = async (name, enabled) => {
 				setBusy(`${name}:enabled`);
@@ -2337,6 +2370,10 @@ window.__ModuleLoader__.load({
 										group,
 										names: units.filter((unit) => unit.group === group && unit.running).map((unit) => unit.name)
 									}),
+									onRestartAll: (group) => setRestartGroup({
+										group,
+										names: units.filter((unit) => unit.group === group && unit.running).map((unit) => unit.name)
+									}),
 									onToggleEnabled: (name, enabled) => void setUnitEnabled(name, enabled),
 									onAdopt: (name) => void adoptUnit(name)
 								}, group))
@@ -2360,12 +2397,27 @@ window.__ModuleLoader__.load({
 						prune: pruneCaches,
 						onClose: () => setCacheOpen(false)
 					}),
-					stopGroup !== null && /* @__PURE__ */ (0, react_jsx_runtime.jsx)(StopGroupDialog, {
-						group: stopGroup.group,
+					stopGroup !== null && /* @__PURE__ */ (0, react_jsx_runtime.jsx)(GroupActionDialog, {
+						title: `停止「${stopGroup.group}」`,
+						description: `将停止 ${stopGroup.names.length} 个正在运行的单元，并写入抑制清单`,
 						names: stopGroup.names,
+						note: "停止后它们不会随管理器启动自动恢复，需要手动再点启动",
+						confirmLabel: `停止 ${stopGroup.names.length} 个`,
+						busyLabel: "停止中…",
 						busy: busy === `stop-group:${stopGroup.group}`,
 						onCancel: () => setStopGroup(null),
 						onConfirm: () => void stopGroupNow(stopGroup.group, stopGroup.names)
+					}),
+					restartGroup !== null && /* @__PURE__ */ (0, react_jsx_runtime.jsx)(GroupActionDialog, {
+						title: `重启「${restartGroup.group}」`,
+						description: `将重启 ${restartGroup.names.length} 个正在运行的单元`,
+						names: restartGroup.names,
+						note: "重启会中断它们几秒到十几秒；期间依赖它们的调用可能失败",
+						confirmLabel: `重启 ${restartGroup.names.length} 个`,
+						busyLabel: "重启中…",
+						busy: busy === `restart-group:${restartGroup.group}`,
+						onCancel: () => setRestartGroup(null),
+						onConfirm: () => void restartGroupNow(restartGroup.group, restartGroup.names)
 					}),
 					log !== null && /* @__PURE__ */ (0, react_jsx_runtime.jsx)(LogDock, {
 						name: log.name,
