@@ -23,6 +23,8 @@ export interface GraphSettings {
   }
   readonly groups: readonly GraphGroup[]
   readonly display: {
+    /** How ungrouped note nodes are tinted: by folder, by first tag, or one colour. */
+    readonly colorBy: 'folder' | 'tag' | 'uniform'
     readonly arrows: boolean
     /** Zoom below which labels fade out, 0 (never) … 0.9. */
     readonly textFade: number
@@ -49,6 +51,7 @@ export const DEFAULT_GRAPH_SETTINGS: GraphSettings = {
   },
   groups: [],
   display: {
+    colorBy: 'folder',
     arrows: false,
     textFade: 0,
     nodeScale: 1,

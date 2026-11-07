@@ -284,4 +284,8 @@ export const ZH = {
   propertyEdit: "编辑属性",
   propertyConflict: "文件已在别处修改，请重新打开后再试",
   print: "打印",
+  nodeColor: "节点颜色",
+  colorByFolder: "按文件夹",
+  colorByTag: "按标签",
+  colorByUniform: "单色",
 } as const

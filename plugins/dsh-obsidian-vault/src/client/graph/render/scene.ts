@@ -6,6 +6,7 @@
 import type { GraphNodeDto } from '../../../protocol.ts'
 import type { GraphEdgeInput, SimNode } from '../layout.ts'
 import { groupColorOf, type GraphSettings } from '../settings.ts'
+import { colorByKey, type GraphColorBy } from './colors.ts'
 import { labelAlpha, type LabelBox } from './labels.ts'
 import { LABEL_FONT, labelFont, type Palette } from './palette.ts'
 import type { GraphStage } from './stage.ts'
@@ -189,7 +190,13 @@ export function drawScene(scene: SceneInput): SceneStats {
     const faded = hovering && !neighbours.has(node.path)
     const isCenter = scene.hasCenter && node.depth === 0
     const group = groupColorOf(settings, node.title, node.path)
-    const tintTarget = group ?? kindFill(palette, kind, active, isCenter)
+    // Explicit groups win; otherwise ordinary notes take the configured colour
+    // mode so folders or tags read without any configuration.
+    const mode: GraphColorBy = settings.display.colorBy ?? 'folder'
+    const tintTarget = group
+      ?? (kind === 'note' && !active && !isCenter
+        ? colorByKey(mode, node.path, info?.tags, palette.node)
+        : kindFill(palette, kind, active, isCenter))
     const anim = stage.node(node.path, {
       dim: faded ? 0.2 : 1,
       lift: active ? 15 / zoom : 0,

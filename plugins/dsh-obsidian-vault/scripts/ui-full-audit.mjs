@@ -1413,17 +1413,14 @@ try {
     assert(Math.abs(fx - rx) + Math.abs(fy - ry) < 40, `reset ${panReset} != fit ${panFit}`)
   })
 
-  await check('graph.idle-sleeps', async () => {
-    // G8: once every animation settles the frame loop stops, so data-frames
-    // freezes. Compare the tail window so one late settle does not flake.
+  await check('graph.live-loop', async () => {
+    // The loop must stay awake while the graph is visible: hover, camera glide
+    // and incoming simulation ticks all rely on it instead of a wake call.
     const frames = () => page.evaluate(() => Number(document.querySelector('canvas.ov-graph-canvas')?.dataset.frames))
-    await sleep(1500)
-    await frames()
+    const first = await frames()
     await sleep(1200)
-    const mid = await frames()
-    await sleep(1200)
-    const last = await frames()
-    assert(mid === last, `loop still awake: frames ${mid} -> ${last}`)
+    const second = await frames()
+    assert(second > first, `frame loop stopped: ${first} -> ${second}`)
   })
 
   await check('graph.drag-node', async () => {

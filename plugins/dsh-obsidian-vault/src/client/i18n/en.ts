@@ -285,4 +285,8 @@ export const EN: Dict = {
   propertyEdit: "Edit property",
   propertyConflict: "The file changed elsewhere; reopen the note and try again",
   print: "Print",
+  nodeColor: "Node colour",
+  colorByFolder: "By folder",
+  colorByTag: "By tag",
+  colorByUniform: "Uniform",
 }

@@ -116,6 +116,31 @@ export function GraphSettingsPanel({ t, settings, onChange, onClose }: GraphSett
   )
 }
 
+/** One select row: the stored value is a string, rendered as its option label. */
+function renderSelect(
+  control: Extract<GraphControl, { kind: 'select' }>,
+  settings: GraphSettings,
+  onChange: (next: GraphSettings) => void,
+  t: Translate,
+): JSX.Element {
+  const current = String(readPath(settings, control.path) ?? '')
+  return (
+    <label key={control.path} className={css.graphField}>
+      <span>{t(control.label)}</span>
+      <select
+        className={css.graphText}
+        value={current}
+        aria-label={t(control.label)}
+        onChange={(event) => onChange(writePath(settings, control.path, event.target.value))}
+      >
+        {control.options.map(option => (
+          <option key={option.value} value={option.value}>{t(option.label)}</option>
+        ))}
+      </select>
+    </label>
+  )
+}
+
 function renderControl(
   control: GraphControl,
   settings: GraphSettings,
@@ -134,6 +159,7 @@ function renderControl(
       />
     )
   }
+  if (control.kind === 'select') return renderSelect(control, settings, onChange, t)
   if (control.kind === 'range') {
     const current = typeof value === 'number' ? value : control.min
     return (

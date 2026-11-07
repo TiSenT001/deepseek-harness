@@ -10,6 +10,12 @@ export type GraphControl =
   | { readonly kind: 'text'; readonly path: string; readonly label: keyof Dict; readonly placeholder?: string }
   | { readonly kind: 'toggle'; readonly path: string; readonly label: keyof Dict }
   | {
+    readonly kind: 'select'
+    readonly path: string
+    readonly label: keyof Dict
+    readonly options: readonly { readonly value: string; readonly label: keyof Dict }[]
+  }
+  | {
     readonly kind: 'range'
     readonly path: string
     readonly label: keyof Dict
@@ -50,6 +56,16 @@ export const GRAPH_SCHEMA: readonly GraphSection[] = [
     id: 'display',
     title: 'display',
     controls: [
+      {
+        kind: 'select',
+        path: 'display.colorBy',
+        label: 'nodeColor',
+        options: [
+          { value: 'folder', label: 'colorByFolder' },
+          { value: 'tag', label: 'colorByTag' },
+          { value: 'uniform', label: 'colorByUniform' },
+        ],
+      },
       { kind: 'toggle', path: 'display.arrows', label: 'arrows' },
       { kind: 'range', path: 'display.textFade', label: 'textFade', min: 0, max: 0.9, step: 0.1 },
       { kind: 'range', path: 'display.nodeScale', label: 'nodeSize', min: 0.5, max: 2, step: 0.1 },

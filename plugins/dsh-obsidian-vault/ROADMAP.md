@@ -1,3 +1,10 @@
+## 第九十六轮：图谱配色与实时循环（2026-11-07）
+
+- **自动配色**：新增 `display.colorBy`（按文件夹 / 按标签 / 单色，默认文件夹）；`render/colors.ts` 用 FNV-1a 把文件夹或标签哈希成稳定 HSL，显式分组（graph.json 的 colorGroups）仍然优先，标签/附件/未解析/中心节点保留语义色。设置面板在「显示」里加下拉框，选择写回 `graph.json` 的插件键 `dshColorBy`，刷新后不丢。
+- **实时循环**：删掉「空闲 60 帧后休眠」的逻辑，画布在可见期间持续用 rAF 重绘；切到后台（`document.visibilityState === 'hidden'`）才停，避免无谓耗电。之前的休眠依赖各交互主动唤醒，悬停空白、镜头滑行等场景会漏唤醒，表现为图谱突然定住。
+- **审核**：`graph.idle-sleeps` 改为 `graph.live-loop`（断言 1.2s 内帧数仍增长）；新增 6 条配色/持久化测试。
+- **验证**：`tsc` 0、`672/672`、`check:boundaries` 通过、审核 102/102。
+
 ## 第九十五轮：属性编辑、打印与大库基准（2026-11-07）
 
 - **属性编辑**：properties 面板的值从只读变可点编辑；保存走 `POST /note` 的 `baseMtime` 409 保护，`frontmatter-edit.ts` 只重写目标键所在行，注释、数组、未触及的行逐字节保留；清空值即删除该键，键不存在时补进现有块，笔记无 frontmatter 时新建块。值按用户输入的原始 YAML 文本写入，`true`/`42`/`[a, b]` 类型不变。6 条纯函数测试 + 审核 `note.property-edit-persists`（写入后读回文件并还原）。

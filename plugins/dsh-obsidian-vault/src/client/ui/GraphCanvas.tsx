@@ -51,8 +51,6 @@ export interface GraphCanvasProps {
 
 /** Frames between two label re-layouts. */
 const LABEL_INTERVAL = 6
-/** Idle frames (no animated value changed) after which the loop sleeps. */
-const IDLE_FRAMES_TO_SLEEP = 60
 
 /**
  * Render the graph surface and forward pointer gestures.
@@ -73,13 +71,11 @@ export function GraphCanvas(props: GraphCanvasProps): JSX.Element {
     let labels: readonly LabelBox[] = []
     let frame = 0
     let ticks = 0
-    let idleFrames = 0
     let running = false
     const drag = { current: '', hover: undefined as string | undefined }
     const stage = new GraphStage()
 
     const wake = (): void => {
-      idleFrames = 0
       if (!running) {
         running = true
         frame = requestAnimationFrame(draw)
@@ -154,12 +150,10 @@ export function GraphCanvas(props: GraphCanvasProps): JSX.Element {
       })
       canvas.dataset.drawnNodes = String(stats.drawnNodes)
       canvas.dataset.drawnEdges = String(stats.drawnEdges)
-      if (stage.frameMoved()) {
-        idleFrames = 0
-      } else {
-        idleFrames += 1
-      }
-      if (idleFrames > IDLE_FRAMES_TO_SLEEP) {
+      // Keep the loop running while the view is visible: the graph must react
+      // continuously to hover, camera animation and incoming simulation ticks
+      // instead of sleeping and waiting for a wake that some interactions miss.
+      if (document.visibilityState === 'hidden') {
         running = false
         return
       }

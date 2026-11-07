@@ -49,6 +49,10 @@ export function settingsPatchFromGraphJson(document: unknown): GraphSettingsPatc
   if (nodeScale !== undefined) display.nodeScale = nodeScale
   const linkWidth = numberOf(json['lineSizeMultiplier'])
   if (linkWidth !== undefined) display.linkWidth = linkWidth
+  // Plugin-owned key: Obsidian ignores it, and keeping it here means the choice
+  // survives a reload rather than falling back to the default.
+  const colorBy = textOf(json['dshColorBy'])
+  if (colorBy === 'folder' || colorBy === 'tag' || colorBy === 'uniform') display.colorBy = colorBy
 
   const forces: MutableSection<'forces'> = {}
   const centerStrength = numberOf(json['centerStrength'])
@@ -89,6 +93,7 @@ export function graphJsonPatch(settings: GraphSettings): Record<string, unknown>
     textFadeMultiplier: settings.display.textFade,
     nodeSizeMultiplier: settings.display.nodeScale,
     lineSizeMultiplier: settings.display.linkWidth,
+    dshColorBy: settings.display.colorBy,
     centerStrength: settings.forces.center * CENTER_PER_UNIT,
     repelStrength: settings.forces.repel,
     linkStrength: settings.forces.link,
