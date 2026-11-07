@@ -289,4 +289,6 @@ export const EN: Dict = {
   colorByFolder: "By folder",
   colorByTag: "By tag",
   colorByUniform: "Uniform",
+  colorLegendFilter: "Show only",
+  colorLegendClear: "Clear legend filter",
 }

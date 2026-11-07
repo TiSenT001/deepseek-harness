@@ -4,11 +4,13 @@
  * positions; React only seeds them.
  * @module dsh-obsidian-vault/client/ui/GraphView
  */
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { GraphNodeDto } from '../../protocol.ts'
 import type { Translate } from '../i18n.ts'
 import { GraphCanvas } from './GraphCanvas.tsx'
 import { GraphSettingsPanel } from './GraphSettingsPanel.tsx'
+import { GraphLegend, type GraphLegendEntry } from './graph/GraphLegend.tsx'
+import { folderColor, folderOf, tagColor } from '../graph/render/colors.ts'
 import { GraphToolbar } from './GraphToolbar.tsx'
 import { useGraphCamera, type GraphCamera } from './graph/useGraphCamera.ts'
 import { useGraphData } from './graph/useGraphData.ts'
@@ -89,6 +91,35 @@ export function GraphView(props: GraphViewProps): JSX.Element {
     onOpen(node.path)
   }
 
+  const colorMode = data.settings.display.colorBy
+  const legend = useMemo<readonly GraphLegendEntry[]>(() => {
+    if (colorMode === 'uniform') return []
+    const buckets = new Map<string, number>()
+    for (const node of data.visible.nodes) {
+      if (node.kind !== 'note') continue
+      const key = colorMode === 'tag' ? node.tags?.[0] : folderOf(node.path)
+      if (key === undefined || key.length === 0 || key === '(root)') continue
+      buckets.set(key, (buckets.get(key) ?? 0) + 1)
+    }
+    return [...buckets.entries()]
+      .sort((left, right) => right[1] - left[1] || left[0].localeCompare(right[0]))
+      .slice(0, 6)
+      .map(([key, count]) => ({ key, count, color: colorMode === 'tag' ? tagColor(key) : folderColor(key) }))
+  }, [colorMode, data.visible.nodes])
+  const activeLegend = colorMode === 'tag'
+    ? (data.settings.filters.tag.length === 0 ? undefined : data.settings.filters.tag)
+    : (data.settings.filters.query.startsWith('path:') ? data.settings.filters.query.slice(5) : undefined)
+  const filterLegend = (key: string | undefined): void => {
+    if (colorMode === 'tag') {
+      data.updateSettings(current => ({ ...current, filters: { ...current.filters, tag: key ?? '' } }))
+      return
+    }
+    data.updateSettings(current => ({
+      ...current,
+      filters: { ...current.filters, query: key === undefined ? '' : `path:${key}` },
+    }))
+  }
+
   const layingOut = data.visible.nodes.length > 0 && layout.positions.length === 0
 
   return (
@@ -118,6 +149,13 @@ export function GraphView(props: GraphViewProps): JSX.Element {
         onReplay={layout.replay}
         onReset={() => camera.fit(scope ?? null)}
         onClose={onClose}
+      />
+      <GraphLegend
+        t={t}
+        mode={colorMode}
+        entries={legend}
+        active={activeLegend}
+        onFilter={filterLegend}
       />
       <div ref={camera.surfaceRef} style={{ flex: '1 1 auto', minHeight: 0, position: 'relative' }}>
         <GraphCanvas

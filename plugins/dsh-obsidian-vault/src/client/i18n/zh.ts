@@ -288,4 +288,6 @@ export const ZH = {
   colorByFolder: "按文件夹",
   colorByTag: "按标签",
   colorByUniform: "单色",
+  colorLegendFilter: "只看",
+  colorLegendClear: "清除图例过滤",
 } as const

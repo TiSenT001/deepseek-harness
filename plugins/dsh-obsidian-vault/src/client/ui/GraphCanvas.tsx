@@ -51,6 +51,8 @@ export interface GraphCanvasProps {
 
 /** Frames between two label re-layouts. */
 const LABEL_INTERVAL = 6
+/** While nothing changes the loop still draws, but at roughly 15 fps. */
+const IDLE_FRAME_MS = 66
 
 /**
  * Render the graph surface and forward pointer gestures.
@@ -72,10 +74,16 @@ export function GraphCanvas(props: GraphCanvasProps): JSX.Element {
     let frame = 0
     let ticks = 0
     let running = false
+    /** Set by every interaction and data change; the loop never sleeps. */
+    let dirty = true
+    let idleFrames = 0
+    let lastDraw = 0
+    let lastCamera = { zoom: Number.NaN, panX: Number.NaN, panY: Number.NaN }
     const drag = { current: '', hover: undefined as string | undefined }
     const stage = new GraphStage()
 
     const wake = (): void => {
+      dirty = true
       if (!running) {
         running = true
         frame = requestAnimationFrame(draw)
@@ -93,8 +101,17 @@ export function GraphCanvas(props: GraphCanvasProps): JSX.Element {
       wake()
     }
 
-    const draw = (): void => {
+    const draw = (now: number): void => {
       const current = propsRef.current
+      const camera = current.camera.current
+      const moved = camera.zoom !== lastCamera.zoom || camera.panX !== lastCamera.panX || camera.panY !== lastCamera.panY
+      if (!dirty && !moved && idleFrames > 2 && now - lastDraw < IDLE_FRAME_MS) {
+        frame = requestAnimationFrame(draw)
+        return
+      }
+      lastCamera = { zoom: camera.zoom, panX: camera.panX, panY: camera.panY }
+      lastDraw = now
+      dirty = false
       const ratio = window.devicePixelRatio || 1
       const width = canvas.width / ratio
       const height = canvas.height / ratio
@@ -153,6 +170,9 @@ export function GraphCanvas(props: GraphCanvasProps): JSX.Element {
       // Keep the loop running while the view is visible: the graph must react
       // continuously to hover, camera animation and incoming simulation ticks
       // instead of sleeping and waiting for a wake that some interactions miss.
+      // Motion keeps the full frame rate; a still scene drops to ~15 fps instead
+      // of stopping completely.
+      idleFrames = stage.frameMoved() ? 0 : idleFrames + 1
       if (document.visibilityState === 'hidden') {
         running = false
         return

@@ -3,6 +3,7 @@
  * @module dsh-obsidian-vault/graph/render/hit
  */
 import type { SimNode } from '../layout.ts'
+import { screenRadius } from './node-size.ts'
 
 /**
  * Find the node under one world-space point.
@@ -22,7 +23,7 @@ export function hitTest(
   let best: SimNode | undefined
   let bestDistance = Number.POSITIVE_INFINITY
   for (const node of nodes) {
-    const radius = node.radius * nodeScale + tolerance
+    const radius = screenRadius(node.radius, nodeScale, zoom) + tolerance
     const distance = Math.hypot(node.x - point.x, node.y - point.y)
     if (distance <= radius && distance < bestDistance) {
       best = node

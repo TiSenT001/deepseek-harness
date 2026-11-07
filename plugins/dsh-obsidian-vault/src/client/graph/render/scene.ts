@@ -8,6 +8,7 @@ import type { GraphEdgeInput, SimNode } from '../layout.ts'
 import { groupColorOf, type GraphSettings } from '../settings.ts'
 import { colorByKey, type GraphColorBy } from './colors.ts'
 import { labelAlpha, type LabelBox } from './labels.ts'
+import { screenRadius } from './node-size.ts'
 import { LABEL_FONT, labelFont, type Palette } from './palette.ts'
 import type { GraphStage } from './stage.ts'
 
@@ -179,7 +180,7 @@ export function drawScene(scene: SceneInput): SceneStats {
   const anims = new Map<string, { fade: number; dim: number; lift: number }>()
   for (const node of positions) {
     if (hidden.has(node.path)) continue
-    const radius = node.radius * scale
+    const radius = screenRadius(node.radius, scale, zoom)
     if (
       node.x + radius < view.left || node.x - radius > view.right
       || node.y + radius < view.top || node.y - radius > view.bottom

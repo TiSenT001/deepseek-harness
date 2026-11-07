@@ -24,6 +24,36 @@ export const GRAPH_STYLE = `/* Graph filter controls. */
 }
 
 /* Graph settings popover. */
+.ov-graph-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--dsw-alias-border-l1, #2a2a30);
+  background: var(--dsw-alias-bg-layer-1, #1d1d22);
+}
+.ov-graph-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  max-width: 180px;
+  padding: 2px 7px;
+  border: 1px solid var(--dsw-alias-border-l1, #2a2a30);
+  border-radius: 10px;
+  background: transparent;
+  color: var(--dsw-alias-label-secondary, #b6b6bd);
+  font-size: 11px;
+  cursor: pointer;
+}
+.ov-graph-legend-item:hover { border-color: var(--dsw-alias-border-l2, #3a3a42); }
+.ov-graph-legend-item-active {
+  border-color: var(--dsw-alias-brand-primary, #4d6bfe);
+  color: var(--dsw-alias-label-primary, #e8e8ea);
+}
+.ov-graph-legend-dot { width: 8px; height: 8px; border-radius: 50%; flex: 0 0 auto; }
+.ov-graph-legend-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ov-graph-legend-count { color: var(--dsw-alias-label-tertiary, #8b8b94); }
+
 .ov-graph-panel {
   position: absolute;
   top: 48px;

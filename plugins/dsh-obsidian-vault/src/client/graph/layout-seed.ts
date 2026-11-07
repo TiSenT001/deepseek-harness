@@ -67,7 +67,7 @@ export function seedPositions(
     const degree = inbound.get(node.path) ?? 0
     // Radius grows with degree like Obsidian's hubs; tiny local graphs need
     // bigger dots or they read as empty.
-    const radius = (nodes.length <= 10 ? 6.5 : 2.8) + Math.min(13, Math.sqrt(degree) * 2.1)
+    const radius = (nodes.length <= 10 ? 6.5 : 2.8) + Math.min(14, Math.pow(degree, 0.7) * 2.4)
     const place = (x: number, y: number): SimNode => {
       placed.set(node.path, { x, y })
       return { ...node, x, y, vx: 0, vy: 0, fx: null, fy: null, degree, radius }
