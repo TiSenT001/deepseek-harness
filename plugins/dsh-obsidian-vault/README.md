@@ -274,3 +274,15 @@ npm run bench:vault -- --json                        # 机器可读
 - DSH 基线：`0.2.1-rc.1+`（依赖 `slots`、`layout`、`locale` 四个稳定面与 `ui-primitives` 的 `MarkdownText`/`MarkdownDelegateProvider`）。
 - 与 `dsh-better-sidebar` **零耦合**：不 import、不注册其 tab、不改其 viewer；未安装时功能完整。
 - 升级 DSH 前先跑 `tsc --noEmit`；`MarkdownText` 的 props 或 `MarkdownDelegateProvider` 的 delegate 字段若变化，只需调整 `src/client/primitives.ts` 与 `NoteView.tsx`。
+
+## 打包与发布（未发布）
+
+包仍是 `"private": true`，不会误发到 npm。发布前的署名、兼容范围、打包步骤和回滚策略见
+[RELEASE.md](RELEASE.md)。
+
+```bash
+npm run typecheck && npm test && npm run build
+npm run release:check   # 只检查 tarball 内容与元数据，不发布
+```
+
+tarball 只带 `lib/`、`cordis.patch.yml`、`README.md`、`LICENSE`、`package.json`。

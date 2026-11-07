@@ -11,7 +11,10 @@
     "./package.json": "./package.json"
   },
   "files": [
-    "lib"
+    "lib",
+    "cordis.patch.yml",
+    "README.md",
+    "LICENSE"
   ],
   "license": "MIT",
   "scripts": {
@@ -22,7 +25,9 @@
     "bench:large": "node --experimental-strip-types scripts/pur-large-doc-bench.mjs",
     "check:boundaries": "node scripts/check-boundaries.mjs",
     "bench:vault": "node --experimental-strip-types scripts/vault-scale-bench.mjs",
-    "bench:graph": "node --experimental-strip-types scripts/graph-scale-bench.mjs"
+    "bench:graph": "node --experimental-strip-types scripts/graph-scale-bench.mjs",
+    "prepublishOnly": "npm run typecheck && npm test && npm run build",
+    "release:check": "node scripts/release-check.mjs"
   },
   "dsh": {
     "bundle": {
@@ -38,5 +43,31 @@
   },
   "dependencies": {
     "@deepseek-ai/schemastery": "~3.18.5"
+  },
+  "author": "TiSenT001",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/TiSenT001/deepseek-harness.git",
+    "directory": "plugins/dsh-obsidian-vault"
+  },
+  "homepage": "https://github.com/TiSenT001/deepseek-harness/tree/feat/pur-studio-canvas/plugins/dsh-obsidian-vault",
+  "bugs": {
+    "url": "https://github.com/TiSenT001/deepseek-harness/issues"
+  },
+  "keywords": [
+    "dsh",
+    "dsh-plugin",
+    "obsidian",
+    "markdown",
+    "vault",
+    "wikilinks",
+    "backlinks",
+    "canvas"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=24.9"
   }
 }
