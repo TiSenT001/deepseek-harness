@@ -2525,6 +2525,18 @@ window.__ModuleLoader__.load({
   .bc-dock-body {
     height: 160px;
   }
+  /* 窄屏：卡片操作按钮换到第二行，单元名拿到整行宽度，不再截成 brain_se… */
+  .bc-card-top {
+    flex-wrap: wrap;
+    row-gap: 6px;
+  }
+  .bc-card-top .bc-spacer {
+    flex: 1 1 100%;
+    height: 0;
+  }
+  .bc-actions {
+    margin-left: auto;
+  }
 }
 `;
 		/**
