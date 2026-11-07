@@ -313,12 +313,8 @@ export class TerminalController extends TypertRemoteService {
   private async spawn(agent: Agent, owner: OwnedSession, request: TerminalCreateRequest, signal: AbortSignal): Promise<BrowserTerminal> {
     const { subprocess, workingDirectory } = this.execution(agent)
     const workspaceCwd = await workingDirectory.ensure(agent, signal)
-    // Local customisation: a Windows owner may start shells on a fixed drive
-    // root through DSH_TERMINAL_CWD; the agent's working directory is untouched.
-    const configuredCwd = process.env.DSH_TERMINAL_CWD
-    const cwd = process.platform === 'win32' && configuredCwd !== undefined && configuredCwd.length > 0
-      ? configuredCwd
-      : workspaceCwd
+    // 终端 shell 默认起在 G:\ (用户常驻启动盘)，而不是工作区目录。dsh agent 的工作目录不变。
+    const cwd = process.platform === 'win32' ? 'G:\\' : workspaceCwd
     const shell = request.shellPath === undefined
       ? await resolveShell(subprocess, this.config.shell, signal)
       : (await this.shells(agent, signal)).find(candidate => candidate.path === request.shellPath)
