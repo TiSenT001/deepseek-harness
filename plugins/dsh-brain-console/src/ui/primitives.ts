@@ -112,6 +112,8 @@ interface PrimitivesModule {
   readonly IconChevronDownOutlineRegular: SharedComponent<SharedIconProps>
   readonly IconEllipsisOutlineRegular: SharedComponent<SharedIconProps>
   readonly IconShieldOutlineRegular: SharedComponent<SharedIconProps>
+  readonly IconCopyOutlineRegular: SharedComponent<SharedIconProps>
+  readonly IconCheckOutlineRegular: SharedComponent<SharedIconProps>
 }
 
 const primitives = require('@deepseek-ai/dsh-client-ui-primitives') as PrimitivesModule
@@ -151,3 +153,9 @@ export const IconEllipsis = primitives.IconEllipsisOutlineRegular
 
 /** 盾牌图标：受保护、不可清理。 */
 export const IconShield = primitives.IconShieldOutlineRegular
+
+/** 复制图标：复制当前看得到的日志。 */
+export const IconCopy = primitives.IconCopyOutlineRegular
+
+/** 对勾图标：复制成功的瞬时反馈。 */
+export const IconCheck = primitives.IconCheckOutlineRegular

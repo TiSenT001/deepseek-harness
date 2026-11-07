@@ -571,6 +571,30 @@ const STYLES = `
 .bc-dock-spacer {
   flex: 1 1 auto;
 }
+.bc-dock-filter {
+  width: 150px;
+  height: 24px;
+  padding: 0 8px;
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: var(--dsw-radius-xs);
+  background: var(--dsw-alias-bg-layer-1);
+  color: var(--dsw-alias-label-primary);
+  font-family: inherit;
+  font-size: 12px;
+}
+.bc-dock-filter::placeholder {
+  color: var(--dsw-alias-label-tertiary);
+}
+.bc-dock-filter:focus-visible {
+  outline: var(--dsw-focus-ring-width) solid var(--dsw-focus-ring-color, var(--dsw-alias-state-business-primary));
+  outline-offset: 1px;
+}
+.bc-dock-match {
+  flex: none;
+  color: var(--dsw-alias-label-tertiary);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
 .bc-dock-body {
   height: 200px;
   margin: 0;
@@ -601,6 +625,9 @@ const STYLES = `
   }
   .bc-updated {
     margin-right: auto;
+  }
+  .bc-dock-filter {
+    width: 110px;
   }
   .bc-dock {
     width: calc(100% - 28px);

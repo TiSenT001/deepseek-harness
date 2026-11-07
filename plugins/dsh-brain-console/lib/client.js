@@ -163,6 +163,10 @@ window.__ModuleLoader__.load({
 		const IconEllipsis = primitives.IconEllipsisOutlineRegular;
 		/** 盾牌图标：受保护、不可清理。 */
 		const IconShield = primitives.IconShieldOutlineRegular;
+		/** 复制图标：复制当前看得到的日志。 */
+		const IconCopy = primitives.IconCopyOutlineRegular;
+		/** 对勾图标：复制成功的瞬时反馈。 */
+		const IconCheck = primitives.IconCheckOutlineRegular;
 		//#endregion
 		//#region src/ui/BackupDialog.tsx
 		/**
@@ -572,6 +576,7 @@ window.__ModuleLoader__.load({
 		*
 		* 作为页面底部的常驻面板，不覆盖卡片网格、不弹模态，切换单元只换内容。
 		* 日志由页面静默轮询刷新：停在底部时自动跟随最新一行，向上翻看时保持不动。
+		* 头部支持按关键词过滤（本地、大小写不敏感）与复制当前可见内容。
 		*/
 		/**
 		* 渲染日志控制台。
@@ -581,19 +586,37 @@ window.__ModuleLoader__.load({
 		function LogDock({ name, text, loading, readAt, onRefresh, onClose }) {
 			const body = (0, react.useRef)(null);
 			const follow = (0, react.useRef)(true);
+			const [filter, setFilter] = (0, react.useState)("");
+			const [copied, setCopied] = (0, react.useState)(false);
+			const lines = (0, react.useMemo)(() => text.split("\n"), [text]);
+			const shownLines = (0, react.useMemo)(() => {
+				const needle = filter.trim().toLowerCase();
+				if (needle === "") return lines;
+				return lines.filter((line) => line.toLowerCase().includes(needle));
+			}, [lines, filter]);
+			const shown = shownLines.join("\n");
+			const filtering = filter.trim() !== "";
 			(0, react.useLayoutEffect)(() => {
 				follow.current = true;
+				setFilter("");
 				const element = body.current;
 				if (element !== null) element.scrollTop = element.scrollHeight;
 			}, [name]);
 			(0, react.useLayoutEffect)(() => {
 				const element = body.current;
 				if (element !== null && follow.current) element.scrollTop = element.scrollHeight;
-			}, [text]);
+			}, [shown]);
 			const handleScroll = () => {
 				const element = body.current;
 				if (element === null) return;
 				follow.current = element.scrollHeight - element.scrollTop - element.clientHeight < 24;
+			};
+			const copy = async () => {
+				try {
+					await navigator.clipboard.writeText(shown);
+					setCopied(true);
+					window.setTimeout(() => setCopied(false), 1500);
+				} catch {}
 			};
 			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("section", {
 				className: "bc-dock",
@@ -618,6 +641,29 @@ window.__ModuleLoader__.load({
 							]
 						}),
 						/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { className: "bc-dock-spacer" }),
+						/* @__PURE__ */ (0, react_jsx_runtime.jsx)("input", {
+							className: "bc-dock-filter",
+							value: filter,
+							placeholder: "过滤",
+							"aria-label": "过滤日志",
+							onChange: (event) => setFilter(event.target.value),
+							onKeyDown: (event) => {
+								if (event.key === "Escape") setFilter("");
+							}
+						}),
+						filtering && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
+							className: "bc-dock-match",
+							children: [
+								shownLines.length,
+								" / ",
+								lines.length
+							]
+						}),
+						/* @__PURE__ */ (0, react_jsx_runtime.jsx)(IconButton, {
+							label: copied ? "已复制" : "复制日志",
+							icon: copied ? IconCheck : IconCopy,
+							onClick: () => void copy()
+						}),
 						/* @__PURE__ */ (0, react_jsx_runtime.jsx)(IconButton, {
 							label: "立即刷新",
 							icon: IconRefresh,
@@ -634,7 +680,7 @@ window.__ModuleLoader__.load({
 					ref: body,
 					className: "bc-dock-body",
 					onScroll: handleScroll,
-					children: loading && text === "" ? "读取中…" : text
+					children: loading && text === "" ? "读取中…" : filtering && shownLines.length === 0 ? "（没有匹配的行）" : shown
 				})]
 			});
 		}
@@ -1549,6 +1595,30 @@ window.__ModuleLoader__.load({
 .bc-dock-spacer {
   flex: 1 1 auto;
 }
+.bc-dock-filter {
+  width: 150px;
+  height: 24px;
+  padding: 0 8px;
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: var(--dsw-radius-xs);
+  background: var(--dsw-alias-bg-layer-1);
+  color: var(--dsw-alias-label-primary);
+  font-family: inherit;
+  font-size: 12px;
+}
+.bc-dock-filter::placeholder {
+  color: var(--dsw-alias-label-tertiary);
+}
+.bc-dock-filter:focus-visible {
+  outline: var(--dsw-focus-ring-width) solid var(--dsw-focus-ring-color, var(--dsw-alias-state-business-primary));
+  outline-offset: 1px;
+}
+.bc-dock-match {
+  flex: none;
+  color: var(--dsw-alias-label-tertiary);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
 .bc-dock-body {
   height: 200px;
   margin: 0;
@@ -1579,6 +1649,9 @@ window.__ModuleLoader__.load({
   }
   .bc-updated {
     margin-right: auto;
+  }
+  .bc-dock-filter {
+    width: 110px;
   }
   .bc-dock {
     width: calc(100% - 28px);
