@@ -80,13 +80,13 @@ export function useLogDock(): LogDock {
   }, [logName, paused, readLog])
 
   const toggleLog = useCallback((name: string): void => {
-    setLog((previous) => {
-      if (previous?.name === name) return null
-      setPaused(false)
-      void readLog(name)
-      return previous
-    })
-  }, [readLog])
+    if (log !== null && log.name === name) {
+      setLog(null)
+      return
+    }
+    setPaused(false)
+    void readLog(name)
+  }, [log, readLog])
 
   const cycleLines = (): void => {
     const current = LOG_LINE_OPTIONS.indexOf(lines as (typeof LOG_LINE_OPTIONS)[number])

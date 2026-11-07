@@ -4,7 +4,7 @@
  * 5 秒一次；手动刷新时额外触发一次外部回调（趋势历史也顺手刷新）。
  * 连接失败只记录错误、保留上一份数据，避免面板闪成空白。
  */
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { jget } from '../api.ts'
 import { reasonOf } from '../ui/errors.ts'
 import { formatClock } from '../ui/format.ts'
@@ -47,6 +47,9 @@ export function useConsoleFeed(onManualRefresh?: () => void): ConsoleFeed {
   const [refreshing, setRefreshing] = useState(false)
   const [connectionError, setConnectionError] = useState<string | null>(null)
   const [updatedAt, setUpdatedAt] = useState<string | null>(null)
+  // 回调放 ref：load 的引用必须稳定，否则轮询用的 effect 每帧重建、变成请求风暴
+  const manualRefresh = useRef(onManualRefresh)
+  manualRefresh.current = onManualRefresh
 
   const load = useCallback(async (manual = false): Promise<void> => {
     if (manual) setRefreshing(true)
@@ -61,14 +64,14 @@ export function useConsoleFeed(onManualRefresh?: () => void): ConsoleFeed {
       setAutostart(boot)
       setConnectionError(null)
       setUpdatedAt(formatClock(Date.now()))
-      if (manual) onManualRefresh?.()
+      if (manual) manualRefresh.current?.()
     } catch (error) {
       setConnectionError(reasonOf(error))
     } finally {
       setLoaded(true)
       if (manual) setRefreshing(false)
     }
-  }, [onManualRefresh])
+  }, [])
 
   useEffect(() => {
     void load()

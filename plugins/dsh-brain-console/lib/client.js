@@ -375,6 +375,8 @@ window.__ModuleLoader__.load({
 			const [refreshing, setRefreshing] = (0, react.useState)(false);
 			const [connectionError, setConnectionError] = (0, react.useState)(null);
 			const [updatedAt, setUpdatedAt] = (0, react.useState)(null);
+			const manualRefresh = (0, react.useRef)(onManualRefresh);
+			manualRefresh.current = onManualRefresh;
 			const load = (0, react.useCallback)(async (manual = false) => {
 				if (manual) setRefreshing(true);
 				try {
@@ -388,14 +390,14 @@ window.__ModuleLoader__.load({
 					setAutostart(boot);
 					setConnectionError(null);
 					setUpdatedAt(formatClock(Date.now()));
-					if (manual) onManualRefresh?.();
+					if (manual) manualRefresh.current?.();
 				} catch (error) {
 					setConnectionError(reasonOf(error));
 				} finally {
 					setLoaded(true);
 					if (manual) setRefreshing(false);
 				}
-			}, [onManualRefresh]);
+			}, []);
 			(0, react.useEffect)(() => {
 				load();
 				const timer = setInterval(() => void load(), POLL_MS);
@@ -499,13 +501,13 @@ window.__ModuleLoader__.load({
 				readLog
 			]);
 			const toggleLog = (0, react.useCallback)((name) => {
-				setLog((previous) => {
-					if (previous?.name === name) return null;
-					setPaused(false);
-					readLog(name);
-					return previous;
-				});
-			}, [readLog]);
+				if (log !== null && log.name === name) {
+					setLog(null);
+					return;
+				}
+				setPaused(false);
+				readLog(name);
+			}, [log, readLog]);
 			const cycleLines = () => {
 				const next = LOG_LINE_OPTIONS[(LOG_LINE_OPTIONS.indexOf(lines) + 1) % LOG_LINE_OPTIONS.length] ?? LOG_LINE_OPTIONS[0];
 				setLines(next);
