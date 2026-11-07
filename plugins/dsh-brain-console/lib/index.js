@@ -13,6 +13,7 @@ import { dirname, join } from "node:path";
 * 自启动动作，且必须由用户点击触发，不做开机自启。
 */
 const name = "dsh-brain-console";
+const inject = ["webServer"];
 const MANAGER_URL = "http://127.0.0.1:19998";
 const BRAIN_ROOT = process.env.BRAIN_ROOT ?? "G:\\个人知识库\\.brain";
 const PYTHONW = process.env.BRAIN_PYTHONW ?? "C:\\Users\\Administrator\\AppData\\Local\\Programs\\Python\\Python311\\pythonw.exe";
@@ -108,6 +109,6 @@ function apply(ctx) {
 	}), "brain-console: manager routes");
 }
 //#endregion
-export { apply, name };
+export { apply, inject, name };
 
 //# sourceMappingURL=index.js.map

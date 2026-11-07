@@ -15,8 +15,10 @@ import type { IncomingMessage, ServerResponse } from 'node:http'
 
 export const name = 'dsh-brain-console'
 
-// 注：不声明 `export const inject = ['webServer']`。实测声明后 apply 不会被调用
-// （服务名匹配不上就一直等待），去掉后即可正常装载并注册路由。
+// webServer 由 web-app bundle 提供，且是异步激活的；声明 inject 让 Cordis 等它就绪后
+// 再调用 apply，避免在服务未就绪时访问 ctx.webServer 导致插件装载失败。
+// （此前不声明 inject，靠装载顺序碰运气：宿主一启动就取 webServer，顺序一变就整行失败。）
+export const inject = ['webServer']
 
 const MANAGER_URL = 'http://127.0.0.1:19998'
 const BRAIN_ROOT = process.env.BRAIN_ROOT ?? 'G:\\个人知识库\\.brain'
