@@ -122,6 +122,27 @@ export interface CachePruneResult {
   error?: string
 }
 
+/** `/quality/failed-edges` 里的一条失败边（failure_count > 0）。 */
+export interface FailedEdge {
+  /** 源笔记 id，形如 `note:目录/文件.md` */
+  source: string
+  /** 目标笔记 id */
+  target: string
+  weight: number
+  confidence: number
+  /** 被记失败（检索命中后未使用）的次数 */
+  failures: number
+  successes: number
+  last_seen: string | null
+  origin: string | null
+}
+
+/** `/quality/failed-edges` 的结果：实时总数 + 按失败次数排序的前 N 条。 */
+export interface FailedEdgesListing {
+  total: number | null
+  edges: FailedEdge[]
+}
+
 /** 可下发的单元动作。 */
 export type UnitAction = 'start' | 'stop' | 'restart'
 

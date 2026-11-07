@@ -14,6 +14,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { BrainConsoleIcon } from './icon.tsx'
 import { BackupDialog } from './ui/BackupDialog.tsx'
 import { CacheDialog } from './ui/CacheDialog.tsx'
+import { FailedEdgesDialog } from './ui/FailedEdgesDialog.tsx'
 import { formatClock } from './ui/format.ts'
 import { IconButton } from './ui/IconButton.tsx'
 import { LogDock } from './ui/LogDock.tsx'
@@ -24,7 +25,7 @@ import { StopGroupDialog } from './ui/StopGroupDialog.tsx'
 import { OverviewTiles } from './ui/StatTiles.tsx'
 import { ensureConsoleStyles } from './ui/styles.ts'
 import type {
-  BackupListing, BatchStartResult, BatchStopResult, CacheListing, CachePruneResult, Overview, PruneResult, Unit, UnitAction,
+  BackupListing, BatchStartResult, BatchStopResult, CacheListing, CachePruneResult, FailedEdgesListing, Overview, PruneResult, Unit, UnitAction,
 } from './ui/types.ts'
 
 ensureConsoleStyles()
@@ -76,6 +77,9 @@ async function postJson<T>(path: string, body?: unknown): Promise<T> {
 const loadBackups = (): Promise<BackupListing> => jget<BackupListing>('/actions/backups')
 const pruneBackups = (keep: number): Promise<PruneResult> =>
   postJson<PruneResult>('/actions/prune-backups', { keep })
+/** 失败边明细：KPI 点开时读一次实时清单。 */
+const loadFailedEdges = (): Promise<FailedEdgesListing> =>
+  jget<FailedEdgesListing>('/quality/failed-edges?limit=80')
 
 /** 缓存对话框的回调同样模块级（引用稳定）。 */
 const loadCaches = (): Promise<CacheListing> => jget<CacheListing>('/actions/caches')
@@ -180,6 +184,7 @@ export function ConsolePage(): JSX.Element {
   const [autostart, setAutostart] = useState<{ supported: boolean; enabled: boolean } | null>(null)
   const [backupOpen, setBackupOpen] = useState(false)
   const [cacheOpen, setCacheOpen] = useState(false)
+  const [failedOpen, setFailedOpen] = useState(false)
   const [stopGroup, setStopGroup] = useState<{ group: string; names: string[] } | null>(null)
 
   const load = useCallback(async (manual = false): Promise<void> => {
@@ -466,7 +471,9 @@ export function ConsolePage(): JSX.Element {
             </div>
           )}
 
-          {overview !== null && <OverviewTiles overview={overview} now={now} />}
+          {overview !== null && (
+            <OverviewTiles overview={overview} now={now} onOpenFailed={() => setFailedOpen(true)} />
+          )}
 
           {!loaded ? (
             <div className="bc-loading">
@@ -506,6 +513,10 @@ export function ConsolePage(): JSX.Element {
           onChanged={() => { void load() }}
           onClose={() => setBackupOpen(false)}
         />
+      )}
+
+      {failedOpen && (
+        <FailedEdgesDialog load={loadFailedEdges} onClose={() => setFailedOpen(false)} />
       )}
 
       {cacheOpen && (

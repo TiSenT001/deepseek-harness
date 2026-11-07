@@ -32,6 +32,7 @@
 | POST | `/actions/prune-backups` | 只保留最近 `keep` 个快照（`keep` 下限 1） |
 | GET | `/actions/caches` | 大脑缓存登记表（各条目体积 + 风险等级） |
 | POST | `/actions/caches/prune` | 按 id 清理缓存（受保护条目会被跳过） |
+| GET | `/quality/failed-edges` | 实时列出 `failure_count > 0` 的边（`?limit=N`，上限 200） |
 
 CORS：仅放行 `http://127.0.0.1:*` / `http://localhost:*`。
 
@@ -84,6 +85,8 @@ icon: (size: number) => <BrainConsoleIcon size={size} />
 - 不再单独显示「自启」文字片，跑数由胶囊文字表达，点只承担自启状态
 - 单元 ⋯ 菜单收纳两个低频动作：「随管理器启动」只改持久意愿（`/units/<name>/enabled`，不立即起停）；
   「接管为子进程」只在该单元不是管理器子进程时出现（`/units/<name>/adopt`，会重启它一次）
+- 指标带的「失败边」是唯一可点开的指标：打开只读明细（源/目标笔记、失败次数、来源、权重、最后出现时间）；
+  指标带里的数字来自每天一次的 `metrics_snapshots`，明细里是实时数，两者可能差几条
 - 状态灯：运行中绿 / 已停止灰 / 异常红（不自动重启，等人工处理）
 - 卡片元信息：运行中显示运行时长、pid、是否外部进程；已停止显示是否随管理器启动
 - 每次操作后重新拉 `/units`，不自行推断状态

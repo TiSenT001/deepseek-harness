@@ -182,7 +182,7 @@ window.__ModuleLoader__.load({
 		/** 默认保留数，与管理器 `prune_backups` 的默认值一致。 */
 		const DEFAULT_KEEP = 2;
 		/** 把未知异常收敛成一句话；fetch 的网络失败只有 TypeError。 */
-		function reasonOf$2(error) {
+		function reasonOf$3(error) {
 			if (error instanceof TypeError) return "连接被拒绝或超时";
 			return error instanceof Error ? error.message : String(error);
 		}
@@ -205,7 +205,7 @@ window.__ModuleLoader__.load({
 					setKeep((current) => Math.min(Math.max(1, current), Math.max(1, answer.files.length)));
 					setError(null);
 				} catch (e) {
-					setError(reasonOf$2(e));
+					setError(reasonOf$3(e));
 				}
 			}, [load]);
 			(0, react.useEffect)(() => {
@@ -231,7 +231,7 @@ window.__ModuleLoader__.load({
 					onChanged();
 					await refresh();
 				} catch (e) {
-					setError(reasonOf$2(e));
+					setError(reasonOf$3(e));
 				} finally {
 					setBusy(false);
 				}
@@ -348,7 +348,7 @@ window.__ModuleLoader__.load({
 		*   3) 只有点确认才下发，删完重新统计并显示释放多少。
 		*/
 		/** 把未知异常收敛成一句话；fetch 的网络失败只有 TypeError。 */
-		function reasonOf$1(error) {
+		function reasonOf$2(error) {
 			if (error instanceof TypeError) return "连接被拒绝或超时";
 			return error instanceof Error ? error.message : String(error);
 		}
@@ -378,7 +378,7 @@ window.__ModuleLoader__.load({
 					setSelected(defaults);
 					setError(null);
 				} catch (e) {
-					setError(reasonOf$1(e));
+					setError(reasonOf$2(e));
 				}
 			}, [load]);
 			(0, react.useEffect)(() => {
@@ -409,7 +409,7 @@ window.__ModuleLoader__.load({
 					setResult(answer);
 					await refresh();
 				} catch (e) {
-					setError(reasonOf$1(e));
+					setError(reasonOf$2(e));
 				} finally {
 					setBusy(false);
 				}
@@ -535,6 +535,114 @@ window.__ModuleLoader__.load({
 								"）"
 							]
 						})]
+					})
+				]
+			});
+		}
+		//#endregion
+		//#region src/ui/FailedEdgesDialog.tsx
+		/**
+		* 失败边明细：指标带里「失败边」数字点开后的只读清单。
+		*
+		* 数据来自管理器 `/quality/failed-edges`（读 brain.db 的 neural_edges.failure_count）。
+		* 只读——降权/清理策略由 edge_reinforcer 与指标快照的阈值机制负责，面板不在这里改库。
+		*/
+		/** 把 `note:目录/文件.md` 压成文件名，长路径靠 title 查看。 */
+		function shortName(id) {
+			const withoutScheme = id.startsWith("note:") ? id.slice(5) : id;
+			const parts = withoutScheme.split("/");
+			return parts[parts.length - 1] ?? withoutScheme;
+		}
+		/** 把未知异常收敛成一句话；fetch 的网络失败只有 TypeError。 */
+		function reasonOf$1(error) {
+			if (error instanceof TypeError) return "连接被拒绝或超时";
+			return error instanceof Error ? error.message : String(error);
+		}
+		/**
+		* 渲染失败边明细。
+		* @param props - 读取回调与关闭命令
+		* @returns 对话框元素（挂载即打开并读取）
+		*/
+		function FailedEdgesDialog({ load, onClose }) {
+			const [listing, setListing] = (0, react.useState)(null);
+			const [error, setError] = (0, react.useState)(null);
+			(0, react.useEffect)(() => {
+				(async () => {
+					try {
+						setListing(await load());
+					} catch (e) {
+						setError(reasonOf$1(e));
+					}
+				})();
+			}, [load]);
+			const footer = /* @__PURE__ */ (0, react_jsx_runtime.jsx)(Button, {
+				size: "sm",
+				variant: "ghost",
+				onClick: onClose,
+				children: "关闭"
+			});
+			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)(Modal, {
+				open: true,
+				onClose,
+				title: "失败边",
+				closeLabel: "关闭",
+				description: listing === null ? "读取中…" : `failure_count > 0 的边 · 实时 ${listing.total ?? "—"} 条`,
+				footer,
+				children: [
+					error !== null && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+						className: "bc-backup-error",
+						children: error
+					}),
+					listing === null && error === null && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+						className: "bc-backup-empty",
+						children: "读取中…"
+					}),
+					listing !== null && listing.edges.length === 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+						className: "bc-backup-empty",
+						children: "没有失败边"
+					}),
+					listing !== null && listing.edges.length > 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("ul", {
+						className: "bc-failed-list",
+						children: listing.edges.map((edge) => /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("li", {
+							className: "bc-failed-row",
+							children: [/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+								className: "bc-failed-main",
+								children: [/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
+									className: "bc-failed-name",
+									title: `${edge.source}\n→ ${edge.target}`,
+									children: [
+										shortName(edge.source),
+										" → ",
+										shortName(edge.target)
+									]
+								}), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
+									className: "bc-failed-count",
+									children: ["失败 ", edge.failures]
+								})]
+							}), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+								className: "bc-failed-sub",
+								children: [
+									edge.origin ?? "未知来源",
+									" · 权重 ",
+									edge.weight.toFixed(3),
+									" · ",
+									"置信 ",
+									edge.confidence.toFixed(2),
+									" · ",
+									edge.last_seen ?? "—"
+								]
+							})]
+						}, `${edge.source}→${edge.target}`))
+					}),
+					listing !== null && listing.total !== null && listing.edges.length < listing.total && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+						className: "bc-failed-more",
+						children: [
+							"只显示前 ",
+							listing.edges.length,
+							" 条，共 ",
+							listing.total,
+							" 条"
+						]
 					})
 				]
 			});
@@ -953,7 +1061,8 @@ window.__ModuleLoader__.load({
 		/**
 		* 概览指标带：数据库 / 知识边 / 笔记 / 记忆 / 失败边 / 上次备份。
 		*
-		* 只读观察值，不提供操作；失败边有值时整块换成警示底色，而不是把数字染成低对比度文字。
+		* 只读观察值，不提供操作；「失败边」是唯一例外：点开看明细（只读清单）。
+		* 有失败边时整块换成警示底色，而不是把数字染成低对比度文字。
 		*/
 		function Stat({ label, value, hint, tone }) {
 			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
@@ -979,12 +1088,14 @@ window.__ModuleLoader__.load({
 		* 渲染概览指标。
 		* @param props.overview - `/status` 返回值；为空时不渲染
 		* @param props.now - 当前毫秒时间戳，用于相对时间
+		* @param props.onOpenFailed - 点开「失败边」明细
 		* @returns 指标网格元素
 		*/
-		function OverviewTiles({ overview, now }) {
+		function OverviewTiles({ overview, now, onOpenFailed }) {
 			const backupAt = overview.last_backup.at;
 			const backupSize = overview.last_backup.size_mb;
 			const backupHint = [formatShortMoment(backupAt), backupSize === null ? null : formatMegabytes(backupSize)].filter((part) => part !== null).join(" · ");
+			const hasFailures = (overview.failure_edges ?? 0) > 0;
 			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
 				className: "bc-kpis",
 				children: [
@@ -1008,11 +1119,25 @@ window.__ModuleLoader__.load({
 						value: formatCount(overview.sessions),
 						hint: "会话记忆"
 					}),
-					/* @__PURE__ */ (0, react_jsx_runtime.jsx)(Stat, {
-						label: "失败边",
-						value: formatCount(overview.failure_edges),
-						hint: "待消解",
-						tone: (overview.failure_edges ?? 0) > 0 ? "warn" : void 0
+					/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("button", {
+						type: "button",
+						className: "bc-kpi bc-kpi-action",
+						"data-tone": hasFailures ? "warn" : void 0,
+						onClick: onOpenFailed,
+						children: [
+							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+								className: "bc-kpi-label",
+								children: "失败边"
+							}),
+							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+								className: "bc-kpi-value",
+								children: formatCount(overview.failure_edges)
+							}),
+							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+								className: "bc-kpi-hint",
+								children: "待消解 · 查看"
+							})
+						]
 					}),
 					/* @__PURE__ */ (0, react_jsx_runtime.jsx)(Stat, {
 						label: "上次备份",
@@ -1191,6 +1316,17 @@ window.__ModuleLoader__.load({
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+/* 可点开的指标卡（失败边明细） */
+.bc-kpi-action {
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+}
+@media (hover: hover) {
+  .bc-kpi-action:hover {
+    border-color: var(--dsw-alias-border-l4);
+  }
 }
 
 /* ---- 分组与卡片 ---- */
@@ -1532,6 +1668,58 @@ window.__ModuleLoader__.load({
   color: var(--dsw-alias-state-warn-primary);
 }
 
+/* ---- 失败边明细 ---- */
+.bc-failed-list {
+  display: flex;
+  flex-direction: column;
+  max-height: 320px;
+  margin: 0;
+  padding: 0;
+  overflow: auto;
+  list-style: none;
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: var(--dsw-radius-md);
+}
+.bc-failed-row {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 7px 10px;
+  font-size: 12px;
+}
+.bc-failed-row + .bc-failed-row {
+  border-top: 1px solid var(--dsw-alias-border-l1);
+}
+.bc-failed-main {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.bc-failed-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-family: var(--ds-font-family-code, monospace);
+}
+.bc-failed-count {
+  flex: none;
+  color: var(--dsw-alias-state-error-primary);
+  font-variant-numeric: tabular-nums;
+}
+.bc-failed-sub {
+  color: var(--dsw-alias-label-tertiary);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+.bc-failed-more {
+  margin-top: 8px;
+  color: var(--dsw-alias-label-tertiary);
+  font-size: 12px;
+}
+
 /* ---- 分组停止确认 ---- */
 .bc-stop-list {
   display: flex;
@@ -1727,6 +1915,8 @@ window.__ModuleLoader__.load({
 		/** 备份对话框的回调做成模块级常量：引用稳定，对话框只在挂载时拉一次列表。 */
 		const loadBackups = () => jget("/actions/backups");
 		const pruneBackups = (keep) => postJson("/actions/prune-backups", { keep });
+		/** 失败边明细：KPI 点开时读一次实时清单。 */
+		const loadFailedEdges = () => jget("/quality/failed-edges?limit=80");
 		/** 缓存对话框的回调同样模块级（引用稳定）。 */
 		const loadCaches = () => jget("/actions/caches");
 		const pruneCaches = (ids) => postJson("/actions/caches/prune", { ids });
@@ -1814,6 +2004,7 @@ window.__ModuleLoader__.load({
 			const [autostart, setAutostart] = (0, react.useState)(null);
 			const [backupOpen, setBackupOpen] = (0, react.useState)(false);
 			const [cacheOpen, setCacheOpen] = (0, react.useState)(false);
+			const [failedOpen, setFailedOpen] = (0, react.useState)(false);
 			const [stopGroup, setStopGroup] = (0, react.useState)(null);
 			const load = (0, react.useCallback)(async (manual = false) => {
 				if (manual) setRefreshing(true);
@@ -2124,7 +2315,8 @@ window.__ModuleLoader__.load({
 								}),
 								overview !== null && /* @__PURE__ */ (0, react_jsx_runtime.jsx)(OverviewTiles, {
 									overview,
-									now
+									now,
+									onOpenFailed: () => setFailedOpen(true)
 								}),
 								!loaded ? /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
 									className: "bc-loading",
@@ -2158,6 +2350,10 @@ window.__ModuleLoader__.load({
 							load();
 						},
 						onClose: () => setBackupOpen(false)
+					}),
+					failedOpen && /* @__PURE__ */ (0, react_jsx_runtime.jsx)(FailedEdgesDialog, {
+						load: loadFailedEdges,
+						onClose: () => setFailedOpen(false)
 					}),
 					cacheOpen && /* @__PURE__ */ (0, react_jsx_runtime.jsx)(CacheDialog, {
 						load: loadCaches,

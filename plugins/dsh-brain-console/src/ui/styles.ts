@@ -168,6 +168,17 @@ const STYLES = `
   overflow: hidden;
   text-overflow: ellipsis;
 }
+/* 可点开的指标卡（失败边明细） */
+.bc-kpi-action {
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+}
+@media (hover: hover) {
+  .bc-kpi-action:hover {
+    border-color: var(--dsw-alias-border-l4);
+  }
+}
 
 /* ---- 分组与卡片 ---- */
 .bc-section {
@@ -506,6 +517,58 @@ const STYLES = `
 }
 .bc-cache-failed {
   color: var(--dsw-alias-state-warn-primary);
+}
+
+/* ---- 失败边明细 ---- */
+.bc-failed-list {
+  display: flex;
+  flex-direction: column;
+  max-height: 320px;
+  margin: 0;
+  padding: 0;
+  overflow: auto;
+  list-style: none;
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: var(--dsw-radius-md);
+}
+.bc-failed-row {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 7px 10px;
+  font-size: 12px;
+}
+.bc-failed-row + .bc-failed-row {
+  border-top: 1px solid var(--dsw-alias-border-l1);
+}
+.bc-failed-main {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.bc-failed-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-family: var(--ds-font-family-code, monospace);
+}
+.bc-failed-count {
+  flex: none;
+  color: var(--dsw-alias-state-error-primary);
+  font-variant-numeric: tabular-nums;
+}
+.bc-failed-sub {
+  color: var(--dsw-alias-label-tertiary);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+.bc-failed-more {
+  margin-top: 8px;
+  color: var(--dsw-alias-label-tertiary);
+  font-size: 12px;
 }
 
 /* ---- 分组停止确认 ---- */
