@@ -1,4 +1,4 @@
-import { chromium } from 'file:///G:/Software/deepseek-harness/node_modules/.pnpm/playwright@1.61.1/node_modules/playwright/index.mjs'
+import { chromium } from './playwright-env.mjs'
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, basename } from 'node:path'
@@ -50,6 +50,10 @@ const api = async (route, init) => {
   if (!res.ok) throw new Error(`${route}: HTTP ${res.status}`)
   return res.json()
 }
+
+// The active vault root is machine-specific; ask the Host instead of hardcoding
+// a drive letter, so the audit runs on any checkout.
+const VAULT_ROOT = String((await api('status')).root ?? '')
 
 // ---------- fixtures ----------
 const FIXTURE_DIR = '审核临时文件夹'
@@ -115,20 +119,20 @@ await api('create', { method: 'POST', body: JSON.stringify({ path: FIXTURE }) })
 await api('create', { method: 'POST', body: JSON.stringify({ path: LINKER }) })
 // `create` makes empty notes and registers the paths in the index; the bodies
 // go to disk directly and are picked up by the refresh click after page load.
-writeFileSync(`G:\\个人知识库\\${FIXTURE}`, fixtureBody)
-writeFileSync(`G:\\个人知识库\\${LINKER}`, linkerBody)
+writeFileSync(join(VAULT_ROOT, FIXTURE), fixtureBody)
+writeFileSync(join(VAULT_ROOT, LINKER), linkerBody)
 // Attachments are not notes, so `create` refuses them; writing them to disk
 // before the boot refresh is the same path a real vault takes.
-writeFileSync(`G:\\个人知识库\\${CODE_ATTACHMENT}`, CODE_BODY)
-writeFileSync(`G:\\个人知识库\\${IMAGE_ATTACHMENT}`, Buffer.from(IMAGE_BASE64, 'base64'))
-writeFileSync(`G:\\个人知识库\\${BINARY_ATTACHMENT}`, Buffer.from([0x00, 0x01, 0x02, 0x03]))
+writeFileSync(join(VAULT_ROOT, CODE_ATTACHMENT), CODE_BODY)
+writeFileSync(join(VAULT_ROOT, IMAGE_ATTACHMENT), Buffer.from(IMAGE_BASE64, 'base64'))
+writeFileSync(join(VAULT_ROOT, BINARY_ATTACHMENT), Buffer.from([0x00, 0x01, 0x02, 0x03]))
 
 // A nested heading tree exercises the outline drag: demoting 大纲二级甲 must
 // carry 大纲三级甲 along, and the drag back restores the file byte-for-byte.
 const OUTLINE_NOTE = `${FIXTURE_DIR}/审核大纲.md`
 const OUTLINE_BODY = ['# 大纲一级', '', '## 大纲二级甲', '', '### 大纲三级甲', '', '## 大纲二级乙', ''].join('\n')
 await api('create', { method: 'POST', body: JSON.stringify({ path: OUTLINE_NOTE }) })
-writeFileSync(`G:\\个人知识库\\${OUTLINE_NOTE}`, OUTLINE_BODY)
+writeFileSync(join(VAULT_ROOT, OUTLINE_NOTE), OUTLINE_BODY)
 
 // Relative links, sized image embeds, and nested callouts share one note. The
 // ./ link targets 审核大纲 rather than 审核夹具: a link to the main fixture
@@ -148,7 +152,7 @@ const RELATIVE_BODY = [
   '',
 ].join('\n')
 await api('create', { method: 'POST', body: JSON.stringify({ path: RELATIVE_NOTE }) })
-writeFileSync(`G:\\个人知识库\\${RELATIVE_NOTE}`, RELATIVE_BODY)
+writeFileSync(join(VAULT_ROOT, RELATIVE_NOTE), RELATIVE_BODY)
 
 // A throwaway second vault proves the page follows the Host's active root:
 // after vault/open the polling reload must redraw the tree from vault B, and
@@ -294,16 +298,16 @@ const TEMPLATE_DIR = '审核模板夹'
 const TEMPLATE_NOTE = `${TEMPLATE_DIR}/每日模板.md`
 const TEMPLATE_BODY = '# 每日模板\n\n今日待办\n'
 const TEMPLATE_CREATED = '审核模板新建'
-const dailyConfigPath = 'G:\\个人知识库\\.obsidian\\daily-notes.json'
-const templatesConfigPath = 'G:\\个人知识库\\.obsidian\\templates.json'
-const bookmarksConfigPath = 'G:\\个人知识库\\.obsidian\\bookmarks.json'
+const dailyConfigPath = join(VAULT_ROOT, '.obsidian', 'daily-notes.json')
+const templatesConfigPath = join(VAULT_ROOT, '.obsidian', 'templates.json')
+const bookmarksConfigPath = join(VAULT_ROOT, '.obsidian', 'bookmarks.json')
 const dailyBackup = existsSync(dailyConfigPath) ? readFileSync(dailyConfigPath, 'utf8') : undefined
 const templatesBackup = existsSync(templatesConfigPath) ? readFileSync(templatesConfigPath, 'utf8') : undefined
 const bookmarksBackup = existsSync(bookmarksConfigPath) ? readFileSync(bookmarksConfigPath, 'utf8') : undefined
 writeFileSync(dailyConfigPath, JSON.stringify({ folder: DAILY_DIR, format: 'YYYY-MM-DD', template: TEMPLATE_NOTE }, null, 2), 'utf8')
 writeFileSync(templatesConfigPath, JSON.stringify({ folder: TEMPLATE_DIR, format: '' }, null, 2), 'utf8')
-mkdirSync(`G:\\个人知识库\\${TEMPLATE_DIR}`, { recursive: true })
-writeFileSync(`G:\\个人知识库\\${TEMPLATE_NOTE}`, TEMPLATE_BODY, 'utf8')
+mkdirSync(join(VAULT_ROOT, TEMPLATE_DIR), { recursive: true })
+writeFileSync(join(VAULT_ROOT, TEMPLATE_NOTE), TEMPLATE_BODY, 'utf8')
 const today = new Date()
 const TODAY = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
 
@@ -1692,7 +1696,7 @@ try {
     await area.waitFor({ timeout: 10000 })
     // The open editor keeps the mtime it read; changing the file from outside
     // makes its next write stale, which the Host reports as a 409.
-    writeFileSync(`G:\\个人知识库\\${FIXTURE}`, `${fixtureBody}\n外部修改行\n`)
+    writeFileSync(join(VAULT_ROOT, FIXTURE), `${fixtureBody}\n外部修改行\n`)
     await area.fill(`${await area.inputValue()}\n编辑器草稿行\n`)
     await page.keyboard.press('Control+s')
     const bar = page.locator('.ov-editor-conflict')

@@ -1,0 +1,24 @@
+{
+  "name": "dsh-profile-web",
+  "private": true,
+  "dependencies": {
+    "@deepseek-ai/dsh-experimental-session-search": "link:{{REL}}/packages/experimental/session-search",
+    "dsh-better-sidebar": "link:{{REL}}/plugins/dsh-better-sidebar-src",
+    "dsh-brain-console": "link:{{REL}}/plugins/dsh-brain-console",
+    "dsh-obsidian-vault": "link:{{REL}}/plugins/dsh-obsidian-vault"
+  },
+  "dsh": {
+    "profile": {
+      "bundles": [
+        "@deepseek-ai/dsh-base",
+        "@deepseek-ai/dsh-web-app",
+        "dsh-obsidian-vault",
+        "dsh-better-sidebar",
+        "@deepseek-ai/dsh-experimental-session-search",
+        "@deepseek-ai/dsh-experimental-forge-bundle",
+        "@deepseek-ai/dsh-experimental-session-titles-bundle",
+        "dsh-brain-console"
+      ]
+    }
+  }
+}

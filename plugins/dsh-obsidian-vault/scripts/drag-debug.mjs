@@ -1,4 +1,4 @@
-import { chromium } from 'file:///G:/Software/deepseek-harness/node_modules/.pnpm/playwright@1.61.1/node_modules/playwright/index.mjs'
+import { chromium } from './playwright-env.mjs'
 import { writeFileSync } from 'node:fs'
 
 // Instrumented replay of the audit's drag-move check: why does leg-2 (drop on

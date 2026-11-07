@@ -1,0 +1,74 @@
+# Profile patch layered over the bundles in package.json.
+# Placeholders are rendered by setup/setup-machine.ps1:
+#   {{REL}}  relative path from this profile directory to the repository root
+#   {{VAULT}} absolute path of the Obsidian vault on this machine
+
+# TiSenT brain: MCP tools (mcp__brain__*) over Streamable HTTP.
+- insert:
+    - id: memory-brain
+      name: '@deepseek-ai/dsh-mcp-client'
+      config:
+        serverName: brain
+        transport: streamable-http
+        url: http://127.0.0.1:19996/mcp
+        headers: {}
+        toolCallTimeoutMs: 30000
+        failOnStartupError: false
+
+# Conversation memory logger (local plugin, loaded from the checkout).
+- insert:
+    - id: brain-memory-logger
+      name: '{{REL}}/plugins/brain-memory-logger/index.ts'
+
+# The vault lives outside the repository, so the profile carries its path.
+- id: obsidian-vault
+  config:
+    vault: '{{VAULT}}'
+
+- id: better-sidebar
+  name: dsh-better-sidebar
+  config:
+    viewersEnabled:
+      html: true
+    agentOpenTools: true
+
+- id: ui-settings-general
+  name: "@deepseek-ai/dsh-client-ui-settings-general"
+  config:
+    welcomeNoticeVersion: 2026-09-28.1
+
+- id: agent-default-model
+  name: "@deepseek-ai/dsh-agent-default-model"
+  config:
+    provider: deepseek-account
+    model: deepseek-flash
+    reasoningEffort: max
+
+# Claude Code subagent: the token is read from the dsh process environment so it
+# never lands in this file. Set ANTHROPIC_AUTH_TOKEN (usually = DEEPSEEK_API_KEY).
+- insert:
+    - id: subagent-claude-code
+      name: '@deepseek-ai/dsh-subagent-claude-code'
+      config:
+        env:
+          ANTHROPIC_AUTH_TOKEN: !!js process.env.ANTHROPIC_AUTH_TOKEN
+          ANTHROPIC_BASE_URL: https://api.deepseek.com/anthropic
+        permissionMode: bypassPermissions
+    - id: tool-subagent-claude-code
+      name: '@deepseek-ai/dsh-tool-subagent'
+      config:
+        provider: claude-code
+        toolName: subagent_claude_code
+        maxDepth: provider-managed
+
+# HMR stays off: a re-composed plugin tree would close every browser socket and
+# force reloads. Configuration changes apply on restart.
+- id: hmr
+  disabled: true
+
+- id: ui-theme
+  name: "@deepseek-ai/dsh-client-ui-theme"
+  config:
+    preference: system
+
+{{LSP_BLOCK}}

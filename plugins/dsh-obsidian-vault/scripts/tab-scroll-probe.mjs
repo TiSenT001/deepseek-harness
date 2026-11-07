@@ -2,7 +2,7 @@
  * Verify per-tab scroll restoration and per-tab back/forward history.
  * Usage: node scripts/tab-scroll-probe.mjs <token-url>
  */
-import { chromium } from 'file:///G:/Software/deepseek-harness/node_modules/.pnpm/playwright@1.61.1/node_modules/playwright/index.mjs'
+import { chromium } from './playwright-env.mjs'
 
 const url = process.argv[2]
 if (url === undefined) throw new Error('usage: node scripts/tab-scroll-probe.mjs <token-url>')

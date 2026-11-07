@@ -3,7 +3,7 @@
  * copy, and the loading skeleton.
  * Usage: node scripts/polish-probe.mjs <token-url>
  */
-import { chromium } from 'file:///G:/Software/deepseek-harness/node_modules/.pnpm/playwright@1.61.1/node_modules/playwright/index.mjs'
+import { chromium } from './playwright-env.mjs'
 import { mkdir } from 'node:fs/promises'
 
 const url = process.argv[2]

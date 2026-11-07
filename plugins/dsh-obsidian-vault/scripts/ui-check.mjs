@@ -6,7 +6,7 @@
  * Usage:
  *   node scripts/ui-check.mjs <token-url> [--click] [--query text] [--out dir]
  */
-import { chromium } from 'file:///G:/Software/deepseek-harness/node_modules/.pnpm/playwright@1.61.1/node_modules/playwright/index.mjs'
+import { chromium } from './playwright-env.mjs'
 import { mkdir } from 'node:fs/promises'
 import { resolve } from 'node:path'
 

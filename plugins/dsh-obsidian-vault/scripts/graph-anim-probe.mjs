@@ -3,7 +3,7 @@
  * and again after the ease settles, then screenshot the result.
  * Usage: node scripts/graph-anim-probe.mjs <token-url>
  */
-import { chromium } from 'file:///G:/Software/deepseek-harness/node_modules/.pnpm/playwright@1.61.1/node_modules/playwright/index.mjs'
+import { chromium } from './playwright-env.mjs'
 import { mkdir } from 'node:fs/promises'
 
 const url = process.argv[2]

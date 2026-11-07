@@ -5,5 +5,5 @@
 - insert:
     - id: obsidian-vault
       name: dsh-obsidian-vault
-      config:
-        vault: 'G:\个人知识库'
+      # The vault path is machine-specific: set it in the profile patch
+      # (setup/profile/cordis.patch.yml.template) instead of hardcoding it here.

@@ -1,4 +1,4 @@
-import { chromium } from 'file:///G:/Software/deepseek-harness/node_modules/.pnpm/playwright@1.61.1/node_modules/playwright/index.mjs'
+import { chromium } from './playwright-env.mjs'
 
 // G7 acceptance, part 2: force sliders reheat the live simulation without a
 // refetch or rebuild, and the global graph lays out without main-thread long
