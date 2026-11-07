@@ -249,6 +249,10 @@ const STYLES = `
   color: var(--dsw-alias-label-tertiary);
   font-size: 12px;
 }
+.bc-trend-hint {
+  color: var(--dsw-alias-label-tertiary);
+  font-size: 11px;
+}
 
 /* ---- 分组与卡片 ---- */
 .bc-section {

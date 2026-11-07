@@ -1276,9 +1276,9 @@ window.__ModuleLoader__.load({
 		/**
 		* 指标趋势对话框：点指标卡打开，默认 30 天，可切 7 / 30 / 90 / 365 天。
 		*
-		* 数据来自 `/status/history`（管理器每天采一次 metrics_snapshots）。
-		* 悬停图上任意位置会读出该采样点的日期与数值；点数不足时明确提示「数据不足」，
-		* 不画一条假线。失败边指标额外给一个「查看明细」入口。
+		* 数据来自 `/status/history`（管理器每 6 小时采一次 metrics_snapshots）。
+		* 图上支持滚轮缩放（以光标为中心）、拖拽平移、双击重置；悬停读出该采样点日期与数值。
+		* 点数不足时明确提示「数据不足」，不画一条假线。失败边指标额外给一个「查看明细」入口。
 		*/
 		const CHART_W = 600;
 		const CHART_H = 170;
@@ -1312,6 +1312,15 @@ window.__ModuleLoader__.load({
 			const day = ts.slice(5, 10);
 			return day.length === 5 ? day : ts.slice(0, 10);
 		}
+		/** 把缩放窗口夹到合法范围；窗口至少 2 个点。 */
+		function clampView(start, end, total) {
+			const size = Math.max(2, Math.min(total, end - start + 1));
+			const safeStart = Math.max(0, Math.min(total - size, start));
+			return {
+				start: safeStart,
+				end: safeStart + size - 1
+			};
+		}
 		/**
 		* 渲染指标趋势对话框。
 		* @param props - 指标、采样点与回调
@@ -1320,6 +1329,9 @@ window.__ModuleLoader__.load({
 		function TrendDialog({ metric, points, onOpenFailed, onClose }) {
 			const [days, setDays] = (0, react.useState)(30);
 			const [hover, setHover] = (0, react.useState)(null);
+			const [zoom, setZoom] = (0, react.useState)(null);
+			const chartRef = (0, react.useRef)(null);
+			const dragRef = (0, react.useRef)(null);
 			const series = (0, react.useMemo)(() => {
 				const cutoff = Date.now() - days * 864e5;
 				return points.map((point) => ({
@@ -1331,41 +1343,113 @@ window.__ModuleLoader__.load({
 				days,
 				metric.key
 			]);
-			const count = series.length;
-			const values = series.map((point) => point.value);
+			const total = series.length;
+			const view = zoom === null ? {
+				start: 0,
+				end: Math.max(0, total - 1)
+			} : clampView(zoom.start, zoom.end, total);
+			const visible = total === 0 ? [] : series.slice(view.start, view.end + 1);
+			const count = visible.length;
+			const values = visible.map((point) => point.value);
 			const min = count > 0 ? Math.min(...values) : 0;
 			const max = count > 0 ? Math.max(...values) : 0;
 			const span = max - min || 1;
 			const xAt = (index) => count <= 1 ? CHART_W / 2 : index / (count - 1) * CHART_W;
 			const yAt = (value) => CHART_H - PAD - (value - min) / span * (CHART_H - PAD * 2);
-			const line = series.map((point, index) => `${xAt(index).toFixed(1)},${yAt(point.value).toFixed(1)}`).join(" ");
-			const area = series.length > 0 ? `0,${CHART_H} ${line} ${CHART_W},${CHART_H}` : "";
+			const line = visible.map((point, index) => `${xAt(index).toFixed(1)},${yAt(point.value).toFixed(1)}`).join(" ");
+			const area = count > 0 ? `0,${CHART_H} ${line} ${CHART_W},${CHART_H}` : "";
+			const zoomed = zoom !== null && view.end - view.start + 1 < total;
+			(0, react.useEffect)(() => {
+				const element = chartRef.current;
+				if (element === null) return;
+				const handleWheel = (event) => {
+					if (total < 3) return;
+					event.preventDefault();
+					const rect = element.getBoundingClientRect();
+					const ratio = Math.min(1, Math.max(0, (event.clientX - rect.left) / rect.width));
+					const currentCount = view.end - view.start + 1;
+					const factor = event.deltaY > 0 ? 1.3 : 1 / 1.3;
+					const nextCount = Math.max(2, Math.min(total, Math.round(currentCount * factor)));
+					if (nextCount >= total) {
+						setZoom(null);
+						return;
+					}
+					const cursorIndex = view.start + ratio * (currentCount - 1);
+					const start = Math.round(cursorIndex - ratio * (nextCount - 1));
+					setZoom(clampView(start, start + nextCount - 1, total));
+				};
+				element.addEventListener("wheel", handleWheel, { passive: false });
+				return () => element.removeEventListener("wheel", handleWheel);
+			}, [
+				total,
+				view.start,
+				view.end
+			]);
+			(0, react.useEffect)(() => {
+				setZoom(null);
+				setHover(null);
+			}, [days, metric.key]);
 			const handleMove = (event) => {
 				if (count === 0) return;
 				const rect = event.currentTarget.getBoundingClientRect();
 				const ratio = Math.min(1, Math.max(0, (event.clientX - rect.left) / rect.width));
 				setHover(Math.round(ratio * (count - 1)));
 			};
-			const latest = count > 0 ? series[count - 1] ?? null : null;
-			const first = series[0];
-			const readout = hover !== null && series[hover] !== void 0 ? `${shortDate(series[hover].ts)} · ${metric.format(series[hover].value)}` : latest !== null ? `最新 ${metric.format(latest.value)}` : "暂无采样";
-			const footer = /* @__PURE__ */ (0, react_jsx_runtime.jsxs)(react_jsx_runtime.Fragment, { children: [onOpenFailed !== void 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsx)(Button, {
-				size: "sm",
-				variant: "ghost",
-				onClick: onOpenFailed,
-				children: "查看失败边明细"
-			}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)(Button, {
-				size: "sm",
-				variant: "ghost",
-				onClick: onClose,
-				children: "关闭"
-			})] });
+			const handlePointerDown = (event) => {
+				if (total < 3) return;
+				dragRef.current = {
+					x: event.clientX,
+					start: view.start,
+					end: view.end
+				};
+				event.currentTarget.setPointerCapture(event.pointerId);
+			};
+			const handlePointerMove = (event) => {
+				const drag = dragRef.current;
+				if (drag === null) return;
+				const rect = chartRef.current?.getBoundingClientRect();
+				if (rect === void 0) return;
+				const size = drag.end - drag.start + 1;
+				const shift = Math.round((drag.x - event.clientX) / rect.width * size);
+				const start = Math.max(0, Math.min(total - size, drag.start + shift));
+				setZoom(start === 0 && size >= total ? null : clampView(start, start + size - 1, total));
+			};
+			const handlePointerUp = () => {
+				dragRef.current = null;
+			};
+			const resetZoom = () => {
+				setZoom(null);
+				setHover(null);
+			};
+			const latest = count > 0 ? visible[count - 1] ?? null : null;
+			const first = visible[0];
+			const readout = hover !== null && visible[hover] !== void 0 ? `${shortDate(visible[hover].ts)} · ${metric.format(visible[hover].value)}` : latest !== null ? `最新 ${metric.format(latest.value)}` : "暂无采样";
+			const footer = /* @__PURE__ */ (0, react_jsx_runtime.jsxs)(react_jsx_runtime.Fragment, { children: [
+				zoomed && /* @__PURE__ */ (0, react_jsx_runtime.jsx)(Button, {
+					size: "sm",
+					variant: "ghost",
+					onClick: resetZoom,
+					children: "重置缩放"
+				}),
+				onOpenFailed !== void 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsx)(Button, {
+					size: "sm",
+					variant: "ghost",
+					onClick: onOpenFailed,
+					children: "查看失败边明细"
+				}),
+				/* @__PURE__ */ (0, react_jsx_runtime.jsx)(Button, {
+					size: "sm",
+					variant: "ghost",
+					onClick: onClose,
+					children: "关闭"
+				})
+			] });
 			return /* @__PURE__ */ (0, react_jsx_runtime.jsx)(Modal, {
 				open: true,
 				onClose,
 				title: `${metric.label}趋势`,
 				closeLabel: "关闭",
-				description: `${days} 天窗口 · ${count} 个采样点 · 单位${metric.unit}`,
+				description: `${days} 天窗口 · ${count} / ${total} 个采样点 · 单位${metric.unit}`,
 				footer,
 				children: /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
 					className: "bc-trend",
@@ -1377,10 +1461,7 @@ window.__ModuleLoader__.load({
 								children: RANGES.map((range) => /* @__PURE__ */ (0, react_jsx_runtime.jsx)(Button, {
 									size: "sm",
 									variant: days === range.days ? "outline" : "ghost",
-									onClick: () => {
-										setDays(range.days);
-										setHover(null);
-									},
+									onClick: () => setDays(range.days),
 									children: range.label
 								}, range.days))
 							}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
@@ -1389,9 +1470,15 @@ window.__ModuleLoader__.load({
 							})]
 						}),
 						/* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+							ref: chartRef,
 							className: "bc-trend-chart",
 							onMouseMove: handleMove,
 							onMouseLeave: () => setHover(null),
+							onPointerDown: handlePointerDown,
+							onPointerMove: handlePointerMove,
+							onPointerUp: handlePointerUp,
+							onPointerCancel: handlePointerUp,
+							onDoubleClick: resetZoom,
 							children: /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("svg", {
 								viewBox: `0 0 ${CHART_W} ${CHART_H}`,
 								width: "100%",
@@ -1409,7 +1496,7 @@ window.__ModuleLoader__.load({
 										className: "bc-trend-line",
 										vectorEffect: "non-scaling-stroke"
 									}),
-									hover !== null && series[hover] !== void 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)(react_jsx_runtime.Fragment, { children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("line", {
+									hover !== null && visible[hover] !== void 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)(react_jsx_runtime.Fragment, { children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("line", {
 										x1: xAt(hover),
 										x2: xAt(hover),
 										y1: 0,
@@ -1418,13 +1505,13 @@ window.__ModuleLoader__.load({
 										vectorEffect: "non-scaling-stroke"
 									}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("circle", {
 										cx: xAt(hover),
-										cy: yAt(series[hover].value),
+										cy: yAt(visible[hover].value),
 										r: 4,
 										className: "bc-trend-dot"
 									})] }),
-									count === 1 && series[0] !== void 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("circle", {
+									count === 1 && visible[0] !== void 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("circle", {
 										cx: CHART_W / 2,
-										cy: yAt(series[0].value),
+										cy: yAt(visible[0].value),
 										r: 4,
 										className: "bc-trend-dot"
 									})
@@ -1439,13 +1526,16 @@ window.__ModuleLoader__.load({
 								/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: latest !== null ? shortDate(latest.ts) : "—" })
 							]
 						}),
-						count < 2 && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+						count < 2 ? /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
 							className: "bc-trend-empty",
 							children: [
 								"数据不足：当前窗口只有 ",
 								count,
 								" 个采样点。管理器每 6 小时采一次，攒两次就会有折线。"
 							]
+						}) : /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+							className: "bc-trend-hint",
+							children: "滚轮缩放 · 拖拽平移 · 双击重置"
 						})
 					]
 				})
@@ -1745,6 +1835,10 @@ window.__ModuleLoader__.load({
 .bc-trend-empty {
   color: var(--dsw-alias-label-tertiary);
   font-size: 12px;
+}
+.bc-trend-hint {
+  color: var(--dsw-alias-label-tertiary);
+  font-size: 11px;
 }
 
 /* ---- 分组与卡片 ---- */
