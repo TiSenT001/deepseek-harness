@@ -19,7 +19,7 @@
 
 | 方法 | 路径 | 作用 |
 |---|---|---|
-| GET | `/units` | 单元列表（状态/端口/pid/ppid/是否直属子进程） |
+| GET | `/units` | 单元列表（状态/端口/pid/ppid/是否直属子进程；异常时带 `health_error`，崩溃时带 `last_exit_code`） |
 | GET | `/health` | 管理器自身健康 |
 | POST | `/units/<name>/start` | 启动（先启依赖） |
 | POST | `/units/<name>/stop` | 停止（写抑制清单，旧守护不得拉起） |
@@ -96,6 +96,8 @@ icon: (size: number) => <BrainConsoleIcon size={size} />
   指标带里的数字来自每天一次的 `metrics_snapshots`，明细里是实时数，两者可能差几条
 - 状态灯：运行中绿 / 已停止灰 / 异常红（不自动重启，等人工处理）
 - 卡片元信息：运行中显示运行时长、pid、是否外部进程；已停止显示是否随管理器启动
+- 异常时直接给出探测原因（`连接被拒绝` / `探测超时` / `HTTP 500` / `健康接口返回非 JSON`）；
+  意外退出（管理器子进程崩溃）会显示 `退出码 N`，与人工停止区分开
 - 每次操作后重新拉 `/units`，不自行推断状态
 - 样式只用 DSH 主题令牌，明暗主题和「内容字号」设置同时生效；按钮、菜单、状态灯、图标与
   悬停提示全部复用宿主 `@deepseek-ai/dsh-client-ui-primitives`，不另造一套控件

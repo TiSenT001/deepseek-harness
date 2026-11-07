@@ -976,11 +976,15 @@ window.__ModuleLoader__.load({
 		function ServiceCard({ unit, now, busyAction, disabled, logOpen, onLog, onAction, onToggleEnabled, onAdopt }) {
 			const details = [];
 			if (unit.running) {
+				if (unit.state === "异常" && unit.health_error) details.push(`健康探测失败：${unit.health_error}`);
 				const uptime = formatUptime(unit.started_at, now);
 				if (uptime !== null) details.push(`已运行 ${uptime}`);
 				if (typeof unit.pid === "number") details.push(`pid ${unit.pid}`);
 				if (unit.child_of_manager === false) details.push("外部进程");
-			} else details.push(unit.enabled ? "随管理器启动" : "不自动启动");
+			} else {
+				details.push(unit.enabled ? "随管理器启动" : "不自动启动");
+				if (typeof unit.last_exit_code === "number") details.push(`退出码 ${unit.last_exit_code}`);
+			}
 			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("article", {
 				className: "bc-card",
 				children: [
