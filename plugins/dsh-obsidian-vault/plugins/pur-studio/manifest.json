@@ -4,6 +4,6 @@
   "version": "2.4.0-dsh",
   "minAppVersion": "1.5.0",
   "description": "创作工作台（DSH 适配版）：无限画布、图片管理、可视化编程、笔记嵌入。",
-  "author": "涂盛祥 / DSH 适配",
+  "author": "TiSenT / DSH 适配",
   "isDesktopOnly": false
 }

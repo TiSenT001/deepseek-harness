@@ -4,6 +4,7 @@
  * @module dsh-obsidian-vault/client/ui/SettingsDialog
  */
 import type { Translate } from '../i18n.ts'
+import { GeneralSettings } from './GeneralSettings.tsx'
 import { Icon } from './Icon.tsx'
 import { PluginPanel } from './plugins/PluginPanel.tsx'
 import { css } from './theme.ts'
@@ -50,6 +51,8 @@ export function SettingsDialog({ t, onClose }: SettingsDialogProps): JSX.Element
           </button>
         </header>
         <div className={css.dialogBody}>
+          <div className={css.sectionTitle}>{t('general')}</div>
+          <GeneralSettings t={t} />
           <div className={css.sectionTitle}>{t('plugins')}</div>
           <PluginPanel t={t} />
         </div>
