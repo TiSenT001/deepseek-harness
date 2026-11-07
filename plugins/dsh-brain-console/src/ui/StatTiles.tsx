@@ -7,6 +7,7 @@
 import { formatCount, formatMegabytes, formatRelative, formatShortMoment } from './format.ts'
 import type { MetricKey } from './metrics.ts'
 import { Sparkline } from './Sparkline.tsx'
+import { parseTs } from './time.ts'
 import type { HistoryListing, Overview } from './types.ts'
 
 /** 指标带里趋势线的窗口（天）。 */
@@ -20,7 +21,7 @@ function seriesValues(points: HistoryListing['points'] | undefined, key: MetricK
   for (const point of points) {
     const value = point[key]
     if (value === null) continue
-    const stamp = Date.parse(point.ts.includes('T') ? point.ts : point.ts.replace(' ', 'T'))
+    const stamp = parseTs(point.ts)
     if (Number.isFinite(stamp) && stamp >= cutoff) values.push(value)
   }
   return values

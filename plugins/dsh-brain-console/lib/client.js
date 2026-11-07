@@ -47,6 +47,222 @@ window.__ModuleLoader__.load({
 			});
 		}
 		//#endregion
+		//#region src/api.ts
+		/** brain_manager 的 HTTP 地址。 */
+		const API = "http://127.0.0.1:19998";
+		/** 单元动作的中文名。 */
+		const ACTION_LABEL = {
+			start: "启动",
+			stop: "停止",
+			restart: "重启"
+		};
+		/** 从 `<name>:<action>` 里取出正在执行的动作；不属于该单元则为 null。 */
+		function busyActionOf(busy, name) {
+			if (busy === null) return null;
+			const [unit, action] = busy.split(":");
+			if (unit !== name) return null;
+			return action === "start" || action === "stop" || action === "restart" ? action : null;
+		}
+		/** GET 并解析 JSON（失败抛 HTTP 状态）。 */
+		async function jget(path) {
+			const res = await fetch(`${API}${path}`, { cache: "no-store" });
+			if (!res.ok) throw new Error(`HTTP ${res.status}`);
+			return await res.json();
+		}
+		/** POST 并解析 JSON 应答（清理备份要读回删了哪些、释放多少）。 */
+		async function postJson(path, body) {
+			const res = await fetch(`${API}${path}`, {
+				method: "POST",
+				headers: body === void 0 ? void 0 : { "Content-Type": "application/json" },
+				body: body === void 0 ? void 0 : JSON.stringify(body)
+			});
+			if (!res.ok) throw new Error(`HTTP ${res.status}`);
+			return await res.json();
+		}
+		/** POST 且不关心响应体（启停/设置类动作）。 */
+		async function postManager(path, body) {
+			await postJson(path, body);
+		}
+		/** 备份对话框的回调做成模块级常量：引用稳定，对话框只在挂载时拉一次列表。 */
+		const loadBackups = () => jget("/actions/backups");
+		const pruneBackups = (keep) => postJson("/actions/prune-backups", { keep });
+		/** 失败边明细：KPI 点开时读一次实时清单。 */
+		const loadFailedEdges = () => jget("/quality/failed-edges?limit=80");
+		/** 指标趋势：一次取满一年，对话框里再按 7/30/90/365 天切窗口。 */
+		const loadHistory = () => jget("/status/history?days=365");
+		/** 缓存对话框的回调同样模块级（引用稳定）。 */
+		const loadCaches = () => jget("/actions/caches");
+		const pruneCaches = (ids) => postJson("/actions/caches/prune", { ids });
+		//#endregion
+		//#region src/ui/errors.ts
+		/**
+		* 把未知异常收敛成一句话。
+		*
+		* 浏览器 fetch 的网络失败只有 TypeError（连接被拒绝/超时），换成中文便于阅读；
+		* 其余异常直接用 message。
+		*/
+		function reasonOf(error) {
+			if (error instanceof TypeError) return "连接被拒绝或超时";
+			return error instanceof Error ? error.message : String(error);
+		}
+		//#endregion
+		//#region src/hooks/useConsoleActions.ts
+		/**
+		* 面板的写操作：单元启停、分组批量、随管理器启动、接管、备份。
+		*
+		* 所有动作都走同一套节奏：置 busy → 请求管理器 → 重新拉 /units（以管理器为准）
+		* → 清 busy。失败收敛成一行提示放在 actionError 里。
+		*
+		* 「停止有在跑依赖者的单元先确认」是页面层的交互决策，不放在这里：
+		* 这里只负责真正下发。
+		*/
+		/**
+		* 组装面板写操作。
+		* @param params - 单元列表、刷新入口与日志读取
+		* @returns busy/error 状态与各动作
+		*/
+		function useConsoleActions({ units, load, log, readLog }) {
+			const [busy, setBusy] = (0, react.useState)(null);
+			const [actionError, setActionError] = (0, react.useState)(null);
+			return {
+				busy,
+				actionError,
+				setActionError,
+				act: (0, react.useCallback)(async (name, action) => {
+					setBusy(`${name}:${action}`);
+					setActionError(null);
+					try {
+						await postManager(`/units/${name}/${action}`);
+						await load();
+						if (log?.name === name) await readLog(name);
+					} catch (error) {
+						setActionError(`${name} ${ACTION_LABEL[action]}失败：${reasonOf(error)}`);
+					} finally {
+						setBusy(null);
+					}
+				}, [
+					load,
+					log,
+					readLog
+				]),
+				startGroup: (0, react.useCallback)(async (group) => {
+					const targets = units.filter((unit) => unit.group === group && !unit.running);
+					if (targets.length === 0) return;
+					setBusy(`group:${group}`);
+					setActionError(null);
+					const failures = [];
+					try {
+						const batch = await postJson("/units/start-batch", { group }).catch((error) => {
+							if (error instanceof Error && error.message === "HTTP 404") return null;
+							throw error;
+						});
+						if (batch === null) for (const unit of targets) try {
+							await postManager(`/units/${unit.name}/start`);
+						} catch (error) {
+							failures.push(`${unit.name}：${reasonOf(error)}`);
+						}
+						else for (const item of batch.failed) failures.push(`${item.name}：${item.error}`);
+						await load();
+					} catch (error) {
+						setActionError(`${group}批量启动失败：${reasonOf(error)}`);
+						return;
+					} finally {
+						setBusy(null);
+					}
+					if (failures.length > 0) setActionError(`${group}有 ${failures.length} 个没启动：${failures.join("；")}`);
+				}, [load, units]),
+				stopGroupNow: (0, react.useCallback)(async (group, names) => {
+					setBusy(`stop-group:${group}`);
+					setActionError(null);
+					const failures = [];
+					try {
+						const batch = await postJson("/units/stop-batch", { group }).catch((error) => {
+							if (error instanceof Error && error.message === "HTTP 404") return null;
+							throw error;
+						});
+						if (batch === null) for (const name of names) try {
+							await postManager(`/units/${name}/stop`);
+						} catch (error) {
+							failures.push(`${name}：${reasonOf(error)}`);
+						}
+						else for (const item of batch.failed) failures.push(`${item.name}：${item.error}`);
+						await load();
+					} catch (error) {
+						setActionError(`${group}批量停止失败：${reasonOf(error)}`);
+						return;
+					} finally {
+						setBusy(null);
+					}
+					if (failures.length > 0) setActionError(`${group}有 ${failures.length} 个没停下来：${failures.join("；")}`);
+				}, [load]),
+				restartGroupNow: (0, react.useCallback)(async (group, names) => {
+					setBusy(`restart-group:${group}`);
+					setActionError(null);
+					const failures = [];
+					try {
+						const batch = await postJson("/units/restart-batch", { group }).catch((error) => {
+							if (error instanceof Error && error.message === "HTTP 404") return null;
+							throw error;
+						});
+						if (batch === null) for (const name of names) try {
+							await postManager(`/units/${name}/restart`);
+						} catch (error) {
+							failures.push(`${name}：${reasonOf(error)}`);
+						}
+						else for (const item of batch.failed) failures.push(`${item.name}：${item.error}`);
+						await load();
+						if (log !== null && names.includes(log.name)) await readLog(log.name, true);
+					} catch (error) {
+						setActionError(`${group}批量重启失败：${reasonOf(error)}`);
+						return;
+					} finally {
+						setBusy(null);
+					}
+					if (failures.length > 0) setActionError(`${group}有 ${failures.length} 个没重启：${failures.join("；")}`);
+				}, [
+					load,
+					log,
+					readLog
+				]),
+				setUnitEnabled: (0, react.useCallback)(async (name, enabled) => {
+					setBusy(`${name}:enabled`);
+					setActionError(null);
+					try {
+						await postManager(`/units/${name}/enabled`, { enabled });
+						await load();
+					} catch (error) {
+						setActionError(`${name} 设置失败：${reasonOf(error)}`);
+					} finally {
+						setBusy(null);
+					}
+				}, [load]),
+				adoptUnit: (0, react.useCallback)(async (name) => {
+					setBusy(`${name}:adopt`);
+					setActionError(null);
+					try {
+						await postManager(`/units/${name}/adopt`);
+						await load();
+					} catch (error) {
+						setActionError(`${name} 接管失败：${reasonOf(error)}`);
+					} finally {
+						setBusy(null);
+					}
+				}, [load]),
+				backup: (0, react.useCallback)(async () => {
+					setBusy("backup");
+					setActionError(null);
+					try {
+						await postManager("/actions/backup");
+						await load();
+					} catch (error) {
+						setActionError(`备份失败：${reasonOf(error)}`);
+					} finally {
+						setBusy(null);
+					}
+				}, [load])
+			};
+		}
+		//#endregion
 		//#region src/ui/format.ts
 		/**
 		* 展示层格式化：计数、容量的千分位与单位、时刻、相对时间、运行时长。
@@ -137,6 +353,189 @@ window.__ModuleLoader__.load({
 			return `${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
 		}
 		//#endregion
+		//#region src/hooks/useConsoleFeed.ts
+		/**
+		* 面板数据源：轮询管理器（单元列表 / 概览 / 开机启动状态）。
+		*
+		* 5 秒一次；手动刷新时额外触发一次外部回调（趋势历史也顺手刷新）。
+		* 连接失败只记录错误、保留上一份数据，避免面板闪成空白。
+		*/
+		/** 自动刷新间隔（毫秒）。 */
+		const POLL_MS = 5e3;
+		/**
+		* 轮询管理器状态。
+		* @param onManualRefresh - 手动刷新时的额外回调（例如刷新趋势历史）
+		* @returns 单元列表、概览与刷新入口
+		*/
+		function useConsoleFeed(onManualRefresh) {
+			const [units, setUnits] = (0, react.useState)([]);
+			const [overview, setOverview] = (0, react.useState)(null);
+			const [autostart, setAutostart] = (0, react.useState)(null);
+			const [loaded, setLoaded] = (0, react.useState)(false);
+			const [refreshing, setRefreshing] = (0, react.useState)(false);
+			const [connectionError, setConnectionError] = (0, react.useState)(null);
+			const [updatedAt, setUpdatedAt] = (0, react.useState)(null);
+			const load = (0, react.useCallback)(async (manual = false) => {
+				if (manual) setRefreshing(true);
+				try {
+					const [unitsAnswer, status, boot] = await Promise.all([
+						jget("/units"),
+						jget("/status"),
+						jget("/autostart").catch(() => null)
+					]);
+					setUnits(unitsAnswer.units);
+					setOverview(status);
+					setAutostart(boot);
+					setConnectionError(null);
+					setUpdatedAt(formatClock(Date.now()));
+					if (manual) onManualRefresh?.();
+				} catch (error) {
+					setConnectionError(reasonOf(error));
+				} finally {
+					setLoaded(true);
+					if (manual) setRefreshing(false);
+				}
+			}, [onManualRefresh]);
+			(0, react.useEffect)(() => {
+				load();
+				const timer = setInterval(() => void load(), POLL_MS);
+				return () => clearInterval(timer);
+			}, [load]);
+			return {
+				units,
+				overview,
+				autostart,
+				loaded,
+				refreshing,
+				connectionError,
+				updatedAt,
+				load
+			};
+		}
+		//#endregion
+		//#region src/hooks/useHistory.ts
+		/**
+		* 趋势历史：一次取满一年，对话框里再按 7/30/90/365 天切窗口。
+		*
+		* 采样一天四次（6 小时一行），不需要跟着 5 秒轮询走；挂载时和手动刷新时各拉一次。
+		*/
+		/**
+		* 指标历史数据源。
+		* @returns 历史序列与刷新入口
+		*/
+		function useHistory() {
+			const [history, setHistory] = (0, react.useState)(null);
+			return {
+				history,
+				refreshHistory: (0, react.useCallback)(async () => {
+					try {
+						setHistory(await loadHistory());
+					} catch {}
+				}, [])
+			};
+		}
+		//#endregion
+		//#region src/hooks/useLogDock.ts
+		/**
+		* 日志控制台状态：打开/关闭、4 秒静默刷新、暂停、行数切换、清空。
+		*
+		* 刷新只更新「还开着的那个单元」——轮询回来时面板可能已经关了或换了单元。
+		*/
+		/** 日志一次读取的行数档位（点「N 行」循环）。 */
+		const LOG_LINE_OPTIONS = [
+			120,
+			300,
+			1e3
+		];
+		/** 日志面板打开时的静默刷新间隔（毫秒）。 */
+		const LOG_POLL_MS = 4e3;
+		/**
+		* 日志控制台状态机。
+		* @returns 当前日志、刷新/暂停/行数/清空入口
+		*/
+		function useLogDock() {
+			const [log, setLog] = (0, react.useState)(null);
+			const [lines, setLines] = (0, react.useState)(LOG_LINE_OPTIONS[0]);
+			const [paused, setPaused] = (0, react.useState)(false);
+			const [clearing, setClearing] = (0, react.useState)(false);
+			const readLog = (0, react.useCallback)(async (name, silent = false, readLines = lines) => {
+				if (!silent) setLog((previous) => previous?.name === name ? {
+					...previous,
+					loading: true
+				} : {
+					name,
+					text: "",
+					at: "",
+					loading: true
+				});
+				try {
+					const answer = await jget(`/units/${name}/log?lines=${readLines}`);
+					setLog((previous) => previous !== null && previous.name === name ? {
+						name,
+						text: answer.log || "（暂无日志）",
+						at: formatClock(Date.now()),
+						loading: false
+					} : previous);
+				} catch (error) {
+					if (silent) return;
+					setLog((previous) => previous !== null && previous.name === name ? {
+						name,
+						text: `读取失败：${reasonOf(error)}`,
+						at: formatClock(Date.now()),
+						loading: false
+					} : previous);
+				}
+			}, [lines]);
+			const logName = log?.name ?? null;
+			(0, react.useEffect)(() => {
+				if (logName === null || paused) return;
+				const timer = setInterval(() => {
+					readLog(logName, true);
+				}, LOG_POLL_MS);
+				return () => clearInterval(timer);
+			}, [
+				logName,
+				paused,
+				readLog
+			]);
+			const toggleLog = (0, react.useCallback)((name) => {
+				setLog((previous) => {
+					if (previous?.name === name) return null;
+					setPaused(false);
+					readLog(name);
+					return previous;
+				});
+			}, [readLog]);
+			const cycleLines = () => {
+				const next = LOG_LINE_OPTIONS[(LOG_LINE_OPTIONS.indexOf(lines) + 1) % LOG_LINE_OPTIONS.length] ?? LOG_LINE_OPTIONS[0];
+				setLines(next);
+				if (log !== null) readLog(log.name, true, next);
+			};
+			const closeLog = () => setLog(null);
+			return {
+				log,
+				logName,
+				lines,
+				paused,
+				clearing,
+				readLog,
+				toggleLog,
+				cycleLines,
+				setPaused,
+				closeLog,
+				clearLogNow: (0, react.useCallback)(async () => {
+					if (log === null) return;
+					setClearing(true);
+					try {
+						await postManager(`/units/${log.name}/truncate-log`);
+						await readLog(log.name, true);
+					} finally {
+						setClearing(false);
+					}
+				}, [log, readLog])
+			};
+		}
+		//#endregion
 		//#region src/ui/primitives.ts
 		const primitives = require("@deepseek-ai/dsh-client-ui-primitives");
 		/** 宿主的按钮原子。 */
@@ -185,11 +584,6 @@ window.__ModuleLoader__.load({
 		*/
 		/** 默认保留数，与管理器 `prune_backups` 的默认值一致。 */
 		const DEFAULT_KEEP = 2;
-		/** 把未知异常收敛成一句话；fetch 的网络失败只有 TypeError。 */
-		function reasonOf$3(error) {
-			if (error instanceof TypeError) return "连接被拒绝或超时";
-			return error instanceof Error ? error.message : String(error);
-		}
 		/**
 		* 渲染备份清理对话框。
 		* @param props - 读写回调与关闭命令
@@ -209,7 +603,7 @@ window.__ModuleLoader__.load({
 					setKeep((current) => Math.min(Math.max(1, current), Math.max(1, answer.files.length)));
 					setError(null);
 				} catch (e) {
-					setError(reasonOf$3(e));
+					setError(reasonOf(e));
 				}
 			}, [load]);
 			(0, react.useEffect)(() => {
@@ -235,7 +629,7 @@ window.__ModuleLoader__.load({
 					onChanged();
 					await refresh();
 				} catch (e) {
-					setError(reasonOf$3(e));
+					setError(reasonOf(e));
 				} finally {
 					setBusy(false);
 				}
@@ -351,11 +745,6 @@ window.__ModuleLoader__.load({
 		*   2) 「需确认」条目默认不勾（可疑孤儿、大件）；
 		*   3) 只有点确认才下发，删完重新统计并显示释放多少。
 		*/
-		/** 把未知异常收敛成一句话；fetch 的网络失败只有 TypeError。 */
-		function reasonOf$2(error) {
-			if (error instanceof TypeError) return "连接被拒绝或超时";
-			return error instanceof Error ? error.message : String(error);
-		}
 		/** 风险标签的文案。 */
 		const RISK_LABEL = {
 			safe: "可删",
@@ -382,7 +771,7 @@ window.__ModuleLoader__.load({
 					setSelected(defaults);
 					setError(null);
 				} catch (e) {
-					setError(reasonOf$2(e));
+					setError(reasonOf(e));
 				}
 			}, [load]);
 			(0, react.useEffect)(() => {
@@ -413,7 +802,7 @@ window.__ModuleLoader__.load({
 					setResult(answer);
 					await refresh();
 				} catch (e) {
-					setError(reasonOf$2(e));
+					setError(reasonOf(e));
 				} finally {
 					setBusy(false);
 				}
@@ -593,11 +982,6 @@ window.__ModuleLoader__.load({
 			const parts = withoutScheme.split("/");
 			return parts[parts.length - 1] ?? withoutScheme;
 		}
-		/** 把未知异常收敛成一句话；fetch 的网络失败只有 TypeError。 */
-		function reasonOf$1(error) {
-			if (error instanceof TypeError) return "连接被拒绝或超时";
-			return error instanceof Error ? error.message : String(error);
-		}
 		/**
 		* 渲染失败边明细。
 		* @param props - 读取回调与关闭命令
@@ -611,7 +995,7 @@ window.__ModuleLoader__.load({
 					try {
 						setListing(await load());
 					} catch (e) {
-						setError(reasonOf$1(e));
+						setError(reasonOf(e));
 					}
 				})();
 			}, [load]);
@@ -962,170 +1346,6 @@ window.__ModuleLoader__.load({
 			});
 		}
 		//#endregion
-		//#region src/ui/UnitMenu.tsx
-		/**
-		* 单元「更多」菜单：收纳不常点的单元级设置。
-		*
-		* 菜单项语义：
-		*   - 随管理器启动：勾选态 = enabled（管理器下次启动时是否恢复该单元，不改当前进程）
-		*   - 接管为子进程：只在该单元是外部进程时出现（会重启它一次，交给管理器托管）
-		*/
-		/**
-		* 渲染单元级「更多」图标按钮与它收纳的菜单。
-		* @param props - 单元快照与单元级动作
-		* @returns 菜单入口（含锚定菜单）
-		*/
-		function UnitMenu({ unit, disabled, onDetail, onToggleEnabled, onAdopt }) {
-			const [open, setOpen] = (0, react.useState)(false);
-			const items = [{
-				id: "detail",
-				label: "查看详情"
-			}, {
-				id: "enabled",
-				label: "随管理器启动",
-				disabled
-			}];
-			if (unit.running && unit.child_of_manager === false) items.push({
-				id: "adopt",
-				label: "接管为子进程（会重启）",
-				disabled
-			});
-			const select = (id) => {
-				setOpen(false);
-				if (id === "detail") onDetail(unit.name);
-				else if (id === "enabled") onToggleEnabled(unit.name, !unit.enabled);
-				else if (id === "adopt") onAdopt(unit.name);
-			};
-			return /* @__PURE__ */ (0, react_jsx_runtime.jsx)(Menu, {
-				open,
-				anchor: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(Button, {
-					size: "sm",
-					variant: "ghost",
-					className: "bc-icon-btn",
-					icon: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(IconEllipsis, { size: 16 }),
-					"aria-label": "单元更多操作",
-					"aria-haspopup": "menu",
-					"aria-expanded": open,
-					disabled,
-					onClick: () => setOpen((value) => !value)
-				}),
-				items,
-				selectedId: unit.enabled ? "enabled" : void 0,
-				onSelect: select,
-				onClose: () => setOpen(false),
-				align: "end",
-				side: "bottom",
-				portal: true
-			});
-		}
-		//#endregion
-		//#region src/ui/ServiceCard.tsx
-		/**
-		* 单个受管单元卡片：状态灯 + 名称 + 端口 + 描述 + 运行信息 + 图标操作。
-		*
-		* 纯展示组件，不自己发请求；启停与日志由页面统一下发，状态以管理器回报为准。
-		*/
-		const STATE_DOT = {
-			运行中: "done",
-			已停止: "idle",
-			异常: "error"
-		};
-		/**
-		* 渲染一张单元卡片。
-		* @param props - 单元快照与回调
-		* @returns 卡片元素
-		*/
-		function ServiceCard({ unit, now, busyAction, disabled, logOpen, dependents, onLog, onAction, onToggleEnabled, onAdopt, onDetail }) {
-			const details = [];
-			if (unit.running) {
-				if (unit.state === "异常" && unit.health_error) details.push(`健康探测失败：${unit.health_error}`);
-				const uptime = formatUptime(unit.started_at, now);
-				if (uptime !== null) details.push(`已运行 ${uptime}`);
-				if (typeof unit.pid === "number") details.push(`pid ${unit.pid}`);
-				if (unit.child_of_manager === false) details.push("外部进程");
-			} else {
-				details.push(unit.enabled ? "随管理器启动" : "不自动启动");
-				if (typeof unit.last_exit_code === "number") details.push(`退出码 ${unit.last_exit_code}`);
-			}
-			const depends = unit.depends ?? [];
-			if (depends.length > 0) details.push(`依赖 ${depends.join("、")}`);
-			if (dependents.length > 0) details.push(`被 ${dependents.join("、")} 依赖`);
-			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("article", {
-				className: "bc-card",
-				children: [
-					/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-						className: "bc-card-top",
-						children: [
-							/* @__PURE__ */ (0, react_jsx_runtime.jsx)(StateDot, { state: STATE_DOT[unit.state] ?? "warning" }),
-							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-								className: "bc-name",
-								children: unit.name
-							}),
-							unit.port !== null && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
-								className: "bc-port",
-								children: [":", unit.port]
-							}),
-							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { className: "bc-spacer" }),
-							/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-								className: "bc-actions",
-								children: [
-									/* @__PURE__ */ (0, react_jsx_runtime.jsx)(IconButton, {
-										label: logOpen ? "收起日志" : "查看日志",
-										icon: IconList,
-										disabled,
-										active: logOpen,
-										onClick: () => onLog(unit.name)
-									}),
-									unit.running ? /* @__PURE__ */ (0, react_jsx_runtime.jsxs)(react_jsx_runtime.Fragment, { children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)(IconButton, {
-										label: "重启",
-										icon: IconRefresh,
-										disabled,
-										busy: busyAction === "restart",
-										onClick: () => onAction(unit.name, "restart")
-									}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)(IconButton, {
-										label: "停止",
-										icon: IconStop,
-										danger: true,
-										disabled,
-										busy: busyAction === "stop",
-										onClick: () => onAction(unit.name, "stop")
-									})] }) : /* @__PURE__ */ (0, react_jsx_runtime.jsx)(IconButton, {
-										label: "启动",
-										icon: IconPlay,
-										disabled,
-										busy: busyAction === "start",
-										onClick: () => onAction(unit.name, "start")
-									}),
-									/* @__PURE__ */ (0, react_jsx_runtime.jsx)(UnitMenu, {
-										unit,
-										disabled,
-										onDetail,
-										onToggleEnabled,
-										onAdopt
-									})
-								]
-							})
-						]
-					}),
-					/* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
-						className: "bc-desc",
-						children: unit.desc
-					}),
-					/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-						className: "bc-meta",
-						children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-							className: "bc-meta-state",
-							"data-abnormal": unit.state === "异常",
-							children: unit.state
-						}), details.length > 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
-							className: "bc-meta-detail",
-							children: ["· ", details.join(" · ")]
-						})]
-					})
-				]
-			});
-		}
-		//#endregion
 		//#region src/ui/Sparkline.tsx
 		const VIEW_WIDTH = 100;
 		/**
@@ -1164,6 +1384,22 @@ window.__ModuleLoader__.load({
 			});
 		}
 		//#endregion
+		//#region src/ui/time.ts
+		/**
+		* 时间戳小工具：管理器返回的时间戳有两种写法（ISO 带 T / 空格分隔），
+		* 图表和悬停读数共用这里的解析与短日期格式。
+		*/
+		/** `2026-11-07T23:18:28` / `2026-11-07 23:18:28` → 毫秒时间戳。 */
+		function parseTs(ts) {
+			const normalized = ts.includes("T") ? ts : ts.replace(" ", "T");
+			return Date.parse(normalized);
+		}
+		/** `2026-11-07T23:18:28` → `11-07`。 */
+		function shortDate(ts) {
+			const day = ts.slice(5, 10);
+			return day.length === 5 ? day : ts.slice(0, 10);
+		}
+		//#endregion
 		//#region src/ui/StatTiles.tsx
 		/**
 		* 概览指标带：数据库 / 知识边 / 笔记 / 记忆 / 失败边 / 上次备份。
@@ -1181,7 +1417,7 @@ window.__ModuleLoader__.load({
 			for (const point of points) {
 				const value = point[key];
 				if (value === null) continue;
-				const stamp = Date.parse(point.ts.includes("T") ? point.ts : point.ts.replace(" ", "T"));
+				const stamp = parseTs(point.ts);
 				if (Number.isFinite(stamp) && stamp >= cutoff) values.push(value);
 			}
 			return values;
@@ -1307,16 +1543,6 @@ window.__ModuleLoader__.load({
 				label: "365 天"
 			}
 		];
-		/** 管理器的时间戳有两种写法（ISO 带 T / 空格分隔），统一成可解析的形式。 */
-		function parseTs(ts) {
-			const normalized = ts.includes("T") ? ts : ts.replace(" ", "T");
-			return Date.parse(normalized);
-		}
-		/** `2026-11-07T23:18:28` → `11-07`。 */
-		function shortDate(ts) {
-			const day = ts.slice(5, 10);
-			return day.length === 5 ? day : ts.slice(0, 10);
-		}
 		/** 把缩放窗口夹到合法范围；窗口至少 2 个点。 */
 		function clampView(start, end, total) {
 			const size = Math.max(2, Math.min(total, end - start + 1));
@@ -1650,6 +1876,248 @@ window.__ModuleLoader__.load({
 						})]
 					}, row.label))
 				})
+			});
+		}
+		//#endregion
+		//#region src/ui/UnitMenu.tsx
+		/**
+		* 单元「更多」菜单：收纳不常点的单元级设置。
+		*
+		* 菜单项语义：
+		*   - 随管理器启动：勾选态 = enabled（管理器下次启动时是否恢复该单元，不改当前进程）
+		*   - 接管为子进程：只在该单元是外部进程时出现（会重启它一次，交给管理器托管）
+		*/
+		/**
+		* 渲染单元级「更多」图标按钮与它收纳的菜单。
+		* @param props - 单元快照与单元级动作
+		* @returns 菜单入口（含锚定菜单）
+		*/
+		function UnitMenu({ unit, disabled, onDetail, onToggleEnabled, onAdopt }) {
+			const [open, setOpen] = (0, react.useState)(false);
+			const items = [{
+				id: "detail",
+				label: "查看详情"
+			}, {
+				id: "enabled",
+				label: "随管理器启动",
+				disabled
+			}];
+			if (unit.running && unit.child_of_manager === false) items.push({
+				id: "adopt",
+				label: "接管为子进程（会重启）",
+				disabled
+			});
+			const select = (id) => {
+				setOpen(false);
+				if (id === "detail") onDetail(unit.name);
+				else if (id === "enabled") onToggleEnabled(unit.name, !unit.enabled);
+				else if (id === "adopt") onAdopt(unit.name);
+			};
+			return /* @__PURE__ */ (0, react_jsx_runtime.jsx)(Menu, {
+				open,
+				anchor: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(Button, {
+					size: "sm",
+					variant: "ghost",
+					className: "bc-icon-btn",
+					icon: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(IconEllipsis, { size: 16 }),
+					"aria-label": "单元更多操作",
+					"aria-haspopup": "menu",
+					"aria-expanded": open,
+					disabled,
+					onClick: () => setOpen((value) => !value)
+				}),
+				items,
+				selectedId: unit.enabled ? "enabled" : void 0,
+				onSelect: select,
+				onClose: () => setOpen(false),
+				align: "end",
+				side: "bottom",
+				portal: true
+			});
+		}
+		//#endregion
+		//#region src/ui/ServiceCard.tsx
+		/**
+		* 单个受管单元卡片：状态灯 + 名称 + 端口 + 描述 + 运行信息 + 图标操作。
+		*
+		* 纯展示组件，不自己发请求；启停与日志由页面统一下发，状态以管理器回报为准。
+		*/
+		const STATE_DOT = {
+			运行中: "done",
+			已停止: "idle",
+			异常: "error"
+		};
+		/**
+		* 渲染一张单元卡片。
+		* @param props - 单元快照与回调
+		* @returns 卡片元素
+		*/
+		function ServiceCard({ unit, now, busyAction, disabled, logOpen, dependents, onLog, onAction, onToggleEnabled, onAdopt, onDetail }) {
+			const details = [];
+			if (unit.running) {
+				if (unit.state === "异常" && unit.health_error) details.push(`健康探测失败：${unit.health_error}`);
+				const uptime = formatUptime(unit.started_at, now);
+				if (uptime !== null) details.push(`已运行 ${uptime}`);
+				if (typeof unit.pid === "number") details.push(`pid ${unit.pid}`);
+				if (unit.child_of_manager === false) details.push("外部进程");
+			} else {
+				details.push(unit.enabled ? "随管理器启动" : "不自动启动");
+				if (typeof unit.last_exit_code === "number") details.push(`退出码 ${unit.last_exit_code}`);
+			}
+			const depends = unit.depends ?? [];
+			if (depends.length > 0) details.push(`依赖 ${depends.join("、")}`);
+			if (dependents.length > 0) details.push(`被 ${dependents.join("、")} 依赖`);
+			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("article", {
+				className: "bc-card",
+				children: [
+					/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+						className: "bc-card-top",
+						children: [
+							/* @__PURE__ */ (0, react_jsx_runtime.jsx)(StateDot, { state: STATE_DOT[unit.state] ?? "warning" }),
+							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+								className: "bc-name",
+								children: unit.name
+							}),
+							unit.port !== null && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
+								className: "bc-port",
+								children: [":", unit.port]
+							}),
+							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { className: "bc-spacer" }),
+							/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+								className: "bc-actions",
+								children: [
+									/* @__PURE__ */ (0, react_jsx_runtime.jsx)(IconButton, {
+										label: logOpen ? "收起日志" : "查看日志",
+										icon: IconList,
+										disabled,
+										active: logOpen,
+										onClick: () => onLog(unit.name)
+									}),
+									unit.running ? /* @__PURE__ */ (0, react_jsx_runtime.jsxs)(react_jsx_runtime.Fragment, { children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)(IconButton, {
+										label: "重启",
+										icon: IconRefresh,
+										disabled,
+										busy: busyAction === "restart",
+										onClick: () => onAction(unit.name, "restart")
+									}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)(IconButton, {
+										label: "停止",
+										icon: IconStop,
+										danger: true,
+										disabled,
+										busy: busyAction === "stop",
+										onClick: () => onAction(unit.name, "stop")
+									})] }) : /* @__PURE__ */ (0, react_jsx_runtime.jsx)(IconButton, {
+										label: "启动",
+										icon: IconPlay,
+										disabled,
+										busy: busyAction === "start",
+										onClick: () => onAction(unit.name, "start")
+									}),
+									/* @__PURE__ */ (0, react_jsx_runtime.jsx)(UnitMenu, {
+										unit,
+										disabled,
+										onDetail,
+										onToggleEnabled,
+										onAdopt
+									})
+								]
+							})
+						]
+					}),
+					/* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+						className: "bc-desc",
+						children: unit.desc
+					}),
+					/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+						className: "bc-meta",
+						children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+							className: "bc-meta-state",
+							"data-abnormal": unit.state === "异常",
+							children: unit.state
+						}), details.length > 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
+							className: "bc-meta-detail",
+							children: ["· ", details.join(" · ")]
+						})]
+					})
+				]
+			});
+		}
+		//#endregion
+		//#region src/ui/UnitSection.tsx
+		/**
+		* 一个分组：标题行（运行计数 + 全部启动/重启/停止）+ 该组的单元卡片。
+		*/
+		/**
+		* 渲染一个服务分组。
+		* @param props - 分组、成员与回调
+		* @returns 分组元素
+		*/
+		function UnitSection({ group, members, now, busy, logName, dependents, onLog, onAction, onStartAll, onStopAll, onRestartAll, onToggleEnabled, onAdopt, onDetail }) {
+			const running = members.filter((unit) => unit.running).length;
+			const stopped = members.length - running;
+			const abnormal = members.filter((unit) => unit.state !== "运行中" && unit.state !== "已停止").length;
+			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("section", {
+				className: "bc-section",
+				children: [/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+					className: "bc-section-head",
+					children: [
+						/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+							className: "bc-section-name",
+							children: group
+						}),
+						/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
+							className: "bc-section-count",
+							children: [
+								running,
+								" / ",
+								members.length,
+								" 运行"
+							]
+						}),
+						stopped > 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsx)(IconButton, {
+							label: "全部启动",
+							icon: IconPlay,
+							disabled: busy !== null,
+							busy: busy === `group:${group}`,
+							onClick: () => onStartAll(group)
+						}),
+						running > 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsx)(IconButton, {
+							label: "全部重启",
+							icon: IconRefresh,
+							disabled: busy !== null,
+							busy: busy === `restart-group:${group}`,
+							onClick: () => onRestartAll(group)
+						}),
+						running > 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsx)(IconButton, {
+							label: "全部停止",
+							icon: IconStop,
+							danger: true,
+							disabled: busy !== null,
+							busy: busy === `stop-group:${group}`,
+							onClick: () => onStopAll(group)
+						}),
+						abnormal > 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
+							className: "bc-section-warn",
+							children: [abnormal, " 个异常"]
+						}),
+						/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { className: "bc-rule" })
+					]
+				}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+					className: "bc-grid",
+					children: members.map((unit) => /* @__PURE__ */ (0, react_jsx_runtime.jsx)(ServiceCard, {
+						unit,
+						now,
+						busyAction: busyActionOf(busy, unit.name),
+						disabled: busy !== null,
+						logOpen: logName === unit.name,
+						dependents: dependents[unit.name] ?? [],
+						onLog,
+						onAction,
+						onToggleEnabled,
+						onAdopt,
+						onDetail
+					}, unit.name))
+				})]
 			});
 		}
 		//#endregion
@@ -2560,8 +3028,8 @@ window.__ModuleLoader__.load({
 		/**
 		* ConsolePage — TiSenT Brain 面板（大脑各项服务的查看与人工启停）。
 		*
-		* 数据源是独立进程 `brain_manager`（127.0.0.1:19998）。本页面**只做展示与下发**，
-		* 不推断状态：每次操作后重新拉 /units，以管理器返回为准（避免 UI 和实际不一致）。
+		* 数据源是独立进程 `brain_manager`（127.0.0.1:19998）。本页面**只做组合与下发**：
+		* 轮询、日志、历史、动作都拆在 `hooks/` 里，这里只保留弹窗开关、派生值、快捷键和 JSX。
 		*
 		* 布局：
 		*   1) 标题行 —— 运行计数、最后刷新、刷新图标与「更多」菜单（备份 / 清理 / 开机启动）
@@ -2570,257 +3038,60 @@ window.__ModuleLoader__.load({
 		*   4) 底部日志控制台 —— 常驻面板，不遮挡卡片
 		*/
 		ensureConsoleStyles();
-		/** brain_manager 的 HTTP 地址。 */
-		const API = "http://127.0.0.1:19998";
-		/** 自动刷新间隔（毫秒）。 */
-		const POLL_MS = 5e3;
-		/** 日志读取行数。 */
-		/** 日志一次读取的行数档位（点「N 行」循环）。 */
-		const LOG_LINE_OPTIONS = [
-			120,
-			300,
-			1e3
-		];
-		/** 日志面板打开时的静默刷新间隔（毫秒）。 */
-		const LOG_POLL_MS = 4e3;
-		const ACTION_LABEL = {
-			start: "启动",
-			stop: "停止",
-			restart: "重启"
-		};
-		async function jget(path) {
-			const res = await fetch(`${API}${path}`, { cache: "no-store" });
-			if (!res.ok) throw new Error(`HTTP ${res.status}`);
-			return await res.json();
-		}
-		async function postManager(path, body) {
-			await postJson(path, body);
-		}
-		/** POST 并解析 JSON 应答（清理备份要读回删了哪些、释放多少）。 */
-		async function postJson(path, body) {
-			const res = await fetch(`${API}${path}`, {
-				method: "POST",
-				headers: body === void 0 ? void 0 : { "Content-Type": "application/json" },
-				body: body === void 0 ? void 0 : JSON.stringify(body)
-			});
-			if (!res.ok) throw new Error(`HTTP ${res.status}`);
-			return await res.json();
-		}
-		/** 备份对话框的回调做成模块级常量：引用稳定，对话框只在挂载时拉一次列表。 */
-		const loadBackups = () => jget("/actions/backups");
-		const pruneBackups = (keep) => postJson("/actions/prune-backups", { keep });
-		/** 失败边明细：KPI 点开时读一次实时清单。 */
-		const loadFailedEdges = () => jget("/quality/failed-edges?limit=80");
-		/** 指标趋势：一次取满一年，对话框里再按 7/30/90/365 天切窗口。 */
-		const loadHistory = () => jget("/status/history?days=365");
-		/** 缓存对话框的回调同样模块级（引用稳定）。 */
-		const loadCaches = () => jget("/actions/caches");
-		const pruneCaches = (ids) => postJson("/actions/caches/prune", { ids });
-		/** 把未知异常收敛成一句话；浏览器 fetch 的网络失败只有 TypeError，换成中文便于阅读。 */
-		function reasonOf(error) {
-			if (error instanceof TypeError) return "连接被拒绝或超时";
-			return error instanceof Error ? error.message : String(error);
-		}
-		/** 从 `<name>:<action>` 里取出正在执行的动作；不属于该单元则为 null。 */
-		function busyActionOf(busy, name) {
-			if (busy === null) return null;
-			const [unit, action] = busy.split(":");
-			if (unit !== name) return null;
-			return action === "start" || action === "stop" || action === "restart" ? action : null;
-		}
-		function UnitSection({ group, members, now, busy, logName, dependents, onLog, onAction, onStartAll, onStopAll, onRestartAll, onToggleEnabled, onAdopt, onDetail }) {
-			const running = members.filter((unit) => unit.running).length;
-			const stopped = members.length - running;
-			const abnormal = members.filter((unit) => unit.state !== "运行中" && unit.state !== "已停止").length;
-			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("section", {
-				className: "bc-section",
-				children: [/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-					className: "bc-section-head",
-					children: [
-						/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-							className: "bc-section-name",
-							children: group
-						}),
-						/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
-							className: "bc-section-count",
-							children: [
-								running,
-								" / ",
-								members.length,
-								" 运行"
-							]
-						}),
-						stopped > 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsx)(IconButton, {
-							label: "全部启动",
-							icon: IconPlay,
-							disabled: busy !== null,
-							busy: busy === `group:${group}`,
-							onClick: () => onStartAll(group)
-						}),
-						running > 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsx)(IconButton, {
-							label: "全部重启",
-							icon: IconRefresh,
-							disabled: busy !== null,
-							busy: busy === `restart-group:${group}`,
-							onClick: () => onRestartAll(group)
-						}),
-						running > 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsx)(IconButton, {
-							label: "全部停止",
-							icon: IconStop,
-							danger: true,
-							disabled: busy !== null,
-							busy: busy === `stop-group:${group}`,
-							onClick: () => onStopAll(group)
-						}),
-						abnormal > 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
-							className: "bc-section-warn",
-							children: [abnormal, " 个异常"]
-						}),
-						/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { className: "bc-rule" })
-					]
-				}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
-					className: "bc-grid",
-					children: members.map((unit) => /* @__PURE__ */ (0, react_jsx_runtime.jsx)(ServiceCard, {
-						unit,
-						now,
-						busyAction: busyActionOf(busy, unit.name),
-						disabled: busy !== null,
-						logOpen: logName === unit.name,
-						dependents: dependents[unit.name] ?? [],
-						onLog,
-						onAction,
-						onToggleEnabled,
-						onAdopt,
-						onDetail
-					}, unit.name))
-				})]
-			});
-		}
+		/**
+		* 渲染大脑控制台。
+		* @returns 页面元素
+		*/
 		function ConsolePage() {
-			const [units, setUnits] = (0, react.useState)([]);
-			const [overview, setOverview] = (0, react.useState)(null);
-			const [loaded, setLoaded] = (0, react.useState)(false);
-			const [refreshing, setRefreshing] = (0, react.useState)(false);
-			const [busy, setBusy] = (0, react.useState)(null);
-			const [connectionError, setConnectionError] = (0, react.useState)(null);
-			const [actionError, setActionError] = (0, react.useState)(null);
-			const [updatedAt, setUpdatedAt] = (0, react.useState)(null);
-			const [log, setLog] = (0, react.useState)(null);
-			const [logLines, setLogLines] = (0, react.useState)(LOG_LINE_OPTIONS[0]);
-			const [logPaused, setLogPaused] = (0, react.useState)(false);
-			const [clearLogOpen, setClearLogOpen] = (0, react.useState)(false);
-			const [stopUnit, setStopUnit] = (0, react.useState)(null);
-			const [detailName, setDetailName] = (0, react.useState)(null);
-			const [autostart, setAutostart] = (0, react.useState)(null);
+			const { history, refreshHistory } = useHistory();
+			const feed = useConsoleFeed(() => {
+				refreshHistory();
+			});
+			const logDock = useLogDock();
+			const actions = useConsoleActions({
+				units: feed.units,
+				load: feed.load,
+				log: logDock.log,
+				readLog: logDock.readLog
+			});
 			const [backupOpen, setBackupOpen] = (0, react.useState)(false);
 			const [cacheOpen, setCacheOpen] = (0, react.useState)(false);
 			const [failedOpen, setFailedOpen] = (0, react.useState)(false);
-			const [history, setHistory] = (0, react.useState)(null);
 			const [trend, setTrend] = (0, react.useState)(null);
+			const [detailName, setDetailName] = (0, react.useState)(null);
 			const [stopGroup, setStopGroup] = (0, react.useState)(null);
 			const [restartGroup, setRestartGroup] = (0, react.useState)(null);
-			const refreshHistory = (0, react.useCallback)(async () => {
+			const [stopUnit, setStopUnit] = (0, react.useState)(null);
+			const [clearLogOpen, setClearLogOpen] = (0, react.useState)(false);
+			const [workingBusy, setWorkingBusy] = (0, react.useState)(null);
+			const toggleAutostart = async () => {
+				const autostart = feed.autostart;
+				if (autostart === null || !autostart.supported) return;
+				setWorkingBusy("autostart");
+				actions.setActionError(null);
 				try {
-					setHistory(await loadHistory());
-				} catch {}
-			}, []);
-			const load = (0, react.useCallback)(async (manual = false) => {
-				if (manual) setRefreshing(true);
-				try {
-					const [unitsAnswer, status, boot] = await Promise.all([
-						jget("/units"),
-						jget("/status"),
-						jget("/autostart").catch(() => null)
-					]);
-					setUnits(unitsAnswer.units);
-					setOverview(status);
-					setAutostart(boot);
-					setConnectionError(null);
-					setUpdatedAt(formatClock(Date.now()));
-					if (manual) refreshHistory();
+					await postManager("/autostart", { enabled: !autostart.enabled });
+					await feed.load();
 				} catch (error) {
-					setConnectionError(reasonOf(error));
+					actions.setActionError(`开机启动设置失败：${reasonOf(error)}`);
 				} finally {
-					setLoaded(true);
-					if (manual) setRefreshing(false);
+					setWorkingBusy(null);
 				}
-			}, [refreshHistory]);
-			(0, react.useEffect)(() => {
-				load();
-				refreshHistory();
-				const timer = setInterval(() => void load(), POLL_MS);
-				return () => clearInterval(timer);
-			}, [load, refreshHistory]);
-			const readLog = (0, react.useCallback)(async (name, silent = false, lines = logLines) => {
-				if (!silent) setLog((previous) => previous?.name === name ? {
-					...previous,
-					loading: true
-				} : {
-					name,
-					text: "",
-					at: "",
-					loading: true
-				});
-				try {
-					const answer = await jget(`/units/${name}/log?lines=${lines}`);
-					setLog((previous) => previous !== null && previous.name === name ? {
-						name,
-						text: answer.log || "（暂无日志）",
-						at: formatClock(Date.now()),
-						loading: false
-					} : previous);
-				} catch (error) {
-					if (silent) return;
-					setLog((previous) => previous !== null && previous.name === name ? {
-						name,
-						text: `读取失败：${reasonOf(error)}`,
-						at: formatClock(Date.now()),
-						loading: false
-					} : previous);
-				}
-			}, [logLines]);
-			const logName = log?.name ?? null;
-			(0, react.useEffect)(() => {
-				if (logName === null || logPaused) return;
-				const timer = setInterval(() => {
-					readLog(logName, true);
-				}, LOG_POLL_MS);
-				return () => clearInterval(timer);
-			}, [
-				logName,
-				logPaused,
-				readLog
-			]);
-			const toggleLog = (name) => {
-				if (log?.name === name) {
-					setLog(null);
-					return;
-				}
-				setLogPaused(false);
-				readLog(name);
 			};
-			const cycleLogLines = () => {
-				const next = LOG_LINE_OPTIONS[(LOG_LINE_OPTIONS.indexOf(logLines) + 1) % LOG_LINE_OPTIONS.length] ?? LOG_LINE_OPTIONS[0];
-				setLogLines(next);
-				if (log !== null) readLog(log.name, true, next);
-			};
-			const clearLogNow = async () => {
-				if (log === null) return;
-				setBusy("clear-log");
-				setActionError(null);
+			const startManager = async () => {
+				setWorkingBusy("manager");
 				try {
-					await postManager(`/units/${log.name}/truncate-log`);
-					await readLog(log.name, true);
-				} catch (error) {
-					setActionError(`${log.name} 日志清空失败：${reasonOf(error)}`);
+					const res = await fetch("/brain-console/api/manager/start", { method: "POST" });
+					if (!res.ok) throw new Error(`HTTP ${res.status}`);
+					await feed.load();
 				} finally {
-					setBusy(null);
-					setClearLogOpen(false);
+					setWorkingBusy(null);
 				}
 			};
-			const act = async (name, action, force = false) => {
-				if (action === "stop" && !force) {
-					const runningDependents = units.filter((unit) => unit.running && (unit.depends ?? []).includes(name)).map((unit) => unit.name);
+			const busy = workingBusy ?? actions.busy;
+			const handleAction = (name, action) => {
+				if (action === "stop") {
+					const runningDependents = feed.units.filter((unit) => unit.running && (unit.depends ?? []).includes(name)).map((unit) => unit.name);
 					if (runningDependents.length > 0) {
 						setStopUnit({
 							name,
@@ -2829,176 +3100,38 @@ window.__ModuleLoader__.load({
 						return;
 					}
 				}
-				setBusy(`${name}:${action}`);
-				setActionError(null);
+				actions.act(name, action);
+			};
+			const confirmClearLog = async () => {
 				try {
-					await postManager(`/units/${name}/${action}`);
-					await load();
-					if (log?.name === name) await readLog(name);
+					await logDock.clearLogNow();
 				} catch (error) {
-					setActionError(`${name} ${ACTION_LABEL[action]}失败：${reasonOf(error)}`);
+					actions.setActionError(`${logDock.logName ?? "日志"} 清空失败：${reasonOf(error)}`);
 				} finally {
-					setBusy(null);
+					setClearLogOpen(false);
 				}
 			};
-			const startGroup = async (group) => {
-				const targets = units.filter((unit) => unit.group === group && !unit.running);
-				if (targets.length === 0) return;
-				setBusy(`group:${group}`);
-				setActionError(null);
-				const failures = [];
-				try {
-					const batch = await postJson("/units/start-batch", { group }).catch((error) => {
-						if (error instanceof Error && error.message === "HTTP 404") return null;
-						throw error;
-					});
-					if (batch === null) for (const unit of targets) try {
-						await postManager(`/units/${unit.name}/start`);
-					} catch (error) {
-						failures.push(`${unit.name}：${reasonOf(error)}`);
-					}
-					else for (const item of batch.failed) failures.push(`${item.name}：${item.error}`);
-					await load();
-				} catch (error) {
-					setActionError(`${group}批量启动失败：${reasonOf(error)}`);
-					return;
-				} finally {
-					setBusy(null);
-				}
-				if (failures.length > 0) setActionError(`${group}有 ${failures.length} 个没启动：${failures.join("；")}`);
-			};
-			const stopGroupNow = async (group, names) => {
-				setBusy(`stop-group:${group}`);
-				setActionError(null);
-				const failures = [];
-				try {
-					const batch = await postJson("/units/stop-batch", { group }).catch((error) => {
-						if (error instanceof Error && error.message === "HTTP 404") return null;
-						throw error;
-					});
-					if (batch === null) for (const name of names) try {
-						await postManager(`/units/${name}/stop`);
-					} catch (error) {
-						failures.push(`${name}：${reasonOf(error)}`);
-					}
-					else for (const item of batch.failed) failures.push(`${item.name}：${item.error}`);
-					await load();
-				} catch (error) {
-					setActionError(`${group}批量停止失败：${reasonOf(error)}`);
-					return;
-				} finally {
-					setBusy(null);
-					setStopGroup(null);
-				}
-				if (failures.length > 0) setActionError(`${group}有 ${failures.length} 个没停下来：${failures.join("；")}`);
-			};
-			const restartGroupNow = async (group, names) => {
-				setBusy(`restart-group:${group}`);
-				setActionError(null);
-				const failures = [];
-				try {
-					const batch = await postJson("/units/restart-batch", { group }).catch((error) => {
-						if (error instanceof Error && error.message === "HTTP 404") return null;
-						throw error;
-					});
-					if (batch === null) for (const name of names) try {
-						await postManager(`/units/${name}/restart`);
-					} catch (error) {
-						failures.push(`${name}：${reasonOf(error)}`);
-					}
-					else for (const item of batch.failed) failures.push(`${item.name}：${item.error}`);
-					await load();
-					if (log !== null && names.includes(log.name)) await readLog(log.name, true);
-				} catch (error) {
-					setActionError(`${group}批量重启失败：${reasonOf(error)}`);
-					return;
-				} finally {
-					setBusy(null);
-					setRestartGroup(null);
-				}
-				if (failures.length > 0) setActionError(`${group}有 ${failures.length} 个没重启：${failures.join("；")}`);
-			};
-			const setUnitEnabled = async (name, enabled) => {
-				setBusy(`${name}:enabled`);
-				setActionError(null);
-				try {
-					await postManager(`/units/${name}/enabled`, { enabled });
-					await load();
-				} catch (error) {
-					setActionError(`${name} 设置失败：${reasonOf(error)}`);
-				} finally {
-					setBusy(null);
-				}
-			};
-			const adoptUnit = async (name) => {
-				setBusy(`${name}:adopt`);
-				setActionError(null);
-				try {
-					await postManager(`/units/${name}/adopt`);
-					await load();
-				} catch (error) {
-					setActionError(`${name} 接管失败：${reasonOf(error)}`);
-				} finally {
-					setBusy(null);
-				}
-			};
-			const toggleAutostart = async () => {
-				if (autostart === null || !autostart.supported) return;
-				setBusy("autostart");
-				setActionError(null);
-				try {
-					await postManager("/autostart", { enabled: !autostart.enabled });
-					await load();
-				} catch (error) {
-					setActionError(`开机启动设置失败：${reasonOf(error)}`);
-				} finally {
-					setBusy(null);
-				}
-			};
-			const backup = async () => {
-				setBusy("backup");
-				setActionError(null);
-				try {
-					await postManager("/actions/backup");
-					await load();
-				} catch (error) {
-					setActionError(`备份失败：${reasonOf(error)}`);
-				} finally {
-					setBusy(null);
-				}
-			};
-			const startManager = async () => {
-				setBusy("manager");
-				try {
-					const res = await fetch("/brain-console/api/manager/start", { method: "POST" });
-					if (!res.ok) throw new Error(`HTTP ${res.status}`);
-					await load();
-				} catch (error) {
-					setConnectionError(reasonOf(error));
-				} finally {
-					setBusy(null);
-				}
-			};
-			const running = units.filter((unit) => unit.running).length;
-			const groups = Array.from(new Set(units.map((unit) => unit.group)));
-			const autostartOn = autostart?.supported === true && autostart.enabled;
+			const running = feed.units.filter((unit) => unit.running).length;
+			const groups = Array.from(new Set(feed.units.map((unit) => unit.group)));
+			const autostartOn = feed.autostart?.supported === true && feed.autostart.enabled;
 			const dependentsByUnit = {};
-			for (const unit of units) for (const dependency of unit.depends ?? []) dependentsByUnit[dependency] = [...dependentsByUnit[dependency] ?? [], unit.name];
+			for (const unit of feed.units) for (const dependency of unit.depends ?? []) dependentsByUnit[dependency] = [...dependentsByUnit[dependency] ?? [], unit.name];
 			const now = Date.now();
-			const detailUnit = detailName === null ? void 0 : units.find((unit) => unit.name === detailName);
+			const detailUnit = detailName === null ? void 0 : feed.units.find((unit) => unit.name === detailName);
+			const openLog = logDock.log;
 			(0, react.useEffect)(() => {
 				const onKeyDown = (event) => {
 					const target = event.target instanceof HTMLElement ? event.target : null;
 					const typing = target !== null && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable);
 					if (event.key === "Escape") {
 						if (document.querySelector("[role=\"dialog\"]") !== null) return;
-						if (log !== null) setLog(null);
+						logDock.closeLog();
 						return;
 					}
 					if (typing || event.ctrlKey || event.metaKey || event.altKey) return;
 					if (event.key === "r") {
 						event.preventDefault();
-						load(true);
+						feed.load(true);
 					}
 					if (event.key === "/") {
 						event.preventDefault();
@@ -3007,7 +3140,7 @@ window.__ModuleLoader__.load({
 				};
 				window.addEventListener("keydown", onKeyDown);
 				return () => window.removeEventListener("keydown", onKeyDown);
-			}, [load, log]);
+			}, [feed.load, logDock.closeLog]);
 			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
 				className: "bc-root",
 				children: [
@@ -3036,31 +3169,31 @@ window.__ModuleLoader__.load({
 											side: "bottom",
 											delayMs: 150,
 											portal: true,
-											disabled: autostart === null || !autostart.supported,
+											disabled: feed.autostart === null || !feed.autostart.supported,
 											children: /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
 												className: "bc-count",
-												"data-tone": units.length > 0 && running === units.length ? "all" : void 0,
+												"data-tone": feed.units.length > 0 && running === feed.units.length ? "all" : void 0,
 												"data-autostart": autostartOn ? "on" : "off",
-												children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { className: "bc-count-dot" }), units.length === 0 ? "—" : `${running} / ${units.length} 运行中`]
+												children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { className: "bc-count-dot" }), feed.units.length === 0 ? "—" : `${running} / ${feed.units.length} 运行中`]
 											})
 										}),
 										/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
 											className: "bc-header-actions",
 											children: [
-												updatedAt !== null && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
+												feed.updatedAt !== null && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
 													className: "bc-updated",
-													children: ["最后刷新 ", updatedAt]
+													children: ["最后刷新 ", feed.updatedAt]
 												}),
 												/* @__PURE__ */ (0, react_jsx_runtime.jsx)(IconButton, {
 													label: "刷新",
 													icon: IconRefresh,
-													busy: refreshing,
-													onClick: () => void load(true)
+													busy: feed.refreshing,
+													onClick: () => void feed.load(true)
 												}),
 												/* @__PURE__ */ (0, react_jsx_runtime.jsx)(MoreMenu, {
-													autostart,
+													autostart: feed.autostart,
 													busy,
-													onBackup: () => void backup(),
+													onBackup: () => void actions.backup(),
 													onPrune: () => setBackupOpen(true),
 													onCaches: () => setCacheOpen(true),
 													onToggleAutostart: () => void toggleAutostart()
@@ -3069,7 +3202,7 @@ window.__ModuleLoader__.load({
 										})
 									]
 								}),
-								connectionError !== null && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+								feed.connectionError !== null && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
 									className: "bc-notice",
 									"data-kind": "connection",
 									role: "status",
@@ -3080,7 +3213,7 @@ window.__ModuleLoader__.load({
 											children: "无法连接 brain_manager（127.0.0.1:19998）"
 										}), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
 											className: "bc-notice-text",
-											children: [connectionError, "。面板是管理器的前端，管理器没跑时无法启停单元，可由宿主代为拉起"]
+											children: [feed.connectionError, "。面板是管理器的前端，管理器没跑时无法启停单元，可由宿主代为拉起"]
 										})]
 									}), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
 										className: "bc-notice-actions",
@@ -3093,12 +3226,12 @@ window.__ModuleLoader__.load({
 										}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)(Button, {
 											size: "sm",
 											variant: "ghost",
-											onClick: () => void load(true),
+											onClick: () => void feed.load(true),
 											children: "重试"
 										})]
 									})]
 								}),
-								actionError !== null && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+								actions.actionError !== null && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
 									className: "bc-notice",
 									"data-kind": "action",
 									role: "status",
@@ -3106,50 +3239,50 @@ window.__ModuleLoader__.load({
 										className: "bc-notice-body",
 										children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
 											className: "bc-notice-text",
-											children: actionError
+											children: actions.actionError
 										})
 									}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
 										className: "bc-notice-actions",
 										children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(Button, {
 											size: "sm",
 											variant: "ghost",
-											onClick: () => setActionError(null),
+											onClick: () => actions.setActionError(null),
 											children: "知道了"
 										})
 									})]
 								}),
-								overview !== null && /* @__PURE__ */ (0, react_jsx_runtime.jsx)(OverviewTiles, {
-									overview,
+								feed.overview !== null && /* @__PURE__ */ (0, react_jsx_runtime.jsx)(OverviewTiles, {
+									overview: feed.overview,
 									now,
 									history,
 									onOpenTrend: (key) => setTrend(key)
 								}),
-								!loaded ? /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+								!feed.loaded ? /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
 									className: "bc-loading",
 									children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)(StateDot, { state: "ongoing" }), "正在连接 brain_manager…"]
-								}) : units.length === 0 ? connectionError === null ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+								}) : feed.units.length === 0 ? feed.connectionError === null ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
 									className: "bc-empty",
 									children: "管理器没有返回受管单元"
 								}) : null : groups.map((group) => /* @__PURE__ */ (0, react_jsx_runtime.jsx)(UnitSection, {
 									group,
-									members: units.filter((unit) => unit.group === group),
+									members: feed.units.filter((unit) => unit.group === group),
 									now,
 									busy,
-									logName: log?.name ?? null,
+									logName: logDock.logName,
 									dependents: dependentsByUnit,
-									onLog: toggleLog,
-									onAction: (name, action) => void act(name, action),
-									onStartAll: (group) => void startGroup(group),
+									onLog: logDock.toggleLog,
+									onAction: handleAction,
+									onStartAll: (group) => void actions.startGroup(group),
 									onStopAll: (group) => setStopGroup({
 										group,
-										names: units.filter((unit) => unit.group === group && unit.running).map((unit) => unit.name)
+										names: feed.units.filter((unit) => unit.group === group && unit.running).map((unit) => unit.name)
 									}),
 									onRestartAll: (group) => setRestartGroup({
 										group,
-										names: units.filter((unit) => unit.group === group && unit.running).map((unit) => unit.name)
+										names: feed.units.filter((unit) => unit.group === group && unit.running).map((unit) => unit.name)
 									}),
-									onToggleEnabled: (name, enabled) => void setUnitEnabled(name, enabled),
-									onAdopt: (name) => void adoptUnit(name),
+									onToggleEnabled: (name, enabled) => void actions.setUnitEnabled(name, enabled),
+									onAdopt: (name) => void actions.adoptUnit(name),
 									onDetail: (name) => setDetailName(name)
 								}, group))
 							]
@@ -3159,7 +3292,7 @@ window.__ModuleLoader__.load({
 						load: loadBackups,
 						prune: pruneBackups,
 						onChanged: () => {
-							load();
+							feed.load();
 						},
 						onClose: () => setBackupOpen(false)
 					}),
@@ -3190,7 +3323,9 @@ window.__ModuleLoader__.load({
 						busyLabel: "停止中…",
 						busy: busy === `stop-group:${stopGroup.group}`,
 						onCancel: () => setStopGroup(null),
-						onConfirm: () => void stopGroupNow(stopGroup.group, stopGroup.names)
+						onConfirm: () => {
+							actions.stopGroupNow(stopGroup.group, stopGroup.names).finally(() => setStopGroup(null));
+						}
 					}),
 					restartGroup !== null && /* @__PURE__ */ (0, react_jsx_runtime.jsx)(GroupActionDialog, {
 						title: `重启「${restartGroup.group}」`,
@@ -3201,20 +3336,22 @@ window.__ModuleLoader__.load({
 						busyLabel: "重启中…",
 						busy: busy === `restart-group:${restartGroup.group}`,
 						onCancel: () => setRestartGroup(null),
-						onConfirm: () => void restartGroupNow(restartGroup.group, restartGroup.names)
+						onConfirm: () => {
+							actions.restartGroupNow(restartGroup.group, restartGroup.names).finally(() => setRestartGroup(null));
+						}
 					}),
-					log !== null && /* @__PURE__ */ (0, react_jsx_runtime.jsx)(LogDock, {
-						name: log.name,
-						text: log.text,
-						loading: log.loading,
-						readAt: log.at,
-						paused: logPaused,
-						lines: logLines,
-						onRefresh: () => void readLog(log.name),
-						onTogglePause: () => setLogPaused((paused) => !paused),
-						onCycleLines: cycleLogLines,
+					openLog !== null && /* @__PURE__ */ (0, react_jsx_runtime.jsx)(LogDock, {
+						name: openLog.name,
+						text: openLog.text,
+						loading: openLog.loading,
+						readAt: openLog.at,
+						paused: logDock.paused,
+						lines: logDock.lines,
+						onRefresh: () => void logDock.readLog(openLog.name),
+						onTogglePause: () => logDock.setPaused(!logDock.paused),
+						onCycleLines: logDock.cycleLines,
 						onClear: () => setClearLogOpen(true),
-						onClose: () => setLog(null)
+						onClose: logDock.closeLog
 					}),
 					detailUnit !== void 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsx)(UnitDetailDialog, {
 						unit: detailUnit,
@@ -3233,18 +3370,18 @@ window.__ModuleLoader__.load({
 						onConfirm: () => {
 							const target = stopUnit.name;
 							setStopUnit(null);
-							act(target, "stop", true);
+							actions.act(target, "stop");
 						}
 					}),
-					clearLogOpen && log !== null && /* @__PURE__ */ (0, react_jsx_runtime.jsx)(ConfirmDialog, {
-						title: `清空「${log.name}」日志`,
+					clearLogOpen && openLog !== null && /* @__PURE__ */ (0, react_jsx_runtime.jsx)(ConfirmDialog, {
+						title: `清空「${openLog.name}」日志`,
 						description: "把该单元的日志文件截断为空",
 						note: "旧内容不可恢复；正在运行的服务会从空文件继续写入",
 						confirmLabel: "清空",
 						busyLabel: "清空中…",
-						busy: busy === "clear-log",
+						busy: logDock.clearing,
 						onCancel: () => setClearLogOpen(false),
-						onConfirm: () => void clearLogNow()
+						onConfirm: () => void confirmClearLog()
 					})
 				]
 			});

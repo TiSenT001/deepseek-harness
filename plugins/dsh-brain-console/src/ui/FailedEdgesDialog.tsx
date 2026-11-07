@@ -5,6 +5,7 @@
  * 只读——降权/清理策略由 edge_reinforcer 与指标快照的阈值机制负责，面板不在这里改库。
  */
 import { useEffect, useState } from 'react'
+import { reasonOf } from './errors.ts'
 import { Button, Modal } from './primitives.ts'
 import type { FailedEdgesListing } from './types.ts'
 
@@ -20,12 +21,6 @@ function shortName(id: string): string {
   const withoutScheme = id.startsWith('note:') ? id.slice(5) : id
   const parts = withoutScheme.split('/')
   return parts[parts.length - 1] ?? withoutScheme
-}
-
-/** 把未知异常收敛成一句话；fetch 的网络失败只有 TypeError。 */
-function reasonOf(error: unknown): string {
-  if (error instanceof TypeError) return '连接被拒绝或超时'
-  return error instanceof Error ? error.message : String(error)
 }
 
 /**

@@ -8,6 +8,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Button, Modal } from './primitives.ts'
 import type { MetricSpec } from './metrics.ts'
+import { parseTs, shortDate } from './time.ts'
 import type { MetricPoint } from './types.ts'
 
 const CHART_W = 600
@@ -21,18 +22,6 @@ const RANGES: readonly { days: number; label: string }[] = [
   { days: 90, label: '90 天' },
   { days: 365, label: '365 天' },
 ]
-
-/** 管理器的时间戳有两种写法（ISO 带 T / 空格分隔），统一成可解析的形式。 */
-function parseTs(ts: string): number {
-  const normalized = ts.includes('T') ? ts : ts.replace(' ', 'T')
-  return Date.parse(normalized)
-}
-
-/** `2026-11-07T23:18:28` → `11-07`。 */
-function shortDate(ts: string): string {
-  const day = ts.slice(5, 10)
-  return day.length === 5 ? day : ts.slice(0, 10)
-}
 
 /** 把缩放窗口夹到合法范围；窗口至少 2 个点。 */
 function clampView(start: number, end: number, total: number): { start: number; end: number } {

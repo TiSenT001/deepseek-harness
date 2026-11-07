@@ -66,6 +66,28 @@ manager 退出时按 `atexit` 回收。`body_daemon` 在被接管时（环境变
 "Python"。副本不在解释器目录里，管理器拉起时把解释器目录补进子进程 `PATH`（解析
 python311.dll 与标准库）；副本是构建产物，不进 git（`tools/launcher/py/` 已忽略）。
 
+## 代码结构
+
+```
+src/
+  client.tsx      客户端入口：把面板注册进 DSH
+  icon.tsx        面板图标（Lucide waypoints）
+  index.ts        宿主半部：/brain-console/api/manager/start（管理器没跑时由宿主拉起）
+  page.tsx        组合层：弹窗开关、派生值、快捷键、整棵 JSX
+  api.ts          管理器 HTTP 客户端 + 稳定的列表加载函数
+  hooks/
+    useConsoleFeed.ts    轮询 /units + /status + /autostart（5s）
+    useHistory.ts        趋势采样（挂载/手动刷新各取一次）
+    useLogDock.ts        日志面板：打开/静默刷新/暂停/行数/清空
+    useConsoleActions.ts 写操作：启停、分组批量、随管理器启动、接管、备份
+  ui/
+    UnitSection.tsx   分组标题 + 卡片网格
+    ServiceCard.tsx   单元卡片
+    LogDock.tsx       底部日志控制台
+    TrendDialog.tsx   趋势图（滚轮缩放/拖拽平移）
+    ...              其余对话框与共享原语（primitives 桥接、styles 注入）
+```
+
 ## 图标
 
 `src/icon.tsx` → `BrainConsoleIcon`：**Lucide `waypoints`**（ISC，官方路径，非自绘）——四个节点由连接线串起来，

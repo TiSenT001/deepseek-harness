@@ -9,6 +9,7 @@
  * 删除永远由管理器执行（它才是唯一执行器），本组件只下发 keep 值。
  */
 import { useCallback, useEffect, useState } from 'react'
+import { reasonOf } from './errors.ts'
 import { formatMegabytes } from './format.ts'
 import { Button, Modal } from './primitives.ts'
 import type { BackupListing, PruneResult } from './types.ts'
@@ -26,12 +27,6 @@ export interface BackupDialogProps {
 
 /** 默认保留数，与管理器 `prune_backups` 的默认值一致。 */
 const DEFAULT_KEEP = 2
-
-/** 把未知异常收敛成一句话；fetch 的网络失败只有 TypeError。 */
-function reasonOf(error: unknown): string {
-  if (error instanceof TypeError) return '连接被拒绝或超时'
-  return error instanceof Error ? error.message : String(error)
-}
 
 /**
  * 渲染备份清理对话框。

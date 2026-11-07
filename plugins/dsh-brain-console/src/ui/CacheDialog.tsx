@@ -10,6 +10,7 @@
  *   3) 只有点确认才下发，删完重新统计并显示释放多少。
  */
 import { useCallback, useEffect, useState } from 'react'
+import { reasonOf } from './errors.ts'
 import { formatMegabytes } from './format.ts'
 import { Button, IconShield, Modal } from './primitives.ts'
 import type { CacheItem, CacheListing, CachePruneResult } from './types.ts'
@@ -21,12 +22,6 @@ export interface CacheDialogProps {
   prune: (ids: string[]) => Promise<CachePruneResult>
   /** 关闭对话框 */
   onClose: () => void
-}
-
-/** 把未知异常收敛成一句话；fetch 的网络失败只有 TypeError。 */
-function reasonOf(error: unknown): string {
-  if (error instanceof TypeError) return '连接被拒绝或超时'
-  return error instanceof Error ? error.message : String(error)
 }
 
 /** 风险标签的文案。 */
