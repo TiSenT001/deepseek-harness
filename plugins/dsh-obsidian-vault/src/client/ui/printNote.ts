@@ -40,6 +40,39 @@ const PRINT_CSS = `
 `
 
 /**
+ * Wait until every image in the print document has loaded and decoded.
+ *
+ * A clone of the reading view starts with empty image boxes: the bytes are
+ * fetched after the DOM is appended. Calling `print()` right away snapshots
+ * the page before that finishes, which is why "Save as PDF" came out without
+ * pictures. Lazy hints are cleared too, because a background window never
+ * triggers the viewport intersection that would load them.
+ * @param win - the print window.
+ */
+async function whenImagesReady(win: Window): Promise<void> {
+  const images = [...win.document.images]
+  await Promise.all(images.map(async (image) => {
+    image.loading = 'eager'
+    if (!image.complete) {
+      await new Promise<void>((resolve) => {
+        image.addEventListener('load', () => resolve(), { once: true })
+        image.addEventListener('error', () => resolve(), { once: true })
+      })
+    }
+    try {
+      await image.decode()
+    } catch {
+      // A broken image still prints its alt text; the job must not hang on it.
+    }
+  }))
+  try {
+    await win.document.fonts.ready
+  } catch {
+    // Older engines expose no font set; printing without it is fine.
+  }
+}
+
+/**
  * Open the print window for one element.
  * @param element - the rendered note article.
  * @param title - document title for the print job.
@@ -62,6 +95,10 @@ export function printNote(element: HTMLElement, title: string): boolean {
   win.document.body.append(copy)
   win.document.close()
   win.focus()
-  win.print()
+  // Images arrive after the DOM does; wait for them so the PDF has pictures.
+  void whenImagesReady(win).then(() => {
+    win.focus()
+    win.print()
+  })
   return true
 }
