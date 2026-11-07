@@ -67,6 +67,10 @@ manager 退出时按 `atexit` 回收。`body_daemon` 在被接管时（环境变
 （或运行 `tools/launcher/start_manager.cmd`）可重新拉起。关闭不改写持久意愿
 （`enabled` 保持原样），下次启动恢复同一批单元。
 
+**改了宿主半部要重启 DSH**：`src/index.ts` 这类宿主代码只在 DSH 启动时加载；
+用仓库根的 `scripts/restart-dsh.ps1`（杀旧服务器 → 拉起新的 → 抓新 URL →
+顺带拉起 brain_manager），`-DryRun` 可先看会做什么。
+
 **任务管理器里的进程名**：服务进程直接用 `tools/launcher/py/<name>.exe`——由
 `tools/launcher/build_named_python.py` 生成的 pythonw 副本，FileDescription 写成
 `TiSenT Brain - <name>`、图标换成 `brain.ico`，所以任务管理器里按服务名显示，而不是清一色
