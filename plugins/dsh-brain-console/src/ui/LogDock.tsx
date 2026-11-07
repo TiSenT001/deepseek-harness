@@ -7,7 +7,7 @@
  */
 import { useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { IconButton } from './IconButton.tsx'
-import { IconCheck, IconChevronDown, IconCopy, IconPause, IconPlay, IconRefresh } from './primitives.ts'
+import { IconCheck, IconChevronDown, IconCopy, IconPause, IconPlay, IconRefresh, IconTrash } from './primitives.ts'
 
 export interface LogDockProps {
   /** 正在查看日志的单元名 */
@@ -28,6 +28,8 @@ export interface LogDockProps {
   onTogglePause: () => void
   /** 切换行数（120 → 300 → 1000 循环） */
   onCycleLines: () => void
+  /** 清空该单元日志（页面负责先确认） */
+  onClear: () => void
   /** 收起面板 */
   onClose: () => void
 }
@@ -38,7 +40,7 @@ export interface LogDockProps {
  * @returns 面板元素
  */
 export function LogDock({
-  name, text, loading, readAt, paused, lines, onRefresh, onTogglePause, onCycleLines, onClose,
+  name, text, loading, readAt, paused, lines, onRefresh, onTogglePause, onCycleLines, onClear, onClose,
 }: LogDockProps): JSX.Element {
   const body = useRef<HTMLPreElement | null>(null)
   const follow = useRef(true)
@@ -114,6 +116,7 @@ export function LogDock({
           icon={copied ? IconCheck : IconCopy}
           onClick={() => void copy()}
         />
+        <IconButton label="清空日志" icon={IconTrash} onClick={onClear} />
         <IconButton label="立即刷新" icon={IconRefresh} busy={loading} onClick={onRefresh} />
         <IconButton label="收起日志" icon={IconChevronDown} onClick={onClose} />
       </header>

@@ -115,6 +115,7 @@ interface PrimitivesModule {
   readonly IconCopyOutlineRegular: SharedComponent<SharedIconProps>
   readonly IconCheckOutlineRegular: SharedComponent<SharedIconProps>
   readonly IconPauseOutlineRegular: SharedComponent<SharedIconProps>
+  readonly IconTrashOutlineRegular: SharedComponent<SharedIconProps>
 }
 
 const primitives = require('@deepseek-ai/dsh-client-ui-primitives') as PrimitivesModule
@@ -163,3 +164,6 @@ export const IconCheck = primitives.IconCheckOutlineRegular
 
 /** 暂停图标：日志面板停止自动刷新。 */
 export const IconPause = primitives.IconPauseOutlineRegular
+
+/** 垃圾桶图标：清空日志。 */
+export const IconTrash = primitives.IconTrashOutlineRegular

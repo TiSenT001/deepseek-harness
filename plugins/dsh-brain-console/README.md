@@ -29,6 +29,7 @@
 | POST | `/units/start-batch` | 管理器侧批量启动：body `{group}`，顺序拉起该组已停止单元，返回 `started` / `failed` 两队 |
 | POST | `/units/stop-batch` | 管理器侧批量停止：body `{group}`，顺序停止该组在跑单元（写抑制清单），返回 `stopped` / `failed` |
 | POST | `/units/restart-batch` | 管理器侧批量重启：body `{group}`，只重启在跑的单元，返回 `restarted` / `failed` |
+| POST | `/units/<name>/truncate-log` | 清空该单元日志文件（不可恢复；在跑的服务从空文件继续写） |
 | GET | `/actions/backups` | 备份快照列表（按时间倒序，含体积与总占用） |
 | POST | `/actions/prune-backups` | 只保留最近 `keep` 个快照（`keep` 下限 1） |
 | GET | `/actions/caches` | 大脑缓存登记表（各条目体积 + 风险等级） |
@@ -82,7 +83,7 @@ icon: (size: number) => <BrainConsoleIcon size={size} />
          正在看谁的日志，那张卡片的日志图标就是按下态（aria-pressed）
 日志     点卡片日志图标在底部展开常驻控制台；打开期间 4 秒静默刷新，停在底部自动跟随，向上翻看不打断
          头部可按关键词过滤（本地匹配，Esc 清空，右边显示「命中 / 总数」），一键复制当前可见内容，
-         可暂停自动刷新（暂停时图标变播放），点「120 行」循环 120 / 300 / 1000 行
+         可暂停自动刷新（暂停时图标变播放），点「120 行」循环 120 / 300 / 1000 行，清空日志需先确认
 ```
 
 - 头部只留刷新图标与「更多」菜单：备份、清理、开机启动都收进菜单，不再并排堆四个文字按钮

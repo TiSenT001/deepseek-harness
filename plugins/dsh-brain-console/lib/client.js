@@ -169,6 +169,8 @@ window.__ModuleLoader__.load({
 		const IconCheck = primitives.IconCheckOutlineRegular;
 		/** 暂停图标：日志面板停止自动刷新。 */
 		const IconPause = primitives.IconPauseOutlineRegular;
+		/** 垃圾桶图标：清空日志。 */
+		const IconTrash = primitives.IconTrashOutlineRegular;
 		//#endregion
 		//#region src/ui/BackupDialog.tsx
 		/**
@@ -542,6 +544,42 @@ window.__ModuleLoader__.load({
 			});
 		}
 		//#endregion
+		//#region src/ui/ConfirmDialog.tsx
+		/**
+		* 通用确认框：不可撤销的动作（清空日志等）先讲清后果再执行。
+		*/
+		/**
+		* 渲染确认框。
+		* @param props - 文案与回调
+		* @returns 对话框元素（挂载即打开）
+		*/
+		function ConfirmDialog({ title, description, note, confirmLabel, busyLabel = "处理中…", busy, onCancel, onConfirm }) {
+			return /* @__PURE__ */ (0, react_jsx_runtime.jsx)(Modal, {
+				open: true,
+				onClose: busy ? () => {} : onCancel,
+				title,
+				closeLabel: "关闭",
+				description,
+				footer: /* @__PURE__ */ (0, react_jsx_runtime.jsxs)(react_jsx_runtime.Fragment, { children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)(Button, {
+					size: "sm",
+					variant: "ghost",
+					disabled: busy,
+					onClick: onCancel,
+					children: "取消"
+				}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)(Button, {
+					size: "sm",
+					variant: "primary",
+					disabled: busy,
+					onClick: onConfirm,
+					children: busy ? busyLabel : confirmLabel
+				})] }),
+				children: note !== void 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+					className: "bc-stop-note",
+					children: note
+				})
+			});
+		}
+		//#endregion
 		//#region src/ui/FailedEdgesDialog.tsx
 		/**
 		* 失败边明细：指标带里「失败边」数字点开后的只读清单。
@@ -736,7 +774,7 @@ window.__ModuleLoader__.load({
 		* @param props - 日志内容与回调
 		* @returns 面板元素
 		*/
-		function LogDock({ name, text, loading, readAt, paused, lines, onRefresh, onTogglePause, onCycleLines, onClose }) {
+		function LogDock({ name, text, loading, readAt, paused, lines, onRefresh, onTogglePause, onCycleLines, onClear, onClose }) {
 			const body = (0, react.useRef)(null);
 			const follow = (0, react.useRef)(true);
 			const [filter, setFilter] = (0, react.useState)("");
@@ -829,6 +867,11 @@ window.__ModuleLoader__.load({
 							label: copied ? "已复制" : "复制日志",
 							icon: copied ? IconCheck : IconCopy,
 							onClick: () => void copy()
+						}),
+						/* @__PURE__ */ (0, react_jsx_runtime.jsx)(IconButton, {
+							label: "清空日志",
+							icon: IconTrash,
+							onClick: onClear
 						}),
 						/* @__PURE__ */ (0, react_jsx_runtime.jsx)(IconButton, {
 							label: "立即刷新",
@@ -2416,6 +2459,7 @@ window.__ModuleLoader__.load({
 			const [log, setLog] = (0, react.useState)(null);
 			const [logLines, setLogLines] = (0, react.useState)(LOG_LINE_OPTIONS[0]);
 			const [logPaused, setLogPaused] = (0, react.useState)(false);
+			const [clearLogOpen, setClearLogOpen] = (0, react.useState)(false);
 			const [autostart, setAutostart] = (0, react.useState)(null);
 			const [backupOpen, setBackupOpen] = (0, react.useState)(false);
 			const [cacheOpen, setCacheOpen] = (0, react.useState)(false);
@@ -2508,6 +2552,20 @@ window.__ModuleLoader__.load({
 				const next = LOG_LINE_OPTIONS[(LOG_LINE_OPTIONS.indexOf(logLines) + 1) % LOG_LINE_OPTIONS.length] ?? LOG_LINE_OPTIONS[0];
 				setLogLines(next);
 				if (log !== null) readLog(log.name, true, next);
+			};
+			const clearLogNow = async () => {
+				if (log === null) return;
+				setBusy("clear-log");
+				setActionError(null);
+				try {
+					await postManager(`/units/${log.name}/truncate-log`);
+					await readLog(log.name, true);
+				} catch (error) {
+					setActionError(`${log.name} 日志清空失败：${reasonOf(error)}`);
+				} finally {
+					setBusy(null);
+					setClearLogOpen(false);
+				}
 			};
 			const act = async (name, action) => {
 				setBusy(`${name}:${action}`);
@@ -2892,7 +2950,18 @@ window.__ModuleLoader__.load({
 						onRefresh: () => void readLog(log.name),
 						onTogglePause: () => setLogPaused((paused) => !paused),
 						onCycleLines: cycleLogLines,
+						onClear: () => setClearLogOpen(true),
 						onClose: () => setLog(null)
+					}),
+					clearLogOpen && log !== null && /* @__PURE__ */ (0, react_jsx_runtime.jsx)(ConfirmDialog, {
+						title: `清空「${log.name}」日志`,
+						description: "把该单元的日志文件截断为空",
+						note: "旧内容不可恢复；正在运行的服务会从空文件继续写入",
+						confirmLabel: "清空",
+						busyLabel: "清空中…",
+						busy: busy === "clear-log",
+						onCancel: () => setClearLogOpen(false),
+						onConfirm: () => void clearLogNow()
 					})
 				]
 			});

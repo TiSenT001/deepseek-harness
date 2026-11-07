@@ -14,6 +14,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { BrainConsoleIcon } from './icon.tsx'
 import { BackupDialog } from './ui/BackupDialog.tsx'
 import { CacheDialog } from './ui/CacheDialog.tsx'
+import { ConfirmDialog } from './ui/ConfirmDialog.tsx'
 import { FailedEdgesDialog } from './ui/FailedEdgesDialog.tsx'
 import { GroupActionDialog } from './ui/GroupActionDialog.tsx'
 import { formatClock } from './ui/format.ts'
@@ -204,6 +205,7 @@ export function ConsolePage(): JSX.Element {
   const [log, setLog] = useState<LogState | null>(null)
   const [logLines, setLogLines] = useState<number>(LOG_LINE_OPTIONS[0])
   const [logPaused, setLogPaused] = useState(false)
+  const [clearLogOpen, setClearLogOpen] = useState(false)
   const [autostart, setAutostart] = useState<{ supported: boolean; enabled: boolean } | null>(null)
   const [backupOpen, setBackupOpen] = useState(false)
   const [cacheOpen, setCacheOpen] = useState(false)
@@ -294,6 +296,22 @@ export function ConsolePage(): JSX.Element {
     const next = LOG_LINE_OPTIONS[(current + 1) % LOG_LINE_OPTIONS.length] ?? LOG_LINE_OPTIONS[0]
     setLogLines(next)
     if (log !== null) void readLog(log.name, true, next)
+  }
+
+  // 清空日志：先确认再截断；在跑的进程会从空文件继续写，所以截断后立刻重读
+  const clearLogNow = async (): Promise<void> => {
+    if (log === null) return
+    setBusy('clear-log')
+    setActionError(null)
+    try {
+      await postManager(`/units/${log.name}/truncate-log`)
+      await readLog(log.name, true)
+    } catch (error) {
+      setActionError(`${log.name} 日志清空失败：${reasonOf(error)}`)
+    } finally {
+      setBusy(null)
+      setClearLogOpen(false)
+    }
   }
 
   const act = async (name: string, action: UnitAction): Promise<void> => {
@@ -695,7 +713,21 @@ export function ConsolePage(): JSX.Element {
           onRefresh={() => void readLog(log.name)}
           onTogglePause={() => setLogPaused((paused) => !paused)}
           onCycleLines={cycleLogLines}
+          onClear={() => setClearLogOpen(true)}
           onClose={() => setLog(null)}
+        />
+      )}
+
+      {clearLogOpen && log !== null && (
+        <ConfirmDialog
+          title={`清空「${log.name}」日志`}
+          description="把该单元的日志文件截断为空"
+          note="旧内容不可恢复；正在运行的服务会从空文件继续写入"
+          confirmLabel="清空"
+          busyLabel="清空中…"
+          busy={busy === 'clear-log'}
+          onCancel={() => setClearLogOpen(false)}
+          onConfirm={() => void clearLogNow()}
         />
       )}
     </div>
