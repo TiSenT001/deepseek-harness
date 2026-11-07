@@ -95,7 +95,8 @@ export function Select({ value, options, onChange, ariaLabel, className }: Selec
                     setOpen(false)
                   }}
                 >
-                  {option.label}
+                  <span>{option.label}</span>
+                  <span className={css.selectCheck} aria-hidden="true">{option.value === value ? '✓' : ''}</span>
                 </button>
               </li>
             ))}

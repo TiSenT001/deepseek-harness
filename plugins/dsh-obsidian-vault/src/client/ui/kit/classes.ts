@@ -170,6 +170,7 @@ export const css = {
   selectChevron: 'ov-select-chevron',
   selectMenu: 'ov-select-menu',
   selectOption: 'ov-select-option',
+  selectCheck: 'ov-select-check',
   callout: 'ov-callout',
   calloutHead: 'ov-callout-head',
   calloutTitle: 'ov-callout-title',

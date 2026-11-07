@@ -44,7 +44,10 @@ export const SELECT_STYLE = `/* Kit select: one token set for the trigger and th
   box-shadow: 0 10px 28px rgba(0, 0, 0, 0.38);
 }
 .ov-select-option {
-  display: block;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
   width: 100%;
   box-sizing: border-box;
   border: 0;
@@ -58,11 +61,14 @@ export const SELECT_STYLE = `/* Kit select: one token set for the trigger and th
   white-space: nowrap;
   cursor: pointer;
 }
-.ov-select-option:hover { background: var(--dsw-alias-bg-layer-2, rgba(128, 128, 128, 0.14)); }
+.ov-select-option:hover { background: var(--dsw-alias-interactive-bg-hover, rgba(128, 128, 128, 0.14)); }
+/* Selected rows keep the plain fill; the trailing check is the marker, the
+   same convention as the Host's menus. */
 .ov-select-option[data-active='true'] {
-  color: var(--ov-accent, #4d6bfe);
-  background: color-mix(in srgb, var(--ov-accent, #4d6bfe) 14%, transparent);
+  color: inherit;
+  background: transparent;
 }
+.ov-select-check { flex: 0 0 auto; font-size: 11px; opacity: 0.75; }
 .ov-select-option:focus-visible {
   outline: var(--dsw-focus-ring-width, 2px) solid var(--dsw-alias-brand-primary, #4d6bfe);
   outline-offset: -2px;
