@@ -1723,6 +1723,55 @@ try {
     assert(await page.locator('.ov-note').isVisible(), 'reading view not restored')
   })
 
+  await check('note.property-edit-persists', async () => {
+    await openViaFilter('审核夹具')
+    await page.locator('.ov-note').waitFor({ timeout: 10000 })
+    const value = page.locator('.ov-property-editable').first()
+    assert((await value.count()) === 1, 'no editable property rendered')
+    const before = await api(`file?path=${encodeURIComponent(FIXTURE)}`)
+    await value.click()
+    const input = page.locator('.ov-property-input')
+    await input.waitFor({ timeout: 5000 })
+    await input.fill('审核探针')
+    await input.press('Enter')
+    let after = await api(`file?path=${encodeURIComponent(FIXTURE)}`)
+    for (let attempt = 0; attempt < 10 && !after.text.includes('审核探针'); attempt += 1) {
+      await sleep(300)
+      after = await api(`file?path=${encodeURIComponent(FIXTURE)}`)
+    }
+    assert(after.text.includes('审核探针'), 'property value was not written')
+    // The edit bumps mtime; read it before restoring the exact prior text.
+    const current = await api(`file?path=${encodeURIComponent(FIXTURE)}`)
+    await api('note', { method: 'POST', body: JSON.stringify({ path: FIXTURE, content: before.text, baseMtime: current.mtime }) })
+    await sleep(600)
+  })
+
+  await check('note.print-command', async () => {
+    await openViaFilter('审核夹具')
+    await page.locator('.ov-note').waitFor({ timeout: 10000 })
+    await page.evaluate(() => {
+      const original = window.open
+      window.__printCalls = 0
+      window.__restorePrint = () => { window.open = original }
+      window.open = () => {
+        window.__printCalls += 1
+        return {
+          document: document.implementation.createHTMLDocument('print'),
+          focus() {},
+          print() {},
+          closed: false,
+        }
+      }
+    })
+    await page.getByRole('button', { name: '打印', exact: true }).click()
+    const calls = await page.evaluate(() => {
+      const count = window.__printCalls ?? 0
+      window.__restorePrint?.()
+      return count
+    })
+    assert(calls === 1, `print window opened ${calls} times`)
+  })
+
   await check('note.editor-colour-and-find', async () => {
     await openViaFilter('审核夹具')
     await page.locator('.ov-note').waitFor({ timeout: 10000 })

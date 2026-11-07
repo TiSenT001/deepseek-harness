@@ -99,6 +99,31 @@ export const CONTENT_STYLE = `/* Document typography, closer to Obsidian's readi
 }
 .ov-property-icon { opacity: .7; font-size: 11px; width: 14px; text-align: center; }
 .ov-property-value { color: var(--dsw-alias-label-primary, #e8e8ea); word-break: break-word; }
+.ov-property-editable {
+  margin: 0;
+  padding: 1px 4px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: transparent;
+  font: inherit;
+  text-align: left;
+  cursor: text;
+}
+.ov-property-editable:hover { border-color: var(--dsw-alias-border-l1, #2a2a30); background: var(--dsw-alias-bg-layer-2, #24242a); }
+.ov-property-editable:focus-visible { outline: 1px solid var(--dsw-alias-brand-primary, #4d6bfe); outline-offset: 1px; }
+.ov-property-edit { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; min-width: 0; }
+.ov-property-input {
+  min-width: 140px;
+  max-width: 320px;
+  padding: 2px 6px;
+  border: 1px solid var(--dsw-alias-border-l1, #2a2a30);
+  border-radius: 4px;
+  background: var(--dsw-alias-bg-layer-1, #1d1d22);
+  color: var(--dsw-alias-label-primary, #e8e8ea);
+  font: inherit;
+}
+.ov-property-input:focus { outline: 1px solid var(--dsw-alias-brand-primary, #4d6bfe); outline-offset: 1px; }
+.ov-property-error { color: var(--dsw-alias-state-error-primary, #f85149); font-size: 11.5px; }
 .ov-tag-row { margin: 0 0 14px; display: flex; flex-wrap: wrap; gap: 6px; }
 .ov-tag-row .ov-chip { margin: 0; cursor: pointer; border: 0; font: inherit; font-size: 11px; }
 

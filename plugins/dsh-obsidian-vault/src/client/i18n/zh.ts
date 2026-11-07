@@ -281,4 +281,7 @@ export const ZH = {
   editorReplaceAll: "全部替换",
   editorFindCount: "{current}/{total}",
   editorFindNone: "无结果",
+  propertyEdit: "编辑属性",
+  propertyConflict: "文件已在别处修改，请重新打开后再试",
+  print: "打印",
 } as const

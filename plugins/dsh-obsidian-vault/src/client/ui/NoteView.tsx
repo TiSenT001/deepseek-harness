@@ -25,6 +25,7 @@ import type { MenuScene } from './menu/registry.ts'
 import { useHoverPreview } from './useHoverPreview.ts'
 import { headingAnchor } from '../../vault/syntax.ts'
 import { Callout } from './Callout.tsx'
+import { printNote } from './printNote.ts'
 import { css } from './theme.ts'
 
 /** A ref object without depending on a specific React typings generation. */
@@ -73,6 +74,7 @@ export function NoteView({
   const [embeds, setEmbeds] = useState<ReadonlyMap<string, string>>(new Map())
   const [inlineBacklinks, toggleInlineBacklinks] = useInlineBacklinks()
   const bodyRef = useRef<HTMLDivElement>(null)
+  const articleRef = useRef<HTMLElement | null>(null)
   const { preview, show: showPreview, hide: hidePreview } = useHoverPreview()
 
   useEffect(() => {
@@ -224,13 +226,17 @@ export function NoteView({
   }, [anchor, rendered])
 
   return (
-    <article className={css.note}>
+    <article className={css.note} ref={articleRef}>
       <NoteHeader
         t={t}
         note={note}
         onPathFilter={onPathFilter}
         onMenu={onMenu}
         {...(onSource === undefined ? {} : { onSource })}
+    onPrint={() => {
+      const article = articleRef.current
+      if (article !== null) printNote(article, note.title)
+    }}
         {...(backlinks.length === 0 ? {} : { backlinksVisible: inlineBacklinks, onToggleBacklinks: toggleInlineBacklinks })}
       />
       <div className={css.scroll} ref={scrollRef as unknown as Ref<HTMLDivElement>}>

@@ -21,6 +21,8 @@ export interface NoteHeaderProps {
   readonly onMenu?: (scene: MenuScene, x: number, y: number) => void
   /** Switch the same Markdown file to its source view; absent without one. */
   readonly onSource?: () => void
+  /** Open the print window for this note; absent without a reading surface. */
+  readonly onPrint?: () => void
   /** Toggle the in-document backlinks section; absent when the note has none. */
   readonly onToggleBacklinks?: () => void
   /** Whether that section currently renders. */
@@ -32,7 +34,7 @@ export interface NoteHeaderProps {
  * @param props - the note and the header actions.
  */
 export function NoteHeader({
-  t, note, onPathFilter, onSource, onToggleBacklinks, backlinksVisible = true, onMenu,
+  t, note, onPathFilter, onSource, onPrint, onToggleBacklinks, backlinksVisible = true, onMenu,
 }: NoteHeaderProps): JSX.Element {
   const folders = note.path.split('/').slice(0, -1)
 
@@ -76,6 +78,11 @@ export function NoteHeader({
               {backlinksVisible ? t('backlinksHide') : t('backlinksShow')}
             </button>
           )}
+        {onPrint === undefined ? null : (
+          <button type="button" className={css.button} onClick={onPrint} title={t('print')}>
+            {t('print')}
+          </button>
+        )}
         {onSource === undefined ? null : (
           <button type="button" className={css.button} onClick={onSource} title={t('source')}>
             {t('source')}

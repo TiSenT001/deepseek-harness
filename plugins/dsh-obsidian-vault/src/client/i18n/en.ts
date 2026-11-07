@@ -282,4 +282,7 @@ export const EN: Dict = {
   editorReplaceAll: "Replace all",
   editorFindCount: "{current}/{total}",
   editorFindNone: "No results",
+  propertyEdit: "Edit property",
+  propertyConflict: "The file changed elsewhere; reopen the note and try again",
+  print: "Print",
 }

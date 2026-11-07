@@ -1,3 +1,10 @@
+## 第九十五轮：属性编辑、打印与大库基准（2026-11-07）
+
+- **属性编辑**：properties 面板的值从只读变可点编辑；保存走 `POST /note` 的 `baseMtime` 409 保护，`frontmatter-edit.ts` 只重写目标键所在行，注释、数组、未触及的行逐字节保留；清空值即删除该键，键不存在时补进现有块，笔记无 frontmatter 时新建块。值按用户输入的原始 YAML 文本写入，`true`/`42`/`[a, b]` 类型不变。6 条纯函数测试 + 审核 `note.property-edit-persists`（写入后读回文件并还原）。
+- **打印**：阅读视图新增「打印」；`printNote.ts` 把 `article` 克隆进新窗口，附一套纸面样式（正文宽 760px、白底、表格/代码/标注不跨页），应用外壳与按钮不进入打印件，浏览器打印对话框直接可另存 PDF。审核 `note.print-command` 用 stub 的 `window.open` 断言只开一次。
+- **大库基准**：`vault-scale-bench.mjs` 生成 N 篇合成笔记并用宿主 `VaultIndex` 建索引/搜索，输出索引耗时、搜索 p95、堆增量，默认预算 8000ms/400ms，超限退出 1；`npm run bench:vault`。实测 5000 篇：索引 868ms、p95 2.4ms、堆 24.8MB。
+- **验证**：`tsc` 0、`666/666`、`check:boundaries` 通过、审核 `102/102`。
+
 ## 第九十四轮：源码编辑器补上高亮与查找（2026-11-07）
 
 - **色彩层**：`SourceEditor` 改为「镜像 `<pre>` + 透明 textarea」——两者字体、行高、字距、内边距、换行规则完全一致，token 只改颜色不改字宽，光标与字形不漂移；`markdown-tokens.ts` 按行切 frontmatter / 围栏代码 / 标题 / 列表 / 引用，再叠行内代码、双链、链接、粗斜体、标签，范围不重叠。
