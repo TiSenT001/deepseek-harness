@@ -292,4 +292,6 @@ export const ZH = {
   colorLegendClear: "清除图例过滤",
   groupsHint: "分组颜色优先于自动配色；查询支持 path: / file: / tag: 前缀。",
   animateGraph: "持续动画",
+  colorLegendMore: "显示全部配色",
+  colorLegendCollapse: "收起配色",
 } as const

@@ -4,8 +4,12 @@
  * that bucket, clicking it again clears the filter.
  * @module dsh-obsidian-vault/ui/graph/GraphLegend
  */
+import { useState } from 'react'
 import type { Translate } from '../../i18n.ts'
 import { css } from '../theme.ts'
+
+/** Buckets shown before the legend collapses the rest behind a counter. */
+const VISIBLE_BUCKETS = 6
 
 /** One legend bucket. */
 export interface GraphLegendEntry {
@@ -32,10 +36,13 @@ export interface GraphLegendProps {
  * @param props - buckets, active filter and the filter callback.
  */
 export function GraphLegend({ t, mode, entries, active, onFilter }: GraphLegendProps): JSX.Element | null {
+  const [expanded, setExpanded] = useState(false)
   if (mode === 'uniform' || entries.length === 0) return null
+  const shown = expanded ? entries : entries.slice(0, VISIBLE_BUCKETS)
+  const hidden = entries.length - shown.length
   return (
     <div className={css.graphLegend} role="group" aria-label={t('nodeColor')}>
-      {entries.map((entry) => {
+      {shown.map((entry) => {
         const selected = active === entry.key
         return (
           <button
@@ -52,6 +59,19 @@ export function GraphLegend({ t, mode, entries, active, onFilter }: GraphLegendP
           </button>
         )
       })}
+      {hidden > 0 || expanded
+        ? (
+          <button
+            type="button"
+            className={css.graphLegendItem}
+            aria-expanded={expanded}
+            title={expanded ? t('colorLegendCollapse') : t('colorLegendMore')}
+            onClick={() => setExpanded(value => !value)}
+          >
+            {expanded ? t('colorLegendCollapse') : `+${hidden}`}
+          </button>
+        )
+        : null}
     </div>
   )
 }

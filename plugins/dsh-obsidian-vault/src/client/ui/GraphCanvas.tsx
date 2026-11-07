@@ -134,10 +134,21 @@ export function GraphCanvas(props: GraphCanvasProps): JSX.Element {
         const labelNodes = current.positions.current.filter(node =>
           node.x >= view.left - margin && node.x <= view.right + margin
           && node.y >= view.top - margin && node.y <= view.bottom + margin)
+        const hovered = drag.hover
+        const neighbours = hovered === undefined
+          ? undefined
+          : new Set(current.edges.current.flatMap(edge =>
+            edge.source === hovered ? [edge.target] : edge.target === hovered ? [edge.source] : []))
         labels = layoutLabels(
           labelNodes,
           text => context.measureText(text).width * labelScale,
-          { zoom, hover: drag.hover, textFade: current.settings.current.display.textFade, labelScale },
+          {
+            zoom,
+            hover: hovered,
+            textFade: current.settings.current.display.textFade,
+            labelScale,
+            ...(neighbours === undefined ? {} : { neighbours }),
+          },
         )
       }
       if (ticks % 30 === 0) {

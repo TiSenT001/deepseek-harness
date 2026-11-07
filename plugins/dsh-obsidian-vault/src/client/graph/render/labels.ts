@@ -21,6 +21,8 @@ export interface LabelOptions {
   readonly hover?: string
   /** Text-fade threshold from display settings (0 … 0.9). */
   readonly textFade?: number
+  /** Neighbours of the hovered node, so focus reveals their names too. */
+  readonly neighbours?: ReadonlySet<string>
   /**
    * World-units per screen-pixel factor the label font is drawn with; at
    * zoom < 1 the font counter-scales (Obsidian keeps labels screen-sized), so
@@ -55,7 +57,7 @@ export function layoutLabels(
   measure: (text: string) => number,
   options: LabelOptions,
 ): readonly LabelBox[] {
-  const { zoom, hover, textFade = 0, labelScale = 1 } = options
+  const { zoom, hover, textFade = 0, labelScale = 1, neighbours } = options
   // Below threshold we only show the hovered node's label.
   if (zoom <= labelThreshold(textFade)) {
     if (hover === undefined) return []
@@ -69,6 +71,13 @@ export function layoutLabels(
   const minWidth = 20 * labelScale
   const maxWidth = 140 * labelScale
   const ranked = [...nodes].sort((left, right) => right.degree - left.degree)
+  // Neighbours of the hovered node jump the queue so a hover explains the
+  // whole neighbourhood, not just the node under the pointer.
+  const focused = neighbours === undefined
+    ? ranked
+    : [...ranked].sort((left, right) =>
+      Number(neighbours.has(right.path)) - Number(neighbours.has(left.path))
+      || right.degree - left.degree)
   const taken: Array<{ x1: number; x2: number; y1: number; y2: number }> = []
   const labels: LabelBox[] = []
   // Ensure the hovered node is drawn even if it overlaps, by reserving its
@@ -87,7 +96,7 @@ export function layoutLabels(
       labels.push({ path: node.path, title: text, x: node.x, y: node.y, radius: node.radius })
     }
   }
-  for (const node of ranked) {
+  for (const node of focused) {
     if (labels.length >= budget) break
     if (node.path === hover) continue
     const text = node.title.length > 18 ? `${node.title.slice(0, 17)}…` : node.title

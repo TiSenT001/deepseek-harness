@@ -9,9 +9,8 @@ import type { GraphNodeDto } from '../../protocol.ts'
 import type { Translate } from '../i18n.ts'
 import { GraphCanvas } from './GraphCanvas.tsx'
 import { GraphSettingsPanel } from './GraphSettingsPanel.tsx'
-import { GraphLegend, type GraphLegendEntry } from './graph/GraphLegend.tsx'
-import { folderColor, folderOf, tagColor } from '../graph/render/colors.ts'
-import { groupColorOf } from '../graph/render/group-color.ts'
+import { GraphLegend } from './graph/GraphLegend.tsx'
+import { legendEntries } from '../graph/legend.ts'
 import { GraphToolbar } from './GraphToolbar.tsx'
 import { useGraphCamera, type GraphCamera } from './graph/useGraphCamera.ts'
 import { useGraphData } from './graph/useGraphData.ts'
@@ -93,29 +92,7 @@ export function GraphView(props: GraphViewProps): JSX.Element {
   }
 
   const colorMode = data.settings.display.colorBy
-  const legend = useMemo<readonly GraphLegendEntry[]>(() => {
-    if (colorMode === 'uniform') return []
-    const buckets = new Map<string, { count: number; color: string }>()
-    for (const node of data.visible.nodes) {
-      if (node.kind !== 'note') continue
-      const key = colorMode === 'tag' ? node.tags?.[0] : folderOf(node.path)
-      if (key === undefined || key.length === 0 || key === '(root)') continue
-      const current = buckets.get(key)
-      if (current === undefined) {
-        const override = groupColorOf(data.settings, node.title, node.path, node.tags ?? [])
-        buckets.set(key, {
-          count: 1,
-          color: override ?? (colorMode === 'tag' ? tagColor(key) : folderColor(key)),
-        })
-      } else {
-        current.count += 1
-      }
-    }
-    return [...buckets.entries()]
-      .sort((left, right) => right[1].count - left[1].count || left[0].localeCompare(right[0]))
-      .slice(0, 6)
-      .map(([key, bucket]) => ({ key, count: bucket.count, color: bucket.color }))
-  }, [colorMode, data.visible.nodes])
+  const legend = useMemo(() => legendEntries(data.visible.nodes, data.settings), [data.visible.nodes, data.settings])
   const activeLegend = colorMode === 'tag'
     ? (data.settings.filters.tag.length === 0 ? undefined : data.settings.filters.tag)
     : (data.settings.filters.query.startsWith('path:') ? data.settings.filters.query.slice(5) : undefined)

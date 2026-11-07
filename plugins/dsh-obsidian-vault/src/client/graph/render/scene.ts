@@ -185,7 +185,7 @@ export function drawScene(scene: SceneInput): SceneStats {
         ? colorByKey(mode, node.path, info?.tags, palette.node)
         : kindFill(palette, kind, active, isCenter))
     const anim = stage.node(node.path, {
-      dim: faded ? 0.2 : 1,
+      dim: faded ? 0.12 : 1,
       lift: active ? 15 / zoom : 0,
       tint: tintTarget,
     })
