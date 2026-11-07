@@ -9,8 +9,8 @@
  * 自启动动作，且必须由用户点击触发，不做开机自启。
  */
 import { spawn } from 'node:child_process'
-import { existsSync } from 'node:fs'
-import { join } from 'node:path'
+import { closeSync, existsSync, mkdirSync, openSync } from 'node:fs'
+import { dirname, join } from 'node:path'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 
 export const name = 'dsh-brain-console'
@@ -58,19 +58,43 @@ async function startManager(res: ServerResponse): Promise<void> {
     send(res, 200, { running: true, started: false })
     return
   }
-  const exe = join(BRAIN_ROOT, 'tools', 'launcher', 'brain_manager.exe')
   const script = join(BRAIN_ROOT, 'services', 'brain_manager.py')
-  if (!existsSync(exe) || !existsSync(script)) {
-    send(res, 500, { error: `launcher or script missing (${exe})` })
+  // 优先用「带名字的 pythonw 副本」：任务管理器按 exe 的 FileDescription 显示进程名，
+  // 直接跑 pythonw 会显示成 "Python"；副本由 tools/launcher/build_named_python.py 生成。
+  const named = join(BRAIN_ROOT, 'tools', 'launcher', 'py', 'brain_manager.exe')
+  const launcher = join(BRAIN_ROOT, 'tools', 'launcher', 'brain_manager.exe')
+  if (!existsSync(script)) {
+    send(res, 500, { error: `manager script missing (${script})` })
     return
   }
-  const child = spawn(exe, [PYTHONW, script], {
-    detached: true,
-    stdio: 'ignore',
-    windowsHide: true,
-    cwd: BRAIN_ROOT,
-  })
-  child.unref()
+  if (existsSync(named)) {
+    const logPath = join(BRAIN_ROOT, 'logs', 'brain_manager.log')
+    mkdirSync(dirname(logPath), { recursive: true })
+    const fd = openSync(logPath, 'a')
+    try {
+      const child = spawn(named, [script], {
+        detached: true,
+        stdio: ['ignore', fd, fd],
+        windowsHide: true,
+        cwd: BRAIN_ROOT,
+        env: { ...process.env, PATH: `${dirname(PYTHONW)};${process.env.PATH ?? ''}` },
+      })
+      child.unref()
+    } finally {
+      closeSync(fd)
+    }
+  } else if (existsSync(launcher)) {
+    const child = spawn(launcher, [PYTHONW, script], {
+      detached: true,
+      stdio: 'ignore',
+      windowsHide: true,
+      cwd: BRAIN_ROOT,
+    })
+    child.unref()
+  } else {
+    send(res, 500, { error: `launcher or named python missing (${launcher})` })
+    return
+  }
   // 管理器启动要恢复上次状态（逐个拉起服务），给 60s
   for (let i = 0; i < 120; i++) {
     await sleep(500)

@@ -1,6 +1,6 @@
 import { spawn } from "node:child_process";
-import { existsSync } from "node:fs";
-import { join } from "node:path";
+import { closeSync, existsSync, mkdirSync, openSync } from "node:fs";
+import { dirname, join } from "node:path";
 //#region src/index.ts
 /**
 * Host half of dsh-brain-console.
@@ -37,18 +37,45 @@ async function startManager(res) {
 		});
 		return;
 	}
-	const exe = join(BRAIN_ROOT, "tools", "launcher", "brain_manager.exe");
 	const script = join(BRAIN_ROOT, "services", "brain_manager.py");
-	if (!existsSync(exe) || !existsSync(script)) {
-		send(res, 500, { error: `launcher or script missing (${exe})` });
+	const named = join(BRAIN_ROOT, "tools", "launcher", "py", "brain_manager.exe");
+	const launcher = join(BRAIN_ROOT, "tools", "launcher", "brain_manager.exe");
+	if (!existsSync(script)) {
+		send(res, 500, { error: `manager script missing (${script})` });
 		return;
 	}
-	spawn(exe, [PYTHONW, script], {
+	if (existsSync(named)) {
+		const logPath = join(BRAIN_ROOT, "logs", "brain_manager.log");
+		mkdirSync(dirname(logPath), { recursive: true });
+		const fd = openSync(logPath, "a");
+		try {
+			spawn(named, [script], {
+				detached: true,
+				stdio: [
+					"ignore",
+					fd,
+					fd
+				],
+				windowsHide: true,
+				cwd: BRAIN_ROOT,
+				env: {
+					...process.env,
+					PATH: `${dirname(PYTHONW)};${process.env.PATH ?? ""}`
+				}
+			}).unref();
+		} finally {
+			closeSync(fd);
+		}
+	} else if (existsSync(launcher)) spawn(launcher, [PYTHONW, script], {
 		detached: true,
 		stdio: "ignore",
 		windowsHide: true,
 		cwd: BRAIN_ROOT
 	}).unref();
+	else {
+		send(res, 500, { error: `launcher or named python missing (${launcher})` });
+		return;
+	}
 	for (let i = 0; i < 120; i++) {
 		await sleep(500);
 		if (await managerAlive()) {

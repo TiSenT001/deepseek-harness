@@ -60,6 +60,12 @@ CORS：仅放行 `http://127.0.0.1:*` / `http://localhost:*`。
 manager 退出时按 `atexit` 回收。`body_daemon` 在被接管时（环境变量
 `BRAIN_SUPERVISED_BY=brain_manager`）**只跑 cron，不再起停服务**。
 
+**任务管理器里的进程名**：服务进程直接用 `tools/launcher/py/<name>.exe`——由
+`tools/launcher/build_named_python.py` 生成的 pythonw 副本，FileDescription 写成
+`TiSenT Brain - <name>`、图标换成 `brain.ico`，所以任务管理器里按服务名显示，而不是清一色
+"Python"。副本不在解释器目录里，管理器拉起时把解释器目录补进子进程 `PATH`（解析
+python311.dll 与标准库）；副本是构建产物，不进 git（`tools/launcher/py/` 已忽略）。
+
 ## 图标
 
 `src/icon.tsx` → `BrainConsoleIcon`：**Lucide `waypoints`**（ISC，官方路径，非自绘）——四个节点由连接线串起来，
