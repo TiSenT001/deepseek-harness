@@ -728,6 +728,29 @@ const STYLES = `
   font-size: 12px;
   font-variant-numeric: tabular-nums;
 }
+.bc-dock-lines {
+  flex: none;
+  height: 24px;
+  padding: 0 6px;
+  border: 1px solid transparent;
+  border-radius: var(--dsw-radius-xs);
+  background: none;
+  color: var(--dsw-alias-label-secondary);
+  font: inherit;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+@media (hover: hover) {
+  .bc-dock-lines:hover {
+    border-color: var(--dsw-alias-border-l3);
+    color: var(--dsw-alias-label-primary);
+  }
+}
+.bc-dock-lines:focus-visible {
+  outline: var(--dsw-focus-ring-width) solid var(--dsw-focus-ring-color, var(--dsw-alias-state-business-primary));
+  outline-offset: 1px;
+}
 .bc-dock-body {
   height: 200px;
   margin: 0;

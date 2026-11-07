@@ -40,7 +40,8 @@ const API = 'http://127.0.0.1:19998'
 const POLL_MS = 5000
 
 /** 日志读取行数。 */
-const LOG_LINES = 120
+/** 日志一次读取的行数档位（点「N 行」循环）。 */
+const LOG_LINE_OPTIONS = [120, 300, 1000] as const
 
 /** 日志面板打开时的静默刷新间隔（毫秒）。 */
 const LOG_POLL_MS = 4000
@@ -201,6 +202,8 @@ export function ConsolePage(): JSX.Element {
   const [actionError, setActionError] = useState<string | null>(null)
   const [updatedAt, setUpdatedAt] = useState<string | null>(null)
   const [log, setLog] = useState<LogState | null>(null)
+  const [logLines, setLogLines] = useState<number>(LOG_LINE_OPTIONS[0])
+  const [logPaused, setLogPaused] = useState(false)
   const [autostart, setAutostart] = useState<{ supported: boolean; enabled: boolean } | null>(null)
   const [backupOpen, setBackupOpen] = useState(false)
   const [cacheOpen, setCacheOpen] = useState(false)
@@ -248,14 +251,14 @@ export function ConsolePage(): JSX.Element {
     return () => clearInterval(timer)
   }, [load, refreshHistory])
 
-  const readLog = useCallback(async (name: string, silent = false): Promise<void> => {
+  const readLog = useCallback(async (name: string, silent = false, lines = logLines): Promise<void> => {
     if (!silent) {
       setLog((previous) => previous?.name === name
         ? { ...previous, loading: true }
         : { name, text: '', at: '', loading: true })
     }
     try {
-      const answer = await jget<{ log: string }>(`/units/${name}/log?lines=${LOG_LINES}`)
+      const answer = await jget<{ log: string }>(`/units/${name}/log?lines=${lines}`)
       // 轮询回来时面板可能已经关了或换了单元：只更新还开着的那一个，避免它自己弹回来
       setLog((previous) => previous !== null && previous.name === name
         ? { name, text: answer.log || '（暂无日志）', at: formatClock(Date.now()), loading: false }
@@ -267,22 +270,30 @@ export function ConsolePage(): JSX.Element {
         ? { name, text: `读取失败：${reasonOf(error)}`, at: formatClock(Date.now()), loading: false }
         : previous)
     }
-  }, [])
+  }, [logLines])
 
-  // 日志面板开着时静默跟随：4 秒一次，不打断用户向上翻看
+  // 日志面板开着时静默跟随：4 秒一次，不打断用户向上翻看；暂停时完全停
   const logName = log?.name ?? null
   useEffect(() => {
-    if (logName === null) return
+    if (logName === null || logPaused) return
     const timer = setInterval(() => { void readLog(logName, true) }, LOG_POLL_MS)
     return () => clearInterval(timer)
-  }, [logName, readLog])
+  }, [logName, logPaused, readLog])
 
   const toggleLog = (name: string): void => {
     if (log?.name === name) {
       setLog(null)
       return
     }
+    setLogPaused(false)
     void readLog(name)
+  }
+
+  const cycleLogLines = (): void => {
+    const current = LOG_LINE_OPTIONS.indexOf(logLines as (typeof LOG_LINE_OPTIONS)[number])
+    const next = LOG_LINE_OPTIONS[(current + 1) % LOG_LINE_OPTIONS.length] ?? LOG_LINE_OPTIONS[0]
+    setLogLines(next)
+    if (log !== null) void readLog(log.name, true, next)
   }
 
   const act = async (name: string, action: UnitAction): Promise<void> => {
@@ -679,7 +690,11 @@ export function ConsolePage(): JSX.Element {
           text={log.text}
           loading={log.loading}
           readAt={log.at}
+          paused={logPaused}
+          lines={logLines}
           onRefresh={() => void readLog(log.name)}
+          onTogglePause={() => setLogPaused((paused) => !paused)}
+          onCycleLines={cycleLogLines}
           onClose={() => setLog(null)}
         />
       )}

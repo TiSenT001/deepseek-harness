@@ -7,7 +7,7 @@
  */
 import { useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { IconButton } from './IconButton.tsx'
-import { IconCheck, IconChevronDown, IconCopy, IconRefresh } from './primitives.ts'
+import { IconCheck, IconChevronDown, IconCopy, IconPause, IconPlay, IconRefresh } from './primitives.ts'
 
 export interface LogDockProps {
   /** 正在查看日志的单元名 */
@@ -18,8 +18,16 @@ export interface LogDockProps {
   loading: boolean
   /** 最近一次刷新的时刻文本；空串表示还没读到 */
   readAt: string
+  /** 自动刷新是否已暂停 */
+  paused: boolean
+  /** 当前请求的行数 */
+  lines: number
   /** 立即重新读取 */
   onRefresh: () => void
+  /** 暂停 / 继续自动刷新 */
+  onTogglePause: () => void
+  /** 切换行数（120 → 300 → 1000 循环） */
+  onCycleLines: () => void
   /** 收起面板 */
   onClose: () => void
 }
@@ -29,18 +37,20 @@ export interface LogDockProps {
  * @param props - 日志内容与回调
  * @returns 面板元素
  */
-export function LogDock({ name, text, loading, readAt, onRefresh, onClose }: LogDockProps): JSX.Element {
+export function LogDock({
+  name, text, loading, readAt, paused, lines, onRefresh, onTogglePause, onCycleLines, onClose,
+}: LogDockProps): JSX.Element {
   const body = useRef<HTMLPreElement | null>(null)
   const follow = useRef(true)
   const [filter, setFilter] = useState('')
   const [copied, setCopied] = useState(false)
 
-  const lines = useMemo(() => text.split('\n'), [text])
+  const allLines = useMemo(() => text.split('\n'), [text])
   const shownLines = useMemo(() => {
     const needle = filter.trim().toLowerCase()
-    if (needle === '') return lines
-    return lines.filter((line) => line.toLowerCase().includes(needle))
-  }, [lines, filter])
+    if (needle === '') return allLines
+    return allLines.filter((line) => line.toLowerCase().includes(needle))
+  }, [allLines, filter])
   const shown = shownLines.join('\n')
   const filtering = filter.trim() !== ''
 
@@ -89,7 +99,16 @@ export function LogDock({ name, text, loading, readAt, onRefresh, onClose }: Log
           onChange={(event) => setFilter(event.target.value)}
           onKeyDown={(event) => { if (event.key === 'Escape') setFilter('') }}
         />
-        {filtering && <span className="bc-dock-match">{shownLines.length} / {lines.length}</span>}
+        {filtering && <span className="bc-dock-match">{shownLines.length} / {allLines.length}</span>}
+        <button type="button" className="bc-dock-lines" onClick={onCycleLines} title="切换读取行数">
+          {lines} 行
+        </button>
+        <IconButton
+          label={paused ? '继续刷新' : '暂停刷新'}
+          icon={paused ? IconPlay : IconPause}
+          active={paused}
+          onClick={onTogglePause}
+        />
         <IconButton
           label={copied ? '已复制' : '复制日志'}
           icon={copied ? IconCheck : IconCopy}

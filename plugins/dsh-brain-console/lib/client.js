@@ -167,6 +167,8 @@ window.__ModuleLoader__.load({
 		const IconCopy = primitives.IconCopyOutlineRegular;
 		/** 对勾图标：复制成功的瞬时反馈。 */
 		const IconCheck = primitives.IconCheckOutlineRegular;
+		/** 暂停图标：日志面板停止自动刷新。 */
+		const IconPause = primitives.IconPauseOutlineRegular;
 		//#endregion
 		//#region src/ui/BackupDialog.tsx
 		/**
@@ -734,17 +736,17 @@ window.__ModuleLoader__.load({
 		* @param props - 日志内容与回调
 		* @returns 面板元素
 		*/
-		function LogDock({ name, text, loading, readAt, onRefresh, onClose }) {
+		function LogDock({ name, text, loading, readAt, paused, lines, onRefresh, onTogglePause, onCycleLines, onClose }) {
 			const body = (0, react.useRef)(null);
 			const follow = (0, react.useRef)(true);
 			const [filter, setFilter] = (0, react.useState)("");
 			const [copied, setCopied] = (0, react.useState)(false);
-			const lines = (0, react.useMemo)(() => text.split("\n"), [text]);
+			const allLines = (0, react.useMemo)(() => text.split("\n"), [text]);
 			const shownLines = (0, react.useMemo)(() => {
 				const needle = filter.trim().toLowerCase();
-				if (needle === "") return lines;
-				return lines.filter((line) => line.toLowerCase().includes(needle));
-			}, [lines, filter]);
+				if (needle === "") return allLines;
+				return allLines.filter((line) => line.toLowerCase().includes(needle));
+			}, [allLines, filter]);
 			const shown = shownLines.join("\n");
 			const filtering = filter.trim() !== "";
 			(0, react.useLayoutEffect)(() => {
@@ -807,8 +809,21 @@ window.__ModuleLoader__.load({
 							children: [
 								shownLines.length,
 								" / ",
-								lines.length
+								allLines.length
 							]
+						}),
+						/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("button", {
+							type: "button",
+							className: "bc-dock-lines",
+							onClick: onCycleLines,
+							title: "切换读取行数",
+							children: [lines, " 行"]
+						}),
+						/* @__PURE__ */ (0, react_jsx_runtime.jsx)(IconButton, {
+							label: paused ? "继续刷新" : "暂停刷新",
+							icon: paused ? IconPlay : IconPause,
+							active: paused,
+							onClick: onTogglePause
 						}),
 						/* @__PURE__ */ (0, react_jsx_runtime.jsx)(IconButton, {
 							label: copied ? "已复制" : "复制日志",
@@ -2167,6 +2182,29 @@ window.__ModuleLoader__.load({
   font-size: 12px;
   font-variant-numeric: tabular-nums;
 }
+.bc-dock-lines {
+  flex: none;
+  height: 24px;
+  padding: 0 6px;
+  border: 1px solid transparent;
+  border-radius: var(--dsw-radius-xs);
+  background: none;
+  color: var(--dsw-alias-label-secondary);
+  font: inherit;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+@media (hover: hover) {
+  .bc-dock-lines:hover {
+    border-color: var(--dsw-alias-border-l3);
+    color: var(--dsw-alias-label-primary);
+  }
+}
+.bc-dock-lines:focus-visible {
+  outline: var(--dsw-focus-ring-width) solid var(--dsw-focus-ring-color, var(--dsw-alias-state-business-primary));
+  outline-offset: 1px;
+}
 .bc-dock-body {
   height: 200px;
   margin: 0;
@@ -2246,7 +2284,12 @@ window.__ModuleLoader__.load({
 		/** 自动刷新间隔（毫秒）。 */
 		const POLL_MS = 5e3;
 		/** 日志读取行数。 */
-		const LOG_LINES = 120;
+		/** 日志一次读取的行数档位（点「N 行」循环）。 */
+		const LOG_LINE_OPTIONS = [
+			120,
+			300,
+			1e3
+		];
 		/** 日志面板打开时的静默刷新间隔（毫秒）。 */
 		const LOG_POLL_MS = 4e3;
 		const ACTION_LABEL = {
@@ -2371,6 +2414,8 @@ window.__ModuleLoader__.load({
 			const [actionError, setActionError] = (0, react.useState)(null);
 			const [updatedAt, setUpdatedAt] = (0, react.useState)(null);
 			const [log, setLog] = (0, react.useState)(null);
+			const [logLines, setLogLines] = (0, react.useState)(LOG_LINE_OPTIONS[0]);
+			const [logPaused, setLogPaused] = (0, react.useState)(false);
 			const [autostart, setAutostart] = (0, react.useState)(null);
 			const [backupOpen, setBackupOpen] = (0, react.useState)(false);
 			const [cacheOpen, setCacheOpen] = (0, react.useState)(false);
@@ -2411,7 +2456,7 @@ window.__ModuleLoader__.load({
 				const timer = setInterval(() => void load(), POLL_MS);
 				return () => clearInterval(timer);
 			}, [load, refreshHistory]);
-			const readLog = (0, react.useCallback)(async (name, silent = false) => {
+			const readLog = (0, react.useCallback)(async (name, silent = false, lines = logLines) => {
 				if (!silent) setLog((previous) => previous?.name === name ? {
 					...previous,
 					loading: true
@@ -2422,7 +2467,7 @@ window.__ModuleLoader__.load({
 					loading: true
 				});
 				try {
-					const answer = await jget(`/units/${name}/log?lines=${LOG_LINES}`);
+					const answer = await jget(`/units/${name}/log?lines=${lines}`);
 					setLog((previous) => previous !== null && previous.name === name ? {
 						name,
 						text: answer.log || "（暂无日志）",
@@ -2438,21 +2483,31 @@ window.__ModuleLoader__.load({
 						loading: false
 					} : previous);
 				}
-			}, []);
+			}, [logLines]);
 			const logName = log?.name ?? null;
 			(0, react.useEffect)(() => {
-				if (logName === null) return;
+				if (logName === null || logPaused) return;
 				const timer = setInterval(() => {
 					readLog(logName, true);
 				}, LOG_POLL_MS);
 				return () => clearInterval(timer);
-			}, [logName, readLog]);
+			}, [
+				logName,
+				logPaused,
+				readLog
+			]);
 			const toggleLog = (name) => {
 				if (log?.name === name) {
 					setLog(null);
 					return;
 				}
+				setLogPaused(false);
 				readLog(name);
+			};
+			const cycleLogLines = () => {
+				const next = LOG_LINE_OPTIONS[(LOG_LINE_OPTIONS.indexOf(logLines) + 1) % LOG_LINE_OPTIONS.length] ?? LOG_LINE_OPTIONS[0];
+				setLogLines(next);
+				if (log !== null) readLog(log.name, true, next);
 			};
 			const act = async (name, action) => {
 				setBusy(`${name}:${action}`);
@@ -2832,7 +2887,11 @@ window.__ModuleLoader__.load({
 						text: log.text,
 						loading: log.loading,
 						readAt: log.at,
+						paused: logPaused,
+						lines: logLines,
 						onRefresh: () => void readLog(log.name),
+						onTogglePause: () => setLogPaused((paused) => !paused),
+						onCycleLines: cycleLogLines,
 						onClose: () => setLog(null)
 					})
 				]
