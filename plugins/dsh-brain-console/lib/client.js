@@ -973,7 +973,7 @@ window.__ModuleLoader__.load({
 		* @param props - 单元快照与回调
 		* @returns 卡片元素
 		*/
-		function ServiceCard({ unit, now, busyAction, disabled, logOpen, onLog, onAction, onToggleEnabled, onAdopt }) {
+		function ServiceCard({ unit, now, busyAction, disabled, logOpen, dependents, onLog, onAction, onToggleEnabled, onAdopt }) {
 			const details = [];
 			if (unit.running) {
 				if (unit.state === "异常" && unit.health_error) details.push(`健康探测失败：${unit.health_error}`);
@@ -985,6 +985,9 @@ window.__ModuleLoader__.load({
 				details.push(unit.enabled ? "随管理器启动" : "不自动启动");
 				if (typeof unit.last_exit_code === "number") details.push(`退出码 ${unit.last_exit_code}`);
 			}
+			const depends = unit.depends ?? [];
+			if (depends.length > 0) details.push(`依赖 ${depends.join("、")}`);
+			if (dependents.length > 0) details.push(`被 ${dependents.join("、")} 依赖`);
 			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("article", {
 				className: "bc-card",
 				children: [
@@ -2291,7 +2294,7 @@ window.__ModuleLoader__.load({
 			if (unit !== name) return null;
 			return action === "start" || action === "stop" || action === "restart" ? action : null;
 		}
-		function UnitSection({ group, members, now, busy, logName, onLog, onAction, onStartAll, onStopAll, onRestartAll, onToggleEnabled, onAdopt }) {
+		function UnitSection({ group, members, now, busy, logName, dependents, onLog, onAction, onStartAll, onStopAll, onRestartAll, onToggleEnabled, onAdopt }) {
 			const running = members.filter((unit) => unit.running).length;
 			const stopped = members.length - running;
 			const abnormal = members.filter((unit) => unit.state !== "运行中" && unit.state !== "已停止").length;
@@ -2349,6 +2352,7 @@ window.__ModuleLoader__.load({
 						busyAction: busyActionOf(busy, unit.name),
 						disabled: busy !== null,
 						logOpen: logName === unit.name,
+						dependents: dependents[unit.name] ?? [],
 						onLog,
 						onAction,
 						onToggleEnabled,
@@ -2604,7 +2608,31 @@ window.__ModuleLoader__.load({
 			const running = units.filter((unit) => unit.running).length;
 			const groups = Array.from(new Set(units.map((unit) => unit.group)));
 			const autostartOn = autostart?.supported === true && autostart.enabled;
+			const dependentsByUnit = {};
+			for (const unit of units) for (const dependency of unit.depends ?? []) dependentsByUnit[dependency] = [...dependentsByUnit[dependency] ?? [], unit.name];
 			const now = Date.now();
+			(0, react.useEffect)(() => {
+				const onKeyDown = (event) => {
+					const target = event.target instanceof HTMLElement ? event.target : null;
+					const typing = target !== null && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable);
+					if (event.key === "Escape") {
+						if (document.querySelector("[role=\"dialog\"]") !== null) return;
+						if (log !== null) setLog(null);
+						return;
+					}
+					if (typing || event.ctrlKey || event.metaKey || event.altKey) return;
+					if (event.key === "r") {
+						event.preventDefault();
+						load(true);
+					}
+					if (event.key === "/") {
+						event.preventDefault();
+						document.querySelector(".bc-dock-filter")?.focus();
+					}
+				};
+				window.addEventListener("keydown", onKeyDown);
+				return () => window.removeEventListener("keydown", onKeyDown);
+			}, [load, log]);
 			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
 				className: "bc-root",
 				children: [
@@ -2733,6 +2761,7 @@ window.__ModuleLoader__.load({
 									now,
 									busy,
 									logName: log?.name ?? null,
+									dependents: dependentsByUnit,
 									onLog: toggleLog,
 									onAction: (name, action) => void act(name, action),
 									onStartAll: (group) => void startGroup(group),

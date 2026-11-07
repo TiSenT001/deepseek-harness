@@ -28,6 +28,8 @@ export interface Unit {
   health_error?: string | null
   /** 管理器子进程意外退出时的退出码；在跑或人工停止时为 null */
   last_exit_code?: number | null
+  /** 启动顺序依赖的单元名（先启依赖） */
+  depends?: string[]
   /** 启动时间文本，形如 `2026-11-07 17:00:30`；未运行为 null */
   started_at: string | null
   /** 进程号；部分状态不回报 */

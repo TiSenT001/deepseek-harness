@@ -26,6 +26,8 @@ export interface ServiceCardProps {
   disabled: boolean
   /** 该单元的日志面板是否已打开 */
   logOpen: boolean
+  /** 依赖本单元的其它单元名（由页面反查得到） */
+  dependents: string[]
   /** 切换日志面板 */
   onLog: (name: string) => void
   /** 下发启停动作 */
@@ -42,7 +44,7 @@ export interface ServiceCardProps {
  * @returns 卡片元素
  */
 export function ServiceCard({
-  unit, now, busyAction, disabled, logOpen, onLog, onAction, onToggleEnabled, onAdopt,
+  unit, now, busyAction, disabled, logOpen, dependents, onLog, onAction, onToggleEnabled, onAdopt,
 }: ServiceCardProps): JSX.Element {
   const details: string[] = []
   if (unit.running) {
@@ -55,6 +57,9 @@ export function ServiceCard({
     details.push(unit.enabled ? '随管理器启动' : '不自动启动')
     if (typeof unit.last_exit_code === 'number') details.push(`退出码 ${unit.last_exit_code}`)
   }
+  const depends = unit.depends ?? []
+  if (depends.length > 0) details.push(`依赖 ${depends.join('、')}`)
+  if (dependents.length > 0) details.push(`被 ${dependents.join('、')} 依赖`)
 
   return (
     <article className="bc-card">

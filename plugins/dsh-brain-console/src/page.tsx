@@ -111,6 +111,8 @@ interface UnitSectionProps {
   now: number
   busy: string | null
   logName: string | null
+  /** 依赖关系反查：单元名 → 依赖它的单元名 */
+  dependents: Record<string, string[]>
   onLog: (name: string) => void
   onAction: (name: string, action: UnitAction) => void
   /** 启动该分组里所有已停止的单元 */
@@ -126,7 +128,8 @@ interface UnitSectionProps {
 }
 
 function UnitSection({
-  group, members, now, busy, logName, onLog, onAction, onStartAll, onStopAll, onRestartAll, onToggleEnabled, onAdopt,
+  group, members, now, busy, logName, dependents, onLog, onAction,
+  onStartAll, onStopAll, onRestartAll, onToggleEnabled, onAdopt,
 }: UnitSectionProps): JSX.Element {
   const running = members.filter((unit) => unit.running).length
   const stopped = members.length - running
@@ -176,6 +179,7 @@ function UnitSection({
             busyAction={busyActionOf(busy, unit.name)}
             disabled={busy !== null}
             logOpen={logName === unit.name}
+            dependents={dependents[unit.name] ?? []}
             onLog={onLog}
             onAction={onAction}
             onToggleEnabled={onToggleEnabled}
@@ -467,7 +471,39 @@ export function ConsolePage(): JSX.Element {
   const running = units.filter((unit) => unit.running).length
   const groups = Array.from(new Set(units.map((unit) => unit.group)))
   const autostartOn = autostart?.supported === true && autostart.enabled
+  // 依赖反查：brain_server 被 mcp_server 依赖 → { brain_server: ['mcp_server'] }
+  const dependentsByUnit: Record<string, string[]> = {}
+  for (const unit of units) {
+    for (const dependency of unit.depends ?? []) {
+      dependentsByUnit[dependency] = [...(dependentsByUnit[dependency] ?? []), unit.name]
+    }
+  }
   const now = Date.now()
+
+  // 快捷键：r 刷新、/ 聚焦日志过滤、Esc 收起日志（有对话框时让对话框自己处理）
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent): void => {
+      const target = event.target instanceof HTMLElement ? event.target : null
+      const typing = target !== null
+        && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)
+      if (event.key === 'Escape') {
+        if (document.querySelector('[role="dialog"]') !== null) return
+        if (log !== null) setLog(null)
+        return
+      }
+      if (typing || event.ctrlKey || event.metaKey || event.altKey) return
+      if (event.key === 'r') {
+        event.preventDefault()
+        void load(true)
+      }
+      if (event.key === '/') {
+        event.preventDefault()
+        document.querySelector<HTMLInputElement>('.bc-dock-filter')?.focus()
+      }
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [load, log])
 
   return (
     <div className="bc-root">
@@ -559,6 +595,7 @@ export function ConsolePage(): JSX.Element {
                 now={now}
                 busy={busy}
                 logName={log?.name ?? null}
+                dependents={dependentsByUnit}
                 onLog={toggleLog}
                 onAction={(name, action) => void act(name, action)}
                 onStartAll={(group) => void startGroup(group)}
