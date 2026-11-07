@@ -26,24 +26,21 @@ test('seeds a new vault with the conventions structure', async () => {
   try {
     const result = await seedVault(path, '测试库', scaffold)
     assert.equal(result.seeded, true)
-    assert.ok(result.files >= 15, `seeded ${result.files} files`)
+    assert.ok(result.files >= 3, `seeded ${result.files} files`)
 
     for (const relative of [
-      '知识库总览/测试库.md',
       '知识库总览/笔记编写规范.md',
       '知识库总览/kb-conventions.md',
-      '知识库总览/关键词快速检索.md',
-      'TA技术美术/TA技术美术.md',
-      '收件箱/收件箱说明.md',
-      '附件/附件说明.md',
-      'Pur画布/画布说明.md',
+      '知识库总览/起步说明.md',
     ]) {
       assert.ok(existsSync(join(path, relative)), `missing ${relative}`)
     }
+    // The scaffold carries the rules only: no domain folders or domain MOCs.
+    assert.equal(existsSync(join(path, 'TA技术美术')), false)
+    assert.equal(existsSync(join(path, '知识库总览/测试库.md')), false)
 
-    const master = await readFile(join(path, '知识库总览/测试库.md'), 'utf8')
-    assert.ok(master.includes('# 测试库'))
-    assert.ok(master.includes('[[笔记编写规范]]'))
+    const starter = await readFile(join(path, '知识库总览/起步说明.md'), 'utf8')
+    assert.ok(starter.includes('没有预建领域目录和领域 MOC'))
     const spec = await readFile(join(path, '知识库总览/笔记编写规范.md'), 'utf8')
     assert.ok(spec.includes('测试库/'), 'structure tree uses the vault name')
     assert.equal(spec.includes('{{VAULT_NAME}}'), false)
@@ -91,7 +88,7 @@ test('seeding twice never overwrites the first vault', async () => {
   const { path, cleanup } = await tempDir()
   try {
     await seedVault(path, '测试库', scaffold)
-    const edited = join(path, '知识库总览/测试库.md')
+    const edited = join(path, '知识库总览/起步说明.md')
     await writeFile(edited, '# 我的手写版本\n')
     const second = await seedVault(path, '测试库', scaffold)
     assert.equal(second.seeded, false)
@@ -107,7 +104,8 @@ test('a missing name falls back to the directory name', async () => {
     const result = await seedVault(path, '   ', scaffold)
     assert.equal(result.seeded, true)
     const directoryName = path.slice(path.lastIndexOf('\\') + 1)
-    assert.ok(existsSync(join(path, '知识库总览', `${directoryName}.md`)))
+    const spec = await readFile(join(path, '知识库总览/笔记编写规范.md'), 'utf8')
+    assert.ok(spec.includes(`${directoryName}/`), 'the structure tree uses the directory name')
   } finally {
     await cleanup()
   }

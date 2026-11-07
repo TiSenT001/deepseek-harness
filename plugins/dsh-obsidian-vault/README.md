@@ -277,16 +277,17 @@ npm run bench:vault -- --json                        # 机器可读
 
 ## 新建知识库自带规范
 
-插件的「新建知识库」不再得到空目录：`create()` 会从 `scaffold/vault/` 复刻一套
-知识库规范（结构、主控 MOC、七个领域 MOC、速查、检索、仪表盘、收件箱/附件/画布说明）。
+插件的「新建知识库」不再得到空目录：`create()` 会从 `scaffold/vault/` 复刻
+**一份笔记编写规范**，但不会预建领域目录和领域 MOC——领域结构由使用者按自己的知识领域创建。
 
 - 只在目录**没有任何 `.md`** 时注入；打开已有库绝不写入文件
 - 文件名与正文里的 `{{VAULT_NAME}}` 会替换成新库名，`{{DATE}}` 替换成当天日期
 - 文件已存在时以用户文件为准，不覆盖
 - 同时复制一份 `.obsidian` 预设：`app.json`（附件目录、链接行为）、`core-plugins.json`、
-  `graph.json`（领域分组配色）、`bookmarks.json`
+  `graph.json`（只保留通用显示设置，不含原作者的领域分组配色）、`bookmarks.json`
 - 不带 `daily-notes.json` / `templates.json`（日记与模板属于个人工作流），也不带
   `workspace.json`、`community-plugins.json`、`plugins/`（会话状态与第三方插件）
+- 规范文件只有：`笔记编写规范.md`、`kb-conventions.md`、`起步说明.md`
 
 更新规范时：修改 `scaffold/vault/知识库总览/笔记编写规范.md`（和 `kb-conventions.md`），
 跑 `npm test`（含 `tests/vault-scaffold.test.ts`）。`scaffold/` 会随 npm 包发布。

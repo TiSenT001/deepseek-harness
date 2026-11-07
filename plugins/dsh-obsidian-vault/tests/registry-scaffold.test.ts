@@ -4,7 +4,7 @@
  * @module dsh-obsidian-vault/tests/registry-scaffold
  */
 import assert from 'node:assert/strict'
-import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
+import { mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { existsSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -35,12 +35,10 @@ test('creating a vault seeds the conventions scaffold', async () => {
     await registry.create(created, '新知识库')
 
     assert.deepEqual(errors, [])
-    const master = await readFile(join(created, '知识库总览', '新知识库.md'), 'utf8')
-    assert.ok(master.includes('# 新知识库'))
+    assert.ok(existsSync(join(created, '知识库总览', '笔记编写规范.md')))
+    assert.ok(existsSync(join(created, '知识库总览', '起步说明.md')))
     const names = registry.vault.tree().map(node => node.name).sort()
-    assert.ok(names.includes('知识库总览'))
-    assert.ok(names.includes('TA技术美术'))
-    assert.ok(names.includes('收件箱'))
+    assert.deepEqual(names, ['知识库总览'])
     assert.ok(existsSync(join(created, '.obsidian', 'app.json')))
     assert.equal(existsSync(join(created, '.obsidian', 'daily-notes.json')), false)
     await registry.close()
