@@ -29,7 +29,10 @@
 [CmdletBinding()]
 param(
   [switch]$NoKill,
-  [switch]$DryRun
+  [switch]$DryRun,
+  # GUI 终端的默认起始目录。DSH 的终端控制器优先读这个环境变量；
+  # 不设时退回会话工作目录（本会话是 worktree，会出现"终端打开位置变了"）。
+  [string]$TerminalCwd = 'G:\'
 )
 
 $ErrorActionPreference = 'SilentlyContinue'
@@ -105,6 +108,9 @@ Write-Log 'port 3080 free, starting server'
 
 # 3) 拉起新服务器并等 URL
 $env:PATH = $NodeDir + ';' + $PnpmDir + ';' + $env:PATH
+# GUI 终端默认起在 $TerminalCwd（终端控制器优先读这个变量）
+if ($TerminalCwd -ne '') { $env:DSH_TERMINAL_CWD = $TerminalCwd }
+Write-Log ('terminal cwd: ' + $env:DSH_TERMINAL_CWD)
 $url = $null
 for ($try = 1; $try -le 3; $try++) {
   $outLog = Join-Path $OutDir ('dsh-server-out-' + $try + '.log')
