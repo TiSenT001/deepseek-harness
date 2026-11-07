@@ -6,6 +6,7 @@
 import type { ReactNode } from 'react'
 import { BUILD_ID } from './build.ts'
 import { createT, detectLang } from './i18n.ts'
+import { createNoteTriggerSource } from './composer/note-trigger.ts'
 import { VaultPage } from './ui/VaultPage.tsx'
 
 console.info('[obsidian-vault] build', BUILD_ID)
@@ -33,6 +34,12 @@ export interface ClientContext {
   }
   effect(callback: () => (() => void) | void, label?: string): () => void
   get(name: string): unknown
+  /**
+   * Run `callback` once the named services exist, waiting for late providers.
+   * @param deps - service names to wait for.
+   * @param callback - the scope that owns the contribution.
+   */
+  inject?(deps: readonly string[], callback: (scope: ClientContext) => void): unknown
 }
 
 /** The directory-picker Remote result, as the gateway shapes it. */
@@ -86,6 +93,28 @@ export function apply(ctx: ClientContext): void {
     )),
     'obsidian-vault: page',
   )
+  installNoteTrigger(ctx)
+}
+
+/**
+ * Register the `@笔记` composer source once the input-trigger service exists.
+ * A composition without the conversation input surface simply never calls back.
+ * @param ctx - Client plugin context.
+ */
+function installNoteTrigger(ctx: ClientContext): void {
+  const register = (scope: ClientContext): void => {
+    const service = scope.get('inputTriggers') as { registerSource?: (source: unknown) => () => void } | undefined
+    if (service?.registerSource === undefined) return
+    scope.effect(
+      () => service.registerSource?.(createNoteTriggerSource()),
+      'obsidian-vault: @ note source',
+    )
+  }
+  if (ctx.inject !== undefined) {
+    ctx.inject(['inputTriggers'], register)
+    return
+  }
+  register(ctx)
 }
 
 /**
