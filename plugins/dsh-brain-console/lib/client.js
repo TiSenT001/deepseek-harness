@@ -992,6 +992,7 @@ window.__ModuleLoader__.load({
 		function FailedEdgesDialog({ load, onClose }) {
 			const [listing, setListing] = (0, react.useState)(null);
 			const [error, setError] = (0, react.useState)(null);
+			const [copied, setCopied] = (0, react.useState)(false);
 			(0, react.useEffect)(() => {
 				(async () => {
 					try {
@@ -1001,12 +1002,35 @@ window.__ModuleLoader__.load({
 					}
 				})();
 			}, [load]);
-			const footer = /* @__PURE__ */ (0, react_jsx_runtime.jsx)(Button, {
+			const copyList = async () => {
+				if (listing === null || listing.edges.length === 0) return;
+				const header = "source	target	failures	weight	confidence	origin	last_seen";
+				const rows = listing.edges.map((edge) => [
+					edge.source,
+					edge.target,
+					String(edge.failures),
+					String(edge.weight),
+					String(edge.confidence),
+					edge.origin ?? "",
+					edge.last_seen ?? ""
+				].join("	"));
+				try {
+					await navigator.clipboard.writeText([header, ...rows].join("\n"));
+					setCopied(true);
+					window.setTimeout(() => setCopied(false), 1500);
+				} catch {}
+			};
+			const footer = /* @__PURE__ */ (0, react_jsx_runtime.jsxs)(react_jsx_runtime.Fragment, { children: [listing !== null && listing.edges.length > 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsx)(Button, {
+				size: "sm",
+				variant: "ghost",
+				onClick: () => void copyList(),
+				children: copied ? "已复制" : `复制清单（${listing.edges.length} 条）`
+			}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)(Button, {
 				size: "sm",
 				variant: "ghost",
 				onClick: onClose,
 				children: "关闭"
-			});
+			})] });
 			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)(Modal, {
 				open: true,
 				onClose,
@@ -1980,6 +2004,7 @@ window.__ModuleLoader__.load({
 			if (dependents.length > 0) details.push(`被 ${dependents.join("、")} 依赖`);
 			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("article", {
 				className: "bc-card",
+				"data-abnormal": unit.running && unit.state === "异常" ? "true" : void 0,
 				children: [
 					/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
 						className: "bc-card-top",
@@ -2067,6 +2092,11 @@ window.__ModuleLoader__.load({
 			const running = members.filter((unit) => unit.running).length;
 			const stopped = members.length - running;
 			const abnormal = members.filter((unit) => unit.state !== "运行中" && unit.state !== "已停止").length;
+			const severity = (unit) => {
+				if (unit.state !== "运行中" && unit.state !== "已停止") return 0;
+				return unit.running ? 1 : 2;
+			};
+			const ordered = [...members].sort((left, right) => severity(left) - severity(right));
 			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("section", {
 				className: "bc-section",
 				children: [/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
@@ -2115,7 +2145,7 @@ window.__ModuleLoader__.load({
 					]
 				}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
 					className: "bc-grid",
-					children: members.map((unit) => /* @__PURE__ */ (0, react_jsx_runtime.jsx)(ServiceCard, {
+					children: ordered.map((unit) => /* @__PURE__ */ (0, react_jsx_runtime.jsx)(ServiceCard, {
 						unit,
 						now,
 						busyAction: busyActionOf(busy, unit.name),
@@ -2356,6 +2386,29 @@ window.__ModuleLoader__.load({
     border-color: var(--dsw-alias-border-l4);
   }
 }
+/* 顶部异常提示 chip：只有运行中但健康探测失败时出现 */
+.bc-header-alert {
+  flex: none;
+  height: 22px;
+  padding: 0 8px;
+  border: 1px solid var(--dsw-alias-state-error-primary);
+  border-radius: var(--dsw-radius-full);
+  background: var(--dsw-alias-state-error-tertiary);
+  color: var(--dsw-alias-state-error-primary);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+@media (hover: hover) {
+  .bc-header-alert:hover {
+    background: var(--dsw-alias-state-error-secondary);
+  }
+}
+.bc-header-alert:focus-visible {
+  outline: var(--dsw-focus-ring-width) solid var(--dsw-focus-ring-color, var(--dsw-alias-state-business-primary));
+  outline-offset: 1px;
+}
+
 /* 指标卡里的迷你趋势线 */
 .bc-spark {
   display: block;
@@ -3135,6 +3188,13 @@ window.__ModuleLoader__.load({
 				}
 			};
 			const running = feed.units.filter((unit) => unit.running).length;
+			const abnormalCount = feed.units.filter((unit) => unit.state !== "运行中" && unit.state !== "已停止").length;
+			const focusAbnormal = () => {
+				document.querySelector("article.bc-card[data-abnormal=\"true\"]")?.scrollIntoView({
+					behavior: "smooth",
+					block: "center"
+				});
+			};
 			const groups = Array.from(new Set(feed.units.map((unit) => unit.group)));
 			const autostartOn = feed.autostart?.supported === true && feed.autostart.enabled;
 			const dependentsByUnit = {};
@@ -3206,6 +3266,13 @@ window.__ModuleLoader__.load({
 												"data-autostart": autostartOn ? "on" : "off",
 												children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { className: "bc-count-dot" }), feed.units.length === 0 ? "—" : `${running} / ${feed.units.length} 运行中`]
 											})
+										}),
+										abnormalCount > 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("button", {
+											type: "button",
+											className: "bc-header-alert",
+											title: "定位到第一个异常单元",
+											onClick: focusAbnormal,
+											children: [abnormalCount, " 个异常"]
 										}),
 										/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
 											className: "bc-header-actions",

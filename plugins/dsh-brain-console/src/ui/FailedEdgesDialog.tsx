@@ -31,6 +31,7 @@ function shortName(id: string): string {
 export function FailedEdgesDialog({ load, onClose }: FailedEdgesDialogProps): JSX.Element {
   const [listing, setListing] = useState<FailedEdgesListing | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [copied, setCopied] = useState(false)
 
   useEffect(() => {
     void (async () => {
@@ -42,7 +43,33 @@ export function FailedEdgesDialog({ load, onClose }: FailedEdgesDialogProps): JS
     })()
   }, [load])
 
-  const footer = <Button size="sm" variant="ghost" onClick={onClose}>关闭</Button>
+  // 复制成 TSV（贴进表格/Excel 就能用）：表头 + 每条边一行
+  const copyList = async (): Promise<void> => {
+    if (listing === null || listing.edges.length === 0) return
+    const header = 'source\ttarget\tfailures\tweight\tconfidence\torigin\tlast_seen'
+    const rows = listing.edges.map((edge) => [
+      edge.source, edge.target, String(edge.failures), String(edge.weight),
+      String(edge.confidence), edge.origin ?? '', edge.last_seen ?? '',
+    ].join('\t'))
+    try {
+      await navigator.clipboard.writeText([header, ...rows].join('\n'))
+      setCopied(true)
+      window.setTimeout(() => setCopied(false), 1500)
+    } catch {
+      // 剪贴板不可用时保持原样，避免误报已复制
+    }
+  }
+
+  const footer = (
+    <>
+      {listing !== null && listing.edges.length > 0 && (
+        <Button size="sm" variant="ghost" onClick={() => void copyList()}>
+          {copied ? '已复制' : `复制清单（${listing.edges.length} 条）`}
+        </Button>
+      )}
+      <Button size="sm" variant="ghost" onClick={onClose}>关闭</Button>
+    </>
+  )
   const description = listing === null
     ? '读取中…'
     : `failure_count > 0 的边 · 实时 ${listing.total ?? '—'} 条`

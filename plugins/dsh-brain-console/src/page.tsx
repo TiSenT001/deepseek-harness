@@ -135,6 +135,12 @@ export function ConsolePage(): JSX.Element {
   }
 
   const running = feed.units.filter((unit) => unit.running).length
+  // 运行中但健康探测失败的单元：顶部给一个红 chip，点一下滚到第一张异常卡
+  const abnormalCount = feed.units.filter((unit) => unit.state !== '运行中' && unit.state !== '已停止').length
+  const focusAbnormal = (): void => {
+    document.querySelector<HTMLElement>('article.bc-card[data-abnormal="true"]')
+      ?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  }
   const groups = Array.from(new Set(feed.units.map((unit) => unit.group)))
   const autostartOn = feed.autostart?.supported === true && feed.autostart.enabled
   // 依赖反查：brain_server 被 mcp_server 依赖 → { brain_server: ['mcp_server'] }
@@ -202,6 +208,16 @@ export function ConsolePage(): JSX.Element {
                 {feed.units.length === 0 ? '—' : `${running} / ${feed.units.length} 运行中`}
               </span>
             </Tooltip>
+            {abnormalCount > 0 && (
+              <button
+                type="button"
+                className="bc-header-alert"
+                title="定位到第一个异常单元"
+                onClick={focusAbnormal}
+              >
+                {abnormalCount} 个异常
+              </button>
+            )}
             <div className="bc-header-actions">
               {feed.updatedAt !== null && <span className="bc-updated">最后刷新 {feed.updatedAt}</span>}
               <IconButton label="刷新" icon={IconRefresh} busy={feed.refreshing} onClick={() => void feed.load(true)} />

@@ -45,6 +45,12 @@ export function UnitSection({
   const running = members.filter((unit) => unit.running).length
   const stopped = members.length - running
   const abnormal = members.filter((unit) => unit.state !== '运行中' && unit.state !== '已停止').length
+  // 异常单元置顶，其次在跑，最后已停止；同级保持原顺序（sort 稳定）
+  const severity = (unit: Unit): number => {
+    if (unit.state !== '运行中' && unit.state !== '已停止') return 0
+    return unit.running ? 1 : 2
+  }
+  const ordered = [...members].sort((left, right) => severity(left) - severity(right))
   return (
     <section className="bc-section">
       <div className="bc-section-head">
@@ -82,7 +88,7 @@ export function UnitSection({
         <span className="bc-rule" />
       </div>
       <div className="bc-grid">
-        {members.map((unit) => (
+        {ordered.map((unit) => (
           <ServiceCard
             key={unit.name}
             unit={unit}

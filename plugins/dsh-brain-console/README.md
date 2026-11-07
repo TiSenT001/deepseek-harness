@@ -140,6 +140,8 @@ icon: (size: number) => <BrainConsoleIcon size={size} />
 - 状态灯：运行中绿 / 已停止灰 / 异常红（不自动重启，等人工处理）
 - 依赖提示：卡片元信息显示 `依赖 brain_server` / `被 mcp_server 依赖`（来自管理器 registry 的 `depends`）；
   停止一个有「在跑依赖者」的单元会先确认（例如停 brain_server 前提示 mcp_server 依赖它）
+- 异常置顶：异常单元排在该组最前；顶部计数条旁显示「N 个异常」chip，点一下滚到第一张异常卡
+- 失败边明细：底栏「复制清单（N 条）」把当前列表复制成 TSV（source/target/failures/weight/confidence/origin/last_seen）
 - 卡片 ⋯ 菜单：查看详情（脚本 / 启动参数 / PID / 父进程 / 托管方式 / 运行时长 / 健康 / 退出码 / 依赖）、
   随管理器启动、接管为子进程
 - 快捷键：`r` 立即刷新、`/` 聚焦日志过滤框、`Esc` 收起日志面板（对话框开着时 Esc 只关对话框）

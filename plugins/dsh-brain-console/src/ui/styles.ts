@@ -179,6 +179,29 @@ const STYLES = `
     border-color: var(--dsw-alias-border-l4);
   }
 }
+/* 顶部异常提示 chip：只有运行中但健康探测失败时出现 */
+.bc-header-alert {
+  flex: none;
+  height: 22px;
+  padding: 0 8px;
+  border: 1px solid var(--dsw-alias-state-error-primary);
+  border-radius: var(--dsw-radius-full);
+  background: var(--dsw-alias-state-error-tertiary);
+  color: var(--dsw-alias-state-error-primary);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+@media (hover: hover) {
+  .bc-header-alert:hover {
+    background: var(--dsw-alias-state-error-secondary);
+  }
+}
+.bc-header-alert:focus-visible {
+  outline: var(--dsw-focus-ring-width) solid var(--dsw-focus-ring-color, var(--dsw-alias-state-business-primary));
+  outline-offset: 1px;
+}
+
 /* 指标卡里的迷你趋势线 */
 .bc-spark {
   display: block;

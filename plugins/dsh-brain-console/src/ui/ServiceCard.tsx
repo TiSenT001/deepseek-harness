@@ -64,7 +64,7 @@ export function ServiceCard({
   if (dependents.length > 0) details.push(`被 ${dependents.join('、')} 依赖`)
 
   return (
-    <article className="bc-card">
+    <article className="bc-card" data-abnormal={unit.running && unit.state === '异常' ? 'true' : undefined}>
       <div className="bc-card-top">
         <StateDot state={STATE_DOT[unit.state] ?? 'warning'} />
         <span className="bc-name">{unit.name}</span>
