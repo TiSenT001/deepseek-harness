@@ -25,6 +25,7 @@ import { Button, IconPlay, IconRefresh, IconStop, StateDot, Tooltip } from './ui
 import { ServiceCard } from './ui/ServiceCard.tsx'
 import { OverviewTiles } from './ui/StatTiles.tsx'
 import { TrendDialog } from './ui/TrendDialog.tsx'
+import { UnitDetailDialog } from './ui/UnitDetailDialog.tsx'
 import { metricSpec, type MetricKey } from './ui/metrics.ts'
 import { ensureConsoleStyles } from './ui/styles.ts'
 import type {
@@ -127,11 +128,13 @@ interface UnitSectionProps {
   onToggleEnabled: (name: string, enabled: boolean) => void
   /** 把单个外部进程接管为管理器子进程 */
   onAdopt: (name: string) => void
+  /** 打开单个单元的详情 */
+  onDetail: (name: string) => void
 }
 
 function UnitSection({
   group, members, now, busy, logName, dependents, onLog, onAction,
-  onStartAll, onStopAll, onRestartAll, onToggleEnabled, onAdopt,
+  onStartAll, onStopAll, onRestartAll, onToggleEnabled, onAdopt, onDetail,
 }: UnitSectionProps): JSX.Element {
   const running = members.filter((unit) => unit.running).length
   const stopped = members.length - running
@@ -186,6 +189,7 @@ function UnitSection({
             onAction={onAction}
             onToggleEnabled={onToggleEnabled}
             onAdopt={onAdopt}
+            onDetail={onDetail}
           />
         ))}
       </div>
@@ -206,6 +210,7 @@ export function ConsolePage(): JSX.Element {
   const [logLines, setLogLines] = useState<number>(LOG_LINE_OPTIONS[0])
   const [logPaused, setLogPaused] = useState(false)
   const [clearLogOpen, setClearLogOpen] = useState(false)
+  const [detailName, setDetailName] = useState<string | null>(null)
   const [autostart, setAutostart] = useState<{ supported: boolean; enabled: boolean } | null>(null)
   const [backupOpen, setBackupOpen] = useState(false)
   const [cacheOpen, setCacheOpen] = useState(false)
@@ -508,6 +513,7 @@ export function ConsolePage(): JSX.Element {
     }
   }
   const now = Date.now()
+  const detailUnit = detailName === null ? undefined : units.find((unit) => unit.name === detailName)
 
   // 快捷键：r 刷新、/ 聚焦日志过滤、Esc 收起日志（有对话框时让对话框自己处理）
   useEffect(() => {
@@ -638,6 +644,7 @@ export function ConsolePage(): JSX.Element {
                 })}
                 onToggleEnabled={(name, enabled) => void setUnitEnabled(name, enabled)}
                 onAdopt={(name) => void adoptUnit(name)}
+                onDetail={(name) => setDetailName(name)}
               />
             ))
           )}
@@ -715,6 +722,15 @@ export function ConsolePage(): JSX.Element {
           onCycleLines={cycleLogLines}
           onClear={() => setClearLogOpen(true)}
           onClose={() => setLog(null)}
+        />
+      )}
+
+      {detailUnit !== undefined && (
+        <UnitDetailDialog
+          unit={detailUnit}
+          now={now}
+          dependents={dependentsByUnit[detailUnit.name] ?? []}
+          onClose={() => setDetailName(null)}
         />
       )}
 

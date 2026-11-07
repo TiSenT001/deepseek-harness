@@ -30,6 +30,8 @@ export interface Unit {
   last_exit_code?: number | null
   /** 启动顺序依赖的单元名（先启依赖） */
   depends?: string[]
+  /** 启动参数（展示用） */
+  args?: string[]
   /** 启动时间文本，形如 `2026-11-07 17:00:30`；未运行为 null */
   started_at: string | null
   /** 进程号；部分状态不回报 */

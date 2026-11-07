@@ -645,6 +645,37 @@ const STYLES = `
   font-size: 12px;
 }
 
+/* ---- 单元详情 ---- */
+.bc-detail-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+}
+.bc-detail-row {
+  display: grid;
+  grid-template-columns: 88px minmax(0, 1fr);
+  gap: 10px;
+  padding: 4px 0;
+  font-size: 12px;
+}
+.bc-detail-row + .bc-detail-row {
+  border-top: 1px solid var(--dsw-alias-border-l1);
+}
+.bc-detail-label {
+  color: var(--dsw-alias-label-tertiary);
+}
+.bc-detail-value {
+  margin: 0;
+  min-width: 0;
+  color: var(--dsw-alias-label-primary);
+  overflow-wrap: anywhere;
+}
+.bc-detail-mono {
+  font-family: var(--ds-font-family-code, monospace);
+  font-size: 11px;
+}
+
 /* ---- 分组停止确认 ---- */
 .bc-stop-list {
   display: flex;

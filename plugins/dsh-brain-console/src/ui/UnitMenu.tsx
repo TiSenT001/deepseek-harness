@@ -14,6 +14,8 @@ export interface UnitMenuProps {
   unit: Unit
   /** 其他动作执行中：禁用菜单入口 */
   disabled: boolean
+  /** 打开该单元的详情对话框 */
+  onDetail: (name: string) => void
   /** 切换持久意愿（下次管理器启动是否恢复） */
   onToggleEnabled: (name: string, enabled: boolean) => void
   /** 接管：重启为管理器直接子进程 */
@@ -22,12 +24,13 @@ export interface UnitMenuProps {
 
 /**
  * 渲染单元级「更多」图标按钮与它收纳的菜单。
- * @param props - 单元快照与两个单元级动作
+ * @param props - 单元快照与单元级动作
  * @returns 菜单入口（含锚定菜单）
  */
-export function UnitMenu({ unit, disabled, onToggleEnabled, onAdopt }: UnitMenuProps): JSX.Element {
+export function UnitMenu({ unit, disabled, onDetail, onToggleEnabled, onAdopt }: UnitMenuProps): JSX.Element {
   const [open, setOpen] = useState(false)
   const items: SharedMenuEntry[] = [
+    { id: 'detail', label: '查看详情' },
     { id: 'enabled', label: '随管理器启动', disabled },
   ]
   if (unit.running && unit.child_of_manager === false) {
@@ -36,7 +39,8 @@ export function UnitMenu({ unit, disabled, onToggleEnabled, onAdopt }: UnitMenuP
 
   const select = (id: string): void => {
     setOpen(false)
-    if (id === 'enabled') onToggleEnabled(unit.name, !unit.enabled)
+    if (id === 'detail') onDetail(unit.name)
+    else if (id === 'enabled') onToggleEnabled(unit.name, !unit.enabled)
     else if (id === 'adopt') onAdopt(unit.name)
   }
 

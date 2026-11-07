@@ -36,6 +36,8 @@ export interface ServiceCardProps {
   onToggleEnabled: (name: string, enabled: boolean) => void
   /** 接管为管理器子进程 */
   onAdopt: (name: string) => void
+  /** 打开该单元的详情对话框 */
+  onDetail: (name: string) => void
 }
 
 /**
@@ -44,7 +46,7 @@ export interface ServiceCardProps {
  * @returns 卡片元素
  */
 export function ServiceCard({
-  unit, now, busyAction, disabled, logOpen, dependents, onLog, onAction, onToggleEnabled, onAdopt,
+  unit, now, busyAction, disabled, logOpen, dependents, onLog, onAction, onToggleEnabled, onAdopt, onDetail,
 }: ServiceCardProps): JSX.Element {
   const details: string[] = []
   if (unit.running) {
@@ -106,6 +108,7 @@ export function ServiceCard({
           <UnitMenu
             unit={unit}
             disabled={disabled}
+            onDetail={onDetail}
             onToggleEnabled={onToggleEnabled}
             onAdopt={onAdopt}
           />

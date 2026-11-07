@@ -972,12 +972,15 @@ window.__ModuleLoader__.load({
 		*/
 		/**
 		* 渲染单元级「更多」图标按钮与它收纳的菜单。
-		* @param props - 单元快照与两个单元级动作
+		* @param props - 单元快照与单元级动作
 		* @returns 菜单入口（含锚定菜单）
 		*/
-		function UnitMenu({ unit, disabled, onToggleEnabled, onAdopt }) {
+		function UnitMenu({ unit, disabled, onDetail, onToggleEnabled, onAdopt }) {
 			const [open, setOpen] = (0, react.useState)(false);
 			const items = [{
+				id: "detail",
+				label: "查看详情"
+			}, {
 				id: "enabled",
 				label: "随管理器启动",
 				disabled
@@ -989,7 +992,8 @@ window.__ModuleLoader__.load({
 			});
 			const select = (id) => {
 				setOpen(false);
-				if (id === "enabled") onToggleEnabled(unit.name, !unit.enabled);
+				if (id === "detail") onDetail(unit.name);
+				else if (id === "enabled") onToggleEnabled(unit.name, !unit.enabled);
 				else if (id === "adopt") onAdopt(unit.name);
 			};
 			return /* @__PURE__ */ (0, react_jsx_runtime.jsx)(Menu, {
@@ -1031,7 +1035,7 @@ window.__ModuleLoader__.load({
 		* @param props - 单元快照与回调
 		* @returns 卡片元素
 		*/
-		function ServiceCard({ unit, now, busyAction, disabled, logOpen, dependents, onLog, onAction, onToggleEnabled, onAdopt }) {
+		function ServiceCard({ unit, now, busyAction, disabled, logOpen, dependents, onLog, onAction, onToggleEnabled, onAdopt, onDetail }) {
 			const details = [];
 			if (unit.running) {
 				if (unit.state === "异常" && unit.health_error) details.push(`健康探测失败：${unit.health_error}`);
@@ -1095,6 +1099,7 @@ window.__ModuleLoader__.load({
 									/* @__PURE__ */ (0, react_jsx_runtime.jsx)(UnitMenu, {
 										unit,
 										disabled,
+										onDetail,
 										onToggleEnabled,
 										onAdopt
 									})
@@ -1538,6 +1543,112 @@ window.__ModuleLoader__.load({
 							children: "滚轮缩放 · 拖拽平移 · 双击重置"
 						})
 					]
+				})
+			});
+		}
+		//#endregion
+		//#region src/ui/UnitDetailDialog.tsx
+		/**
+		* 单元详情：把 `/units` 里这一条的所有字段摊开，排查问题不用再猜。
+		*
+		* 只读；动作仍走卡片上的按钮和 ⋯ 菜单。
+		*/
+		/**
+		* 渲染单元详情对话框。
+		* @param props - 单元快照、时间与回调
+		* @returns 对话框元素（挂载即打开）
+		*/
+		function UnitDetailDialog({ unit, now, dependents, onClose }) {
+			const uptime = unit.running ? formatUptime(unit.started_at, now) : null;
+			const rows = [
+				{
+					label: "分组",
+					value: unit.group
+				},
+				{
+					label: "描述",
+					value: unit.desc
+				},
+				{
+					label: "脚本",
+					value: unit.script,
+					mono: true
+				},
+				{
+					label: "启动参数",
+					value: (unit.args ?? []).join(" ") || "（无）",
+					mono: true
+				},
+				{
+					label: "端口",
+					value: typeof unit.port === "number" ? String(unit.port) : "（无，无端口服务）"
+				},
+				{
+					label: "状态",
+					value: unit.state
+				},
+				{
+					label: "PID",
+					value: typeof unit.pid === "number" ? String(unit.pid) : "—"
+				},
+				{
+					label: "父进程",
+					value: typeof unit.ppid === "number" ? String(unit.ppid) : "—"
+				},
+				{
+					label: "托管方式",
+					value: unit.child_of_manager ? "管理器子进程" : "外部进程"
+				},
+				{
+					label: "随管理器启动",
+					value: unit.enabled ? "是" : "否"
+				},
+				{
+					label: "运行时长",
+					value: uptime ?? "—"
+				},
+				{
+					label: "健康",
+					value: unit.health_error ?? (unit.running ? "正常" : "—")
+				},
+				{
+					label: "退出码",
+					value: typeof unit.last_exit_code === "number" ? String(unit.last_exit_code) : "—"
+				},
+				{
+					label: "依赖",
+					value: (unit.depends ?? []).join("、") || "（无）"
+				},
+				{
+					label: "被依赖",
+					value: dependents.join("、") || "（无）"
+				}
+			];
+			const footer = /* @__PURE__ */ (0, react_jsx_runtime.jsx)(Button, {
+				size: "sm",
+				variant: "ghost",
+				onClick: onClose,
+				children: "关闭"
+			});
+			return /* @__PURE__ */ (0, react_jsx_runtime.jsx)(Modal, {
+				open: true,
+				onClose,
+				title: unit.name,
+				closeLabel: "关闭",
+				description: unit.desc,
+				footer,
+				children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)("dl", {
+					className: "bc-detail-list",
+					children: rows.map((row) => /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+						className: "bc-detail-row",
+						children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("dt", {
+							className: "bc-detail-label",
+							children: row.label
+						}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("dd", {
+							className: row.mono === true ? "bc-detail-value bc-detail-mono" : "bc-detail-value",
+							children: row.value
+						})]
+					}, row.label))
 				})
 			});
 		}
@@ -2232,6 +2343,37 @@ window.__ModuleLoader__.load({
   font-size: 12px;
 }
 
+/* ---- 单元详情 ---- */
+.bc-detail-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+}
+.bc-detail-row {
+  display: grid;
+  grid-template-columns: 88px minmax(0, 1fr);
+  gap: 10px;
+  padding: 4px 0;
+  font-size: 12px;
+}
+.bc-detail-row + .bc-detail-row {
+  border-top: 1px solid var(--dsw-alias-border-l1);
+}
+.bc-detail-label {
+  color: var(--dsw-alias-label-tertiary);
+}
+.bc-detail-value {
+  margin: 0;
+  min-width: 0;
+  color: var(--dsw-alias-label-primary);
+  overflow-wrap: anywhere;
+}
+.bc-detail-mono {
+  font-family: var(--ds-font-family-code, monospace);
+  font-size: 11px;
+}
+
 /* ---- 分组停止确认 ---- */
 .bc-stop-list {
   display: flex;
@@ -2474,7 +2616,7 @@ window.__ModuleLoader__.load({
 			if (unit !== name) return null;
 			return action === "start" || action === "stop" || action === "restart" ? action : null;
 		}
-		function UnitSection({ group, members, now, busy, logName, dependents, onLog, onAction, onStartAll, onStopAll, onRestartAll, onToggleEnabled, onAdopt }) {
+		function UnitSection({ group, members, now, busy, logName, dependents, onLog, onAction, onStartAll, onStopAll, onRestartAll, onToggleEnabled, onAdopt, onDetail }) {
 			const running = members.filter((unit) => unit.running).length;
 			const stopped = members.length - running;
 			const abnormal = members.filter((unit) => unit.state !== "运行中" && unit.state !== "已停止").length;
@@ -2536,7 +2678,8 @@ window.__ModuleLoader__.load({
 						onLog,
 						onAction,
 						onToggleEnabled,
-						onAdopt
+						onAdopt,
+						onDetail
 					}, unit.name))
 				})]
 			});
@@ -2554,6 +2697,7 @@ window.__ModuleLoader__.load({
 			const [logLines, setLogLines] = (0, react.useState)(LOG_LINE_OPTIONS[0]);
 			const [logPaused, setLogPaused] = (0, react.useState)(false);
 			const [clearLogOpen, setClearLogOpen] = (0, react.useState)(false);
+			const [detailName, setDetailName] = (0, react.useState)(null);
 			const [autostart, setAutostart] = (0, react.useState)(null);
 			const [backupOpen, setBackupOpen] = (0, react.useState)(false);
 			const [cacheOpen, setCacheOpen] = (0, react.useState)(false);
@@ -2818,6 +2962,7 @@ window.__ModuleLoader__.load({
 			const dependentsByUnit = {};
 			for (const unit of units) for (const dependency of unit.depends ?? []) dependentsByUnit[dependency] = [...dependentsByUnit[dependency] ?? [], unit.name];
 			const now = Date.now();
+			const detailUnit = detailName === null ? void 0 : units.find((unit) => unit.name === detailName);
 			(0, react.useEffect)(() => {
 				const onKeyDown = (event) => {
 					const target = event.target instanceof HTMLElement ? event.target : null;
@@ -2981,7 +3126,8 @@ window.__ModuleLoader__.load({
 										names: units.filter((unit) => unit.group === group && unit.running).map((unit) => unit.name)
 									}),
 									onToggleEnabled: (name, enabled) => void setUnitEnabled(name, enabled),
-									onAdopt: (name) => void adoptUnit(name)
+									onAdopt: (name) => void adoptUnit(name),
+									onDetail: (name) => setDetailName(name)
 								}, group))
 							]
 						})
@@ -3046,6 +3192,12 @@ window.__ModuleLoader__.load({
 						onCycleLines: cycleLogLines,
 						onClear: () => setClearLogOpen(true),
 						onClose: () => setLog(null)
+					}),
+					detailUnit !== void 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsx)(UnitDetailDialog, {
+						unit: detailUnit,
+						now,
+						dependents: dependentsByUnit[detailUnit.name] ?? [],
+						onClose: () => setDetailName(null)
 					}),
 					clearLogOpen && log !== null && /* @__PURE__ */ (0, react_jsx_runtime.jsx)(ConfirmDialog, {
 						title: `清空「${log.name}」日志`,
