@@ -140,6 +140,8 @@ if (-not $url) {
 }
 $url | Out-File -FilePath $UrlFile -Encoding utf8
 Write-Log ('ready: ' + $url)
+# 打开新地址（旧标签页的 token 已失效）
+Start-Process $url
 
 # 4) 拉起 brain_manager（宿主路由带进程内去抖与命名副本逻辑）
 for ($i = 0; $i -lt 12; $i++) {
