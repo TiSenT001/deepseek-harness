@@ -2709,6 +2709,7 @@ window.__ModuleLoader__.load({
 			const [logLines, setLogLines] = (0, react.useState)(LOG_LINE_OPTIONS[0]);
 			const [logPaused, setLogPaused] = (0, react.useState)(false);
 			const [clearLogOpen, setClearLogOpen] = (0, react.useState)(false);
+			const [stopUnit, setStopUnit] = (0, react.useState)(null);
 			const [detailName, setDetailName] = (0, react.useState)(null);
 			const [autostart, setAutostart] = (0, react.useState)(null);
 			const [backupOpen, setBackupOpen] = (0, react.useState)(false);
@@ -2817,7 +2818,17 @@ window.__ModuleLoader__.load({
 					setClearLogOpen(false);
 				}
 			};
-			const act = async (name, action) => {
+			const act = async (name, action, force = false) => {
+				if (action === "stop" && !force) {
+					const runningDependents = units.filter((unit) => unit.running && (unit.depends ?? []).includes(name)).map((unit) => unit.name);
+					if (runningDependents.length > 0) {
+						setStopUnit({
+							name,
+							dependents: runningDependents
+						});
+						return;
+					}
+				}
 				setBusy(`${name}:${action}`);
 				setActionError(null);
 				try {
@@ -3210,6 +3221,20 @@ window.__ModuleLoader__.load({
 						now,
 						dependents: dependentsByUnit[detailUnit.name] ?? [],
 						onClose: () => setDetailName(null)
+					}),
+					stopUnit !== null && /* @__PURE__ */ (0, react_jsx_runtime.jsx)(ConfirmDialog, {
+						title: `停止「${stopUnit.name}」`,
+						description: `${stopUnit.dependents.join("、")} 依赖它，停止后这些单元会失去后端`,
+						note: "停止会写抑制清单并把持久意愿置为 False，不会随管理器启动自动恢复",
+						confirmLabel: "停止",
+						busyLabel: "停止中…",
+						busy: busy === `${stopUnit.name}:stop`,
+						onCancel: () => setStopUnit(null),
+						onConfirm: () => {
+							const target = stopUnit.name;
+							setStopUnit(null);
+							act(target, "stop", true);
+						}
 					}),
 					clearLogOpen && log !== null && /* @__PURE__ */ (0, react_jsx_runtime.jsx)(ConfirmDialog, {
 						title: `清空「${log.name}」日志`,

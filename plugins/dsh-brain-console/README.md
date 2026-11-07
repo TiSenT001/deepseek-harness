@@ -109,7 +109,8 @@ icon: (size: number) => <BrainConsoleIcon size={size} />
   老库由 `_ensure_columns()` 自动补列），所以折线要攒几天才有形状；点数不足时对话框明说「数据不足」
 - 「失败边明细」入口移到了趋势对话框里（先看趋势，再点「查看失败边明细」）
 - 状态灯：运行中绿 / 已停止灰 / 异常红（不自动重启，等人工处理）
-- 依赖提示：卡片元信息显示 `依赖 brain_server` / `被 mcp_server 依赖`（来自管理器 registry 的 `depends`）
+- 依赖提示：卡片元信息显示 `依赖 brain_server` / `被 mcp_server 依赖`（来自管理器 registry 的 `depends`）；
+  停止一个有「在跑依赖者」的单元会先确认（例如停 brain_server 前提示 mcp_server 依赖它）
 - 卡片 ⋯ 菜单：查看详情（脚本 / 启动参数 / PID / 父进程 / 托管方式 / 运行时长 / 健康 / 退出码 / 依赖）、
   随管理器启动、接管为子进程
 - 快捷键：`r` 立即刷新、`/` 聚焦日志过滤框、`Esc` 收起日志面板（对话框开着时 Esc 只关对话框）

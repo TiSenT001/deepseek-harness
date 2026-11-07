@@ -210,6 +210,7 @@ export function ConsolePage(): JSX.Element {
   const [logLines, setLogLines] = useState<number>(LOG_LINE_OPTIONS[0])
   const [logPaused, setLogPaused] = useState(false)
   const [clearLogOpen, setClearLogOpen] = useState(false)
+  const [stopUnit, setStopUnit] = useState<{ name: string; dependents: string[] } | null>(null)
   const [detailName, setDetailName] = useState<string | null>(null)
   const [autostart, setAutostart] = useState<{ supported: boolean; enabled: boolean } | null>(null)
   const [backupOpen, setBackupOpen] = useState(false)
@@ -319,7 +320,17 @@ export function ConsolePage(): JSX.Element {
     }
   }
 
-  const act = async (name: string, action: UnitAction): Promise<void> => {
+  const act = async (name: string, action: UnitAction, force = false): Promise<void> => {
+    // 停止一个有「在跑依赖者」的单元时先确认：否则依赖它的服务会无声失去后端
+    if (action === 'stop' && !force) {
+      const runningDependents = units
+        .filter((unit) => unit.running && (unit.depends ?? []).includes(name))
+        .map((unit) => unit.name)
+      if (runningDependents.length > 0) {
+        setStopUnit({ name, dependents: runningDependents })
+        return
+      }
+    }
     setBusy(`${name}:${action}`)
     setActionError(null)
     try {
@@ -731,6 +742,19 @@ export function ConsolePage(): JSX.Element {
           now={now}
           dependents={dependentsByUnit[detailUnit.name] ?? []}
           onClose={() => setDetailName(null)}
+        />
+      )}
+
+      {stopUnit !== null && (
+        <ConfirmDialog
+          title={`停止「${stopUnit.name}」`}
+          description={`${stopUnit.dependents.join('、')} 依赖它，停止后这些单元会失去后端`}
+          note="停止会写抑制清单并把持久意愿置为 False，不会随管理器启动自动恢复"
+          confirmLabel="停止"
+          busyLabel="停止中…"
+          busy={busy === `${stopUnit.name}:stop`}
+          onCancel={() => setStopUnit(null)}
+          onConfirm={() => { const target = stopUnit.name; setStopUnit(null); void act(target, 'stop', true) }}
         />
       )}
 
