@@ -65,5 +65,5 @@ release check for dsh-obsidian-vault@0.1.0
   ok (with warnings)
 ```
 
-tarball 只包含 `lib/`、`cordis.patch.yml`、`README.md`、`LICENSE`、`package.json`；
+tarball 只包含 `lib/`、`scaffold/`、`cordis.patch.yml`、`README.md`、`LICENSE`、`package.json`；
 `src/`、`tests/`、`scripts/`、`docs/`、`.data/`、`.artifacts/` 都不会进包。

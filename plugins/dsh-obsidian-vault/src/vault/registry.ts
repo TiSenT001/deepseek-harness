@@ -9,6 +9,8 @@ import { mkdir, stat } from 'node:fs/promises'
 import { basename, resolve as resolvePath } from 'node:path'
 import type { VaultDto, VaultInspectDto, VaultListDto, VaultOpenDto } from '../protocol.ts'
 import { VaultIndex, type FsLike, type VaultOptions } from './index.ts'
+import { PACKAGE_ROOT } from '../package-root.ts'
+import { seedVault } from './scaffold.ts'
 import { VaultWatcher } from './watch.ts'
 import { readRegistry, writeRegistry, STORE_VERSION } from './registry-file.ts'
 import type { StoredRegistry, VaultRecord } from './registry-file.ts'
@@ -105,7 +107,11 @@ export class VaultRegistry {
   async open(path: string, init = false): Promise<VaultOpenDto> {
     const directory = resolvePath(path)
     await this.fs.resolve(directory)
-    if (init) await mkdir(resolvePath(directory, '.obsidian'), { recursive: true })
+    if (init) {
+      await mkdir(resolvePath(directory, '.obsidian'), { recursive: true })
+      await seedVault(directory, basename(directory), resolvePath(PACKAGE_ROOT, 'scaffold', 'vault'))
+        .catch(error => console.warn('[obsidian-vault] scaffold failed:', error))
+    }
     const existing = this.records.find(item => item.path === directory)
     const record = existing ?? this.recordFor(directory, undefined)
     if (existing === undefined) this.records = [...this.records, record]
@@ -122,6 +128,8 @@ export class VaultRegistry {
     const directory = resolvePath(path)
     await mkdir(directory, { recursive: true })
     await mkdir(resolvePath(directory, '.obsidian'), { recursive: true })
+    await seedVault(directory, name ?? basename(directory), resolvePath(PACKAGE_ROOT, 'scaffold', 'vault'))
+      .catch(error => console.warn('[obsidian-vault] scaffold failed:', error))
     const existing = this.records.find(item => item.path === directory)
     const record = existing ?? this.recordFor(directory, name)
     if (existing === undefined) this.records = [...this.records, record]

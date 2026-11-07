@@ -152,12 +152,15 @@ button.ov-plugin-info {
   letter-spacing: .04em;
   color: var(--dsw-alias-label-tertiary, #8b8b94);
 }
+.ov-settings > .ov-settings-group:first-child { margin-top: 0; }
 .ov-settings-row {
   display: grid;
   grid-template-columns: 104px minmax(0, 1fr);
   align-items: center;
   gap: 8px;
 }
+.ov-settings-row:has(.ov-settings-textarea) { align-items: start; }
+.ov-settings-row:has(.ov-settings-textarea) .ov-settings-label { padding-top: 6px; }
 .ov-settings-label {
   font-size: 12px;
   color: var(--dsw-alias-label-secondary, #b6b6bd);

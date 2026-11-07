@@ -275,6 +275,18 @@ npm run bench:vault -- --json                        # 机器可读
 - 与 `dsh-better-sidebar` **零耦合**：不 import、不注册其 tab、不改其 viewer；未安装时功能完整。
 - 升级 DSH 前先跑 `tsc --noEmit`；`MarkdownText` 的 props 或 `MarkdownDelegateProvider` 的 delegate 字段若变化，只需调整 `src/client/primitives.ts` 与 `NoteView.tsx`。
 
+## 新建知识库自带规范
+
+插件的「新建知识库」不再得到空目录：`create()` 会从 `scaffold/vault/` 复刻一套
+知识库规范（结构、主控 MOC、七个领域 MOC、速查、检索、仪表盘、收件箱/附件/画布说明）。
+
+- 只在目录**没有任何 `.md`** 时注入；打开已有库绝不写入文件
+- 文件名与正文里的 `{{VAULT_NAME}}` 会替换成新库名，`{{DATE}}` 替换成当天日期
+- 文件已存在时以用户文件为准，不覆盖
+
+更新规范时：修改 `scaffold/vault/知识库总览/笔记编写规范.md`（和 `kb-conventions.md`），
+跑 `npm test`（含 `tests/vault-scaffold.test.ts`）。`scaffold/` 会随 npm 包发布。
+
 ## 打包与发布（未发布）
 
 包仍是 `"private": true`，不会误发到 npm。发布前的署名、兼容范围、打包步骤和回滚策略见

@@ -1,3 +1,11 @@
+## 第一百零三轮：设置页迭代——双表单隐患修复与共享行组件（2026-11-08）
+
+- **双表单隐患修复**：vault/index 五字段（库路径、忽略列表、单文件上限、索引上限、索引深度）原本同时出现在「通用」区与 pur-studio 插件详情的画布设置里，两份独立草稿各自保存会互相覆盖陈旧值；画布设置区删掉这组字段（`CanvasSettingsDraft`/`draftOf`/`patchOf`/`MB` 常量与对应 JSX），唯一归属留在通用区（其模块注释本就声明 owns 这些字段）。
+- **共享行组件**：`SettingsRow` 提进 `ui/kit/controls.tsx` 并导出（104px 标签列 + 控件 + 可选单位后缀）；`GeneralSettings` 的本地 `Row` 与 `PluginPanel` 的本地 `SettingsRow` 两个逐字相同的实现删除，统一从 kit 导入。
+- **样式微调**：chrome.ts 设置首组 `margin-top` 归零（`.ov-settings > .ov-settings-group:first-child`）；textarea 所在行顶对齐（`:has(.ov-settings-textarea)` 时 `align-items: start`，标签补 6px 上 padding），多行文本的标签不再垂直漂在中间。
+- **设置有效性审核**：逐项核对通用 vault/index 五字段与画布 18 项设置——`src/settings.ts` 有默认值 + zod schema + clamp 解析，`vault/plugin-settings.ts` 的 `PATCH_KEYS` 白名单全部接收并回显，消费方覆盖 pur-kernel（指针/自动平移/手势/背景网格）、导出器、`PurStudioPane`；阅读/搜索/面板宽度等本地偏好走 localStorage，`useInlineBacklinks`/`QuickSwitcher`/`usePaneWidths` 均在消费。结论：全部真实持久化且被消费，无摆设项。
+- **验证**：`tsc` 0、**699/699**、`tsdown` 成功；定向审核 `settings.dialog-plugins` + `ui.ribbon-settings-gear` 2/2、0 控制台错误。
+
 ## 第一百零二轮：对话里 @ 笔记（2026-11-08）
 
 - **@ 触发源**：客户端 apply 通过 `ctx.inject(['inputTriggers'], …)` 注册一个 `@` 源（`obsidian-notes`，隐藏分组标题）：输入 `@` 后用知识库的 `/search` 路由按标题/路径列出笔记，最多 12 条，带标题、路径与所在文件夹。

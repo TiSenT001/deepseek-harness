@@ -13,15 +13,12 @@ import { fetchPurClientSettings, savePurClientSettings } from '../../api-vault.t
 import type { PurClientSettingsDto, PurSettingsPatch } from '../../api-vault.ts'
 import type { Translate } from '../../i18n.ts'
 import { Icon } from '../Icon.tsx'
-import { css, Toggle } from '../kit/index.ts'
+import { css, SettingsRow, Toggle } from '../kit/index.ts'
 
 /** Props for {@link PluginPanel}. */
 export interface PluginPanelProps {
   readonly t: Translate
 }
-
-/** Bytes in one megabyte, used by the two size fields. */
-const MB = 1024 * 1024
 
 /** Draft of the canvas settings form; numbers stay as text while editing. */
 interface CanvasSettingsDraft {
@@ -30,11 +27,6 @@ interface CanvasSettingsDraft {
   saveDelayMs: string
   largeCanvasHintMb: string
   showGrid: boolean
-  vault: string
-  ignoreText: string
-  maxFileBytesMb: string
-  maxIndexBytesMb: string
-  maxDepth: string
   exportScale: string
   exportTransparent: boolean
   exportJpgQuality: string
@@ -57,13 +49,6 @@ function draftOf(dto: PurClientSettingsDto): CanvasSettingsDraft {
     saveDelayMs: String(dto.saveDelayMs),
     largeCanvasHintMb: String(dto.largeCanvasHintMb),
     showGrid: dto.showGrid,
-    // An older Host may not send the vault/index fields yet; fall back to the
-    // documented defaults instead of rendering an empty form.
-    vault: dto.vault ?? '',
-    ignoreText: (dto.ignore ?? []).join('\n'),
-    maxFileBytesMb: dto.maxFileBytes === undefined ? '2' : String(Math.round((dto.maxFileBytes / MB) * 10) / 10),
-    maxIndexBytesMb: dto.maxIndexBytes === undefined ? '64' : String(Math.round(dto.maxIndexBytes / MB)),
-    maxDepth: dto.maxDepth === undefined ? '12' : String(dto.maxDepth),
     exportScale: dto.exportScale === undefined ? '1' : String(dto.exportScale),
     exportTransparent: dto.exportTransparent ?? true,
     exportJpgQuality: dto.exportJpgQuality === undefined ? '0.9' : String(dto.exportJpgQuality),
@@ -87,11 +72,6 @@ function patchOf(draft: CanvasSettingsDraft): PurSettingsPatch {
     saveDelayMs: Number(draft.saveDelayMs),
     largeCanvasHintMb: Number(draft.largeCanvasHintMb),
     showGrid: draft.showGrid,
-    vault: draft.vault.trim(),
-    ignore: draft.ignoreText.split(/[\n,]/).map((entry) => entry.trim()).filter((entry) => entry.length > 0),
-    maxFileBytes: Math.round(Number(draft.maxFileBytesMb) * MB),
-    maxIndexBytes: Math.round(Number(draft.maxIndexBytesMb) * MB),
-    maxDepth: Number(draft.maxDepth),
     exportScale: Number(draft.exportScale),
     exportTransparent: draft.exportTransparent,
     exportJpgQuality: Number(draft.exportJpgQuality),
@@ -239,7 +219,8 @@ function PluginRow({ t, plugin }: { readonly t: Translate; readonly plugin: Plug
 
 /**
  * The canvas plugin's own settings, rendered inside its plugin detail: runtime,
- * saving/display, and the vault/index fields that apply after a restart.
+ * interaction, saving/display, and export. The vault/index fields live in the
+ * general section, which owns them.
  * @param props - translator.
  */
 function CanvasSettingsSection({ t }: { readonly t: Translate }): JSX.Element | null {
@@ -335,45 +316,11 @@ function CanvasSettingsSection({ t }: { readonly t: Translate }): JSX.Element | 
         <input className={css.settingsInput} type="number" min={0.4} max={1} step={0.05} value={draft.exportJpgQuality} onChange={(event) => setDraft({ ...draft, exportJpgQuality: event.target.value })} />
       </SettingsRow>
 
-      <div className={css.settingsGroup}>{t('settingsGroupIndex')}</div>
-      <SettingsRow label={t('settingVault')} hint={t('settingVaultHint')}>
-        <input className={css.settingsInput} style={{ maxWidth: '100%' }} placeholder={t('settingVaultAuto')} value={draft.vault} onChange={(event) => setDraft({ ...draft, vault: event.target.value })} />
-      </SettingsRow>
-      <SettingsRow label={t('settingIgnore')} hint={t('settingIgnoreHint')}>
-        <textarea className={css.settingsTextarea} rows={3} value={draft.ignoreText} onChange={(event) => setDraft({ ...draft, ignoreText: event.target.value })} />
-      </SettingsRow>
-      <SettingsRow label={t('settingMaxFile')} hint={t('settingMaxFileHint')} unit="MB">
-        <input className={css.settingsInput} type="number" min={0.1} max={512} step={0.1} value={draft.maxFileBytesMb} onChange={(event) => setDraft({ ...draft, maxFileBytesMb: event.target.value })} />
-      </SettingsRow>
-      <SettingsRow label={t('settingMaxIndex')} hint={t('settingMaxIndexHint')} unit="MB">
-        <input className={css.settingsInput} type="number" min={1} max={8192} value={draft.maxIndexBytesMb} onChange={(event) => setDraft({ ...draft, maxIndexBytesMb: event.target.value })} />
-      </SettingsRow>
-      <SettingsRow label={t('settingMaxDepth')} hint={t('settingMaxDepthHint')}>
-        <input className={css.settingsInput} type="number" min={1} max={64} value={draft.maxDepth} onChange={(event) => setDraft({ ...draft, maxDepth: event.target.value })} />
-      </SettingsRow>
-      <div className={css.settingsHint}>{t('settingsRestartHint')}</div>
-
       <div className={css.settingsActions}>
         <button type="button" className={css.dialogButton} disabled={pending} onClick={save}>
           {t('save')}
         </button>
         {notice === undefined ? null : <span className={css.settingsHint}>{notice}</span>}
-      </div>
-    </div>
-  )
-}
-
-/**
- * One settings row: a fixed label column and the control with an optional unit.
- * @param props - label, hint, unit suffix and the control.
- */
-function SettingsRow(props: { readonly label: string; readonly hint?: string; readonly unit?: string; readonly children: JSX.Element }): JSX.Element {
-  return (
-    <div className={css.settingsRow}>
-      <span className={css.settingsLabel} title={props.hint}>{props.label}</span>
-      <div className={css.settingsControl}>
-        {props.children}
-        {props.unit === undefined ? null : <span className={css.settingsUnit}>{props.unit}</span>}
       </div>
     </div>
   )

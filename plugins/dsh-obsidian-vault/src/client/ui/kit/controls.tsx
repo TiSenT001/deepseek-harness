@@ -139,3 +139,29 @@ export function Slider(props: SliderProps): JSX.Element {
     </div>
   )
 }
+
+/** Props for {@link SettingsRow}. */
+export interface SettingsRowProps {
+  readonly label: string
+  /** Label tooltip. */
+  readonly hint?: string
+  /** Unit suffix rendered after the control. */
+  readonly unit?: string
+  readonly children: JSX.Element
+}
+
+/**
+ * One settings row: a fixed label column and the control with an optional unit.
+ * @param props - label, hint, unit suffix and the control.
+ */
+export function SettingsRow(props: SettingsRowProps): JSX.Element {
+  return (
+    <div className={css.settingsRow}>
+      <span className={css.settingsLabel} title={props.hint}>{props.label}</span>
+      <div className={css.settingsControl}>
+        {props.children}
+        {props.unit === undefined ? null : <span className={css.settingsUnit}>{props.unit}</span>}
+      </div>
+    </div>
+  )
+}

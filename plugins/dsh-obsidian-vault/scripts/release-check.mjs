@@ -35,6 +35,8 @@ const REQUIRED = [
   'lib/index.js',
   'lib/client.js',
   'cordis.patch.yml',
+  'scaffold/vault/知识库总览/kb-conventions.md',
+  'scaffold/vault/知识库总览/笔记编写规范.md',
 ]
 const FORBIDDEN = ['src/', 'tests/', 'scripts/', 'docs/', '.data/', '.artifacts/', 'node_modules/', 'obsidian/', 'upstream/', 'dist/']
 

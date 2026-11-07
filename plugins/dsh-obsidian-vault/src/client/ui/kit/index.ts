@@ -21,7 +21,7 @@ import { VARIANT_CSS } from './variants.ts'
 
 export { css } from './classes.ts'
 export { AskDialog, useAsk, type Ask, type AskDialogProps, type AskRequest } from './ask.tsx'
-export { Slider, Toggle } from './controls.tsx'
+export { SettingsRow, Slider, Toggle, type SettingsRowProps } from './controls.tsx'
 export { EmptyState, ErrorState, LoadingState, type EmptyStateProps, type ErrorStateProps, type LoadingStateProps } from './states.tsx'
 export { RAIL_SURFACES, VIEW_SURFACES, railSurface, type RailId, type RailSurface, type ViewSurface } from './registry.ts'
 export { CHROME, EASE, LAYOUT as LAYOUT_TOKENS, MOTION, RADIUS, SPACE, TOKEN_CSS, TYPE } from './tokens.ts'

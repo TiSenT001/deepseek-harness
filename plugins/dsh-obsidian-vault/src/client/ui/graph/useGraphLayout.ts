@@ -125,6 +125,7 @@ export function useGraphLayout({ visible, forces, animate }: GraphLayoutInput): 
     try {
       handle = startSimulation(visible.nodes, visible.edges, forcesRef.current, {
         onTick: () => {
+          ;(window as unknown as { __ovTicks?: number }).__ovTicks = ((window as unknown as { __ovTicks?: number }).__ovTicks ?? 0) + 1
           // Node positions bypass the stage, so a live simulation must wake
           // the canvas loop itself.
           settledRef.current = false
