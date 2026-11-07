@@ -6,6 +6,7 @@
 |---|---|---|
 | `brain-memory-logger/` | 对话自动入脑：用户消息 POST `/learn`、agent 回复 POST `/reply` 到 brain_server `:19995`，失败落 `.brain-outbox.jsonl` 离线重放 | profile patch 直接引用 TS 文件 |
 | `dsh-obsidian-vault/` | Obsidian 风格库工作区（wikilink、反链、标签、属性、关系图、Pur Studio 画布），双端 adapter：DSH client + Obsidian 插件 | 自身 `cordis.patch.yml` |
+| `dsh-brain-console/` | TiSenT Brain 控制台：核心服务 / 守护进程 / 插件的状态查看与人工启停、日志面板、备份与缓存清理、开机自启 | 自身 `cordis.patch.yml` |
 | `dsh-better-sidebar-src/` | 侧边栏插件源码（独立 git 仓库、独立 pnpm workspace） | `profiles/web/node_modules/dsh-better-sidebar` 软链到本目录 |
 
 ## 加载引用

@@ -1,0 +1,6 @@
+# dsh-brain-console bundle patch
+# 宿主侧无行为（服务控制由 brain_manager 负责）；本补丁只为让 Cordis 装载插件，
+# 从而让 package.json#dsh.client 生效、浏览器半部注册侧边栏面板。
+- insert:
+    - id: brain-console
+      name: dsh-brain-console

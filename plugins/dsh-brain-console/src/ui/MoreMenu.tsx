@@ -1,0 +1,80 @@
+/**
+ * 头部「更多」菜单：把备份、清理备份、清理缓存、开机启动收纳成一个 ⋯ 入口。
+ *
+ * 菜单语义：立即备份 / 清理备份… / 清理缓存…（各自打开对话框）/ 开机启动（勾选态 = 已开启）。
+ * 外部点击、Esc、焦点归还都交给宿主的 Menu 原语，不自己维护浮层。
+ */
+import { useState } from 'react'
+import { Button, IconEllipsis, Menu, type SharedMenuEntry } from './primitives.ts'
+
+/** 开机启动的可写状态。 */
+export interface AutostartState {
+  /** 当前平台是否支持（不支持时不显示这一行） */
+  supported: boolean
+  /** 是否已开启登录自启 */
+  enabled: boolean
+}
+
+export interface MoreMenuProps {
+  /** 开机启动状态；管理器没回报时为 null */
+  autostart: AutostartState | null
+  /** 正在执行的动作（'backup' / 'autostart' 等），执行期间禁用菜单行 */
+  busy: string | null
+  onBackup: () => void
+  onPrune: () => void
+  onCaches: () => void
+  onToggleAutostart: () => void
+}
+
+/**
+ * 渲染「更多」图标按钮与它收纳的菜单。
+ * @param props - 开机启动状态、忙碌标记与四个动作
+ * @returns 菜单入口（含锚定菜单）
+ */
+export function MoreMenu({ autostart, busy, onBackup, onPrune, onCaches, onToggleAutostart }: MoreMenuProps): JSX.Element {
+  const [open, setOpen] = useState(false)
+  const items: SharedMenuEntry[] = [
+    { id: 'backup', label: busy === 'backup' ? '备份中…' : '立即备份', disabled: busy !== null },
+    { id: 'prune', label: '清理备份…', disabled: busy !== null },
+    { id: 'caches', label: '清理缓存…', disabled: busy !== null },
+  ]
+  if (autostart !== null && autostart.supported) {
+    items.push(
+      { type: 'separator', id: 'autostart-separator' },
+      { id: 'autostart', label: busy === 'autostart' ? '设置中…' : '开机启动', disabled: busy !== null },
+    )
+  }
+
+  const select = (id: string): void => {
+    setOpen(false)
+    if (id === 'backup') onBackup()
+    else if (id === 'prune') onPrune()
+    else if (id === 'caches') onCaches()
+    else if (id === 'autostart') onToggleAutostart()
+  }
+
+  return (
+    <Menu
+      open={open}
+      anchor={(
+        <Button
+          size="sm"
+          variant="ghost"
+          className="bc-icon-btn"
+          icon={<IconEllipsis size={16} />}
+          aria-label="更多操作"
+          aria-haspopup="menu"
+          aria-expanded={open}
+          onClick={() => setOpen((value) => !value)}
+        />
+      )}
+      items={items}
+      selectedId={autostart?.enabled === true ? 'autostart' : undefined}
+      onSelect={select}
+      onClose={() => setOpen(false)}
+      align="end"
+      side="bottom"
+      portal
+    />
+  )
+}
