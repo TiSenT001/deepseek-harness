@@ -57,6 +57,8 @@ export type LayoutSeed = ReadonlyMap<string, { readonly x: number; readonly y: n
 
 /** Energy below which the simulation sleeps (d3 alphaMin). */
 export const ALPHA_MIN = 0.001
+/** Energy floor while continuous animation is on: slow drift, never frozen. */
+export const ANIMATE_ALPHA = 0.015
 /** Per-tick approach toward the target energy: cools in ~300 ticks (d3). */
 export const ALPHA_DECAY = 1 - Math.pow(ALPHA_MIN, 1 / 300)
 /** Velocity retention per tick (d3/Obsidian velocityDecay). */

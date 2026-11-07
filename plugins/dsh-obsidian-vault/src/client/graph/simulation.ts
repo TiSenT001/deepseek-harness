@@ -17,6 +17,8 @@ export interface SimulationHandle {
   readonly nodes: SimNode[]
   /** Hot-update the force sliders and reheat (Obsidian's `{forces}` message). */
   setForces(forces: LayoutForces): void
+  /** Keep the simulation warm (continuous slow motion) or let it cool. */
+  setAnimate(on: boolean): void
   /** Pin a node for dragging; holds the simulation warm. */
   pin(path: string, x: number, y: number): void
   movePin(path: string, x: number, y: number): void
@@ -37,6 +39,8 @@ export interface SimulationOptions {
   readonly seed?: LayoutSeed
   /** Skip the worker for this run (used for the very first paint). */
   readonly forceInline?: boolean
+  /** Start with continuous animation enabled. */
+  readonly animate?: boolean
 }
 
 /** Graph size above which the worker is worth its startup cost. */
@@ -61,15 +65,23 @@ export function startSimulation(
 ): SimulationHandle {
   const templates = seedPositions(nodes, edges, options.seed)
   if (templates.length === 0) {
-    return { nodes: templates, setForces: () => undefined, pin: () => undefined, movePin: () => undefined, unpin: () => undefined, stop: () => undefined }
+    return {
+      nodes: templates,
+      setForces: () => undefined,
+      setAnimate: () => undefined,
+      pin: () => undefined,
+      movePin: () => undefined,
+      unpin: () => undefined,
+      stop: () => undefined,
+    }
   }
   if (options.forceInline === true || typeof Worker === 'undefined' || templates.length < WORKER_THRESHOLD) {
-    return startInline(templates, edges, forces, callbacks)
+    return startInline(templates, edges, forces, callbacks, options.animate === true)
   }
   try {
-    return startWorker(nodes, edges, forces, templates, callbacks, options.seed)
+    return startWorker(nodes, edges, forces, templates, callbacks, options.seed, options.animate === true)
   } catch {
-    return startInline(templates, edges, forces, callbacks)
+    return startInline(templates, edges, forces, callbacks, options.animate === true)
   }
 }
 
@@ -79,8 +91,10 @@ function startInline(
   edges: readonly GraphEdgeInput[],
   forces: LayoutForces,
   callbacks: SimulationCallbacks,
+  animate: boolean,
 ): SimulationHandle {
   const sim = new Simulation(templates, edges, forces)
+  sim.setAnimate(animate)
   let running = false
   let frame = 0
   const pump = (): void => {
@@ -104,6 +118,10 @@ function startInline(
     nodes: templates,
     setForces: (next) => {
       sim.setForces(next)
+      wake()
+    },
+    setAnimate: (on) => {
+      sim.setAnimate(on)
       wake()
     },
     pin: (path, x, y) => {
@@ -174,9 +192,11 @@ function startWorker(
   templates: SimNode[],
   callbacks: SimulationCallbacks,
   seed?: LayoutSeed,
+  animate = false,
 ): SimulationHandle {
   const instance = worker()
-  if (instance === null) return startInline(templates, edges, forces, callbacks)
+  let animateState = animate
+  if (instance === null) return startInline(templates, edges, forces, callbacks, animateState)
   const id = nextSessionId
   nextSessionId += 1
   let currentForces = forces
@@ -191,7 +211,7 @@ function startWorker(
     } catch {
       // A dead worker cannot receive the stop; the session map is already clean.
     }
-    inline = startInline(templates, edges, currentForces, callbacks)
+    inline = startInline(templates, edges, currentForces, callbacks, animateState)
   }
 
   const session: Session = {
@@ -203,7 +223,7 @@ function startWorker(
   sessions.set(id, session)
   const watchdog = window.setTimeout(fail, FIRST_TICK_TIMEOUT_MS)
   const seedPairs = seed === undefined ? undefined : [...seed.entries()].map(([path, point]) => [path, point.x, point.y] as const)
-  instance.postMessage({ id, type: 'start', nodes, edges, forces, seed: seedPairs } satisfies SimulationRequest)
+  instance.postMessage({ id, type: 'start', nodes, edges, forces, seed: seedPairs, animate } satisfies SimulationRequest)
 
   const send = (message: SimulationRequest): void => {
     if (inline !== null) return
@@ -222,6 +242,14 @@ function startWorker(
         return
       }
       send({ id, type: 'forces', forces: next })
+    },
+    setAnimate: (on) => {
+      animateState = on
+      if (inline !== null) {
+        inline.setAnimate(on)
+        return
+      }
+      send({ id, type: 'animate', animate: on })
     },
     pin: (path, x, y) => {
       if (inline !== null) {

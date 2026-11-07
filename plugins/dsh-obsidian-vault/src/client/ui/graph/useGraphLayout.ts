@@ -41,6 +41,8 @@ export interface GraphLayoutInput {
   readonly visible: GraphDto
   /** Live force values, hot-applied to the running simulation. */
   readonly forces: GraphSettings['forces']
+  /** Keep the simulation warm so the graph animates continuously. */
+  readonly animate: boolean
 }
 
 /** Positions and the verbs the canvas needs to draw and drag them. */
@@ -70,7 +72,7 @@ export interface GraphLayout {
  * @param input - the visible graph and current force values.
  * @returns positions, the refs the canvas reads, and drag verbs.
  */
-export function useGraphLayout({ visible, forces }: GraphLayoutInput): GraphLayout {
+export function useGraphLayout({ visible, forces, animate }: GraphLayoutInput): GraphLayout {
   const [positions, setPositions] = useState<readonly SimNode[]>([])
   const [reveal, setReveal] = useState(1)
   const positionsRef = useRef<readonly SimNode[]>([])
@@ -136,6 +138,7 @@ export function useGraphLayout({ visible, forces }: GraphLayoutInput): GraphLayo
         // The first paint runs inline so the graph is visible immediately;
         // later restarts go to the worker.
         forceInline: !hasLayout.current,
+        animate,
       })
     } catch {
       // Last-resort fallback: a stalled pipeline must never blank the canvas.
@@ -168,6 +171,12 @@ export function useGraphLayout({ visible, forces }: GraphLayoutInput): GraphLayo
     }
     simRef.current?.setForces(forces)
   }, [forces])
+
+  // Toggling continuous animation applies to the live session, including a
+  // worker session that had already cooled.
+  useEffect(() => {
+    simRef.current?.setAnimate(animate)
+  }, [animate])
 
   // Time-lapse reveal: nodes appear in degree order over a short window.
   useEffect(() => {

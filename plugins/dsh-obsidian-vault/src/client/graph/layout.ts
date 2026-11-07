@@ -9,7 +9,7 @@
  */
 import { collideForce, repelForce, repelForceNaive } from './quadtree.ts'
 import { jiggle } from './layout-seed.ts'
-import { ALPHA_DECAY, ALPHA_MIN, DEFAULT_FORCES, REHEAT_ALPHA, VELOCITY_DECAY } from './layout-types.ts'
+import { ALPHA_DECAY, ALPHA_MIN, ANIMATE_ALPHA, DEFAULT_FORCES, REHEAT_ALPHA, VELOCITY_DECAY } from './layout-types.ts'
 import type { GraphEdgeInput, LayoutForces, SimNode } from './layout-types.ts'
 
 export * from './layout-types.ts'
@@ -41,6 +41,8 @@ export class Simulation {
   readonly nodes: SimNode[]
   /** Current energy; 1 on start, decaying toward `alphaTarget`. */
   alpha = 1
+  /** Keep the simulation warm forever; the graph never settles into a still frame. */
+  animate = false
   private alphaTarget = 0
   private readonly links: Link[]
   private readonly byPath: Map<string, SimNode>
@@ -81,7 +83,16 @@ export class Simulation {
 
   /** True once the energy has decayed below the sleep threshold. */
   get cooled(): boolean {
-    return this.alpha < ALPHA_MIN
+    return !this.animate && this.alpha < ALPHA_MIN
+  }
+
+  /**
+   * Turn continuous animation on or off. Turning it on wakes a cooled session.
+   * @param on - whether the simulation should stay warm.
+   */
+  setAnimate(on: boolean): void {
+    this.animate = on
+    if (on && this.alpha < ANIMATE_ALPHA) this.alpha = ANIMATE_ALPHA
   }
 
   /**
@@ -90,6 +101,9 @@ export class Simulation {
    */
   tick(): void {
     this.alpha += (this.alphaTarget - this.alpha) * ALPHA_DECAY
+    // A floor just above the sleep threshold keeps the graph in slow motion
+    // instead of freezing; the forces still resolve at this energy.
+    if (this.animate && this.alpha < ANIMATE_ALPHA) this.alpha = ANIMATE_ALPHA
     const alpha = this.alpha
     const nodes = this.nodes
     const forces = this.forces

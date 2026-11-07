@@ -109,7 +109,6 @@ export function drawScene(scene: SceneInput): SceneStats {
   const globalLabelAlpha = labelAlpha(zoom, textFade)
   const labelScale = zoom < 1 ? 1 / zoom : 1
   // Arrowheads fade out as the camera zooms out (Obsidian: 2*(zoom-0.3)).
-  const arrowAlpha = Math.max(0, Math.min(1, 2 * (zoom - 0.3)))
 
   // --- edges ---
   const baseEdgeWidth = Math.max(0.35, settings.display.linkWidth / zoom)
@@ -160,20 +159,6 @@ export function drawScene(scene: SceneInput): SceneStats {
       ctx.moveTo(from.x, from.y)
       ctx.lineTo(to.x, to.y)
       ctx.stroke()
-    }
-  }
-
-  // Arrowheads ride on the owning edge's alpha.
-  if (settings.display.arrows && arrowAlpha > 0.01) {
-    for (const edge of edges) {
-      if (hidden.has(edge.source) || hidden.has(edge.target)) continue
-      const alpha = edgeAlphas.get(edgeKey(edge.source, edge.target))
-      if (alpha === undefined || alpha <= 0.01) continue
-      const from = index.get(edge.source)
-      const to = index.get(edge.target)
-      if (from === undefined || to === undefined) continue
-      ctx.globalAlpha = alpha * arrowAlpha
-      drawArrow(ctx, from.x, from.y, to.x, to.y, to.radius * scale + 2.5, 3.8 / zoom, palette.edge)
     }
   }
 
@@ -272,34 +257,4 @@ function neighbourSet(edges: readonly GraphEdgeInput[], path: string): Set<strin
     if (edge.target === path) set.add(edge.source)
   }
   return set
-}
-
-function drawArrow(
-  ctx: CanvasRenderingContext2D,
-  x1: number,
-  y1: number,
-  x2: number,
-  y2: number,
-  offset: number,
-  size: number,
-  color: string,
-): void {
-  const dx = x2 - x1
-  const dy = y2 - y1
-  const len = Math.hypot(dx, dy)
-  if (len < 1) return
-  const ux = dx / len
-  const uy = dy / len
-  const ax = x2 - ux * offset
-  const ay = y2 - uy * offset
-  const s = size
-  const ox = -uy * s
-  const oy = ux * s
-  ctx.beginPath()
-  ctx.moveTo(ax + ux * s, ay + uy * s)
-  ctx.lineTo(ax - ux * s + ox, ay - uy * s + oy)
-  ctx.lineTo(ax - ux * s - ox, ay - uy * s - oy)
-  ctx.closePath()
-  ctx.fillStyle = color
-  ctx.fill()
 }

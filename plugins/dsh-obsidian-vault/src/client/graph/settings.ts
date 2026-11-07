@@ -25,7 +25,8 @@ export interface GraphSettings {
   readonly display: {
     /** How ungrouped note nodes are tinted: by folder, by first tag, or one colour. */
     readonly colorBy: 'folder' | 'tag' | 'uniform'
-    readonly arrows: boolean
+    /** Keep the force simulation warm so the graph never freezes. */
+    readonly animate: boolean
     /** Zoom below which labels fade out, 0 (never) … 0.9. */
     readonly textFade: number
     readonly nodeScale: number
@@ -52,7 +53,7 @@ export const DEFAULT_GRAPH_SETTINGS: GraphSettings = {
   groups: [],
   display: {
     colorBy: 'folder',
-    arrows: false,
+    animate: true,
     textFade: 0,
     nodeScale: 1,
     linkWidth: 1,

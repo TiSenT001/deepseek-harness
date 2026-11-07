@@ -33,7 +33,6 @@ const count = async () => page.evaluate(() => ({
   nodes: document.querySelectorAll('.ov-graph circle').length,
   ghosts: document.querySelectorAll('.ov-node-unresolved').length,
   tags: document.querySelectorAll('.ov-node-tag').length,
-  arrows: document.querySelectorAll('.ov-graph line[marker-end]').length,
 }))
 
 const initial = await count()
@@ -59,13 +58,13 @@ if (await tagsToggle.count() > 0) {
 }
 const afterTags = await count()
 
-// Arrows.
-const arrowsToggle = page.locator('.ov-graph-toggle', { hasText: '箭头' }).locator('input')
-if (await arrowsToggle.count() > 0) {
-  await arrowsToggle.check()
+// Continuous animation: the toggle stays on so the layout never freezes.
+const animateToggle = page.locator('.ov-graph-toggle', { hasText: '持续动画' }).locator('input')
+if (await animateToggle.count() > 0 && !(await animateToggle.isChecked())) {
+  await animateToggle.check()
   await page.waitForTimeout(700)
 }
-const afterArrows = await count()
+const afterAnimate = await count()
 
 // Node size slider.
 const before = await page.evaluate(() => Number(document.querySelector('.ov-graph circle')?.getAttribute('r')))
@@ -77,5 +76,5 @@ if (await slider.count() > 0) {
 const after = await page.evaluate(() => Number(document.querySelector('.ov-graph circle')?.getAttribute('r')))
 await page.screenshot({ path: `${outDir}/15-graph-settings-applied.png` })
 
-console.log(JSON.stringify({ initial, afterExisting, afterTags, afterArrows, radius: { before, after } }, null, 2))
+console.log(JSON.stringify({ initial, afterExisting, afterTags, afterAnimate, radius: { before, after } }, null, 2))
 await browser.close()

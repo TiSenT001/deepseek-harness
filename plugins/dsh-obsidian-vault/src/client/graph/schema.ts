@@ -66,7 +66,7 @@ export const GRAPH_SCHEMA: readonly GraphSection[] = [
           { value: 'uniform', label: 'colorByUniform' },
         ],
       },
-      { kind: 'toggle', path: 'display.arrows', label: 'arrows' },
+      { kind: 'toggle', path: 'display.animate', label: 'animateGraph' },
       { kind: 'range', path: 'display.textFade', label: 'textFade', min: 0, max: 0.9, step: 0.1 },
       { kind: 'range', path: 'display.nodeScale', label: 'nodeSize', min: 0.5, max: 2, step: 0.1 },
       { kind: 'range', path: 'display.linkWidth', label: 'linkWidth', min: 0.5, max: 4, step: 0.5 },

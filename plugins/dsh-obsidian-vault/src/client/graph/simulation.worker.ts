@@ -18,7 +18,10 @@ export type SimulationRequest =
     readonly forces: LayoutForces
     /** Existing positions, so a partial change does not reshuffle the graph. */
     readonly seed?: ReadonlyArray<readonly [string, number, number]>
+    /** Keep the session warm from the start. */
+    readonly animate?: boolean
   }
+  | { readonly id: number; readonly type: 'animate'; readonly animate: boolean }
   | { readonly id: number; readonly type: 'forces'; readonly forces: LayoutForces }
   | { readonly id: number; readonly type: 'pin'; readonly path: string; readonly x: number; readonly y: number }
   | { readonly id: number; readonly type: 'movePin'; readonly path: string; readonly x: number; readonly y: number }
@@ -80,6 +83,7 @@ self.addEventListener('message', (event: MessageEvent<SimulationRequest>) => {
         ? undefined
         : new Map(message.seed.map(([path, x, y]) => [path, { x, y }]))
       const sim = new Simulation(seedPositions(message.nodes, message.edges, seed), message.edges, message.forces)
+      sim.setAnimate(message.animate === true)
       const session: Session = { sim, running: false, timer: null }
       sessions.set(id, session)
       wake(id, session)
@@ -94,6 +98,7 @@ self.addEventListener('message', (event: MessageEvent<SimulationRequest>) => {
       return
     }
     if (message.type === 'forces') session.sim.setForces(message.forces)
+    else if (message.type === 'animate') session.sim.setAnimate(message.animate)
     else if (message.type === 'pin') session.sim.pin(message.path, message.x, message.y)
     else if (message.type === 'movePin') session.sim.movePin(message.path, message.x, message.y)
     else if (message.type === 'unpin') session.sim.unpin(message.path)

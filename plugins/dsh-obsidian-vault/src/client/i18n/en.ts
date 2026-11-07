@@ -292,4 +292,5 @@ export const EN: Dict = {
   colorLegendFilter: "Show only",
   colorLegendClear: "Clear legend filter",
   groupsHint: "Group colours win over the automatic mode; queries accept path:, file: and tag: prefixes.",
+  animateGraph: "Continuous animation",
 }

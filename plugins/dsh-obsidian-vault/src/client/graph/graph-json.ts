@@ -41,8 +41,8 @@ export function settingsPatchFromGraphJson(document: unknown): GraphSettingsPatc
   if (showOrphans !== undefined) filters.showOrphans = showOrphans
 
   const display: MutableSection<'display'> = {}
-  const arrows = booleanOf(json['showArrow'])
-  if (arrows !== undefined) display.arrows = arrows
+  const animate = booleanOf(json['dshAnimate'])
+  if (animate !== undefined) display.animate = animate
   const textFade = numberOf(json['textFadeMultiplier'])
   if (textFade !== undefined) display.textFade = textFade
   const nodeScale = numberOf(json['nodeSizeMultiplier'])
@@ -89,7 +89,7 @@ export function graphJsonPatch(settings: GraphSettings): Record<string, unknown>
       query: group.query,
       color: { a: 1, rgb: hexToRgb(group.color) ?? 0 },
     })),
-    showArrow: settings.display.arrows,
+    dshAnimate: settings.display.animate,
     textFadeMultiplier: settings.display.textFade,
     nodeSizeMultiplier: settings.display.nodeScale,
     lineSizeMultiplier: settings.display.linkWidth,

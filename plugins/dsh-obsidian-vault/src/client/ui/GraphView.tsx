@@ -57,7 +57,7 @@ export function GraphView(props: GraphViewProps): JSX.Element {
   }, [])
 
   const data = useGraphData({ center: scope, version, onScopeChange })
-  const layout = useGraphLayout({ visible: data.visible, forces: data.settings.forces })
+  const layout = useGraphLayout({ visible: data.visible, forces: data.settings.forces, animate: data.settings.display.animate })
   const camera = useGraphCamera({
     positionsRef: layout.positionsRef,
     loopRef: layout.loopRef,

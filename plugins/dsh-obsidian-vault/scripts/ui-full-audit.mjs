@@ -1316,16 +1316,16 @@ try {
     await sleep(500)
     const panel = page.locator('.ov-graph-panel')
     assert(await panel.isVisible(), 'settings panel missing')
-    const arrows = panel.locator('.ov-kit-toggle', { hasText: '箭头' })
-    const arrowsBefore = await arrows.getAttribute('data-on')
+    const animate = panel.locator('.ov-kit-toggle', { hasText: '持续动画' })
+    const animateBefore = await animate.getAttribute('data-on')
     try {
       for (const section of ['过滤', '分组', '显示', '力']) {
         assert((await panel.locator('.ov-graph-panel-title', { hasText: section }).count()) > 0, `section ${section} missing`)
       }
-      // toggle arrows
-      await arrows.click()
+      // toggle continuous animation; the finally block restores it
+      await animate.click()
       await sleep(300)
-      assert((await arrows.getAttribute('data-on')) !== arrowsBefore, 'arrows toggle did not flip')
+      assert((await animate.getAttribute('data-on')) !== animateBefore, 'animate toggle did not flip')
       // slider by keyboard
       const slider = panel.locator('[role="slider"][aria-label="节点大小"]')
       const valueBefore = await slider.getAttribute('aria-valuenow')
@@ -1353,7 +1353,7 @@ try {
       // Restore the toggle so settings end as they started, and close the panel
       // even after a failure so later checks see the same UI.
       try {
-        if ((await arrows.getAttribute('data-on')) !== arrowsBefore) await arrows.click()
+        if ((await animate.getAttribute('data-on')) !== animateBefore) await animate.click()
         if ((await panel.count()) > 0) await panel.locator('button[aria-label="关闭"]').first().click()
       } catch {
         // The panel may already be detached; the next check re-opens it.
@@ -2383,12 +2383,15 @@ try {
     await sleep(500)
     const panel = page.locator('.ov-graph-panel')
     assert(await panel.isVisible(), 'settings panel missing on vault B')
-    const arrows = panel.locator('.ov-kit-toggle', { hasText: '箭头' })
-    const before = await arrows.getAttribute('data-on')
-    await arrows.click()
+    const animate = panel.locator('.ov-kit-toggle', { hasText: '持续动画' })
+    const before = await animate.getAttribute('data-on')
+    await animate.click()
     await sleep(1200)
     const stored = await api('config/read?file=graph')
-    assert(stored.value.showArrow === (before !== 'true'), `graph.json showArrow=${JSON.stringify(stored.value.showArrow)} after toggling from ${before}`)
+    assert(stored.value.dshAnimate === (before !== 'true'), `graph.json dshAnimate=${JSON.stringify(stored.value.dshAnimate)} after toggling from ${before}`)
+    // Leave the default on for the rest of the run.
+    await animate.click()
+    await sleep(900)
     assert(stored.value.collapseForces === true, 'settings write dropped unknown keys')
     const slider = panel.locator('[role="slider"][aria-label="节点大小"]')
     await slider.focus()
