@@ -1060,44 +1060,108 @@ window.__ModuleLoader__.load({
 			});
 		}
 		//#endregion
+		//#region src/ui/Sparkline.tsx
+		const VIEW_WIDTH = 100;
+		/**
+		* 渲染一条迷你折线。
+		* @param props - 数值序列与尺寸
+		* @returns SVG 元素；点数不足时返回 null
+		*/
+		function Sparkline({ values, height = 20, className }) {
+			if (values.length < 2) return null;
+			const padding = 2;
+			const min = Math.min(...values);
+			const span = Math.max(...values) - min || 1;
+			const step = VIEW_WIDTH / (values.length - 1);
+			const points = values.map((value, index) => {
+				const x = index * step;
+				const y = height - padding - (value - min) / span * (height - padding * 2);
+				return `${x.toFixed(1)},${y.toFixed(1)}`;
+			}).join(" ");
+			return /* @__PURE__ */ (0, react_jsx_runtime.jsx)("svg", {
+				className: className === void 0 ? "bc-spark" : `bc-spark ${className}`,
+				viewBox: `0 0 ${VIEW_WIDTH} ${height}`,
+				width: "100%",
+				height,
+				preserveAspectRatio: "none",
+				role: "img",
+				"aria-label": "趋势",
+				children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)("polyline", {
+					points,
+					fill: "none",
+					stroke: "currentColor",
+					strokeWidth: "1.5",
+					strokeLinejoin: "round",
+					strokeLinecap: "round",
+					vectorEffect: "non-scaling-stroke"
+				})
+			});
+		}
+		//#endregion
 		//#region src/ui/StatTiles.tsx
 		/**
 		* 概览指标带：数据库 / 知识边 / 笔记 / 记忆 / 失败边 / 上次备份。
 		*
-		* 只读观察值，不提供操作；「失败边」是唯一例外：点开看明细（只读清单）。
-		* 有失败边时整块换成警示底色，而不是把数字染成低对比度文字。
+		* 前五项各带一条 30 天迷你趋势线，点开看完整趋势（可切 7 / 30 / 90 / 365 天窗口）。
+		* 「失败边」有值时整块换成警示底色，而不是把数字染成低对比度文字。
 		*/
-		function Stat({ label, value, hint, tone }) {
-			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+		/** 指标带里趋势线的窗口（天）。 */
+		const SPARK_DAYS = 30;
+		/** 取最近 N 天里该指标的数值（升序，跳过空点）。 */
+		function seriesValues(points, key) {
+			if (points === void 0) return [];
+			const cutoff = Date.now() - SPARK_DAYS * 864e5;
+			const values = [];
+			for (const point of points) {
+				const value = point[key];
+				if (value === null) continue;
+				const stamp = Date.parse(point.ts.includes("T") ? point.ts : point.ts.replace(" ", "T"));
+				if (Number.isFinite(stamp) && stamp >= cutoff) values.push(value);
+			}
+			return values;
+		}
+		function Stat({ label, value, hint, tone, spark, onClick }) {
+			const content = /* @__PURE__ */ (0, react_jsx_runtime.jsxs)(react_jsx_runtime.Fragment, { children: [
+				/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+					className: "bc-kpi-label",
+					children: label
+				}),
+				/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+					className: "bc-kpi-value",
+					children: value
+				}),
+				/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+					className: "bc-kpi-hint",
+					children: hint
+				}),
+				spark !== void 0 && spark.length > 1 && /* @__PURE__ */ (0, react_jsx_runtime.jsx)(Sparkline, { values: spark })
+			] });
+			if (onClick === void 0) return /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
 				className: "bc-kpi",
 				"data-tone": tone,
-				children: [
-					/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-						className: "bc-kpi-label",
-						children: label
-					}),
-					/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-						className: "bc-kpi-value",
-						children: value
-					}),
-					/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-						className: "bc-kpi-hint",
-						children: hint
-					})
-				]
+				children: content
+			});
+			return /* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
+				type: "button",
+				className: "bc-kpi bc-kpi-action",
+				"data-tone": tone,
+				onClick,
+				children: content
 			});
 		}
 		/**
 		* 渲染概览指标。
 		* @param props.overview - `/status` 返回值；为空时不渲染
 		* @param props.now - 当前毫秒时间戳，用于相对时间
-		* @param props.onOpenFailed - 点开「失败边」明细
+		* @param props.history - `/status/history` 的采样点；为空时只显示数值
+		* @param props.onOpenTrend - 点开某个指标的趋势图
 		* @returns 指标网格元素
 		*/
-		function OverviewTiles({ overview, now, onOpenFailed }) {
+		function OverviewTiles({ overview, now, history, onOpenTrend }) {
 			const backupAt = overview.last_backup.at;
 			const backupSize = overview.last_backup.size_mb;
 			const backupHint = [formatShortMoment(backupAt), backupSize === null ? null : formatMegabytes(backupSize)].filter((part) => part !== null).join(" · ");
+			const points = history?.points;
 			const hasFailures = (overview.failure_edges ?? 0) > 0;
 			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
 				className: "bc-kpis",
@@ -1105,42 +1169,38 @@ window.__ModuleLoader__.load({
 					/* @__PURE__ */ (0, react_jsx_runtime.jsx)(Stat, {
 						label: "数据库",
 						value: formatMegabytes(overview.db_size_mb),
-						hint: "brain.db"
+						hint: "brain.db",
+						spark: seriesValues(points, "db_size_mb"),
+						onClick: () => onOpenTrend("db_size_mb")
 					}),
 					/* @__PURE__ */ (0, react_jsx_runtime.jsx)(Stat, {
 						label: "知识边",
 						value: formatCount(overview.edges),
-						hint: "图谱连接"
+						hint: "图谱连接",
+						spark: seriesValues(points, "edges"),
+						onClick: () => onOpenTrend("edges")
 					}),
 					/* @__PURE__ */ (0, react_jsx_runtime.jsx)(Stat, {
 						label: "笔记",
 						value: formatCount(overview.notes),
-						hint: "vault 索引"
+						hint: "vault 索引",
+						spark: seriesValues(points, "notes"),
+						onClick: () => onOpenTrend("notes")
 					}),
 					/* @__PURE__ */ (0, react_jsx_runtime.jsx)(Stat, {
 						label: "记忆",
 						value: formatCount(overview.sessions),
-						hint: "会话记忆"
+						hint: "会话记忆",
+						spark: seriesValues(points, "sessions"),
+						onClick: () => onOpenTrend("sessions")
 					}),
-					/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("button", {
-						type: "button",
-						className: "bc-kpi bc-kpi-action",
-						"data-tone": hasFailures ? "warn" : void 0,
-						onClick: onOpenFailed,
-						children: [
-							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-								className: "bc-kpi-label",
-								children: "失败边"
-							}),
-							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-								className: "bc-kpi-value",
-								children: formatCount(overview.failure_edges)
-							}),
-							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-								className: "bc-kpi-hint",
-								children: "待消解 · 查看"
-							})
-						]
+					/* @__PURE__ */ (0, react_jsx_runtime.jsx)(Stat, {
+						label: "失败边",
+						value: formatCount(overview.failure_edges),
+						hint: "待消解 · 查看",
+						tone: hasFailures ? "warn" : void 0,
+						spark: seriesValues(points, "failure_edges"),
+						onClick: () => onOpenTrend("failure_edges")
 					}),
 					/* @__PURE__ */ (0, react_jsx_runtime.jsx)(Stat, {
 						label: "上次备份",
@@ -1149,6 +1209,230 @@ window.__ModuleLoader__.load({
 					})
 				]
 			});
+		}
+		//#endregion
+		//#region src/ui/TrendDialog.tsx
+		/**
+		* 指标趋势对话框：点指标卡打开，默认 30 天，可切 7 / 30 / 90 / 365 天。
+		*
+		* 数据来自 `/status/history`（管理器每天采一次 metrics_snapshots）。
+		* 悬停图上任意位置会读出该采样点的日期与数值；点数不足时明确提示「数据不足」，
+		* 不画一条假线。失败边指标额外给一个「查看明细」入口。
+		*/
+		const CHART_W = 600;
+		const CHART_H = 170;
+		const PAD = 14;
+		/** 可选时间窗口（天）。 */
+		const RANGES = [
+			{
+				days: 7,
+				label: "7 天"
+			},
+			{
+				days: 30,
+				label: "30 天"
+			},
+			{
+				days: 90,
+				label: "90 天"
+			},
+			{
+				days: 365,
+				label: "365 天"
+			}
+		];
+		/** 管理器的时间戳有两种写法（ISO 带 T / 空格分隔），统一成可解析的形式。 */
+		function parseTs(ts) {
+			const normalized = ts.includes("T") ? ts : ts.replace(" ", "T");
+			return Date.parse(normalized);
+		}
+		/** `2026-11-07T23:18:28` → `11-07`。 */
+		function shortDate(ts) {
+			const day = ts.slice(5, 10);
+			return day.length === 5 ? day : ts.slice(0, 10);
+		}
+		/**
+		* 渲染指标趋势对话框。
+		* @param props - 指标、采样点与回调
+		* @returns 对话框元素（挂载即打开）
+		*/
+		function TrendDialog({ metric, points, onOpenFailed, onClose }) {
+			const [days, setDays] = (0, react.useState)(30);
+			const [hover, setHover] = (0, react.useState)(null);
+			const series = (0, react.useMemo)(() => {
+				const cutoff = Date.now() - days * 864e5;
+				return points.map((point) => ({
+					ts: point.ts,
+					value: point[metric.key]
+				})).filter((point) => point.value !== null && Number.isFinite(parseTs(point.ts)) && parseTs(point.ts) >= cutoff);
+			}, [
+				points,
+				days,
+				metric.key
+			]);
+			const count = series.length;
+			const values = series.map((point) => point.value);
+			const min = count > 0 ? Math.min(...values) : 0;
+			const max = count > 0 ? Math.max(...values) : 0;
+			const span = max - min || 1;
+			const xAt = (index) => count <= 1 ? CHART_W / 2 : index / (count - 1) * CHART_W;
+			const yAt = (value) => CHART_H - PAD - (value - min) / span * (CHART_H - PAD * 2);
+			const line = series.map((point, index) => `${xAt(index).toFixed(1)},${yAt(point.value).toFixed(1)}`).join(" ");
+			const area = series.length > 0 ? `0,${CHART_H} ${line} ${CHART_W},${CHART_H}` : "";
+			const handleMove = (event) => {
+				if (count === 0) return;
+				const rect = event.currentTarget.getBoundingClientRect();
+				const ratio = Math.min(1, Math.max(0, (event.clientX - rect.left) / rect.width));
+				setHover(Math.round(ratio * (count - 1)));
+			};
+			const latest = count > 0 ? series[count - 1] ?? null : null;
+			const first = series[0];
+			const readout = hover !== null && series[hover] !== void 0 ? `${shortDate(series[hover].ts)} · ${metric.format(series[hover].value)}` : latest !== null ? `最新 ${metric.format(latest.value)}` : "暂无采样";
+			const footer = /* @__PURE__ */ (0, react_jsx_runtime.jsxs)(react_jsx_runtime.Fragment, { children: [onOpenFailed !== void 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsx)(Button, {
+				size: "sm",
+				variant: "ghost",
+				onClick: onOpenFailed,
+				children: "查看失败边明细"
+			}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)(Button, {
+				size: "sm",
+				variant: "ghost",
+				onClick: onClose,
+				children: "关闭"
+			})] });
+			return /* @__PURE__ */ (0, react_jsx_runtime.jsx)(Modal, {
+				open: true,
+				onClose,
+				title: `${metric.label}趋势`,
+				closeLabel: "关闭",
+				description: `${days} 天窗口 · ${count} 个采样点 · 单位${metric.unit}`,
+				footer,
+				children: /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+					className: "bc-trend",
+					children: [
+						/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+							className: "bc-trend-head",
+							children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+								className: "bc-trend-ranges",
+								children: RANGES.map((range) => /* @__PURE__ */ (0, react_jsx_runtime.jsx)(Button, {
+									size: "sm",
+									variant: days === range.days ? "outline" : "ghost",
+									onClick: () => {
+										setDays(range.days);
+										setHover(null);
+									},
+									children: range.label
+								}, range.days))
+							}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+								className: "bc-trend-readout",
+								children: readout
+							})]
+						}),
+						/* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+							className: "bc-trend-chart",
+							onMouseMove: handleMove,
+							onMouseLeave: () => setHover(null),
+							children: /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("svg", {
+								viewBox: `0 0 ${CHART_W} ${CHART_H}`,
+								width: "100%",
+								height: "170",
+								preserveAspectRatio: "none",
+								role: "img",
+								"aria-label": `${metric.label}趋势图`,
+								children: [
+									count > 1 && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("polygon", {
+										points: area,
+										className: "bc-trend-area"
+									}),
+									count > 1 && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("polyline", {
+										points: line,
+										className: "bc-trend-line",
+										vectorEffect: "non-scaling-stroke"
+									}),
+									hover !== null && series[hover] !== void 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)(react_jsx_runtime.Fragment, { children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("line", {
+										x1: xAt(hover),
+										x2: xAt(hover),
+										y1: 0,
+										y2: CHART_H,
+										className: "bc-trend-guide",
+										vectorEffect: "non-scaling-stroke"
+									}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("circle", {
+										cx: xAt(hover),
+										cy: yAt(series[hover].value),
+										r: 4,
+										className: "bc-trend-dot"
+									})] }),
+									count === 1 && series[0] !== void 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("circle", {
+										cx: CHART_W / 2,
+										cy: yAt(series[0].value),
+										r: 4,
+										className: "bc-trend-dot"
+									})
+								]
+							})
+						}),
+						/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+							className: "bc-trend-axis",
+							children: [
+								/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: first !== void 0 ? shortDate(first.ts) : "—" }),
+								/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: count > 0 ? `最高 ${metric.format(max)} · 最低 ${metric.format(min)}` : "" }),
+								/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: latest !== null ? shortDate(latest.ts) : "—" })
+							]
+						}),
+						count < 2 && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+							className: "bc-trend-empty",
+							children: [
+								"数据不足：当前窗口只有 ",
+								count,
+								" 个采样点。管理器每天采一次，明天起才会有折线。"
+							]
+						})
+					]
+				})
+			});
+		}
+		//#endregion
+		//#region src/ui/metrics.ts
+		/**
+		* 指标定义：指标带和趋势图共用一份（标签、单位、格式化）。
+		*/
+		/** 指标顺序与指标带一致。 */
+		const METRICS = [
+			{
+				key: "db_size_mb",
+				label: "数据库",
+				unit: "MB",
+				format: (value) => formatMegabytes(value)
+			},
+			{
+				key: "edges",
+				label: "知识边",
+				unit: "条",
+				format: (value) => formatCount(value)
+			},
+			{
+				key: "notes",
+				label: "笔记",
+				unit: "篇",
+				format: (value) => formatCount(value)
+			},
+			{
+				key: "sessions",
+				label: "记忆",
+				unit: "条",
+				format: (value) => formatCount(value)
+			},
+			{
+				key: "failure_edges",
+				label: "失败边",
+				unit: "条",
+				format: (value) => formatCount(value)
+			}
+		];
+		/** 按 key 取指标定义。 */
+		function metricSpec(key) {
+			const found = METRICS.find((spec) => spec.key === key);
+			if (found === void 0) throw new Error(`unknown metric: ${key}`);
+			return found;
 		}
 		//#endregion
 		//#region src/ui/styles.ts
@@ -1330,6 +1614,76 @@ window.__ModuleLoader__.load({
   .bc-kpi-action:hover {
     border-color: var(--dsw-alias-border-l4);
   }
+}
+/* 指标卡里的迷你趋势线 */
+.bc-spark {
+  display: block;
+  margin-top: 3px;
+  color: var(--dsw-alias-label-tertiary);
+}
+
+/* ---- 指标趋势对话框 ---- */
+.bc-trend {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.bc-trend-head {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.bc-trend-ranges {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+.bc-trend-readout {
+  margin-left: auto;
+  color: var(--dsw-alias-label-secondary);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.bc-trend-chart {
+  padding: 4px 6px;
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: var(--dsw-radius-md);
+  background: var(--dsw-alias-bg-layer-1);
+  cursor: crosshair;
+}
+.bc-trend-chart svg {
+  display: block;
+}
+.bc-trend-line {
+  fill: none;
+  stroke: var(--dsw-alias-brand-primary);
+  stroke-width: 1.5;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+.bc-trend-area {
+  fill: color-mix(in srgb, var(--dsw-alias-brand-primary) 8%, transparent);
+  stroke: none;
+}
+.bc-trend-guide {
+  stroke: var(--dsw-alias-border-l4);
+  stroke-width: 1;
+}
+.bc-trend-dot {
+  fill: var(--dsw-alias-brand-primary);
+}
+.bc-trend-axis {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  color: var(--dsw-alias-label-tertiary);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+.bc-trend-empty {
+  color: var(--dsw-alias-label-tertiary);
+  font-size: 12px;
 }
 
 /* ---- 分组与卡片 ---- */
@@ -1920,6 +2274,8 @@ window.__ModuleLoader__.load({
 		const pruneBackups = (keep) => postJson("/actions/prune-backups", { keep });
 		/** 失败边明细：KPI 点开时读一次实时清单。 */
 		const loadFailedEdges = () => jget("/quality/failed-edges?limit=80");
+		/** 指标趋势：一次取满一年，对话框里再按 7/30/90/365 天切窗口。 */
+		const loadHistory = () => jget("/status/history?days=365");
 		/** 缓存对话框的回调同样模块级（引用稳定）。 */
 		const loadCaches = () => jget("/actions/caches");
 		const pruneCaches = (ids) => postJson("/actions/caches/prune", { ids });
@@ -2015,8 +2371,15 @@ window.__ModuleLoader__.load({
 			const [backupOpen, setBackupOpen] = (0, react.useState)(false);
 			const [cacheOpen, setCacheOpen] = (0, react.useState)(false);
 			const [failedOpen, setFailedOpen] = (0, react.useState)(false);
+			const [history, setHistory] = (0, react.useState)(null);
+			const [trend, setTrend] = (0, react.useState)(null);
 			const [stopGroup, setStopGroup] = (0, react.useState)(null);
 			const [restartGroup, setRestartGroup] = (0, react.useState)(null);
+			const refreshHistory = (0, react.useCallback)(async () => {
+				try {
+					setHistory(await loadHistory());
+				} catch {}
+			}, []);
 			const load = (0, react.useCallback)(async (manual = false) => {
 				if (manual) setRefreshing(true);
 				try {
@@ -2030,18 +2393,20 @@ window.__ModuleLoader__.load({
 					setAutostart(boot);
 					setConnectionError(null);
 					setUpdatedAt(formatClock(Date.now()));
+					if (manual) refreshHistory();
 				} catch (error) {
 					setConnectionError(reasonOf(error));
 				} finally {
 					setLoaded(true);
 					if (manual) setRefreshing(false);
 				}
-			}, []);
+			}, [refreshHistory]);
 			(0, react.useEffect)(() => {
 				load();
+				refreshHistory();
 				const timer = setInterval(() => void load(), POLL_MS);
 				return () => clearInterval(timer);
-			}, [load]);
+			}, [load, refreshHistory]);
 			const readLog = (0, react.useCallback)(async (name, silent = false) => {
 				if (!silent) setLog((previous) => previous?.name === name ? {
 					...previous,
@@ -2353,7 +2718,8 @@ window.__ModuleLoader__.load({
 								overview !== null && /* @__PURE__ */ (0, react_jsx_runtime.jsx)(OverviewTiles, {
 									overview,
 									now,
-									onOpenFailed: () => setFailedOpen(true)
+									history,
+									onOpenTrend: (key) => setTrend(key)
 								}),
 								!loaded ? /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
 									className: "bc-loading",
@@ -2391,6 +2757,15 @@ window.__ModuleLoader__.load({
 							load();
 						},
 						onClose: () => setBackupOpen(false)
+					}),
+					trend !== null && /* @__PURE__ */ (0, react_jsx_runtime.jsx)(TrendDialog, {
+						metric: metricSpec(trend),
+						points: history?.points ?? [],
+						onOpenFailed: trend === "failure_edges" ? () => {
+							setTrend(null);
+							setFailedOpen(true);
+						} : void 0,
+						onClose: () => setTrend(null)
 					}),
 					failedOpen && /* @__PURE__ */ (0, react_jsx_runtime.jsx)(FailedEdgesDialog, {
 						load: loadFailedEdges,

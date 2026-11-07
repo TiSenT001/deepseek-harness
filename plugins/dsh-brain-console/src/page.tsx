@@ -23,10 +23,12 @@ import { MoreMenu } from './ui/MoreMenu.tsx'
 import { Button, IconPlay, IconRefresh, IconStop, StateDot, Tooltip } from './ui/primitives.ts'
 import { ServiceCard } from './ui/ServiceCard.tsx'
 import { OverviewTiles } from './ui/StatTiles.tsx'
+import { TrendDialog } from './ui/TrendDialog.tsx'
+import { metricSpec, type MetricKey } from './ui/metrics.ts'
 import { ensureConsoleStyles } from './ui/styles.ts'
 import type {
   BackupListing, BatchRestartResult, BatchStartResult, BatchStopResult, CacheListing, CachePruneResult,
-  FailedEdgesListing, Overview, PruneResult, Unit, UnitAction,
+  FailedEdgesListing, HistoryListing, Overview, PruneResult, Unit, UnitAction,
 } from './ui/types.ts'
 
 ensureConsoleStyles()
@@ -81,6 +83,8 @@ const pruneBackups = (keep: number): Promise<PruneResult> =>
 /** 失败边明细：KPI 点开时读一次实时清单。 */
 const loadFailedEdges = (): Promise<FailedEdgesListing> =>
   jget<FailedEdgesListing>('/quality/failed-edges?limit=80')
+/** 指标趋势：一次取满一年，对话框里再按 7/30/90/365 天切窗口。 */
+const loadHistory = (): Promise<HistoryListing> => jget<HistoryListing>('/status/history?days=365')
 
 /** 缓存对话框的回调同样模块级（引用稳定）。 */
 const loadCaches = (): Promise<CacheListing> => jget<CacheListing>('/actions/caches')
@@ -197,8 +201,19 @@ export function ConsolePage(): JSX.Element {
   const [backupOpen, setBackupOpen] = useState(false)
   const [cacheOpen, setCacheOpen] = useState(false)
   const [failedOpen, setFailedOpen] = useState(false)
+  const [history, setHistory] = useState<HistoryListing | null>(null)
+  const [trend, setTrend] = useState<MetricKey | null>(null)
   const [stopGroup, setStopGroup] = useState<{ group: string; names: string[] } | null>(null)
   const [restartGroup, setRestartGroup] = useState<{ group: string; names: string[] } | null>(null)
+
+  // 趋势采样一天一条，不进 5 秒轮询：挂载时和手动刷新时各取一次
+  const refreshHistory = useCallback(async (): Promise<void> => {
+    try {
+      setHistory(await loadHistory())
+    } catch {
+      // 历史取不到不影响主面板，指标卡退化成纯数值
+    }
+  }, [])
 
   const load = useCallback(async (manual = false): Promise<void> => {
     if (manual) setRefreshing(true)
@@ -213,19 +228,21 @@ export function ConsolePage(): JSX.Element {
       setAutostart(boot)
       setConnectionError(null)
       setUpdatedAt(formatClock(Date.now()))
+      if (manual) void refreshHistory()
     } catch (error) {
       setConnectionError(reasonOf(error))
     } finally {
       setLoaded(true)
       if (manual) setRefreshing(false)
     }
-  }, [])
+  }, [refreshHistory])
 
   useEffect(() => {
     void load()
+    void refreshHistory()
     const timer = setInterval(() => void load(), POLL_MS)
     return () => clearInterval(timer)
-  }, [load])
+  }, [load, refreshHistory])
 
   const readLog = useCallback(async (name: string, silent = false): Promise<void> => {
     if (!silent) {
@@ -518,7 +535,12 @@ export function ConsolePage(): JSX.Element {
           )}
 
           {overview !== null && (
-            <OverviewTiles overview={overview} now={now} onOpenFailed={() => setFailedOpen(true)} />
+            <OverviewTiles
+              overview={overview}
+              now={now}
+              history={history}
+              onOpenTrend={(key) => setTrend(key)}
+            />
           )}
 
           {!loaded ? (
@@ -562,6 +584,15 @@ export function ConsolePage(): JSX.Element {
           prune={pruneBackups}
           onChanged={() => { void load() }}
           onClose={() => setBackupOpen(false)}
+        />
+      )}
+
+      {trend !== null && (
+        <TrendDialog
+          metric={metricSpec(trend)}
+          points={history?.points ?? []}
+          onOpenFailed={trend === 'failure_edges' ? () => { setTrend(null); setFailedOpen(true) } : undefined}
+          onClose={() => setTrend(null)}
         />
       )}
 

@@ -179,6 +179,76 @@ const STYLES = `
     border-color: var(--dsw-alias-border-l4);
   }
 }
+/* 指标卡里的迷你趋势线 */
+.bc-spark {
+  display: block;
+  margin-top: 3px;
+  color: var(--dsw-alias-label-tertiary);
+}
+
+/* ---- 指标趋势对话框 ---- */
+.bc-trend {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.bc-trend-head {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.bc-trend-ranges {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+.bc-trend-readout {
+  margin-left: auto;
+  color: var(--dsw-alias-label-secondary);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.bc-trend-chart {
+  padding: 4px 6px;
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: var(--dsw-radius-md);
+  background: var(--dsw-alias-bg-layer-1);
+  cursor: crosshair;
+}
+.bc-trend-chart svg {
+  display: block;
+}
+.bc-trend-line {
+  fill: none;
+  stroke: var(--dsw-alias-brand-primary);
+  stroke-width: 1.5;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+.bc-trend-area {
+  fill: color-mix(in srgb, var(--dsw-alias-brand-primary) 8%, transparent);
+  stroke: none;
+}
+.bc-trend-guide {
+  stroke: var(--dsw-alias-border-l4);
+  stroke-width: 1;
+}
+.bc-trend-dot {
+  fill: var(--dsw-alias-brand-primary);
+}
+.bc-trend-axis {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  color: var(--dsw-alias-label-tertiary);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+.bc-trend-empty {
+  color: var(--dsw-alias-label-tertiary);
+  font-size: 12px;
+}
 
 /* ---- 分组与卡片 ---- */
 .bc-section {

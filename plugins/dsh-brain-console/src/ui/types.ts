@@ -147,6 +147,23 @@ export interface FailedEdgesListing {
   edges: FailedEdge[]
 }
 
+/** `/status/history` 里的一个采样点；老快照没有的字段为 null。 */
+export interface MetricPoint {
+  /** 采样时间，形如 `2026-11-07T23:18:28.510295` 或 `2026-11-07 01:42:42` */
+  ts: string
+  edges: number | null
+  notes: number | null
+  sessions: number | null
+  db_size_mb: number | null
+  failure_edges: number | null
+}
+
+/** `/status/history` 的结果：窗口天数 + 升序采样点。 */
+export interface HistoryListing {
+  days: number
+  points: MetricPoint[]
+}
+
 /** 可下发的单元动作。 */
 export type UnitAction = 'start' | 'stop' | 'restart'
 
