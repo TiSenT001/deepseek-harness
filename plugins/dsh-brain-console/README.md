@@ -30,6 +30,7 @@
 | POST | `/units/stop-batch` | 管理器侧批量停止：body `{group}`，顺序停止该组在跑单元（写抑制清单），返回 `stopped` / `failed` |
 | POST | `/units/restart-batch` | 管理器侧批量重启：body `{group}`，只重启在跑的单元，返回 `restarted` / `failed` |
 | POST | `/units/<name>/truncate-log` | 清空该单元日志文件（不可恢复；在跑的服务从空文件继续写） |
+| POST | `/manager/stop` | 关闭启动器：停掉全部在跑单元并结束 brain_manager 进程 |
 | GET | `/actions/backups` | 备份快照列表（按时间倒序，含体积与总占用） |
 | POST | `/actions/prune-backups` | 只保留最近 `keep` 个快照（`keep` 下限 1） |
 | GET | `/actions/caches` | 大脑缓存登记表（各条目体积 + 风险等级） |
@@ -59,6 +60,12 @@ CORS：仅放行 `http://127.0.0.1:*` / `http://localhost:*`。
 **子进程语义**：服务一律是 `brain_manager` 的直接子进程（`ppid == manager pid`），
 manager 退出时按 `atexit` 回收。`body_daemon` 在被接管时（环境变量
 `BRAIN_SUPERVISED_BY=brain_manager`）**只跑 cron，不再起停服务**。
+
+**运行与关闭**：管理器由宿主路由 detached 拉起，服务在管理器的 Job Object 里——
+关掉浏览器或 DSH 后它们照常跑，不依赖任何前端。要整体停下时点头部 ⋯ →「关闭启动器…」：
+先停全部在跑单元，再结束管理器；之后面板显示连接失败，点提示里的「启动管理器」
+（或运行 `tools/launcher/start_manager.cmd`）可重新拉起。关闭不改写持久意愿
+（`enabled` 保持原样），下次启动恢复同一批单元。
 
 **任务管理器里的进程名**：服务进程直接用 `tools/launcher/py/<name>.exe`——由
 `tools/launcher/build_named_python.py` 生成的 pythonw 副本，FileDescription 写成

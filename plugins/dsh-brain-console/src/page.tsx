@@ -64,6 +64,7 @@ export function ConsolePage(): JSX.Element {
   const [restartGroup, setRestartGroup] = useState<{ group: string; names: string[] } | null>(null)
   const [stopUnit, setStopUnit] = useState<{ name: string; dependents: string[] } | null>(null)
   const [clearLogOpen, setClearLogOpen] = useState(false)
+  const [shutdownOpen, setShutdownOpen] = useState(false)
 
   // 开机启动开关（写 HKCU Run；管理器下次登录自启并按上次状态恢复服务）
   const [workingBusy, setWorkingBusy] = useState<string | null>(null)
@@ -91,6 +92,19 @@ export function ConsolePage(): JSX.Element {
       await feed.load()
     } finally {
       setWorkingBusy(null)
+    }
+  }
+
+  // 关闭启动器：停掉全部在跑单元并结束管理器；之后面板会看到连接失败，可用「启动管理器」重新拉起
+  const shutdownManager = async (): Promise<void> => {
+    setWorkingBusy('manager-stop')
+    try {
+      await postManager('/manager/stop')
+    } catch (error) {
+      actions.setActionError(`关闭启动器失败：${reasonOf(error)}`)
+    } finally {
+      setWorkingBusy(null)
+      setShutdownOpen(false)
     }
   }
 
@@ -192,6 +206,7 @@ export function ConsolePage(): JSX.Element {
                 onPrune={() => setBackupOpen(true)}
                 onCaches={() => setCacheOpen(true)}
                 onToggleAutostart={() => void toggleAutostart()}
+                onShutdown={() => setShutdownOpen(true)}
               />
             </div>
           </header>
@@ -363,6 +378,19 @@ export function ConsolePage(): JSX.Element {
           busy={busy === `${stopUnit.name}:stop`}
           onCancel={() => setStopUnit(null)}
           onConfirm={() => { const target = stopUnit.name; setStopUnit(null); void actions.act(target, 'stop') }}
+        />
+      )}
+
+      {shutdownOpen && (
+        <ConfirmDialog
+          title="关闭启动器"
+          description={`将停止全部 ${running} 个正在运行的单元，并结束 brain_manager 进程`}
+          note="之后面板无法启停任何单元；需要时可用连接提示里的「启动管理器」重新拉起（或运行 start_manager.cmd）"
+          confirmLabel="关闭"
+          busyLabel="关闭中…"
+          busy={busy === 'manager-stop'}
+          onCancel={() => setShutdownOpen(false)}
+          onConfirm={() => void shutdownManager()}
         />
       )}
 

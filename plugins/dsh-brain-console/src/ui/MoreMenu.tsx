@@ -24,14 +24,18 @@ export interface MoreMenuProps {
   onPrune: () => void
   onCaches: () => void
   onToggleAutostart: () => void
+  /** 关闭启动器（停全部单元并结束管理器） */
+  onShutdown: () => void
 }
 
 /**
  * 渲染「更多」图标按钮与它收纳的菜单。
- * @param props - 开机启动状态、忙碌标记与四个动作
+ * @param props - 开机启动状态、忙碌标记与各动作
  * @returns 菜单入口（含锚定菜单）
  */
-export function MoreMenu({ autostart, busy, onBackup, onPrune, onCaches, onToggleAutostart }: MoreMenuProps): JSX.Element {
+export function MoreMenu({
+  autostart, busy, onBackup, onPrune, onCaches, onToggleAutostart, onShutdown,
+}: MoreMenuProps): JSX.Element {
   const [open, setOpen] = useState(false)
   const items: SharedMenuEntry[] = [
     { id: 'backup', label: busy === 'backup' ? '备份中…' : '立即备份', disabled: busy !== null },
@@ -44,6 +48,10 @@ export function MoreMenu({ autostart, busy, onBackup, onPrune, onCaches, onToggl
       { id: 'autostart', label: busy === 'autostart' ? '设置中…' : '开机启动', disabled: busy !== null },
     )
   }
+  items.push(
+    { type: 'separator', id: 'shutdown-separator' },
+    { id: 'shutdown', label: '关闭启动器…', disabled: busy !== null },
+  )
 
   const select = (id: string): void => {
     setOpen(false)
@@ -51,6 +59,7 @@ export function MoreMenu({ autostart, busy, onBackup, onPrune, onCaches, onToggl
     else if (id === 'prune') onPrune()
     else if (id === 'caches') onCaches()
     else if (id === 'autostart') onToggleAutostart()
+    else if (id === 'shutdown') onShutdown()
   }
 
   return (

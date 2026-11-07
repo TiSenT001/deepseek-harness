@@ -1289,10 +1289,10 @@ window.__ModuleLoader__.load({
 		*/
 		/**
 		* 渲染「更多」图标按钮与它收纳的菜单。
-		* @param props - 开机启动状态、忙碌标记与四个动作
+		* @param props - 开机启动状态、忙碌标记与各动作
 		* @returns 菜单入口（含锚定菜单）
 		*/
-		function MoreMenu({ autostart, busy, onBackup, onPrune, onCaches, onToggleAutostart }) {
+		function MoreMenu({ autostart, busy, onBackup, onPrune, onCaches, onToggleAutostart, onShutdown }) {
 			const [open, setOpen] = (0, react.useState)(false);
 			const items = [
 				{
@@ -1319,12 +1319,21 @@ window.__ModuleLoader__.load({
 				label: busy === "autostart" ? "设置中…" : "开机启动",
 				disabled: busy !== null
 			});
+			items.push({
+				type: "separator",
+				id: "shutdown-separator"
+			}, {
+				id: "shutdown",
+				label: "关闭启动器…",
+				disabled: busy !== null
+			});
 			const select = (id) => {
 				setOpen(false);
 				if (id === "backup") onBackup();
 				else if (id === "prune") onPrune();
 				else if (id === "caches") onCaches();
 				else if (id === "autostart") onToggleAutostart();
+				else if (id === "shutdown") onShutdown();
 			};
 			return /* @__PURE__ */ (0, react_jsx_runtime.jsx)(Menu, {
 				open,
@@ -3065,6 +3074,7 @@ window.__ModuleLoader__.load({
 			const [restartGroup, setRestartGroup] = (0, react.useState)(null);
 			const [stopUnit, setStopUnit] = (0, react.useState)(null);
 			const [clearLogOpen, setClearLogOpen] = (0, react.useState)(false);
+			const [shutdownOpen, setShutdownOpen] = (0, react.useState)(false);
 			const [workingBusy, setWorkingBusy] = (0, react.useState)(null);
 			const toggleAutostart = async () => {
 				const autostart = feed.autostart;
@@ -3088,6 +3098,17 @@ window.__ModuleLoader__.load({
 					await feed.load();
 				} finally {
 					setWorkingBusy(null);
+				}
+			};
+			const shutdownManager = async () => {
+				setWorkingBusy("manager-stop");
+				try {
+					await postManager("/manager/stop");
+				} catch (error) {
+					actions.setActionError(`关闭启动器失败：${reasonOf(error)}`);
+				} finally {
+					setWorkingBusy(null);
+					setShutdownOpen(false);
 				}
 			};
 			const busy = workingBusy ?? actions.busy;
@@ -3198,7 +3219,8 @@ window.__ModuleLoader__.load({
 													onBackup: () => void actions.backup(),
 													onPrune: () => setBackupOpen(true),
 													onCaches: () => setCacheOpen(true),
-													onToggleAutostart: () => void toggleAutostart()
+													onToggleAutostart: () => void toggleAutostart(),
+													onShutdown: () => setShutdownOpen(true)
 												})
 											]
 										})
@@ -3374,6 +3396,16 @@ window.__ModuleLoader__.load({
 							setStopUnit(null);
 							actions.act(target, "stop");
 						}
+					}),
+					shutdownOpen && /* @__PURE__ */ (0, react_jsx_runtime.jsx)(ConfirmDialog, {
+						title: "关闭启动器",
+						description: `将停止全部 ${running} 个正在运行的单元，并结束 brain_manager 进程`,
+						note: "之后面板无法启停任何单元；需要时可用连接提示里的「启动管理器」重新拉起（或运行 start_manager.cmd）",
+						confirmLabel: "关闭",
+						busyLabel: "关闭中…",
+						busy: busy === "manager-stop",
+						onCancel: () => setShutdownOpen(false),
+						onConfirm: () => void shutdownManager()
 					}),
 					clearLogOpen && openLog !== null && /* @__PURE__ */ (0, react_jsx_runtime.jsx)(ConfirmDialog, {
 						title: `清空「${openLog.name}」日志`,
