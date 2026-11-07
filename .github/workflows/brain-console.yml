@@ -1,0 +1,46 @@
+name: brain-console
+
+# 只验证侧栏面板插件（plugins/dsh-brain-console），不该因为别处改动就跑。
+# 不装整个 monorepo：插件只依赖 typescript / tsdown / 类型包，
+# 单独装这几个能在 1 分钟内跑完，也顺带证明插件是自包含可构建的。
+on:
+  push:
+    paths:
+      - 'plugins/dsh-brain-console/**'
+      - '.github/workflows/brain-console.yml'
+  pull_request:
+    paths:
+      - 'plugins/dsh-brain-console/**'
+      - '.github/workflows/brain-console.yml'
+  workflow_dispatch:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: plugins/dsh-brain-console
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      # 版本对齐宿主仓库（typescript 6.0.3 / tsdown 0.22.2 / @types/*），
+      # 避免 CI 用另一套版本试出「本地过 CI 不过」的假差异。
+      - name: 安装构建依赖
+        run: >
+          npm install --no-save --no-package-lock
+          typescript@6.0.3 tsdown@0.22.2
+          @types/node@22.20.1 @types/react@18.3.31
+
+      - name: 类型检查
+        run: npm run typecheck
+
+      - name: 构建
+        run: npm run build
+
+# 冒烟（tests/smoke.mjs）不在这里跑：它需要一个真实运行的 dsh web + brain_manager，
+# CI 里起不起来。冒烟属于本地门禁（npm run verify），见插件 README。

@@ -161,3 +161,11 @@ node tests/smoke.mjs --url 'http://...' --shot smoke.png   # 可选截图
 
 Playwright 从宿主仓库解析（`apps/web` 的依赖），插件自己不带 `node_modules`；
 宿主路径可用 `DSH_REPO` 覆盖。全部通过退出码 0，任一项失败退出码 1。
+
+## CI
+
+`.github/workflows/brain-console.yml`（仓库根）：只在 `plugins/dsh-brain-console/**` 变更时触发，
+单独安装 typescript/tsdown/类型包（不装整个 monorepo，约 1 分钟），跑 `typecheck` + `build`。
+
+冒烟测试不在 CI 里跑——它需要真实运行的 dsh web + brain_manager。冒烟属于本地门禁：
+提交前 `npm run verify`。
