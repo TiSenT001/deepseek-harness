@@ -19,6 +19,8 @@ export const ZH = {
   searchSortName: '名称',
   searchCompact: '折叠',
   filterPlaceholder: '过滤笔记',
+  notesOnly: '只看笔记',
+  notesOnlyHint: '隐藏非 Markdown 文件（附件、脚本、依赖清单）',
   empty: '没有选中笔记',
   emptyHint: '从左侧选择一篇笔记，或按 Ctrl+O 快速切换。',
   refresh: '刷新索引',

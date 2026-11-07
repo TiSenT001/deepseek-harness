@@ -9,7 +9,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { fetchPurClientSettings, savePurClientSettings } from '../api-vault.ts'
 import type { PurClientSettingsDto, PurSettingsPatch } from '../api-vault.ts'
 import type { Translate } from '../i18n.ts'
-import { css, Toggle } from './kit/index.ts'
+import { css, SettingsRow, Toggle } from './kit/index.ts'
 import { DEFAULT_WIDTHS, WIDTHS_KEY, clampPane, parseWidths, serializeWidths } from './layoutPrefs.ts'
 import { INLINE_BACKLINKS_KEY, parseInlineBacklinks, serializeInlineBacklinks } from './notePrefs.ts'
 import { SEARCH_OPTIONS_KEY, parseSearchOptions, serializeSearchOptions } from './searchPrefs.ts'
@@ -72,16 +72,32 @@ function vaultDraftOf(dto: PurClientSettingsDto): VaultDraft {
 }
 
 /**
- * Build the save patch from the draft, falling back on malformed numbers.
+ * Build the save patch from the draft, falling back on malformed numbers. The
+ * canvas fields ride along unchanged: the Host stores one patch for the whole
+ * dialog, so a section may not drop its siblings' values.
+ * @param dto - effective settings the draft was built from.
  * @param draft - edited values.
  * @returns the patch to store.
  */
-function vaultPatchOf(draft: VaultDraft): PurSettingsPatch {
+function vaultPatchOf(dto: PurClientSettingsDto, draft: VaultDraft): PurSettingsPatch {
   const numberIn = (text: string, fallback: number): number => {
     const parsed = Number(text)
     return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback
   }
   return {
+    runTimeoutMs: dto.runTimeoutMs,
+    allowCodeExecution: dto.allowCodeExecution,
+    saveDelayMs: dto.saveDelayMs,
+    largeCanvasHintMb: dto.largeCanvasHintMb,
+    showGrid: dto.showGrid,
+    exportScale: dto.exportScale,
+    exportTransparent: dto.exportTransparent,
+    exportJpgQuality: dto.exportJpgQuality,
+    gridOpacity: dto.gridOpacity,
+    snapEnabled: dto.snapEnabled,
+    snapDistance: dto.snapDistance,
+    autoPanMaxSpeed: dto.autoPanMaxSpeed,
+    lineHitTolerance: dto.lineHitTolerance,
     vault: draft.vault.trim(),
     ignore: draft.ignoreText.split(/[\n,]/).map(entry => entry.trim()).filter(entry => entry.length > 0),
     maxFileBytes: Math.round(numberIn(draft.maxFileMb, 2) * MB),
@@ -103,6 +119,7 @@ export function GeneralSettings({ t }: GeneralSettingsProps): JSX.Element {
   const [inlineBacklinks, setInlineBacklinks] = useState(() => parseInlineBacklinks(readLocal(INLINE_BACKLINKS_KEY)))
   const [search, setSearch] = useState(() => parseSearchOptions(readLocal(SEARCH_OPTIONS_KEY)))
   const [widths, setWidths] = useState(() => parseWidths(readLocal(WIDTHS_KEY)))
+  const [dto, setDto] = useState<PurClientSettingsDto | undefined>()
   const [draft, setDraft] = useState<VaultDraft | undefined>()
   const [saving, setSaving] = useState(false)
   const [notice, setNotice] = useState<string | undefined>()
@@ -111,7 +128,10 @@ export function GeneralSettings({ t }: GeneralSettingsProps): JSX.Element {
   const loadVault = useCallback(() => {
     setError(undefined)
     void fetchPurClientSettings()
-      .then(dto => setDraft(vaultDraftOf(dto)))
+      .then((next) => {
+        setDto(next)
+        setDraft(vaultDraftOf(next))
+      })
       .catch(() => setError(t('canvasSettingsLoadFailed')))
   }, [t])
 
@@ -148,33 +168,34 @@ export function GeneralSettings({ t }: GeneralSettingsProps): JSX.Element {
   }, [t])
 
   const saveVault = useCallback(() => {
-    if (draft === undefined) return
+    if (draft === undefined || dto === undefined) return
     setSaving(true)
     setNotice(undefined)
-    void savePurClientSettings(vaultPatchOf(draft))
+    void savePurClientSettings(vaultPatchOf(dto, draft))
       .then((next) => {
+        setDto(next)
         setDraft(vaultDraftOf(next))
         setNotice(t('settingsSavedVault'))
       })
       .catch(() => setError(t('canvasSettingsFailed')))
       .finally(() => setSaving(false))
-  }, [draft, t])
+  }, [draft, dto, t])
 
   return (
     <div className={css.settings}>
       <div className={css.settingsGroup}>{t('settingsGroupReading')}</div>
-      <Row label={t('settingInlineBacklinks')} hint={t('settingInlineBacklinksHint')}>
+      <SettingsRow label={t('settingInlineBacklinks')} hint={t('settingInlineBacklinksHint')}>
         <Toggle checked={inlineBacklinks} label="" ariaLabel={t('settingInlineBacklinks')} onChange={flipBacklinks} />
-      </Row>
+      </SettingsRow>
 
       <div className={css.settingsGroup}>{t('settingsGroupSearch')}</div>
-      <Row label={t('settingSearchMatchCase')}>
+      <SettingsRow label={t('settingSearchMatchCase')}>
         <Toggle checked={search.matchCase} label="" ariaLabel={t('settingSearchMatchCase')} onChange={matchCase => updateSearch({ matchCase })} />
-      </Row>
-      <Row label={t('settingSearchRegex')}>
+      </SettingsRow>
+      <SettingsRow label={t('settingSearchRegex')}>
         <Toggle checked={search.regex} label="" ariaLabel={t('settingSearchRegex')} onChange={regex => updateSearch({ regex })} />
-      </Row>
-      <Row label={t('settingSearchSort')}>
+      </SettingsRow>
+      <SettingsRow label={t('settingSearchSort')}>
         <select
           className={css.settingsInput}
           value={search.sort}
@@ -183,18 +204,18 @@ export function GeneralSettings({ t }: GeneralSettingsProps): JSX.Element {
           <option value="relevance">{t('settingSearchSortRelevance')}</option>
           <option value="name">{t('settingSearchSortName')}</option>
         </select>
-      </Row>
-      <Row label={t('settingSearchCompact')} hint={t('settingSearchCompactHint')}>
+      </SettingsRow>
+      <SettingsRow label={t('settingSearchCompact')} hint={t('settingSearchCompactHint')}>
         <Toggle checked={search.compact} label="" ariaLabel={t('settingSearchCompact')} onChange={compact => updateSearch({ compact })} />
-      </Row>
+      </SettingsRow>
 
       <div className={css.settingsGroup}>{t('settingsGroupLayout')}</div>
-      <Row label={t('settingPaneLeft')} unit="px">
+      <SettingsRow label={t('settingPaneLeft')} unit="px">
         <input className={css.settingsInput} type="number" min={160} max={640} value={widths.left} onChange={event => updateWidth('left', event.target.value)} />
-      </Row>
-      <Row label={t('settingPaneRight')} unit="px">
+      </SettingsRow>
+      <SettingsRow label={t('settingPaneRight')} unit="px">
         <input className={css.settingsInput} type="number" min={200} max={720} value={widths.right} onChange={event => updateWidth('right', event.target.value)} />
-      </Row>
+      </SettingsRow>
       <div className={css.settingsActions}>
         <button type="button" className={css.dialogButton} onClick={resetWidths}>
           {t('settingPaneReset')}
@@ -213,21 +234,21 @@ export function GeneralSettings({ t }: GeneralSettingsProps): JSX.Element {
           ))
         : (
           <>
-            <Row label={t('settingVault')} hint={t('settingVaultHint')}>
+            <SettingsRow label={t('settingVault')} hint={t('settingVaultHint')}>
               <input className={css.settingsInput} placeholder={t('settingVaultAuto')} value={draft.vault} onChange={event => setDraft({ ...draft, vault: event.target.value })} />
-            </Row>
-            <Row label={t('settingIgnore')} hint={t('settingIgnoreHint')}>
+            </SettingsRow>
+            <SettingsRow label={t('settingIgnore')} hint={t('settingIgnoreHint')}>
               <textarea className={css.settingsTextarea} rows={3} value={draft.ignoreText} onChange={event => setDraft({ ...draft, ignoreText: event.target.value })} />
-            </Row>
-            <Row label={t('settingMaxFile')} hint={t('settingMaxFileHint')} unit="MB">
+            </SettingsRow>
+            <SettingsRow label={t('settingMaxFile')} hint={t('settingMaxFileHint')} unit="MB">
               <input className={css.settingsInput} type="number" min={0.1} max={512} step={0.1} value={draft.maxFileMb} onChange={event => setDraft({ ...draft, maxFileMb: event.target.value })} />
-            </Row>
-            <Row label={t('settingMaxIndex')} hint={t('settingMaxIndexHint')} unit="MB">
+            </SettingsRow>
+            <SettingsRow label={t('settingMaxIndex')} hint={t('settingMaxIndexHint')} unit="MB">
               <input className={css.settingsInput} type="number" min={1} max={8192} value={draft.maxIndexMb} onChange={event => setDraft({ ...draft, maxIndexMb: event.target.value })} />
-            </Row>
-            <Row label={t('settingMaxDepth')} hint={t('settingMaxDepthHint')}>
+            </SettingsRow>
+            <SettingsRow label={t('settingMaxDepth')} hint={t('settingMaxDepthHint')}>
               <input className={css.settingsInput} type="number" min={1} max={64} value={draft.maxDepth} onChange={event => setDraft({ ...draft, maxDepth: event.target.value })} />
-            </Row>
+            </SettingsRow>
             <div className={css.settingsHint}>{t('settingsRestartHint')}</div>
             <div className={css.settingsActions}>
               <button type="button" className={css.dialogButton} disabled={saving} onClick={saveVault}>
@@ -237,22 +258,6 @@ export function GeneralSettings({ t }: GeneralSettingsProps): JSX.Element {
           </>
         )}
       {notice === undefined ? null : <div className={css.settingsHint}>{notice}</div>}
-    </div>
-  )
-}
-
-/**
- * One settings row: a fixed label column and the control with an optional unit.
- * @param props - label, hint, unit suffix and the control.
- */
-function Row(props: { readonly label: string; readonly hint?: string; readonly unit?: string; readonly children: JSX.Element }): JSX.Element {
-  return (
-    <div className={css.settingsRow}>
-      <span className={css.settingsLabel} title={props.hint}>{props.label}</span>
-      <div className={css.settingsControl}>
-        {props.children}
-        {props.unit === undefined ? null : <span className={css.settingsUnit}>{props.unit}</span>}
-      </div>
     </div>
   )
 }

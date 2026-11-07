@@ -35,6 +35,10 @@ export const WORKSPACE_SHELL_STYLE = `
   background: var(--dsw-alias-bg-layer-2, #232329);
   color: var(--dsw-alias-label-primary, #e8e8ea);
 }
+.ov-explorer-tool[data-on='true'] {
+  background: var(--dsw-alias-bg-layer-2, #232329);
+  color: var(--dsw-alias-state-business-primary, #6ea8fe);
+}
 .ov-explorer-select {
   border: 1px solid var(--dsw-alias-border-l1, #2a2a30);
   background: var(--dsw-alias-bg-layer-1, #1d1d22);

@@ -56,6 +56,25 @@ export function flatten(
   }
 }
 
+/**
+ * Keep notes and the folders that still contain one, dropping attachments and
+ * every folder left empty. Backs the explorer's "notes only" switch.
+ * @param nodes - ordered tree.
+ * @returns the pruned tree.
+ */
+export function pruneToNotes(nodes: readonly TreeNodeDto[]): readonly TreeNodeDto[] {
+  const kept: TreeNodeDto[] = []
+  for (const node of nodes) {
+    if (node.kind === 'dir') {
+      const children = node.children === undefined ? undefined : pruneToNotes(node.children)
+      if (children !== undefined && children.length > 0) kept.push({ ...node, children })
+      continue
+    }
+    if (/\.md$/i.test(node.name)) kept.push(node)
+  }
+  return kept
+}
+
 /** Collect every path in the tree into `out`. */
 export function collectPaths(nodes: readonly TreeNodeDto[], out: Set<string>): void {
   for (const node of nodes) {

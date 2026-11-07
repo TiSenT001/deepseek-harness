@@ -20,6 +20,7 @@ export type IconName =
   | 'newFolder'
   | 'collapseAll'
   | 'files'
+  | 'note'
   | 'canvas'
   | 'plugin'
   | 'puzzle'
@@ -119,6 +120,12 @@ const SHAPES: Record<IconName, JSX.Element> = {
     </>
   ),
   files: <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />,
+  note: (
+    <>
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+      <polyline points="14 2 14 8 20 8" />
+    </>
+  ),
   canvas: (
     <>
       {/* An artboard with two aligned cards and a selection handle: the

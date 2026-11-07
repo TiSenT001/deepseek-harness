@@ -268,10 +268,13 @@ async function dispatch(
     }
     case 'pur/settings': {
       // The dialog's saved overrides win field by field over the Loader config.
-      const effective = mergeSettings(settings, await readSettingsPatch(SETTINGS_FILE))
+      const stored = await readSettingsPatch(SETTINGS_FILE)
+      const effective = mergeSettings(settings, stored)
       if (request.method === 'POST') {
         const body = await readJson(request)
-        const saved = await writeSettingsPatch(SETTINGS_FILE, body)
+        // A section submits only the fields it owns, so merge instead of
+        // replacing: the canvas form and the vault/index form write the same file.
+        const saved = await writeSettingsPatch(SETTINGS_FILE, { ...stored, ...body })
         send(response, 200, settingsDialogOf(mergeSettings(settings, saved)))
         return
       }

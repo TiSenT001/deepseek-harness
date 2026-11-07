@@ -4,10 +4,11 @@
  * and a collapsible tag section whose chips open full-text search.
  * @module dsh-obsidian-vault/client/ui/Explorer
  */
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { TagCountDto, TreeNodeDto } from '../../protocol.ts'
 import { ExplorerToolbar } from './explorer/Toolbar.tsx'
-import { collectPaths, filterTree, flatten, folderOf, sorted, type Row } from './explorer/model.ts'
+import { collectPaths, filterTree, flatten, folderOf, pruneToNotes, sorted, type Row } from './explorer/model.ts'
+import { readNotesOnly, writeNotesOnly } from './explorer/prefs.ts'
 import { EmptyState } from './kit/index.ts'
 import type { Translate } from '../i18n.ts'
 import type { MenuScene } from './menu/registry.ts'
@@ -46,6 +47,15 @@ export function Explorer({
   const [dragging, setDragging] = useState<string | undefined>()
   const [dropTarget, setDropTarget] = useState<string | undefined>()
   const [tagsOpen, setTagsOpen] = useState(true)
+  const [notesOnly, setNotesOnly] = useState(readNotesOnly)
+
+  const toggleNotesOnly = useCallback(() => {
+    setNotesOnly((current) => {
+      const next = !current
+      writeNotesOnly(next)
+      return next
+    })
+  }, [])
 
   useEffect(() => {
     collapseRef.current = () => setExpanded(new Set())
@@ -77,12 +87,13 @@ export function Explorer({
 
   const query = filter.trim()
   const rows = useMemo(() => {
+    const base = notesOnly ? pruneToNotes(sorted(nodes)) : sorted(nodes)
     const visible: Row[] = []
     // A filter reveals matches wherever they are, so every folder counts as
     // expanded while a query is active.
-    flatten(filterTree(sorted(nodes), query), 0, query.length === 0 ? expanded : allFolders(nodes), visible)
+    flatten(filterTree(base, query), 0, query.length === 0 ? expanded : allFolders(nodes), visible)
     return visible
-  }, [nodes, expanded, query])
+  }, [nodes, expanded, query, notesOnly])
 
   const label = (node: TreeNodeDto): string =>
     node.kind === 'dir' ? node.name : node.name.replace(/\.md$/i, '')
@@ -120,6 +131,8 @@ export function Explorer({
         onCreateNote={actions.createNote}
         onCreateFolder={actions.createFolder}
         onCollapseAll={() => setExpanded(new Set())}
+        notesOnly={notesOnly}
+        onToggleNotesOnly={toggleNotesOnly}
       />
       <input
         className={css.filter}

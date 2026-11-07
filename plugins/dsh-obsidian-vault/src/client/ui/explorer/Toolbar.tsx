@@ -13,6 +13,10 @@ export interface ExplorerToolbarProps {
   readonly onCreateNote: (folder: string) => void
   readonly onCreateFolder: (folder: string) => void
   readonly onCollapseAll: () => void
+  /** Whether the tree currently hides attachments. */
+  readonly notesOnly: boolean
+  /** Flip the notes-only display switch. */
+  readonly onToggleNotesOnly: () => void
 }
 
 /**
@@ -20,7 +24,7 @@ export interface ExplorerToolbarProps {
  * @param props - current folder and file actions.
  */
 export function ExplorerToolbar({
-  t, folder, onCreateNote, onCreateFolder, onCollapseAll,
+  t, folder, onCreateNote, onCreateFolder, onCollapseAll, notesOnly, onToggleNotesOnly,
 }: ExplorerToolbarProps): JSX.Element {
   return (
     <div className={css.explorerTools}>
@@ -32,6 +36,17 @@ export function ExplorerToolbar({
       </button>
       <button type="button" className={css.explorerTool} title={t('collapseAll')} aria-label={t('collapseAll')} onClick={onCollapseAll}>
         <Icon name="collapseAll" size={14} />
+      </button>
+      <button
+        type="button"
+        className={css.explorerTool}
+        title={t('notesOnlyHint')}
+        aria-label={t('notesOnly')}
+        aria-pressed={notesOnly}
+        data-on={notesOnly}
+        onClick={onToggleNotesOnly}
+      >
+        <Icon name="note" size={14} />
       </button>
     </div>
   )

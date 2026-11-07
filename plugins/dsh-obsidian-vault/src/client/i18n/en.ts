@@ -20,6 +20,8 @@ export const EN: Dict = {
   searchSortName: 'Name',
   searchCompact: 'Compact',
   filterPlaceholder: 'Filter notes',
+  notesOnly: 'Notes only',
+  notesOnlyHint: 'Hide non-Markdown files (attachments, scripts, requirement lists)',
   empty: 'No note selected',
   emptyHint: 'Pick a note on the left, or press Ctrl+O to switch quickly.',
   refresh: 'Reload index',
