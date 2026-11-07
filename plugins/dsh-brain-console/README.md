@@ -95,8 +95,8 @@ icon: (size: number) => <BrainConsoleIcon size={size} />
 - 单元 ⋯ 菜单收纳两个低频动作：「随管理器启动」只改持久意愿（`/units/<name>/enabled`，不立即起停）；
   「接管为子进程」只在该单元不是管理器子进程时出现（`/units/<name>/adopt`，会重启它一次）
 - 指标带的「失败边」是唯一可点开的指标：打开只读明细（源/目标笔记、失败次数、来源、权重、最后出现时间）；
-  指标带里的数字来自每天一次的 `metrics_snapshots`，明细里是实时数，两者可能差几条
-- 趋势采样：`metrics_snapshots` 每天写一行（2026-11-07 起新增 `edges` / `notes` / `sessions` / `db_size_mb` 四列，
+  指标带里的数字来自最近的 `metrics_snapshots`（每 6 小时一行），明细里是实时数，两者可能差几条
+- 趋势采样：`metrics_snapshots` 每 6 小时写一行（2026-11-07 起新增 `edges` / `notes` / `sessions` / `db_size_mb` 四列，
   老库由 `_ensure_columns()` 自动补列），所以折线要攒几天才有形状；点数不足时对话框明说「数据不足」
 - 「失败边明细」入口移到了趋势对话框里（先看趋势，再点「查看失败边明细」）
 - 状态灯：运行中绿 / 已停止灰 / 异常红（不自动重启，等人工处理）

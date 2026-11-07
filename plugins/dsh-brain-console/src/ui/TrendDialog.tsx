@@ -148,7 +148,7 @@ export function TrendDialog({ metric, points, onOpenFailed, onClose }: TrendDial
 
         {count < 2 && (
           <div className="bc-trend-empty">
-            数据不足：当前窗口只有 {count} 个采样点。管理器每天采一次，明天起才会有折线。
+            数据不足：当前窗口只有 {count} 个采样点。管理器每 6 小时采一次，攒两次就会有折线。
           </div>
         )}
       </div>
