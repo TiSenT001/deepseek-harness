@@ -21,10 +21,11 @@ export const name = 'dsh-brain-console'
 export const inject = ['webServer']
 
 const MANAGER_URL = 'http://127.0.0.1:19998'
-const BRAIN_ROOT = process.env.BRAIN_ROOT ?? 'G:\\个人知识库\\.brain'
-const PYTHONW =
-  process.env.BRAIN_PYTHONW ??
-  'C:\\Users\\Administrator\\AppData\\Local\\Programs\\Python\\Python311\\pythonw.exe'
+// Machine paths come from the environment: BRAIN_ROOT (or OBSIDIAN_VAULT/.brain),
+// and PYTHONW via BRAIN_PYTHONW. An unset root yields a clear route error instead
+// of silently operating on a relative .brain directory.
+const BRAIN_ROOT = process.env.BRAIN_ROOT ?? (process.env.OBSIDIAN_VAULT ? join(process.env.OBSIDIAN_VAULT, '.brain') : '')
+const PYTHONW = process.env.BRAIN_PYTHONW ?? 'pythonw.exe'
 
 interface RouteHost {
   /** 注册一个随插件生命周期释放的 effect。 */
@@ -68,6 +69,10 @@ let managerStartingSince: number | null = null
 const MANAGER_START_WINDOW_MS = 120_000
 
 async function startManager(res: ServerResponse): Promise<void> {
+  if (BRAIN_ROOT.length === 0) {
+    send(res, 500, { error: 'BRAIN_ROOT is not configured: set BRAIN_ROOT or OBSIDIAN_VAULT for the dsh process' })
+    return
+  }
   if (await managerAlive()) {
     managerStartingSince = null
     send(res, 200, { running: true, started: false })
@@ -106,7 +111,10 @@ async function spawnManager(res: ServerResponse): Promise<void> {
         stdio: ['ignore', fd, fd],
         windowsHide: true,
         cwd: BRAIN_ROOT,
-        env: { ...process.env, PATH: `${dirname(PYTHONW)};${process.env.PATH ?? ''}` },
+        env: {
+          ...process.env,
+          PATH: `${PYTHONW.includes('\\') || PYTHONW.includes('/') ? `${dirname(PYTHONW)};` : ''}${process.env.PATH ?? ''}`,
+        },
       })
       child.unref()
     } finally {

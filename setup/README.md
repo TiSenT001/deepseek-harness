@@ -30,7 +30,8 @@ powershell -File setup\setup-machine.ps1 -Vault "G:\个人知识库" -Shortcut
 | `-Vault <路径>` | Obsidian 仓库；省略时读 `OBSIDIAN_VAULT` |
 | `-DshHome <路径>` | DSH home，默认 `<仓库>\.dsh-home`（自包含） |
 | `-LspDir <路径>` | 可选，LSP 语言服务器目录；省略则不写 LSP 行 |
-| `-TerminalCwd <路径>` | 可选，交互终端固定目录（仅 Windows）；省略则用工作区 |
+| `-BrainRoot <路径>` | TiSenT brain 目录，默认 `<vault>\.brain` |
+| `-BrainPythonw <路径>` | 可选，拉起 brain_manager 用的 pythonw.exe |
 | `-SkipInstall` | 跳过 `pnpm install` |
 | `-SkipSidebar` | 不克隆/打补丁 better-sidebar |
 | `-Force` | 已有 profile 也重新渲染（先备份） |
@@ -68,7 +69,8 @@ powershell -File setup\setup-machine.ps1 -Vault "G:\个人知识库" -Shortcut
 | `DSH_HOME` | DSH home；`start-dsh.ps1` 默认 `<仓库>\.dsh-home` | 否 |
 | `DEEPSEEK_API_KEY` | 模型密钥；也可在 GUI 登录账号 | 二选一 |
 | `ANTHROPIC_AUTH_TOKEN` | Claude Code 子智能体；通常等于上面的 key | 否 |
-| `DSH_TERMINAL_CWD` | 交互终端固定目录（仅 Windows） | 否 |
+| `BRAIN_ROOT` | TiSenT brain 目录，默认 `<vault>\.brain` | 是（brain 面板用） |
+| `BRAIN_PYTHONW` | brain_manager 启动器使用的 pythonw.exe | 否（默认走 PATH） |
 | `DSH_LSP_DIR` | LSP servers 目录，启用 LSP 时需要 | 否 |
 | `PLAYWRIGHT_MODULE` | 开发脚本（audit/probe）找不到 Playwright 时的手动路径 | 否 |
 
@@ -77,8 +79,8 @@ powershell -File setup\setup-machine.ps1 -Vault "G:\个人知识库" -Shortcut
 
 ## 被修改过的第三方 / DSH 内部代码
 
-- **DSH 内部**：改动都在分支 `feat/pur-studio-canvas` 的提交里（例如终端 cwd 改为读
-  `DSH_TERMINAL_CWD`），克隆并切到该分支即可复现，不需要额外补丁。
+- **DSH 内部**：不改。分支里保留你原有的本地行为（终端 cwd 固定 `G:\` 等），
+  新机器克隆切分支即可复现，不需要额外补丁，也不要为本仓库的部署去改它。
 - **dsh-better-sidebar**：它是独立仓库，本机有未提交改动，已导出为
   `setup/patches/dsh-better-sidebar.patch`，脚本在干净 checkout 上执行 `git apply`。
   以后继续改它时，重新导出：
@@ -86,6 +88,8 @@ powershell -File setup\setup-machine.ps1 -Vault "G:\个人知识库" -Shortcut
   git -C plugins\dsh-better-sidebar-src diff > setup\patches\dsh-better-sidebar.patch
   ```
 - **dsh-brain-console / dsh-obsidian-vault / brain-memory-logger**：都在本仓库里，随分支走。
+  brain 目录与 pythonw 不再写死：读 `BRAIN_ROOT`（或 `OBSIDIAN_VAULT/.brain`）与
+  `BRAIN_PYTHONW`；vault 路径由 profile 提供，插件本身不含盘符。
 
 ## 不复制的东西
 
