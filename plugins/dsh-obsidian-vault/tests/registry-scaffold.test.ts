@@ -5,6 +5,7 @@
  */
 import assert from 'node:assert/strict'
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
+import { existsSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { test } from 'node:test'
@@ -40,6 +41,8 @@ test('creating a vault seeds the conventions scaffold', async () => {
     assert.ok(names.includes('知识库总览'))
     assert.ok(names.includes('TA技术美术'))
     assert.ok(names.includes('收件箱'))
+    assert.ok(existsSync(join(created, '.obsidian', 'app.json')))
+    assert.equal(existsSync(join(created, '.obsidian', 'daily-notes.json')), false)
     await registry.close()
   } finally {
     abort.abort()

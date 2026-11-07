@@ -1,7 +1,7 @@
 import { chromium } from './playwright-env.mjs'
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { join, basename } from 'node:path'
+import { dirname, join, basename } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 // Full interactive audit of the obsidian-vault plugin: walks every button and
@@ -301,9 +301,21 @@ const TEMPLATE_CREATED = '审核模板新建'
 const dailyConfigPath = join(VAULT_ROOT, '.obsidian', 'daily-notes.json')
 const templatesConfigPath = join(VAULT_ROOT, '.obsidian', 'templates.json')
 const bookmarksConfigPath = join(VAULT_ROOT, '.obsidian', 'bookmarks.json')
-const dailyBackup = existsSync(dailyConfigPath) ? readFileSync(dailyConfigPath, 'utf8') : undefined
-const templatesBackup = existsSync(templatesConfigPath) ? readFileSync(templatesConfigPath, 'utf8') : undefined
-const bookmarksBackup = existsSync(bookmarksConfigPath) ? readFileSync(bookmarksConfigPath, 'utf8') : undefined
+// Capture the vault's real configs once and journal them until the restore
+// below succeeds. An interrupted run therefore cannot make its own fixture
+// values look like the originals on the next attempt.
+const originalsPath = fileURLToPath(new URL('../.data/audit-vault-originals.json', import.meta.url))
+const originals = existsSync(originalsPath)
+  ? JSON.parse(readFileSync(originalsPath, 'utf8'))
+  : {
+    daily: existsSync(dailyConfigPath) ? readFileSync(dailyConfigPath, 'utf8') : undefined,
+    templates: existsSync(templatesConfigPath) ? readFileSync(templatesConfigPath, 'utf8') : undefined,
+    bookmarks: existsSync(bookmarksConfigPath) ? readFileSync(bookmarksConfigPath, 'utf8') : undefined,
+  }
+if (!existsSync(originalsPath)) {
+  mkdirSync(dirname(originalsPath), { recursive: true })
+  writeFileSync(originalsPath, JSON.stringify(originals), 'utf8')
+}
 writeFileSync(dailyConfigPath, JSON.stringify({ folder: DAILY_DIR, format: 'YYYY-MM-DD', template: TEMPLATE_NOTE }, null, 2), 'utf8')
 writeFileSync(templatesConfigPath, JSON.stringify({ folder: TEMPLATE_DIR, format: '' }, null, 2), 'utf8')
 mkdirSync(join(VAULT_ROOT, TEMPLATE_DIR), { recursive: true })
@@ -2697,16 +2709,17 @@ try {
   for (const target of removals) {
     await api('delete', { method: 'POST', body: JSON.stringify({ path: target }) }).catch(() => {})
   }
-  // Restore the vault's real daily, template, and bookmark configuration; a
-  // vault that had no such file gets the fixture removed instead.
+  // Restore the journaled originals; a vault that had no such file gets the
+  // fixture removed instead. Only a successful restore clears the journal.
   for (const [file, backup] of [
-    [dailyConfigPath, dailyBackup],
-    [templatesConfigPath, templatesBackup],
-    [bookmarksConfigPath, bookmarksBackup],
+    [dailyConfigPath, originals.daily],
+    [templatesConfigPath, originals.templates],
+    [bookmarksConfigPath, originals.bookmarks],
   ]) {
     if (backup === undefined) rmSync(file, { force: true })
     else writeFileSync(file, backup, 'utf8')
   }
+  rmSync(originalsPath, { force: true })
 }
 
 const failed = results.filter(r => !r.ok)

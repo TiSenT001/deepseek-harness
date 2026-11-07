@@ -5,7 +5,7 @@
  * @module dsh-obsidian-vault/tests/vault-scaffold
  */
 import assert from 'node:assert/strict'
-import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { existsSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -49,6 +49,27 @@ test('seeds a new vault with the conventions structure', async () => {
     assert.equal(spec.includes('{{VAULT_NAME}}'), false)
     assert.equal(spec.includes('{{DATE}}'), false)
     assert.match(spec, /created: \d{4}-\d{2}-\d{2}/)
+
+    // The portable Obsidian behaviour is seeded; personal workflow files are not.
+    assert.ok(existsSync(join(path, '.obsidian/app.json')))
+    assert.ok(existsSync(join(path, '.obsidian/graph.json')))
+    assert.equal(existsSync(join(path, '.obsidian/daily-notes.json')), false)
+    assert.equal(existsSync(join(path, '.obsidian/templates.json')), false)
+    assert.equal(existsSync(join(path, '.obsidian/community-plugins.json')), false)
+  } finally {
+    await cleanup()
+  }
+})
+
+test('an existing .obsidian file is not overwritten by the preset', async () => {
+  const { path, cleanup } = await tempDir()
+  try {
+    await mkdir(join(path, '.obsidian'), { recursive: true })
+    await writeFile(join(path, '.obsidian/app.json'), '{"mine":true}\n')
+    const result = await seedVault(path, '测试库', scaffold)
+    assert.equal(result.seeded, true)
+    assert.equal(await readFile(join(path, '.obsidian/app.json'), 'utf8'), '{"mine":true}\n')
+    assert.ok(existsSync(join(path, '.obsidian/graph.json')))
   } finally {
     await cleanup()
   }

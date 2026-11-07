@@ -21,6 +21,9 @@ const NAME = '{{VAULT_NAME}}'
 /** Placeholder replaced with the seed date. */
 const DATE = '{{DATE}}'
 
+/** `.obsidian` preset files copied into a new vault, never overwritten. */
+const OBSIDIAN_PRESET = ['app.json', 'core-plugins.json', 'graph.json', 'bookmarks.json']
+
 /**
  * Whether a directory already holds Markdown notes, in any subdirectory.
  * @param directory - destination vault root.
@@ -91,6 +94,26 @@ export async function seedVault(directory: string, name: string, scaffoldDir: st
       written += 1
     } catch (error) {
       // An existing file wins: seeding never overwrites user work.
+      if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error
+    }
+  }
+  // Obsidian behaviour without personal state: workspace layout, community
+  // plugins and plugin data stay out. Daily notes and templates belong to each
+  // owner's workflow, so they are deliberately absent.
+  const presetDir = join(dirname(scaffoldDir), 'obsidian')
+  for (const file of OBSIDIAN_PRESET) {
+    let source
+    try {
+      source = await readFile(join(presetDir, file), 'utf8')
+    } catch {
+      continue
+    }
+    const target = join(directory, '.obsidian', file)
+    await mkdir(dirname(target), { recursive: true })
+    try {
+      await writeFile(target, source, { encoding: 'utf8', flag: 'wx' })
+      written += 1
+    } catch (error) {
       if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error
     }
   }

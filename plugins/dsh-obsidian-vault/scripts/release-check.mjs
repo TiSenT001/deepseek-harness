@@ -37,6 +37,8 @@ const REQUIRED = [
   'cordis.patch.yml',
   'scaffold/vault/知识库总览/kb-conventions.md',
   'scaffold/vault/知识库总览/笔记编写规范.md',
+  'scaffold/obsidian/app.json',
+  'scaffold/obsidian/graph.json',
 ]
 const FORBIDDEN = ['src/', 'tests/', 'scripts/', 'docs/', '.data/', '.artifacts/', 'node_modules/', 'obsidian/', 'upstream/', 'dist/']
 

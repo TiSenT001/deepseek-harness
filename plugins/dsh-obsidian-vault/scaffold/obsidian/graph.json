@@ -1,0 +1,88 @@
+{
+  "search": "",
+  "showTags": true,
+  "showAttachments": false,
+  "hideUnresolved": false,
+  "showOrphans": true,
+  "colorGroups": [
+    {
+      "query": "path:知识库总览",
+      "color": {
+        "a": 1,
+        "rgb": 16777215
+      }
+    },
+    {
+      "query": "path:外部大脑",
+      "color": {
+        "a": 1,
+        "rgb": 13408767
+      }
+    },
+    {
+      "query": "path:项目",
+      "color": {
+        "a": 1,
+        "rgb": 13901847
+      }
+    },
+    {
+      "query": "path:美学",
+      "color": {
+        "a": 1,
+        "rgb": 15233866
+      }
+    },
+    {
+      "query": "path:哲学",
+      "color": {
+        "a": 1,
+        "rgb": 7101671
+      }
+    },
+    {
+      "query": "path:TA技术美术",
+      "color": {
+        "a": 1,
+        "rgb": 47252
+      }
+    },
+    {
+      "query": "path:游戏设计",
+      "color": {
+        "a": 1,
+        "rgb": 8373522
+      }
+    },
+    {
+      "query": "path:工具链",
+      "color": {
+        "a": 1,
+        "rgb": 6086399
+      }
+    },
+    {
+      "query": "path:收件箱",
+      "color": {
+        "a": 1,
+        "rgb": 16750848
+      }
+    },
+    {
+      "query": "path:Pur画布",
+      "color": {
+        "a": 1,
+        "rgb": 16744576
+      }
+    }
+  ],
+  "showArrow": false,
+  "textFadeMultiplier": 0,
+  "nodeSizeMultiplier": 1,
+  "lineSizeMultiplier": 0.5,
+  "centerStrength": 0.0518713248970312,
+  "repelStrength": 20,
+  "linkStrength": 2,
+  "linkDistance": 400,
+  "dshColorBy": "folder"
+}
