@@ -1,3 +1,11 @@
+## 第九十三轮：把画布与笔记的边界写进代码（2026-11-07）
+
+- **公开入口收敛**：新增 `client/pur/integration.ts`，工作区只通过它使用画布（`PurStudioPane` 与命令注册）；`useAsk`/`AskDialog` 从 `client/ui` 移到 `client/ui/kit`，画布不再 import 工作区内部；宿主对内核的深层 import（`studio-file`、`controller-run`、`types`）全部改走 `pur-kernel/index.ts`。
+- **边界校验**：新增 `scripts/check-boundaries.mjs`（`npm run check:boundaries`），按「内核 / 画布 UI / kit / 工作区 / 宿主 / Obsidian 适配器」六层扫描 import，违规即退出 1；规则与理由写在 `docs/BOUNDARIES.md`。
+- **审核抗抖**：`ui-full-audit.mjs` 的单条检查失败后先按 Esc 清浮层再重试一次，仍失败才记 FAIL 并截图；此前 `graph.idle-sleeps`、`graph.reset-view`、`note.unresolved-link-creates` 都出现过单次偶发。
+- **文档同步**：README「已知差异与限制」改成「能力与已知限制」矩阵，修正了「不做编辑 / 图谱无过滤 / 标签页无历史」三处与代码不符的说明。
+- **验证**：`tsc` 0、646/646、`check:boundaries` 通过、审核 99/99。
+
 ## 第九十二轮：画布 UI 全部收敛到 kit（2026-11-07）
 
 - **kit 扩展**：新增 `styles/pur.ts`（编辑器对话框框架、分区头/分隔线、栅格与行列、菜单尺寸、悬停提示条、通知 toast）；dialog.ts 增加 `ov-dialog-layer-center`、`ov-input`（带 focus 品牌描边与 `color-scheme: dark`）、`ov-field`、`ov-field-label`、`ov-color-swatch`、`ov-color-value`；shell.ts 增加 `ov-button-danger`；workspace-shell.ts 增加 `ov-menu-separator`。

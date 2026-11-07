@@ -8,9 +8,9 @@
  * moment ago is not in the index yet, and its reference must still resolve.
  * @module dsh-obsidian-vault/vault/pur-image
  */
-import { parseStudioDocument } from '../pur-kernel/studio-file.ts'
+import { parseStudioDocument } from '../pur-kernel/index.ts'
 import { PUR_ASSET_SCHEME } from './pur-store.ts'
-import type { PurElement } from '../pur-kernel/types.ts'
+import type { PurElement } from '../pur-kernel/index.ts'
 
 /** Root-confined file access, as `VaultFiles` provides it. */
 export interface PurFileReader {

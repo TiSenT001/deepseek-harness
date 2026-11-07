@@ -9,7 +9,7 @@ import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import type { PurMenuEntry, PurMenuModel, PurMenuPoint } from '../../pur-kernel/index.ts'
 import type { PurLabelBundles } from '../i18n/pur-labels.ts'
-import { css } from '../ui/theme.ts'
+import { css } from '../ui/kit/index.ts'
 
 /** An open menu: viewport anchor, world origin and the kernel model. */
 export interface PurMenuState {

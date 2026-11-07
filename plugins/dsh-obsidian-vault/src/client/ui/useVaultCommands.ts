@@ -10,7 +10,7 @@ import {
   getPurPaneHandlers,
   getPurPanePaths,
   subscribePurPaneCommands,
-} from '../pur/pane-commands.ts'
+} from '../pur/integration.ts'
 import { externalizeCanvas } from '../api.ts'
 import { buildPurPaneCommands } from './commands.ts'
 import type { CommandEntry } from './commands.ts'

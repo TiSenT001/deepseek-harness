@@ -4,7 +4,7 @@
  * @module dsh-obsidian-vault/client/ui/commands
  */
 import type { Translate } from '../i18n.ts'
-import type { PurPaneHandlers } from '../pur/pane-commands.ts'
+import type { PurPaneHandlers } from '../pur/integration.ts'
 import type { MenuActions } from './menu/types.ts'
 
 /** One runnable palette command. */

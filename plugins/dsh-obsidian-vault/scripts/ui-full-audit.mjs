@@ -382,12 +382,30 @@ async function check(name, fn) {
     return
   }
   currentCheck = name
-  try {
-    const detail = await fn()
-    results.push({ name, ok: true, detail })
-    console.log(`ok ${name}${detail === undefined ? '' : ` — ${JSON.stringify(detail)}`}`)
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error)
+  // Animations, index refreshes and rAF counters occasionally settle one frame
+  // late; a single retry after clearing transient overlays separates that jitter
+  // from a real defect. Persistent failures are reported with both messages.
+  const attempts = []
+  for (let attempt = 1; attempt <= 2; attempt += 1) {
+    try {
+      const detail = await fn()
+      results.push({ name, ok: true, detail: attempt === 1 ? detail : { ...(detail ?? {}), retried: true } })
+      console.log(`ok ${name}${detail === undefined ? '' : ` — ${JSON.stringify(detail)}`}${attempt > 1 ? ' (retry)' : ''}`)
+      return
+    } catch (error) {
+      attempts.push(error instanceof Error ? error.message : String(error))
+      if (attempt === 1) {
+        try {
+          await page.keyboard.press('Escape')
+          await sleep(250)
+        } catch {
+          // Clearing an overlay is best effort; the retry runs either way.
+        }
+      }
+    }
+  }
+  {
+    const message = attempts.join(' | ')
     results.push({ name, ok: false, detail: message })
     console.log(`FAIL ${name} — ${message}`)
     // A failed check can leave a modal or menu open, which blocks every later

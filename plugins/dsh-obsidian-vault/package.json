@@ -19,7 +19,8 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "node --test --experimental-strip-types \"tests/**/*.test.ts\"",
     "regen:goldens": "node --experimental-strip-types scripts/regen-goldens.mjs",
-    "bench:large": "node --experimental-strip-types scripts/pur-large-doc-bench.mjs"
+    "bench:large": "node --experimental-strip-types scripts/pur-large-doc-bench.mjs",
+    "check:boundaries": "node scripts/check-boundaries.mjs"
   },
   "dsh": {
     "bundle": {

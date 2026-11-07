@@ -15,7 +15,7 @@ import { PurContextMenu } from './menu.tsx'
 import type { PurMenuState } from './menu.tsx'
 import { PurNotePicker, PurPrompt } from './picker.tsx'
 import type { PurEditorKind } from './sink.ts'
-import { css } from '../ui/theme.ts'
+import { css } from '../ui/kit/index.ts'
 
 /** An open element editor overlay. */
 export interface PurEditorState {

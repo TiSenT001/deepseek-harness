@@ -6,7 +6,7 @@
  */
 import { useEffect, useState } from 'react'
 import type { Translate } from '../i18n.ts'
-import { css } from '../ui/theme.ts'
+import { css } from '../ui/kit/index.ts'
 import { listMarkdownNotes } from './loader.ts'
 
 /** Props for {@link PurPrompt}. */

@@ -1,16 +1,29 @@
 /**
- * The one dialog the vault workspace uses for text entry and confirmation:
- * create note, create folder, rename and delete. Rendered by {@link useAsk}.
- * @module dsh-obsidian-vault/client/ui/AskDialog
+ * The shared ask dialog: in-app replacements for `window.prompt` and
+ * `window.confirm`. Embedded webviews block the native dialogs (they resolve to
+ * null immediately), which made rename, delete and the create commands look
+ * broken. Living in the kit keeps both the vault workspace and the canvas pane on
+ * one dialog without either side importing the other's internals.
+ * @module dsh-obsidian-vault/client/ui/kit/ask
  */
-import { useEffect, useRef, useState } from 'react'
-import type { Translate } from '../i18n.ts'
-import { css } from './theme.ts'
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
+import type { Translate } from '../../i18n.ts'
+import { css } from './classes.ts'
 
 /** One pending request: a text field, or a yes/no question. */
 export type AskRequest =
   | { readonly kind: 'text'; readonly title: string; readonly initial: string; readonly resolve: (value: string | null) => void }
   | { readonly kind: 'confirm'; readonly title: string; readonly resolve: (value: boolean) => void }
+
+/** Prompt and confirm, plus the element that renders the pending request. */
+export interface Ask {
+  /** Ask for one line of text; resolves null when dismissed. */
+  readonly askText: (title: string, initial?: string) => Promise<string | null>
+  /** Ask for a yes/no decision. */
+  readonly askConfirm: (message: string) => Promise<boolean>
+  /** The dialog element, or null while nothing is pending. */
+  readonly node: ReactNode
+}
 
 /** Props for {@link AskDialog}. */
 export interface AskDialogProps {
@@ -91,4 +104,51 @@ export function AskDialog({ t, request, onSubmit, onCancel }: AskDialogProps): J
       </div>
     </div>
   )
+}
+
+/**
+ * Wire the dialog state behind {@link Ask}.
+ * @param t - translator for the buttons.
+ * @returns the ask functions and their element.
+ */
+export function useAsk(t: Translate): Ask {
+  const [request, setRequest] = useState<AskRequest | null>(null)
+
+  const askText = useCallback(
+    (title: string, initial = ''): Promise<string | null> =>
+      new Promise((resolve) => {
+        setRequest({ kind: 'text', title, initial, resolve })
+      }),
+    [],
+  )
+
+  const askConfirm = useCallback(
+    (message: string): Promise<boolean> =>
+      new Promise((resolve) => {
+        setRequest({ kind: 'confirm', title: message, resolve })
+      }),
+    [],
+  )
+
+  const close = useCallback((value: string | null | boolean): void => {
+    setRequest((current) => {
+      if (current !== null) current.resolve(value as never)
+      return null
+    })
+  }, [])
+
+  return {
+    askText,
+    askConfirm,
+    node: request === null
+      ? null
+      : (
+        <AskDialog
+          t={t}
+          request={request}
+          onCancel={() => close(request.kind === 'confirm' ? false : null)}
+          onSubmit={(value) => close(request.kind === 'confirm' ? true : value)}
+        />
+      ),
+  }
 }

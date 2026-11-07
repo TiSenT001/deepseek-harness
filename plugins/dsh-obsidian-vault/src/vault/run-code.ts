@@ -5,7 +5,7 @@
  * @module dsh-obsidian-vault/vault/run-code
  */
 import vm from 'node:vm'
-import { serializeRunValues } from '../pur-kernel/controller-run.ts'
+import { serializeRunValues } from '../pur-kernel/index.ts'
 
 /** Longest snippet accepted, in characters. */
 export const MAX_CODE_CHARS = 64 * 1024

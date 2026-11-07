@@ -6,8 +6,8 @@
  * into the vault: the knowledge base only previews these assets.
  * @module dsh-obsidian-vault/vault/pur-externalize
  */
-import { parseStudioDocument, serializeStudioDocument } from '../pur-kernel/studio-file.ts'
-import type { PurElement } from '../pur-kernel/types.ts'
+import { parseStudioDocument, serializeStudioDocument } from '../pur-kernel/index.ts'
+import type { PurElement } from '../pur-kernel/index.ts'
 import { PUR_ASSET_SCHEME, storePurImage } from './pur-store.ts'
 
 /** What one externalization pass changed. */

@@ -7,7 +7,7 @@
  */
 import { useEffect, useRef } from 'react'
 import type { ReactNode } from 'react'
-import { css } from '../ui/theme.ts'
+import { css } from '../ui/kit/index.ts'
 
 /** Props for {@link PurEditorFrame}. */
 export interface PurEditorFrameProps {
