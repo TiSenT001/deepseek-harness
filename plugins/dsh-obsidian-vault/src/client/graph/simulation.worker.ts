@@ -7,6 +7,7 @@
 import {
   seedPositions, Simulation, type GraphEdgeInput, type GraphNodeInput, type LayoutForces,
 } from './layout.ts'
+import { tickIntervalMs } from './layout-types.ts'
 
 /** Messages the page sends to a session. */
 export type SimulationRequest =
@@ -36,6 +37,8 @@ export type SimulationResponse =
 
 interface Session {
   readonly sim: Simulation
+  /** Milliseconds between ticks, from the graph size. */
+  readonly interval: number
   running: boolean
   timer: ReturnType<typeof setTimeout> | null
 }
@@ -60,7 +63,7 @@ function pump(id: number, session: Session): void {
     post({ id, type: 'cooled' })
     return
   }
-  session.timer = setTimeout(() => pump(id, session), 1000 / 60)
+  session.timer = setTimeout(() => pump(id, session), session.interval)
 }
 
 function wake(id: number, session: Session): void {
@@ -84,7 +87,7 @@ self.addEventListener('message', (event: MessageEvent<SimulationRequest>) => {
         : new Map(message.seed.map(([path, x, y]) => [path, { x, y }]))
       const sim = new Simulation(seedPositions(message.nodes, message.edges, seed), message.edges, message.forces)
       sim.setAnimate(message.animate === true)
-      const session: Session = { sim, running: false, timer: null }
+      const session: Session = { sim, interval: tickIntervalMs(message.nodes.length), running: false, timer: null }
       sessions.set(id, session)
       wake(id, session)
       return

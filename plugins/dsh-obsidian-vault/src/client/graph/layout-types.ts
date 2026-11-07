@@ -59,6 +59,20 @@ export type LayoutSeed = ReadonlyMap<string, { readonly x: number; readonly y: n
 export const ALPHA_MIN = 0.001
 /** Energy floor while continuous animation is on: slow drift, never frozen. */
 export const ANIMATE_ALPHA = 0.015
+
+/**
+ * Tick cadence for one graph: a full frame budget is only realistic for small
+ * graphs, and a 5000-node tick costs tens of milliseconds, so the simulation
+ * slows down instead of freezing the page. Animation still runs continuously.
+ * @param nodeCount - visible nodes in the graph.
+ * @returns milliseconds between ticks.
+ */
+export function tickIntervalMs(nodeCount: number): number {
+  if (nodeCount <= 600) return 1000 / 60
+  if (nodeCount <= 1500) return 1000 / 40
+  if (nodeCount <= 3000) return 1000 / 25
+  return 1000 / 15
+}
 /** Per-tick approach toward the target energy: cools in ~300 ticks (d3). */
 export const ALPHA_DECAY = 1 - Math.pow(ALPHA_MIN, 1 / 300)
 /** Velocity retention per tick (d3/Obsidian velocityDecay). */

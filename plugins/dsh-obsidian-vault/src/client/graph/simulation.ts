@@ -9,6 +9,7 @@ import {
   seedPositions, Simulation, type GraphEdgeInput, type GraphNodeInput, type LayoutForces,
   type LayoutSeed, type SimNode,
 } from './layout.ts'
+import { tickIntervalMs } from './layout-types.ts'
 import type { SimulationRequest, SimulationResponse } from './simulation.worker.ts'
 
 /** A running simulation; positions update in place on {@link nodes}. */
@@ -95,16 +96,21 @@ function startInline(
 ): SimulationHandle {
   const sim = new Simulation(templates, edges, forces)
   sim.setAnimate(animate)
+  const interval = tickIntervalMs(templates.length)
   let running = false
   let frame = 0
-  const pump = (): void => {
+  let lastTick = 0
+  const pump = (now: number): void => {
     if (!running) return
-    sim.tick()
-    callbacks.onTick?.(templates)
-    if (sim.cooled) {
-      running = false
-      callbacks.onCooled?.()
-      return
+    if (now - lastTick >= interval) {
+      lastTick = now
+      sim.tick()
+      callbacks.onTick?.(templates)
+      if (sim.cooled) {
+        running = false
+        callbacks.onCooled?.()
+        return
+      }
     }
     frame = requestAnimationFrame(pump)
   }

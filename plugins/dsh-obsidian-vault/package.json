@@ -21,7 +21,8 @@
     "regen:goldens": "node --experimental-strip-types scripts/regen-goldens.mjs",
     "bench:large": "node --experimental-strip-types scripts/pur-large-doc-bench.mjs",
     "check:boundaries": "node scripts/check-boundaries.mjs",
-    "bench:vault": "node --experimental-strip-types scripts/vault-scale-bench.mjs"
+    "bench:vault": "node --experimental-strip-types scripts/vault-scale-bench.mjs",
+    "bench:graph": "node --experimental-strip-types scripts/graph-scale-bench.mjs"
   },
   "dsh": {
     "bundle": {
