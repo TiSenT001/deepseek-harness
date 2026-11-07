@@ -54,15 +54,31 @@ await page.route('**/actions/prune-backups', (r) => r.fulfill({ status: 200, con
 await page.route('**/actions/caches/prune', (r) => r.fulfill({ status: 200, contentType: 'application/json', body: '{"ok":true,"freed_mb":0,"items":[]}' }))
 await page.route('**/actions/backup', (r) => r.fulfill({ status: 200, contentType: 'application/json', body: '{"ok":true}' }))
 
+/** 等卡片出现；管理器刚好在重启时（另一个窗口改后端）等一等再判失败。 */
+const waitForCards = async (timeout = 8000) => {
+  const started = Date.now()
+  while (Date.now() - started < timeout) {
+    if (await page.locator('article.bc-card').count()) return true
+    await page.waitForTimeout(400)
+  }
+  return false
+}
+
 const openPanel = async () => {
-  await page.goto(URL_, { waitUntil: 'domcontentloaded' })
-  await page.waitForTimeout(3000)
-  const opener = page.getByRole('button', { name: '打开侧边栏' })
-  if (await opener.count()) await opener.click()
-  await page.waitForTimeout(800)
-  const nav = page.getByText('TiSenT Brain', { exact: true }).first()
-  if (await nav.count()) await nav.click()
-  await page.waitForTimeout(2500)
+  const enter = async () => {
+    await page.goto(URL_, { waitUntil: 'domcontentloaded' })
+    await page.waitForTimeout(3000)
+    const opener = page.getByRole('button', { name: '打开侧边栏' })
+    if (await opener.count()) await opener.click()
+    await page.waitForTimeout(800)
+    const nav = page.getByText('TiSenT Brain', { exact: true }).first()
+    if (await nav.count()) await nav.click()
+    await page.waitForTimeout(2000)
+  }
+  await enter()
+  // 首次加载撞上管理器重启（19998 短暂不可用）时重进一次，避免把瞬断当回归
+  if (!(await waitForCards())) await enter()
+  await waitForCards()
 }
 
 const closeOverlay = async () => {
