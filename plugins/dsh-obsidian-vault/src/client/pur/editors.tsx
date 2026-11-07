@@ -8,12 +8,11 @@ import { useState } from 'react'
 import { displayRunValue, findElement } from '../../pur-kernel/index.ts'
 import type { PurController, PurControllerEffect, PurLineStyle } from '../../pur-kernel/index.ts'
 import type { Translate } from '../i18n.ts'
-import { BodyArea, ColorField, Field, FontSelect, numberValue, PurEditorFrame, purInputStyle, purLabelStyle, Section } from './editor-frame.tsx'
+import { css } from '../ui/theme.ts'
+import { BodyArea, ColorField, Field, FontSelect, numberValue, PurEditorFrame, Section } from './editor-frame.tsx'
 import { applySnippet, snippetOf, suggestedSnippetTitle } from './snippet-apply.ts'
 import type { SnippetDraft } from './snippet-apply.ts'
 import type { CodeSnippetDto } from '../api.ts'
-
-export { purInputStyle, purLabelStyle }
 
 /** Props every Pur editor dialog receives. */
 export interface PurEditorProps {
@@ -37,12 +36,12 @@ export interface PurEditorProps {
 function PinList(props: { caption: string; placeholder: string; pins: readonly { id: string; label: string }[]; onChange: (pins: { id: string; label: string }[]) => void }): JSX.Element {
   return (
     <div>
-      <span style={purLabelStyle}>{props.caption}</span>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+      <span className={css.fieldLabel}>{props.caption}</span>
+      <div className={css.purCol}>
         {props.pins.map((pin, index) => (
-          <div key={pin.id === '' ? `new-${index}` : pin.id} style={{ display: 'flex', gap: 8 }}>
+          <div key={pin.id === '' ? `new-${index}` : pin.id} className={css.purRow}>
             <input
-              style={purInputStyle}
+              className={css.input}
               placeholder={props.placeholder}
               value={pin.label}
               onChange={(event) => props.onChange(props.pins.map((other, i) => (i === index ? { ...other, label: event.target.value } : other)))}
@@ -137,7 +136,7 @@ export function PurTextEditor(props: PurEditorProps): JSX.Element | null {
     >
       <Section title={props.t('pur.sectionContent')}>
         <Field label={props.t('pur.titleOptional')}>
-          <input style={purInputStyle} value={title} placeholder={props.t('pur.titleOptional')} onChange={(event) => setTitle(event.target.value)} />
+          <input className={css.input} value={title} placeholder={props.t('pur.titleOptional')} onChange={(event) => setTitle(event.target.value)} />
         </Field>
         <BodyArea
           label={isCode === true ? props.t('pur.bodyCode') : props.t('pur.bodyText')}
@@ -152,7 +151,7 @@ export function PurTextEditor(props: PurEditorProps): JSX.Element | null {
           <ColorField value={color} onChange={setColor} />
         </Field>
         <Field label={props.t('pur.fontSize')}>
-          <input style={purInputStyle} type="number" min={8} max={100} value={fontSize} onChange={(event) => setFontSize(event.target.value)} />
+          <input className={css.input} type="number" min={8} max={100} value={fontSize} onChange={(event) => setFontSize(event.target.value)} />
         </Field>
         <Field label={props.t('pur.fontFamily')}>
           <FontSelect value={fontFamily} onChange={setFontFamily} />
@@ -161,7 +160,7 @@ export function PurTextEditor(props: PurEditorProps): JSX.Element | null {
       <Section title={props.t('pur.sectionSnippets')} columns={2}>
         <Field label={props.t('pur.insertSnippet')}>
           <select
-            style={purInputStyle}
+            className={css.input}
             value=""
             onChange={(event) => {
               insertSnippet(event.target.value)
@@ -185,9 +184,9 @@ export function PurTextEditor(props: PurEditorProps): JSX.Element | null {
               {props.t('pur.saveSnippet')}
             </button>
           ) : (
-            <div style={{ display: 'flex', gap: 6 }}>
+            <div className={css.purRow}>
               <input
-                style={purInputStyle}
+                className={css.input}
                 value={snippetName}
                 placeholder={props.t('pur.snippetTitle')}
                 onChange={(event) => setSnippetName(event.target.value)}
@@ -197,14 +196,14 @@ export function PurTextEditor(props: PurEditorProps): JSX.Element | null {
             </div>
           )}
         </Field>
-        {snippetFlash === null ? null : <span style={{ ...purLabelStyle, marginBottom: 0 }}>{snippetFlash}</span>}
+        {snippetFlash === null ? null : <span className={css.fieldLabel}>{snippetFlash}</span>}
       </Section>
       {isCode === true && outputs.length > 0 ? (
         <Section title={props.t('pur.sectionRunValues')} columns={2}>
           {outputs.map((pin) => (
             <Field key={pin.label} label={pin.label}>
               <input
-                style={purInputStyle}
+                className={css.input}
                 placeholder={props.t('pur.runValueHint')}
                 value={runValues[pin.label] ?? ''}
                 onChange={(event) => setRunValues({ ...runValues, [pin.label]: event.target.value })}
@@ -216,8 +215,8 @@ export function PurTextEditor(props: PurEditorProps): JSX.Element | null {
       {isCode === true && (element.history?.length ?? 0) > 0 ? (
         <Section title={props.t('pur.sectionRunHistory')} columns={1}>
           {element.history?.map((entry, index) => (
-            <div key={`${entry.at}-${index}`} style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-              <span style={{ ...purLabelStyle, marginBottom: 0, flex: 1 }}>
+            <div key={`${entry.at}-${index}`} className={css.purRow}>
+              <span className={`${css.fieldLabel} ${css.grow}`}>
                 {entry.ok ? '✓' : '✗'} {entry.ms}ms · {Object.entries(entry.values).map(([key, value]) => `${key}=${displayRunValue(value)}`).join(' · ') || '—'}
               </span>
               <button
@@ -241,8 +240,7 @@ export function PurTextEditor(props: PurEditorProps): JSX.Element | null {
         {isCode === false ? (
           <button
             type="button"
-            className="ov-button"
-            style={{ gridColumn: '1 / -1', justifySelf: 'start' }}
+            className={`${css.button} ${css.purSpan}`}
             onClick={() => {
               // The draft becomes the node: text written here is the node's code, and
               // the pins above are what the card will show.
@@ -257,8 +255,7 @@ export function PurTextEditor(props: PurEditorProps): JSX.Element | null {
       {isCode === true ? (
         <button
           type="button"
-          className="ov-button"
-          style={{ color: '#ff6b6b', alignSelf: 'flex-start' }}
+          className={`${css.button} ${css.buttonDanger} ${css.purStart}`}
           onClick={() => {
             props.run(props.controller.deleteElement(props.id))
             props.onClose()
@@ -290,7 +287,7 @@ export function PurGroupEditor(props: PurEditorProps): JSX.Element | null {
     <PurEditorFrame title={props.t('pur.editLabel')} onCommit={commit} onDiscard={props.onClose} saveLabel={props.t('pur.save')} cancelLabel={props.t('pur.cancel')}>
       <Section title={props.t('pur.sectionContent')}>
         <Field label={props.t('pur.groupNamePlaceholder')}>
-          <input style={purInputStyle} value={name} placeholder={props.t('pur.groupNamePlaceholder')} onChange={(event) => setName(event.target.value)} />
+          <input className={css.input} value={name} placeholder={props.t('pur.groupNamePlaceholder')} onChange={(event) => setName(event.target.value)} />
         </Field>
       </Section>
       <Section title={props.t('pur.sectionStyle')} columns={2}>
@@ -333,7 +330,7 @@ export function PurLineEditor(props: PurEditorProps): JSX.Element | null {
           <ColorField value={color} onChange={setColor} />
         </Field>
         <Field label={props.t('pur.fontSize')}>
-          <input style={purInputStyle} type="number" min={8} max={40} value={fontSize} onChange={(event) => setFontSize(event.target.value)} />
+          <input className={css.input} type="number" min={8} max={40} value={fontSize} onChange={(event) => setFontSize(event.target.value)} />
         </Field>
         <Field label={props.t('pur.fontFamily')}>
           <FontSelect value={fontFamily} onChange={setFontFamily} />
@@ -343,8 +340,7 @@ export function PurLineEditor(props: PurEditorProps): JSX.Element | null {
         {element.from !== '' || element.to !== '' ? (
           <button
             type="button"
-            className="ov-button"
-            style={{ justifySelf: 'start' }}
+            className={`${css.button} ${css.purSpan}`}
             onClick={() => {
               props.run(props.controller.disconnectLine(props.id))
               props.onClose()
@@ -354,15 +350,15 @@ export function PurLineEditor(props: PurEditorProps): JSX.Element | null {
           </button>
         ) : null}
         <Field label={props.t('pur.lineStyle')}>
-          <select style={purInputStyle} value={style} onChange={(event) => setStyle(event.target.value as PurLineStyle)}>
+          <select className={css.input} value={style} onChange={(event) => setStyle(event.target.value as PurLineStyle)}>
             <option value="curve">{props.t('pur.lineStyleCurve')}</option>
             <option value="straight">{props.t('pur.lineStyleStraight')}</option>
             <option value="rect">{props.t('pur.lineStyleRect')}</option>
           </select>
         </Field>
-        <label style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+        <label className={css.purCheck}>
           <input type="checkbox" checked={arrow} onChange={(event) => setArrow(event.target.checked)} />
-          <span style={purLabelStyle}>{props.t('pur.lineArrow')}</span>
+          <span className={css.fieldLabel}>{props.t('pur.lineArrow')}</span>
         </label>
       </Section>
     </PurEditorFrame>
@@ -391,13 +387,13 @@ export function PurNoteLinkEditor(props: PurEditorProps): JSX.Element | null {
     <PurEditorFrame title={props.t('pur.edit')} onCommit={commit} onDiscard={props.onClose} saveLabel={props.t('pur.save')} cancelLabel={props.t('pur.cancel')}>
       <Section title={props.t('pur.sectionContent')}>
         <Field label={props.t('pur.linkNote')}>
-          <input style={purInputStyle} value={link} onChange={(event) => setLink(event.target.value)} />
+          <input className={css.input} value={link} onChange={(event) => setLink(event.target.value)} />
         </Field>
         <BodyArea label={props.t('pur.noteText')} value={note} onChange={setNote} rows={3} code={false} />
       </Section>
       <Section title={props.t('pur.sectionStyle')} columns={3}>
         <Field label={props.t('pur.noteFontSize')}>
-          <input style={purInputStyle} type="number" min={8} max={40} value={fontSize} onChange={(event) => setFontSize(event.target.value)} />
+          <input className={css.input} type="number" min={8} max={40} value={fontSize} onChange={(event) => setFontSize(event.target.value)} />
         </Field>
         <Field label={props.t('pur.noteFontFamily')}>
           <FontSelect value={fontFamily} onChange={setFontFamily} />

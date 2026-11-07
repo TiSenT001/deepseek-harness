@@ -4,7 +4,6 @@
  * and the transient notice toast.
  * @module dsh-obsidian-vault/client/pur/pane-overlays
  */
-import type React from 'react'
 import { runMenuAction } from '../../pur-kernel/index.ts'
 import type { PurController, PurControllerEffect, PurMenuAction, PurMenuHost } from '../../pur-kernel/index.ts'
 import type { Translate } from '../i18n.ts'
@@ -16,6 +15,7 @@ import { PurContextMenu } from './menu.tsx'
 import type { PurMenuState } from './menu.tsx'
 import { PurNotePicker, PurPrompt } from './picker.tsx'
 import type { PurEditorKind } from './sink.ts'
+import { css } from '../ui/theme.ts'
 
 /** An open element editor overlay. */
 export interface PurEditorState {
@@ -39,20 +39,6 @@ export interface PurPromptState {
 export interface PurPickerState {
   /** Settle the picker with a vault path; null means dismissed. */
   readonly resolve: (path: string | null) => void
-}
-
-/** The toast's inline look; the theme has no notice primitive. */
-const NOTICE_STYLE: React.CSSProperties = {
-  position: 'absolute',
-  left: '50%',
-  bottom: 16,
-  transform: 'translateX(-50%)',
-  background: 'rgba(30,30,30,0.9)',
-  color: '#e0e0e0',
-  borderRadius: 6,
-  padding: '6px 14px',
-  fontSize: 12,
-  pointerEvents: 'none',
 }
 
 /** Props for {@link PurPaneOverlays}. */
@@ -157,7 +143,7 @@ export function PurPaneOverlays(props: PurPaneOverlaysProps): JSX.Element {
           }}
         />
       ) : null}
-      {notice !== null ? <div style={NOTICE_STYLE}>{notice}</div> : null}
+      {notice !== null ? <div className={css.purNotice}>{notice}</div> : null}
     </>
   )
 }

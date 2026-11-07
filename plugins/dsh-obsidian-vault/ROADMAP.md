@@ -1,3 +1,15 @@
+## 第九十二轮：画布 UI 全部收敛到 kit（2026-11-07）
+
+- **kit 扩展**：新增 `styles/pur.ts`（编辑器对话框框架、分区头/分隔线、栅格与行列、菜单尺寸、悬停提示条、通知 toast）；dialog.ts 增加 `ov-dialog-layer-center`、`ov-input`（带 focus 品牌描边与 `color-scheme: dark`）、`ov-field`、`ov-field-label`、`ov-color-swatch`、`ov-color-value`；shell.ts 增加 `ov-button-danger`；workspace-shell.ts 增加 `ov-menu-separator`。
+- **画布侧改走 kit**：`editor-frame.tsx` 的手写对话框壳与 `purInputStyle`/`purLabelStyle`/`purColorStyle` 三个内联样式对象整体删除，改用 `ov-dialog` + `ov-pur-*`；`editors.tsx` 全部输入控件改 `ov-input`、删除键改 `ov-button-danger`；`menu.tsx` 的 z-index 1000/1001 收进 `ov-menu-layer`/`ov-menu-sub` 层叠体系，分隔线走 token；`pane-overlays.tsx` 的 `NOTICE_STYLE`、`PurStudioPane.tsx` 的悬停提示内联样式删除；`PluginPanel.tsx` 两个 iconButton 宽度 hack 改 `ov-dialog-button`。
+- **顺手发现**：`ov-button-primary` 此前被编辑器页脚引用但 kit 里**没有对应规则**（主按钮一直渲染成幽灵按钮）；页脚统一改用 `ov-dialog-button`/`ov-dialog-button-primary`。
+- **验证**：`tsc` 0、**646/646**、`tsdown` 成功；定向审核 12/13（`plugins.core-toggle-persists` 失败是 `--only` 缺少前置 vault 切换的顺序假象，非回归；已把误写进真库的 graph 开关恢复）。宿主进程反复 exit -1 崩溃且 pnpm 报 disk I/O error（环境问题，与本次改动无关），全量审核与画布渲染抽查待宿主稳定后补跑（抽查脚本 `.artifacts/ui/unify-check.mjs`）。
+
+## 第九十一轮：SourceEditor 自撞冲突竞态修复 + 审核收尾（2026-11-07）
+
+- **竞态修复**：`SourceEditor` 的 `baseMtime` 由 `useState` 改 `useRef` —— 自动保存飞行中排下的防抖定时器捕获旧闭包，拿着保存前的 mtime 去写，与刚完成的自动保存自撞 409（`note.editor-conflict-bar` 误报冲突条）。改为 ref 后定时器永远读最新版本。
+- **审核收尾**：定向复跑 `note.source-and-reading-roundtrip` 与 `note.editor-conflict-bar` 通过；全量审核 **99/99、0 控制台错误**（此前的 2 败即该竞态及其级联）。
+
 ## 第九十轮：性能基准与两项优化（2026-11-01）
 
 - **基准工具** `scripts/pur-scale-bench.mjs`：生成 N 张互不相同的 640×480 PNG（内容寻址入库），拼成网格画布，测量文档大小、首屏耗时、JS 堆、以及缩放时的真实帧间隔（在页面内用 rAF 采样，不用协议往返）。

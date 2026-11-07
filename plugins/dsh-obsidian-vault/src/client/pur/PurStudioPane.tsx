@@ -11,7 +11,7 @@ import { PurController, createElementId, elementAt, executeEffects, pushHistory,
 import type { PurElement } from '../../pur-kernel/index.ts'
 import type { PurControllerEffect, PurControllerEnv, PurMenuContext, PurPointerEvent, PurRenderPreferences } from '../../pur-kernel/index.ts'
 import type { Translate } from '../i18n.ts'
-import { LoadingState } from '../ui/kit/index.ts'
+import { css, LoadingState } from '../ui/kit/index.ts'
 import { createPurMenuHost, exportSelectedText } from './host.ts'
 import type { PurMenuHostDeps } from './host.ts'
 import { purBundles } from './labels.ts'
@@ -542,24 +542,8 @@ void saveStudioDocument(path, document).catch(async (error: unknown) => {
       </div>
       {hintState === null ? null : (
         <div
-          style={{
-            position: 'absolute',
-            left: hintState.x,
-            top: hintState.y,
-            padding: '3px 7px',
-            borderRadius: 5,
-            background: 'rgba(20,20,22,0.94)',
-            border: '1px solid rgba(255,255,255,0.12)',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.35)',
-            color: '#e6e6ea',
-            whiteSpace: 'nowrap',
-            maxWidth: 220,
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            fontSize: 11,
-            pointerEvents: 'none',
-            zIndex: 6,
-          }}
+          className={css.purHint}
+          style={{ left: hintState.x, top: hintState.y }}
         >
           {hintState.text}
         </div>

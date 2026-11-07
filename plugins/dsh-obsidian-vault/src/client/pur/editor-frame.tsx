@@ -1,48 +1,13 @@
 /**
  * Shared chrome for every element editor: one dialog width, one field rhythm and
  * one commit model, so a text card, a code node, a connector and a note link all
- * open the same looking panel.
+ * open the same looking panel. All visuals come from the kit (`ov-dialog`,
+ * `ov-input`, `ov-pur-*`); this file only wires the structure.
  * @module dsh-obsidian-vault/client/pur/editor-frame
  */
 import { useEffect, useRef } from 'react'
-import type { CSSProperties, ReactNode } from 'react'
-
-/** Control style every editor field shares. */
-export const purInputStyle: CSSProperties = {
-  width: '100%',
-  boxSizing: 'border-box',
-  background: 'rgba(128,128,128,0.12)',
-  color: 'inherit',
-  border: '1px solid rgba(128,128,128,0.35)',
-  borderRadius: 4,
-  padding: '6px 8px',
-  fontSize: 13,
-  lineHeight: 1.5,
-  colorScheme: 'dark',
-}
-
-/** Caption style above every field. */
-export const purLabelStyle: CSSProperties = { fontSize: 11, opacity: 0.65, display: 'block', marginBottom: 2 }
-
-/** Gap between fields, in pixels. */
-export const FIELD_GAP = 8
-
-/** Dialog width shared by every element editor. */
-export const EDITOR_WIDTH = 460
-
-/** Dialog width for the text and code editors, which hold a body plus snippet controls. */
-export const EDITOR_WIDTH_WIDE = 560
-
-/** A colour swatch: the native picker with the field's own border, sized to a control. */
-export const purColorStyle: CSSProperties = {
-  width: 46,
-  height: 30,
-  padding: 2,
-  border: '1px solid rgba(128,128,128,0.35)',
-  borderRadius: 4,
-  background: 'transparent',
-  cursor: 'pointer',
-}
+import type { ReactNode } from 'react'
+import { css } from '../ui/theme.ts'
 
 /** Props for {@link PurEditorFrame}. */
 export interface PurEditorFrameProps {
@@ -80,8 +45,7 @@ export function PurEditorFrame(props: PurEditorFrameProps): JSX.Element {
   }, [])
   return (
     <div
-      className="ov-dialog-layer"
-      style={{ position: 'fixed', inset: 0, zIndex: 1200, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.45)' }}
+      className={`${css.dialogLayer} ${css.dialogLayerCenter}`}
       onMouseDown={(event) => {
         if (event.target === event.currentTarget) props.onCommit()
       }}
@@ -92,8 +56,7 @@ export function PurEditorFrame(props: PurEditorFrameProps): JSX.Element {
         role="dialog"
         aria-modal="true"
         aria-label={props.title}
-        className="ov-dialog"
-        style={{ width: props.wide === true ? EDITOR_WIDTH_WIDE : EDITOR_WIDTH, maxWidth: '92vw', maxHeight: '86vh', display: 'flex', flexDirection: 'column', colorScheme: 'dark', background: 'var(--dsw-alias-bg-layer-1, #1b1b20)', border: '1px solid rgba(128,128,128,0.28)', borderRadius: 10, boxShadow: '0 18px 48px rgba(0,0,0,0.55)' }}
+        className={`${css.dialog} ${props.wide === true ? css.purDialogWide : css.purDialog}`}
         onKeyDown={(event) => {
           event.stopPropagation()
           if (event.key === 'Escape') props.onDiscard()
@@ -102,16 +65,16 @@ export function PurEditorFrame(props: PurEditorFrameProps): JSX.Element {
           else if (event.key === 'Enter' && event.target instanceof HTMLInputElement) props.onCommit()
         }}
       >
-        <header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', borderBottom: '1px solid rgba(128,128,128,0.2)' }}>
-          <span style={{ fontSize: 13, fontWeight: 600 }}>{props.title}</span>
-          <span style={{ fontSize: 11, opacity: 0.55 }}>Esc</span>
+        <header className={css.dialogHead}>
+          <span className={css.dialogTitle}>{props.title}</span>
+          <span className={`${css.dialogHint} ${css.purEsc}`}>Esc</span>
         </header>
-        <div style={{ padding: '12px 14px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: FIELD_GAP }}>
+        <div className={css.dialogBody}>
           {props.children}
         </div>
-        <footer style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, padding: '10px 14px', borderTop: '1px solid rgba(128,128,128,0.2)' }}>
-          <button type="button" className="ov-button" onClick={props.onDiscard}>{props.cancelLabel}</button>
-          <button type="button" className="ov-button ov-button-primary" onClick={props.onCommit}>{props.saveLabel}</button>
+        <footer className={css.purFooter}>
+          <button type="button" className={css.dialogButton} onClick={props.onDiscard}>{props.cancelLabel}</button>
+          <button type="button" className={`${css.dialogButton} ${css.dialogButtonPrimary}`} onClick={props.onCommit}>{props.saveLabel}</button>
         </footer>
       </div>
     </div>
@@ -124,8 +87,8 @@ export function PurEditorFrame(props: PurEditorFrameProps): JSX.Element {
  */
 export function Field(props: { label: string; children: ReactNode }): JSX.Element {
   return (
-    <label style={{ display: 'block' }}>
-      <span style={purLabelStyle}>{props.label}</span>
+    <label className={css.field}>
+      <span className={css.fieldLabel}>{props.label}</span>
       {props.children}
     </label>
   )
@@ -138,12 +101,15 @@ export function Field(props: { label: string; children: ReactNode }): JSX.Elemen
  */
 export function Section(props: { title: string; children: ReactNode; columns?: number }): JSX.Element {
   return (
-    <section style={{ display: 'flex', flexDirection: 'column', gap: FIELD_GAP }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        <span style={{ fontSize: 11, letterSpacing: '0.06em', textTransform: 'uppercase', opacity: 0.55, whiteSpace: 'nowrap' }}>{props.title}</span>
-        <span style={{ flex: 1, height: 1, background: 'rgba(128,128,128,0.18)' }} />
+    <section className={css.purSection}>
+      <div className={css.purSectionHead}>
+        <span className={css.purSectionTitle}>{props.title}</span>
+        <span className={css.purSectionRule} />
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: `repeat(${props.columns ?? 1}, minmax(0, 1fr))`, gap: FIELD_GAP }}>
+      <div
+        className={css.purFields}
+        style={props.columns === undefined ? undefined : { gridTemplateColumns: `repeat(${props.columns}, minmax(0, 1fr))` }}
+      >
         {props.children}
       </div>
     </section>
@@ -175,11 +141,7 @@ export function BodyArea(props: BodyAreaProps): JSX.Element {
   return (
     <Field label={props.label}>
       <textarea
-        style={{
-          ...purInputStyle,
-          resize: 'vertical',
-          ...(props.code ? { fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', fontSize: 12.5, tabSize: 2 } : {}),
-        }}
+        className={props.code ? `${css.input} ${css.purCode}` : css.input}
         rows={props.rows}
         spellCheck={!props.code}
         {...(props.placeholder === undefined ? {} : { placeholder: props.placeholder })}
@@ -205,7 +167,7 @@ export function BodyArea(props: BodyAreaProps): JSX.Element {
 /** A font-family select of generic CSS families. */
 export function FontSelect(props: { value: string; onChange: (value: string) => void }): JSX.Element {
   return (
-    <select style={purInputStyle} value={props.value} onChange={(event) => props.onChange(event.target.value)}>
+    <select className={css.input} value={props.value} onChange={(event) => props.onChange(event.target.value)}>
       {['sans-serif', 'serif', 'monospace', 'cursive'].map((family) => <option key={family} value={family}>{family}</option>)}
     </select>
   )
@@ -229,9 +191,9 @@ export function numberValue(text: string, fallback: number): number {
  */
 export function ColorField(props: { value: string; onChange: (value: string) => void }): JSX.Element {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-      <input type="color" style={purColorStyle} value={props.value} onChange={(event) => props.onChange(event.target.value)} />
-      <span style={{ fontFamily: 'ui-monospace, SFMono-Regular, monospace', fontSize: 11, opacity: 0.7 }}>{props.value}</span>
+    <div className={css.purRow}>
+      <input type="color" className={css.colorSwatch} value={props.value} onChange={(event) => props.onChange(event.target.value)} />
+      <span className={css.colorValue}>{props.value}</span>
     </div>
   )
 }

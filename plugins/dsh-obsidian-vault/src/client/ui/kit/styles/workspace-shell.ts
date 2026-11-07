@@ -122,6 +122,7 @@ export const WORKSPACE_SHELL_STYLE = `
   padding-top: 4px;
   border-top: 1px solid var(--dsw-alias-border-l1, #2a2a30);
 }
+.ov-menu-separator { border-top: 1px solid var(--dsw-alias-border-l1, #2a2a30); margin: 4px 6px; }
 .ov-menu-item {
   display: flex;
   align-items: center;

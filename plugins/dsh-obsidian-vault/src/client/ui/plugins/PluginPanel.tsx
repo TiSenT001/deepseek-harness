@@ -278,7 +278,7 @@ function CanvasSettingsSection({ t }: { readonly t: Translate }): JSX.Element | 
       <>
         <div className={css.dialogError}>{t('canvasSettingsLoadFailed')}</div>
         <div className={css.settingsActions}>
-          <button type="button" className={css.iconButton} style={{ width: 'auto', padding: '4px 12px' }} onClick={load}>
+          <button type="button" className={css.dialogButton} onClick={load}>
             {t('pluginRefresh')}
           </button>
         </div>
@@ -354,7 +354,7 @@ function CanvasSettingsSection({ t }: { readonly t: Translate }): JSX.Element | 
       <div className={css.settingsHint}>{t('settingsRestartHint')}</div>
 
       <div className={css.settingsActions}>
-        <button type="button" className={css.iconButton} style={{ width: 'auto', padding: '4px 14px' }} disabled={pending} onClick={save}>
+        <button type="button" className={css.dialogButton} disabled={pending} onClick={save}>
           {t('save')}
         </button>
         {notice === undefined ? null : <span className={css.settingsHint}>{notice}</span>}

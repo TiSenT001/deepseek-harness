@@ -86,7 +86,7 @@ export function PurContextMenu(props: PurContextMenuProps): JSX.Element {
 
   return (
     <div
-      style={{ position: 'fixed', inset: 0, zIndex: 1000 }}
+      className={css.menuLayer}
       onMouseDown={props.onClose}
       // The menu opens on the canvas pointerup that ends a right-click, and the
       // browser fires `contextmenu` right after that same gesture. Closing here
@@ -99,8 +99,8 @@ export function PurContextMenu(props: PurContextMenuProps): JSX.Element {
         ref={boxRef}
         role="menu"
         tabIndex={-1}
-        className={css.menu}
-        style={{ position: 'fixed', left, top, width: 'max-content', minWidth: 168, maxWidth: 280, maxHeight: 'calc(100vh - 24px)', overflowY: 'auto', overflowX: 'hidden', outline: 'none' }}
+        className={`${css.menu} ${css.purMenu}`}
+        style={{ left, top, outline: 'none' }}
         onMouseDown={(event) => event.stopPropagation()}
       >
         <PurMenuEntries entries={props.state.model.entries} labels={props.labels} onAction={props.onAction} onPreviewOpacity={props.onPreviewOpacity} onClose={props.onClose} />
@@ -137,7 +137,7 @@ function PurMenuEntries(props: PurMenuEntriesProps): JSX.Element {
                 max={1}
                 step={0.05}
                 defaultValue={entry.value}
-                style={{ width: 90 }}
+                className={css.purMenuSlider}
                 onMouseDown={(event) => event.stopPropagation()}
                 onPointerDown={(event) => event.stopPropagation()}
                 onClick={(event) => event.stopPropagation()}
@@ -185,11 +185,9 @@ function PurMenuEntries(props: PurMenuEntriesProps): JSX.Element {
               <div
                 // Portalled out of the scrolling panel: an absolutely positioned
                 // child would be clipped by the menu's overflow and become
-                // invisible.
-                className={css.menu}
-                // Above the dismiss overlay (z-index 1000), otherwise clicks land on the
-                // overlay and close the menu instead of activating the entry.
-                style={{ position: 'fixed', left: submenu.x, top: submenu.y, minWidth: 180, maxHeight: '60vh', overflowY: 'auto', zIndex: 1001 }}
+                // invisible. `ov-menu-sub` stacks it above the dismiss layer.
+                className={`${css.menu} ${css.menuSub} ${css.purMenuSub}`}
+                style={{ left: submenu.x, top: submenu.y }}
                 onMouseDown={(event) => event.stopPropagation()}
                 onContextMenu={(event) => event.preventDefault()}
               >
@@ -204,7 +202,7 @@ function PurMenuEntries(props: PurMenuEntriesProps): JSX.Element {
               document.body,
             )
             : null}
-          {entry.separatorAfter === true ? <div style={{ borderTop: '1px solid rgba(128,128,128,0.3)', margin: '4px 6px' }} /> : null}
+          {entry.separatorAfter === true ? <div className={css.menuSeparator} /> : null}
         </div>
       ))}
     </>

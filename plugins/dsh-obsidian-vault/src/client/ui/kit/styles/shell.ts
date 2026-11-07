@@ -43,6 +43,8 @@ export const SHELL_STYLE = `
 }
 .ov-button[disabled] { opacity: .4; cursor: default; }
 .ov-button[disabled]:hover { background: none; color: var(--dsw-alias-label-secondary, #b6b6bd); }
+.ov-button-danger,
+.ov-button-danger:hover { color: var(--dsw-alias-state-error-primary, #ff6b6b); }
 .ov-icon-button {
   display: inline-flex;
   align-items: center;

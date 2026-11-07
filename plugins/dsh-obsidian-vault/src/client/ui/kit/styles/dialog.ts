@@ -227,4 +227,46 @@ export const DIALOG_STYLE = `
   outline: none;
 }
 .ov-dialog-input:focus { border-color: var(--dsw-alias-border-l2, #3a3a42); }
+.ov-dialog-layer-center { align-items: center; padding-top: 0; }
+.ov-field { display: block; }
+.ov-field-label {
+  display: block;
+  margin-bottom: 2px;
+  font-size: 11px;
+  color: var(--dsw-alias-label-tertiary, #8b8b94);
+}
+.ov-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 6px 8px;
+  border: 1px solid var(--dsw-alias-border-l1, #2a2a30);
+  border-radius: 6px;
+  background: var(--dsw-alias-bg-layer-1, #1b1b1f);
+  color: var(--dsw-alias-label-primary, #e8e8ea);
+  font: inherit;
+  font-size: 13px;
+  line-height: 1.5;
+  outline: none;
+  color-scheme: dark;
+}
+.ov-input:focus {
+  outline: 1px solid var(--dsw-alias-brand-primary, #4d6bfe);
+  outline-offset: 1px;
+  border-color: var(--dsw-alias-brand-primary, #4d6bfe);
+}
+textarea.ov-input { resize: vertical; }
+.ov-color-swatch {
+  width: 46px;
+  height: 30px;
+  padding: 2px;
+  border: 1px solid var(--dsw-alias-border-l1, #2a2a30);
+  border-radius: 6px;
+  background: transparent;
+  cursor: pointer;
+}
+.ov-color-value {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  color: var(--dsw-alias-label-tertiary, #8b8b94);
+}
 `

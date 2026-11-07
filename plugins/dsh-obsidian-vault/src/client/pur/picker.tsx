@@ -8,7 +8,6 @@ import { useEffect, useState } from 'react'
 import type { Translate } from '../i18n.ts'
 import { css } from '../ui/theme.ts'
 import { listMarkdownNotes } from './loader.ts'
-import { purInputStyle, purLabelStyle } from './editors.tsx'
 
 /** Props for {@link PurPrompt}. */
 export interface PurPromptProps {
@@ -49,7 +48,7 @@ export function PurPrompt(props: PurPromptProps): JSX.Element {
           <span className={css.dialogTitle}>{props.title}</span>
         </div>
         <div className={css.dialogBody}>
-          <input style={purInputStyle} value={value} placeholder={props.t('pur.urlPromptPlaceholder')} onChange={(event) => setValue(event.target.value)} autoFocus />
+          <input className={css.input} value={value} placeholder={props.t('pur.urlPromptPlaceholder')} onChange={(event) => setValue(event.target.value)} autoFocus />
         </div>
         <div className={css.dialogActions}>
           <button type="button" className={css.dialogButton} onClick={() => props.resolve(null)}>{props.t('pur.cancel')}</button>
@@ -102,10 +101,10 @@ export function PurNotePicker(props: PurNotePickerProps): JSX.Element {
         <div className={css.dialogHead}>
           <span className={css.dialogTitle}>{props.t('pur.pickNote')}</span>
         </div>
-        <div className={css.dialogBody} style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          <input style={purInputStyle} value={query} placeholder={props.t('pur.pickNote')} onChange={(event) => setQuery(event.target.value)} autoFocus />
-          <div style={{ maxHeight: 260, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
-            {notes === null ? <span style={purLabelStyle}>{props.t('pur.imageLoading')}</span> : null}
+        <div className={css.dialogBody}>
+          <input className={css.input} value={query} placeholder={props.t('pur.pickNote')} onChange={(event) => setQuery(event.target.value)} autoFocus />
+          <div className={css.purNoteList}>
+            {notes === null ? <span className={css.dialogHint}>{props.t('pur.imageLoading')}</span> : null}
             {shown.map((path) => (
               <div key={path} className={css.quickItem} onClick={() => props.resolve(path)}>
                 <span className={css.quickLine}>{path.replace(/\.md$/i, '')}</span>

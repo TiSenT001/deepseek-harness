@@ -12,6 +12,7 @@ import { EDITOR_STYLE } from './styles/editor.ts'
 import { FILE_STYLE } from './styles/files.ts'
 import { FRAME_STYLE } from './styles/frame.ts'
 import { GRAPH_STYLE } from './styles/graph.ts'
+import { PUR_STYLE } from './styles/pur.ts'
 import { RESPONSIVE_STYLE } from './styles/responsive.ts'
 import { SHELL_STYLE } from './styles/shell.ts'
 import { WORKSPACE_STYLE } from './styles/workspace.ts'
@@ -37,6 +38,7 @@ export const STYLE = [
   FILE_STYLE,
   EDITOR_STYLE,
   GRAPH_STYLE,
+  PUR_STYLE,
   CONTROLS_STYLE,
   RESPONSIVE_STYLE,
   VARIANT_CSS,
