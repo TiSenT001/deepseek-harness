@@ -89,7 +89,7 @@ export const EDITOR_STYLE = `/* Editor: one textarea filling the reading area be
   color: var(--dsw-alias-label-tertiary, #8b8b94);
   font-size: 11.5px;
 }
-.ov-editor-area:focus { box-shadow: inset 0 0 0 2px var(--ov-focus, #4d6bfe); }
+.ov-editor-area:focus { box-shadow: inset 0 0 0 1px var(--dsw-alias-brand-primary, #7d94ff); }
 .ov-editor-status {
   padding: 5px 14px;
   border-top: 1px solid var(--dsw-alias-border-l1, #2a2a30);

@@ -24,10 +24,9 @@ export const CONTROLS_STYLE = `/* Kit toggle: hidden checkbox drives a sliding s
 }
 .ov-kit-toggle[data-on="true"] .ov-kit-toggle-track {
   background: var(--dsw-alias-brand-primary, #4d6bfe);
-  border-color: var(--ov-focus, #4d6bfe);
 }
 .ov-kit-toggle[data-on="true"] .ov-kit-toggle-knob { transform: translateX(14px); background: #fff; }
-.ov-kit-toggle input:focus-visible + .ov-kit-toggle-track { outline: 2px solid var(--ov-focus, #4d6bfe); outline-offset: 2px; }
+.ov-kit-toggle input:focus-visible + .ov-kit-toggle-track { outline: var(--dsw-focus-ring-width, 2px) solid var(--dsw-alias-brand-primary, #4d6bfe); outline-offset: 2px; }
 .ov-kit-toggle-label { color: var(--dsw-alias-label-secondary, #b6b6bd); }
 
 /* Kit slider: label | track | value row. */
@@ -71,7 +70,7 @@ export const CONTROLS_STYLE = `/* Kit toggle: hidden checkbox drives a sliding s
 }
 .ov-kit-slider[data-dragging="true"] .ov-kit-slider-thumb,
 .ov-kit-slider-track:focus-visible .ov-kit-slider-thumb { transform: translate(-50%, -50%) scale(1.2); }
-.ov-kit-slider-track:focus-visible { outline: 2px solid var(--ov-focus, #4d6bfe); outline-offset: 2px; }
+.ov-kit-slider-track:focus-visible { outline: var(--dsw-focus-ring-width, 2px) solid var(--dsw-alias-brand-primary, #4d6bfe); outline-offset: 2px; }
 .ov-kit-slider-tip {
   position: absolute;
   bottom: 18px;

@@ -12,7 +12,7 @@ export const GRAPH_STYLE = `/* Graph filter controls. */
   font: inherit;
   font-size: 12px;
 }
-.ov-graph-filter:focus { outline: 2px solid var(--ov-focus, #4d6bfe); }
+.ov-graph-filter:focus { outline: var(--dsw-focus-ring-width, 2px) solid var(--dsw-alias-brand-primary, #4d6bfe); }
 .ov-graph-select {
   padding: 4px 6px;
   border-radius: 4px;
@@ -53,7 +53,6 @@ export const GRAPH_STYLE = `/* Graph filter controls. */
 }
 .ov-graph-legend-item:hover { border-color: var(--dsw-alias-border-l2, #3a3a42); }
 .ov-graph-legend-item-active {
-  border-color: var(--ov-focus, #4d6bfe);
   color: var(--dsw-alias-label-primary, #e8e8ea);
 }
 .ov-graph-legend-dot { width: 8px; height: 8px; border-radius: 50%; flex: 0 0 auto; }
@@ -104,7 +103,7 @@ export const GRAPH_STYLE = `/* Graph filter controls. */
   font-size: 12px;
   width: 100%;
 }
-.ov-graph-text:focus { outline: 2px solid var(--ov-focus, #4d6bfe); }
+.ov-graph-text:focus { outline: var(--dsw-focus-ring-width, 2px) solid var(--dsw-alias-brand-primary, #4d6bfe); }
 .ov-group-row { display: grid; grid-template-columns: 1fr 32px 26px; gap: 6px; align-items: center; padding: 3px 0; }
 .ov-group-color { width: 28px; height: 24px; padding: 0; border: 1px solid var(--dsw-alias-border-l1, #2a2a30); border-radius: 4px; background: none; }
 
@@ -135,7 +134,7 @@ export const GRAPH_STYLE = `/* Graph filter controls. */
   font: inherit;
   font-size: 12px;
 }
-.ov-tagpop-input:focus { outline: 2px solid var(--ov-focus, #4d6bfe); }
+.ov-tagpop-input:focus { outline: var(--dsw-focus-ring-width, 2px) solid var(--dsw-alias-brand-primary, #4d6bfe); }
 .ov-tagpop-list { overflow-y: auto; min-height: 0; padding: 0 4px 6px; }
 .ov-tagpop-item {
   display: flex;

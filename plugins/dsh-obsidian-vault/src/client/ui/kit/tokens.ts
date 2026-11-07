@@ -57,7 +57,6 @@ export const TOKEN_CSS = `:root {
   /* Fixed brand accent: the Host brand token flips to near-white in dark mode,
      which reads as a second ring instead of the vault's blue focus. */
   --ov-accent: #4d6bfe;
-  --ov-focus: #4d6bfe;
   --ov-space-xxs: ${SPACE.xxs}px;
   --ov-space-xs: ${SPACE.xs}px;
   --ov-space-sm: ${SPACE.sm}px;

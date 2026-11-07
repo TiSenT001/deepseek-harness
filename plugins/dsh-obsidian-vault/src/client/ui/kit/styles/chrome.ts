@@ -206,9 +206,8 @@ button.ov-plugin-info {
 }
 .ov-settings-input:focus,
 .ov-settings-textarea:focus {
-  outline: 2px solid var(--ov-focus, #4d6bfe);
+  outline: var(--dsw-focus-ring-width, 2px) solid var(--dsw-alias-brand-primary, #4d6bfe);
   outline-offset: 1px;
-  border-color: var(--ov-focus, #4d6bfe);
 }
 .ov-settings-unit { font-size: 11px; color: var(--dsw-alias-label-tertiary, #8b8b94); }
 .ov-settings-hint { font-size: 10.5px; color: var(--dsw-alias-label-tertiary, #8b8b94); }
@@ -303,7 +302,7 @@ button.ov-plugin-info {
   font: inherit;
   font-size: 13px;
 }
-.ov-search-input:focus { outline: 2px solid var(--ov-focus, #4d6bfe); }
+.ov-search-input:focus { outline: var(--dsw-focus-ring-width, 2px) solid var(--dsw-alias-brand-primary, #4d6bfe); }
 .ov-search-count { color: var(--dsw-alias-label-tertiary, #8b8b94); font-size: 12px; white-space: nowrap; }
 .ov-search-list { overflow: auto; padding: 6px 10px 24px; min-height: 0; }
 .ov-search-item {

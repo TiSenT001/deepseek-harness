@@ -22,9 +22,8 @@ export const SELECT_STYLE = `/* Kit select: one token set for the trigger and th
 }
 .ov-select-trigger:hover { border-color: var(--dsw-alias-border-l2, rgba(128, 128, 128, 0.5)); }
 .ov-select-trigger:focus-visible {
-  outline: 2px solid var(--ov-focus, #4d6bfe);
+  outline: var(--dsw-focus-ring-width, 2px) solid var(--dsw-alias-brand-primary, #4d6bfe);
   outline-offset: 1px;
-  border-color: var(--ov-focus, #4d6bfe);
 }
 .ov-select-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ov-select-chevron { flex: 0 0 auto; font-size: 10px; opacity: 0.7; }
@@ -65,7 +64,7 @@ export const SELECT_STYLE = `/* Kit select: one token set for the trigger and th
   background: color-mix(in srgb, var(--ov-accent, #4d6bfe) 14%, transparent);
 }
 .ov-select-option:focus-visible {
-  outline: 2px solid var(--ov-focus, #4d6bfe);
+  outline: var(--dsw-focus-ring-width, 2px) solid var(--dsw-alias-brand-primary, #4d6bfe);
   outline-offset: -2px;
 }
 `
