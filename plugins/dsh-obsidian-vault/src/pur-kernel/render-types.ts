@@ -106,6 +106,8 @@ export interface PurRenderPreferences {
   showGrid: boolean
   /** Grid opacity, 0–1; absent means fully opaque. */
   gridOpacity?: number
+  /** Zoom-badge text colour, chosen by the adapter to contrast with the canvas. */
+  badgeColor?: string
 }
 
 /** Display copy the renderer interpolates, supplied by the adapter locale. */
