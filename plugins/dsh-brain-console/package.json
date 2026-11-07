@@ -17,7 +17,8 @@
   "scripts": {
     "build": "tsdown --config tsdown.config.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "smoke": "node tests/smoke.mjs"
+    "smoke": "node tests/smoke.mjs",
+    "verify": "npm run typecheck && npm run smoke"
   },
   "dsh": {
     "bundle": {

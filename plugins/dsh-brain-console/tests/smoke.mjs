@@ -5,12 +5,17 @@
  * prune / backup 这些会改数据的端点在测试里全部拦截成假应答，跑一百遍也不会删东西。
  *
  * 用法：
+ *   node tests/smoke.mjs                      # 自动发现 token（读 DSH home 的 dsh_web_token.txt）
  *   DSH_PANEL_URL='http://127.0.0.1:3080/?token=xxx' node tests/smoke.mjs
  *   node tests/smoke.mjs --url 'http://...' --shot 结果截图.png
  *
  * 依赖：Playwright 来自宿主仓库（apps/web 的依赖），插件自己不带 node_modules。
  */
 import { createRequire } from 'node:module'
+import { fileURLToPath } from 'node:url'
+import fs from 'node:fs'
+import os from 'node:os'
+import path from 'node:path'
 
 const args = process.argv.slice(2)
 const argOf = (name) => {
@@ -18,16 +23,44 @@ const argOf = (name) => {
   return i >= 0 ? args[i + 1] : undefined
 }
 
-const URL_ = argOf('--url') ?? process.env.DSH_PANEL_URL
-if (!URL_) {
-  console.error('缺少面板地址。用 DSH_PANEL_URL 环境变量或 --url 传入（要带 token）：')
+const repoRoot = process.env.DSH_REPO ?? fileURLToPath(new URL('../../../', import.meta.url))
+
+/**
+ * 自动发现面板地址：dsh web 每次重启 token 都会变，但它会把完整地址写在
+ * `<DSH_HOME>/dsh_web_token.txt` 里（一行，形如 http://127.0.0.1:3080/?token=...）。
+ * 优先 DSH_HOME，其次宿主仓库里的 .dsh-home，最后 ~/.dsh。
+ */
+const discoverUrl = () => {
+  const homes = [
+    process.env.DSH_HOME,
+    path.join(repoRoot, '.dsh-home'),
+    path.join(os.homedir(), '.dsh'),
+  ].filter(Boolean)
+  for (const home of homes) {
+    const file = path.join(home, 'dsh_web_token.txt')
+    try {
+      const text = fs.readFileSync(file, 'utf8').trim()
+      if (text.startsWith('http')) return { url: text, from: file }
+    } catch {
+      // 文件不在就试下一个
+    }
+  }
+  return null
+}
+
+const explicit = argOf('--url') ?? process.env.DSH_PANEL_URL
+const found = explicit ? { url: explicit, from: '--url / DSH_PANEL_URL' } : discoverUrl()
+if (!found) {
+  console.error('找不到面板地址：既没有 --url / DSH_PANEL_URL，也没在 DSH home 里读到 dsh_web_token.txt。')
+  console.error('请先启动 dsh web（它会写这个文件），或显式传地址：')
   console.error("  DSH_PANEL_URL='http://127.0.0.1:3080/?token=xxx' node tests/smoke.mjs")
   process.exit(2)
 }
+const URL_ = found.url
+console.log(`面板地址: ${URL_.replace(/token=[^&]+/, 'token=***')}  （来源: ${found.from}）`)
 
 // Playwright 从宿主仓库解析（可用 DSH_REPO 覆盖）
-const repoRoot = process.env.DSH_REPO ?? new URL('../../../', import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1')
-const requireFromHost = createRequire(new URL('file://' + (repoRoot.endsWith('/') ? repoRoot : repoRoot + '/') + 'apps/web/package.json'))
+const requireFromHost = createRequire(path.join(repoRoot, 'apps/web/package.json'))
 const { chromium } = requireFromHost('playwright')
 
 const results = []

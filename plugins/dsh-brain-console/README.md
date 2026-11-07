@@ -145,10 +145,17 @@ icon: (size: number) => <BrainConsoleIcon size={size} />
 在测试里都拦截成假应答——跑一百遍也不会删任何东西。
 
 ```bash
-# 需要带 token 的面板地址（每次 dsh web 重启 token 会变）
+npm run verify          # 类型检查 + 冒烟（提交前跑这个）
+npm run smoke           # 只跑冒烟
+```
+
+面板地址自动发现：dsh web 每次重启 token 都会变，但它把完整地址写在
+`<DSH_HOME>/dsh_web_token.txt`（优先 `DSH_HOME`，其次宿主仓库 `.dsh-home`，最后 `~/.dsh`）。
+也可以用 `DSH_PANEL_URL` 或 `--url` 显式指定：
+
+```bash
 DSH_PANEL_URL='http://127.0.0.1:3080/?token=xxx' npm run smoke
-# 可选：--url 传地址、--shot 存截图
-node tests/smoke.mjs --shot smoke.png
+node tests/smoke.mjs --url 'http://...' --shot smoke.png   # 可选截图
 ```
 
 Playwright 从宿主仓库解析（`apps/web` 的依赖），插件自己不带 `node_modules`；
