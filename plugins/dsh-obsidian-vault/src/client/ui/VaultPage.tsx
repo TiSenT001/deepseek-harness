@@ -25,6 +25,7 @@ import { useVaultBookmarks } from './useVaultBookmarks.ts'
 import { useVaultCommands } from './useVaultCommands.ts'
 import { useVaultShortcuts } from './useVaultShortcuts.ts'
 import { useVaultTabs } from './useVaultTabs.ts'
+import { readViewMemory, writeViewMemory } from './viewMemory.ts'
 import { VaultWorkspace } from './VaultWorkspace.tsx'
 import { css, STYLE } from './theme.ts'
 
@@ -37,13 +38,25 @@ export interface VaultPageProps {
 }
 
 /**
+ * Validate a remembered rail id.
+ * @param value - stored rail, possibly absent or stale.
+ * @returns the rail when it is one of the panels.
+ */
+function railOf(value: string | undefined): Rail {
+  return value === 'backlinks' || value === 'bookmarks' ? value : 'outline'
+}
+
+/**
  * Render the page registered as the `obsidian` main panel.
  */
 export function VaultPage({ pickDirectory, hasPicker }: VaultPageProps = {}): JSX.Element {
+  // What the user left open last time; read once, before the first paint, so
+  // the reading area opens on the same page instead of an empty state.
+  const remembered = useRef(readViewMemory())
   const [activeHeading, setActiveHeading] = useState<string | undefined>()
   const [filter, setFilter] = useState('')
-  const [rail, setRail] = useState<Rail>('outline')
-  const [view, setView] = useState<'note' | 'graph'>('note')
+  const [rail, setRail] = useState<Rail>(() => railOf(remembered.current?.rail))
+  const [view, setView] = useState<'note' | 'graph'>(() => (remembered.current?.view === 'graph' ? 'graph' : 'note'))
   // Reading and source are two views of the same Markdown file; attachments
   // and code files always render through the file view.
   const [sourceMode, setSourceMode] = useState(false)
@@ -79,6 +92,26 @@ export function VaultPage({ pickDirectory, hasPicker }: VaultPageProps = {}): JS
     for (const handlers of paneHandlers.current.values()) handlers.clear()
   }, [])
   const onShiftHeading = useHeadingShift({ path: isMarkdown ? path : undefined, reload, setError })
+
+  // Restore the page the user left open. The status tells us which vault the
+  // record belongs to; a mismatch keeps the first-paint state instead of
+  // opening a path that may not exist in this vault.
+  const viewRestored = useRef(false)
+  useEffect(() => {
+    if (viewRestored.current || status === undefined) return
+    viewRestored.current = true
+    const memory = remembered.current
+    if (memory?.path === undefined) return
+    if (memory.root !== undefined && memory.root !== status.root) return
+    openPath(memory.path)
+  }, [openPath, status])
+
+  // Persist whatever the reading area shows. A closed tab keeps the last page,
+  // so reopening the knowledge base still lands on it.
+  useEffect(() => {
+    if (path === undefined || status === undefined) return
+    writeViewMemory({ root: status.root, path, view, rail })
+  }, [path, rail, status, view])
 
   const overlays = useOverlayState({ openPath })
   const {
