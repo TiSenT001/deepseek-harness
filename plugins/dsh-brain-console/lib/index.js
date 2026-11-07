@@ -30,14 +30,41 @@ function send(res, code, body) {
 	res.writeHead(code, { "Content-Type": "application/json; charset=utf-8" });
 	res.end(payload);
 }
+/**
+* 本进程内「正在启动管理器」的时刻。
+*
+* 管理器启动要恢复 7 个服务，约 30s 才在 :19998 上线；在这段窗口里连点两次按钮、
+* 或脚本与面板同时请求，会各 spawn 一个管理器（实测出现过双实例）。用这个时间戳
+* 在进程内去抖：窗口内的后续请求只回 202 starting，不再重复拉起。
+*/
+let managerStartingSince = null;
+/** 去抖窗口要覆盖管理器恢复服务的耗时。 */
+const MANAGER_START_WINDOW_MS = 12e4;
 async function startManager(res) {
 	if (await managerAlive()) {
+		managerStartingSince = null;
 		send(res, 200, {
 			running: true,
 			started: false
 		});
 		return;
 	}
+	const now = Date.now();
+	if (managerStartingSince !== null && now - managerStartingSince < MANAGER_START_WINDOW_MS) {
+		send(res, 202, {
+			running: false,
+			starting: true
+		});
+		return;
+	}
+	managerStartingSince = now;
+	try {
+		await spawnManager(res);
+	} finally {
+		managerStartingSince = null;
+	}
+}
+async function spawnManager(res) {
 	const script = join(BRAIN_ROOT, "services", "brain_manager.py");
 	const named = join(BRAIN_ROOT, "tools", "launcher", "py", "brain_manager.exe");
 	const launcher = join(BRAIN_ROOT, "tools", "launcher", "brain_manager.exe");

@@ -55,11 +55,38 @@ function send(res: ServerResponse, code: number, body: unknown): void {
   res.end(payload)
 }
 
+/**
+ * 本进程内「正在启动管理器」的时刻。
+ *
+ * 管理器启动要恢复 7 个服务，约 30s 才在 :19998 上线；在这段窗口里连点两次按钮、
+ * 或脚本与面板同时请求，会各 spawn 一个管理器（实测出现过双实例）。用这个时间戳
+ * 在进程内去抖：窗口内的后续请求只回 202 starting，不再重复拉起。
+ */
+let managerStartingSince: number | null = null
+
+/** 去抖窗口要覆盖管理器恢复服务的耗时。 */
+const MANAGER_START_WINDOW_MS = 120_000
+
 async function startManager(res: ServerResponse): Promise<void> {
   if (await managerAlive()) {
+    managerStartingSince = null
     send(res, 200, { running: true, started: false })
     return
   }
+  const now = Date.now()
+  if (managerStartingSince !== null && now - managerStartingSince < MANAGER_START_WINDOW_MS) {
+    send(res, 202, { running: false, starting: true })
+    return
+  }
+  managerStartingSince = now
+  try {
+    await spawnManager(res)
+  } finally {
+    managerStartingSince = null
+  }
+}
+
+async function spawnManager(res: ServerResponse): Promise<void> {
   const script = join(BRAIN_ROOT, 'services', 'brain_manager.py')
   // 优先用「带名字的 pythonw 副本」：任务管理器按 exe 的 FileDescription 显示进程名，
   // 直接跑 pythonw 会显示成 "Python"；副本由 tools/launcher/build_named_python.py 生成。
@@ -107,7 +134,6 @@ async function startManager(res: ServerResponse): Promise<void> {
   }
   send(res, 504, { error: 'manager did not become healthy within 60s' })
 }
-
 export function apply(ctx: RouteHost): void {
   console.log('[brain-console] host apply: registering /brain-console/api')
   ctx.effect(
