@@ -214,6 +214,29 @@ button.ov-plugin-info {
 .ov-settings-actions { display: flex; align-items: center; gap: 8px; margin-top: 4px; }
 .ov-image-choice { display: flex; align-items: center; gap: 8px; padding: 3px 0; font-size: 12px; cursor: pointer; }
 .ov-image-choice input { margin: 0; }
+.ov-print-body { display: flex; gap: 18px; align-items: flex-start; }
+.ov-print-options { flex: 1 1 auto; min-width: 0; }
+.ov-print-preview { flex: 0 0 auto; display: flex; flex-direction: column; gap: 6px; align-items: center; }
+.ov-print-sheet {
+  position: relative;
+  overflow: hidden;
+  background: #ffffff;
+  border: 1px solid var(--dsw-alias-border-l1, rgba(128, 128, 128, 0.3));
+  border-radius: 2px;
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.35);
+}
+.ov-print-frame { display: block; border: 0; transform-origin: top left; background: #ffffff; }
+.ov-dialog-footer {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  padding: 10px 14px;
+  border-top: 1px solid var(--dsw-alias-border-l1, rgba(128, 128, 128, 0.3));
+}
+@media (max-width: 720px) {
+  .ov-print-body { flex-direction: column-reverse; }
+  .ov-print-preview { align-self: center; }
+}
 .ov-flash { animation: ov-flash 1.6s ease-out; }
 @keyframes ov-flash {
   0% { background: rgba(77, 107, 254, .3); }

@@ -300,6 +300,8 @@ export function NoteView({
         ? (
           <PrintDialog
             t={t}
+            element={articleRef.current}
+            title={note.title}
             onCancel={() => setPrintOpen(false)}
             onConfirm={(action, options) => {
               setPrintOpen(false)

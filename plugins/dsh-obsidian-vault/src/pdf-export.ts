@@ -17,7 +17,11 @@ import { fileURLToPath, pathToFileURL } from 'node:url'
 export interface PdfOptions {
   readonly paper?: string
   readonly orientation?: 'portrait' | 'landscape'
-  readonly margins?: 'default' | 'narrow' | 'none'
+  readonly margins?: 'default' | 'narrow' | 'wide' | 'none'
+  /** Draw page numbers in the footer. */
+  readonly pageNumbers?: boolean
+  /** Paint background colours and images; defaults to on. */
+  readonly backgrounds?: boolean
 }
 
 /** Lower-level shapes of the few Playwright members this module touches. */
@@ -28,6 +32,9 @@ interface PdfPage {
     format: string
     landscape: boolean
     printBackground: boolean
+    displayHeaderFooter: boolean
+    headerTemplate: string
+    footerTemplate: string
     margin: { top: string; bottom: string; left: string; right: string }
   }): Promise<Uint8Array>
 }
@@ -48,7 +55,7 @@ interface Launcher {
 }
 
 /** Margin presets in millimetres. */
-const MARGIN_MM: Readonly<Record<string, string>> = { default: '14mm', narrow: '6mm', none: '0' }
+const MARGIN_MM: Readonly<Record<string, string>> = { default: '14mm', narrow: '6mm', wide: '22mm', none: '0' }
 
 /** Bases to resolve Playwright from: the plugin, then the workspace root. */
 function resolutionBases(): readonly string[] {
@@ -137,10 +144,15 @@ export async function renderPdf(
       await page.setContent(html, { waitUntil: 'load' })
       await waitForImages(page)
       const margins = MARGIN_MM[options.margins ?? 'default'] ?? MARGIN_MM['default'] ?? '14mm'
+      const footer = '<div style="width:100%;font-size:9px;color:#666;text-align:center;padding:0 10mm">'
+        + '第 <span class="pageNumber"></span> / <span class="totalPages"></span> 页</div>'
       const pdf = await page.pdf({
         format: options.paper ?? 'A4',
         landscape: options.orientation === 'landscape',
-        printBackground: true,
+        printBackground: options.backgrounds !== false,
+        displayHeaderFooter: options.pageNumbers === true,
+        headerTemplate: '<span></span>',
+        footerTemplate: footer,
         margin: { top: margins, bottom: margins, left: margins, right: margins },
       })
       return Buffer.from(pdf)

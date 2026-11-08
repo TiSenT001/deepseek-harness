@@ -40,38 +40,80 @@ const PRINT_CSS = `
 `
 
 /** Paper sizes the dialog offers; the browser understands these names. */
-export type PrintPaper = 'A4' | 'A3' | 'Letter'
+export type PrintPaper = 'A4' | 'A3' | 'A5' | 'Letter' | 'Legal'
 
 /** Sheet orientation. */
 export type PrintOrientation = 'portrait' | 'landscape'
 
 /** Page margin preset. */
-export type PrintMargins = 'default' | 'narrow' | 'none'
+export type PrintMargins = 'narrow' | 'default' | 'wide' | 'none'
+
+/** Body scale presets; 1 keeps the reading view's size. */
+export type PrintScale = 0.9 | 1 | 1.15 | 1.3
+
+/** Sections the document may include. */
+export interface PrintContentOptions {
+  readonly properties: boolean
+  readonly tags: boolean
+  readonly backlinks: boolean
+}
 
 /** Page box the dialog chooses; every field has a documented default. */
 export interface PrintOptions {
   readonly paper?: PrintPaper
   readonly orientation?: PrintOrientation
   readonly margins?: PrintMargins
+  readonly scale?: PrintScale
+  readonly content?: PrintContentOptions
+  /** PDF only: page numbers in the footer. */
+  readonly pageNumbers?: boolean
+  /** PDF only: paint the document background. */
+  readonly backgrounds?: boolean
 }
 
 /** Margin presets in millimetres. */
 const MARGIN_MM: Readonly<Record<PrintMargins, string>> = {
   default: '14mm',
   narrow: '6mm',
+  wide: '22mm',
   none: '0',
 }
 
+/** Content defaults: everything the reading view shows. */
+export const DEFAULT_PRINT_CONTENT: PrintContentOptions = { properties: true, tags: true, backlinks: true }
+
+/** Paper dimensions in CSS pixels at 96 dpi, portrait. */
+export const PAPER_PX: Readonly<Record<PrintPaper, { readonly width: number; readonly height: number }>> = {
+  A4: { width: 794, height: 1123 },
+  A3: { width: 1123, height: 1587 },
+  A5: { width: 559, height: 794 },
+  Letter: { width: 816, height: 1056 },
+  Legal: { width: 816, height: 1344 },
+}
+
 /**
- * Build the `@page` rule for one choice set.
+ * Page geometry in CSS pixels for one choice set, orientation applied.
  * @param options - dialog choices.
- * @returns the CSS rule the print window appends.
+ * @returns width and height of one sheet.
+ */
+export function sheetSizeOf(options: PrintOptions): { readonly width: number; readonly height: number } {
+  const paper = PAPER_PX[options.paper ?? 'A4']
+  return options.orientation === 'landscape'
+    ? { width: paper.height, height: paper.width }
+    : { width: paper.width, height: paper.height }
+}
+
+/**
+ * Build the `@page` rule and body scale for one choice set.
+ * @param options - dialog choices.
+ * @returns the CSS rules the print window appends.
  */
 function pageRule(options: PrintOptions): string {
   const paper = options.paper ?? 'A4'
   const orientation = options.orientation ?? 'portrait'
-  const margins = MARGIN_MM[options.margins ?? 'default']
-  return `@page { size: ${paper} ${orientation}; margin: ${margins}; }\n`
+  const margins = MARGIN_MM[options.margins ?? 'default'] ?? MARGIN_MM['default'] ?? '14mm'
+  const scale = options.scale ?? 1
+  return `@page { size: ${paper} ${orientation}; margin: ${margins}; }\nbody { zoom: ${scale}; }\n`
 }
 
 /**
@@ -119,6 +161,15 @@ export function printDocumentHtml(element: HTMLElement, title: string, options: 
   const copy = element.cloneNode(true) as HTMLElement
   // Buttons in the reading view are chrome, not note content.
   for (const button of [...copy.querySelectorAll('button')]) button.remove()
+  const content = options.content ?? DEFAULT_PRINT_CONTENT
+  const omit: readonly string[] = [
+    ...(content.properties ? [] : ['.ov-properties']),
+    ...(content.tags ? [] : ['.ov-tag-row']),
+    ...(content.backlinks ? [] : ['.ov-doc-backlinks']),
+  ]
+  for (const selector of omit) {
+    for (const node of [...copy.querySelectorAll(selector)]) node.remove()
+  }
   const escaped = title.replace(/[&<>"]/g, (character) => {
     const map: Readonly<Record<string, string>> = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }
     return map[character] ?? character

@@ -293,13 +293,15 @@ async function dispatch(
       const orientation = body['orientation'] === 'portrait' || body['orientation'] === 'landscape'
         ? body['orientation']
         : undefined
-      const margins = body['margins'] === 'default' || body['margins'] === 'narrow' || body['margins'] === 'none'
+      const margins = body['margins'] === 'default' || body['margins'] === 'narrow' || body['margins'] === 'wide' || body['margins'] === 'none'
         ? body['margins']
         : undefined
       const pdf = await renderPdf(html, request.headers.cookie, origin, {
         ...(paper === undefined ? {} : { paper }),
         ...(orientation === undefined ? {} : { orientation }),
         ...(margins === undefined ? {} : { margins }),
+        ...(body['pageNumbers'] === true ? { pageNumbers: true } : {}),
+        ...(body['backgrounds'] === false ? { backgrounds: false } : {}),
       })
       if (pdf === undefined) {
         send(response, 501, { error: 'pdf renderer unavailable' })

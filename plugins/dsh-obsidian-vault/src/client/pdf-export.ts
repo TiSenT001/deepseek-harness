@@ -21,7 +21,15 @@ export async function exportPdf(element: HTMLElement, title: string, options: Pr
     method: 'POST',
     headers: { 'content-type': 'application/json', accept: 'application/pdf' },
     credentials: 'same-origin',
-    body: JSON.stringify({ html, filename: title, ...options }),
+    body: JSON.stringify({
+      html,
+      filename: title,
+      paper: options.paper,
+      orientation: options.orientation,
+      margins: options.margins,
+      pageNumbers: options.pageNumbers,
+      backgrounds: options.backgrounds,
+    }),
   })
   if (!response.ok) {
     const body: unknown = await response.json().catch(() => ({}))
