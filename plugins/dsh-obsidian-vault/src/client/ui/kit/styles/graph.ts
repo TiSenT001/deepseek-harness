@@ -52,14 +52,17 @@ export const GRAPH_STYLE = `/* Graph filter controls. */
   cursor: pointer;
 }
 .ov-graph-legend-item:hover { border-color: var(--dsw-alias-border-l2, #3a3a42); }
+/* Selected bucket: a white ring (theme label colour) plus a light tint, so the
+   clicked chip is obvious without introducing an accent hue. */
 .ov-graph-legend-item-active,
 .ov-graph-legend-item-active:hover {
-  color: var(--dsw-alias-label-primary, #e8e8ea);
-  border-color: var(--dsw-alias-border-l2, #3a3a42);
-  background: var(--dsw-alias-bg-layer-2, rgba(128, 128, 128, 0.14));
+  color: var(--dsw-alias-label-primary, #f9fafb);
+  border-color: var(--dsw-alias-label-primary, #f9fafb);
+  background: color-mix(in srgb, var(--dsw-alias-label-primary, #f9fafb) 12%, transparent);
 }
 .ov-graph-legend-item-active .ov-graph-legend-count {
-  color: var(--dsw-alias-label-secondary, #b6b6bd);
+  color: var(--dsw-alias-label-primary, #f9fafb);
+  opacity: 0.75;
 }
 .ov-graph-legend-dot { width: 8px; height: 8px; border-radius: 50%; flex: 0 0 auto; }
 .ov-graph-legend-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
