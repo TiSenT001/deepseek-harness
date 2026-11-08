@@ -194,7 +194,7 @@ export function VaultWorkspace(props: VaultWorkspaceProps): JSX.Element {
             onCloseTab={tabs.closeTab}
             onPinTab={tabs.pinTab}
             onNewTab={onNewTab}
-            onReorderTab={tabs.moveTab}
+            onMoveTab={tabs.moveTabTo}
             onRetry={() => {
               void reload()
             }}

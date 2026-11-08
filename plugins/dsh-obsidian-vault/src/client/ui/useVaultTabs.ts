@@ -9,7 +9,7 @@ import { useCallback, useState } from 'react'
 import { noteOpen } from '../api.ts'
 import {
   activePane as activePaneOf, closePane as reduceClosePane, EMPTY_PANES, mapActive, mapAllPanes,
-  resizePanePair as reduceResizePair, splitPane as reduceSplit, activatePane as reduceActivate,
+  moveTabBetween as reduceMoveTab, resizePanePair as reduceResizePair, splitPane as reduceSplit, activatePane as reduceActivate,
   type PanesState, type SplitDirection,
 } from './panes.ts'
 import {
@@ -48,6 +48,8 @@ export interface VaultTabs {
   readonly goBack: () => void
   readonly goForward: () => void
   readonly moveTab: (from: number, to: number) => void
+  /** Move a tab within one pane or into another pane. */
+  readonly moveTabTo: (fromPaneId: number, fromIndex: number, toPaneId: number, toIndex: number) => void
   /** Focus one pane by index. */
   readonly activatePane: (index: number) => void
   /** Split the active pane, moving its active tab into a new one. */
@@ -127,6 +129,11 @@ export function useVaultTabs(initial?: PanesState): VaultTabs {
     setState(previous => mapActive(previous, tabs => reorderTabs(tabs, from, to)))
   }, [])
 
+  const moveTabTo = useCallback((fromPaneId: number, fromIndex: number, toPaneId: number, toIndex: number) => {
+    setState(previous => reduceMoveTab(previous, fromPaneId, fromIndex, toPaneId, toIndex))
+    setAnchor(undefined)
+  }, [])
+
   const activatePane = useCallback((index: number) => {
     setState(previous => reduceActivate(previous, index))
     setAnchor(undefined)
@@ -165,7 +172,7 @@ export function useVaultTabs(initial?: PanesState): VaultTabs {
     direction: state.direction,
     tabs: activePaneOf(state).tabs,
     anchor,
-    openPath, newTab, selectTab, pinTab, closeTab, closeOthers, closeAll, goBack, goForward, moveTab,
+    openPath, newTab, selectTab, pinTab, closeTab, closeOthers, closeAll, goBack, goForward, moveTab, moveTabTo,
     activatePane, splitPane, closePane, resizePanePair, mapTabs, reset, restore,
   }
 }

@@ -22,10 +22,35 @@ export interface TabStripProps {
   readonly onClose: (index: number) => void
   readonly onPin: (index: number) => void
   readonly onNew: () => void
-  /** Move one tab to another position. */
-  readonly onReorder: (from: number, to: number) => void
+  /** Pane this strip belongs to; the drag payload carries it across panes. */
+  readonly paneId: number
+  /** Move a tab within one pane or into another pane. */
+  readonly onMoveTab: (fromPaneId: number, fromIndex: number, toPaneId: number, toIndex: number) => void
   /** Ask the page to open the shared context menu for a tab or the empty bar. */
   readonly onMenu: (scene: MenuScene, x: number, y: number) => void
+}
+
+/** Drag payload carried between tab strips, including another pane's. */
+const TAB_DRAG_TYPE = 'application/x-ov-tab'
+
+interface TabDragPayload {
+  readonly paneId: number
+  readonly index: number
+}
+
+/**
+ * Read the drag payload; a foreign drag returns undefined.
+ * @param transfer - drag data transfer.
+ * @returns the parsed payload.
+ */
+function readDragPayload(transfer: DataTransfer): TabDragPayload | undefined {
+  try {
+    const parsed = JSON.parse(transfer.getData(TAB_DRAG_TYPE)) as { readonly paneId?: unknown; readonly index?: unknown }
+    if (typeof parsed.paneId !== 'number' || typeof parsed.index !== 'number') return undefined
+    return { paneId: parsed.paneId, index: parsed.index }
+  } catch {
+    return undefined
+  }
 }
 
 /**
@@ -33,7 +58,7 @@ export interface TabStripProps {
  * @param props - tabs, active index, and the tab actions.
  */
 export function TabStrip({
-  t, tabs, active, note, path, onSelect, onClose, onPin, onNew, onReorder, onMenu,
+  t, tabs, active, note, path, paneId, onSelect, onClose, onPin, onNew, onMoveTab, onMenu,
 }: TabStripProps): JSX.Element {
   const stripRef = useRef<HTMLDivElement>(null)
   const overflowRef = useRef<HTMLButtonElement>(null)
@@ -94,7 +119,24 @@ export function TabStrip({
         onMenu({ kind: 'tabbar-empty' }, event.clientX, event.clientY)
       }}
     >
-      <div className={css.tabStrip} ref={stripRef} role="tablist">
+      <div
+        className={css.tabStrip}
+        ref={stripRef}
+        role="tablist"
+        onDragOver={(event) => {
+          // Dropping past the last tab (or onto an empty pane) appends it.
+          event.preventDefault()
+          event.dataTransfer.dropEffect = 'move'
+          setDropIndex(tabs.length)
+        }}
+        onDrop={(event) => {
+          event.preventDefault()
+          const payload = readDragPayload(event.dataTransfer)
+          if (payload !== undefined) onMoveTab(payload.paneId, payload.index, paneId, tabs.length)
+          setDragFrom(undefined)
+          setDropIndex(undefined)
+        }}
+      >
         {tabs.map((tab, index) => (
           <div
             key={`${tab.path}\u0000${index}`}
@@ -111,18 +153,23 @@ export function TabStrip({
             onDragStart={(event) => {
               event.dataTransfer.effectAllowed = 'move'
               event.dataTransfer.setData('text/plain', tab.path)
+              event.dataTransfer.setData(TAB_DRAG_TYPE, JSON.stringify({ paneId, index } satisfies TabDragPayload))
               setDragFrom(index)
             }}
             onDragOver={(event) => {
-              if (dragFrom === undefined) return
+              // Accept drags from any pane, not just this strip.
               event.preventDefault()
+              event.stopPropagation()
               event.dataTransfer.dropEffect = 'move'
               setDropIndex(index)
             }}
             onDragLeave={() => setDropIndex(current => (current === index ? undefined : current))}
             onDrop={(event) => {
               event.preventDefault()
-              if (dragFrom !== undefined) onReorder(dragFrom, index)
+              event.stopPropagation()
+              const payload = readDragPayload(event.dataTransfer)
+              if (payload !== undefined) onMoveTab(payload.paneId, payload.index, paneId, index)
+              else if (dragFrom !== undefined) onMoveTab(paneId, dragFrom, paneId, index)
               setDragFrom(undefined)
               setDropIndex(undefined)
             }}

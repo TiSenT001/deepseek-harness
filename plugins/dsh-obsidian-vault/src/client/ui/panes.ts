@@ -4,7 +4,7 @@
  * unit-testable without React.
  * @module dsh-obsidian-vault/client/ui/panes
  */
-import { activeTab, closeTab, EMPTY_TABS, makeEmptyTab, makeTab, type TabsState } from './tabs.ts'
+import { activeTab, closeTab, EMPTY_TABS, makeEmptyTab, makeTab, reorderTabs, type TabsState } from './tabs.ts'
 
 /** Layout direction of the pane strip: side by side or stacked. */
 export type SplitDirection = 'row' | 'column'
@@ -80,6 +80,63 @@ export function activatePane(state: PanesState, index: number): PanesState {
   return { ...state, active: index }
 }
 
+/**
+ * Move a tab within one pane or into another pane. The source pane collapses
+ * when its last tab leaves; dropping onto a document the target already shows
+ * focuses that document instead of duplicating it.
+ * @param state - current panes.
+ * @param fromPaneId - pane holding the dragged tab.
+ * @param fromIndex - index of the dragged tab.
+ * @param toPaneId - pane receiving the tab.
+ * @param toIndex - insertion index in the target pane.
+ * @returns the next pane state.
+ */
+export function moveTabBetween(
+  state: PanesState,
+  fromPaneId: number,
+  fromIndex: number,
+  toPaneId: number,
+  toIndex: number,
+): PanesState {
+  const fromPos = state.panes.findIndex(pane => pane.id === fromPaneId)
+  const toPos = state.panes.findIndex(pane => pane.id === toPaneId)
+  if (fromPos === -1 || toPos === -1) return state
+  const fromPane = state.panes[fromPos]!
+  const tab = fromPane.tabs.items[fromIndex]
+  if (tab === undefined) return state
+
+  if (fromPaneId === toPaneId) {
+    const tabs = reorderTabs(fromPane.tabs, fromIndex, toIndex)
+    if (tabs === fromPane.tabs) return state
+    return { ...state, panes: state.panes.map((pane, position) => (position === fromPos ? { ...pane, tabs } : pane)) }
+  }
+
+  const target = state.panes[toPos]!
+  const existing = target.tabs.items.findIndex(item => item.path === tab.path)
+  const remaining = closeTab(fromPane.tabs, fromIndex)
+  let panes = state.panes.map((pane, position) => (position === fromPos ? { ...pane, tabs: remaining } : pane))
+  let focus = state.active
+  if (remaining.items.length === 0 && panes.length > 1) {
+    panes = panes.filter((_, position) => position !== fromPos)
+    if (fromPos < focus) focus -= 1
+    else if (fromPos === focus) focus = Math.min(focus, panes.length - 1)
+  }
+  const focusIndex = panes.findIndex(pane => pane.id === toPaneId)
+  if (focusIndex === -1) return { ...state, panes, active: Math.max(0, Math.min(focus, panes.length - 1)) }
+
+  const targetPane = panes[focusIndex]!
+  if (existing !== -1) {
+    const active = targetPane.tabs.items.findIndex(item => item.path === tab.path)
+    panes = panes.map((pane, position) => (position === focusIndex ? { ...pane, tabs: { ...pane.tabs, active } } : pane))
+    return { ...state, panes, active: focusIndex }
+  }
+  const insertAt = Math.min(Math.max(0, toIndex), targetPane.tabs.items.length)
+  const items = [...targetPane.tabs.items]
+  items.splice(insertAt, 0, tab)
+  panes = panes.map((pane, position) => (
+    position === focusIndex ? { ...pane, tabs: { items, active: insertAt } } : pane))
+  return { ...state, panes, active: focusIndex }
+}
 /**
  * Split the active pane: its active tab moves into a fresh pane inserted right
  * after it, and the new pane takes focus. Splitting an empty pane adds an

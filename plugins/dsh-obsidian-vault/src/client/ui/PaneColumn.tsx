@@ -65,7 +65,8 @@ export interface PaneColumnProps extends PaneSurfaceCallbacks {
   readonly onCloseTab: (index: number) => void
   readonly onPinTab: (index: number) => void
   readonly onNewTab: () => void
-  readonly onReorderTab: (from: number, to: number) => void
+  /** Move a tab within this pane or into another pane. */
+  readonly onMoveTab: (fromPaneId: number, fromIndex: number, toPaneId: number, toIndex: number) => void
 }
 
 const NOOP_HEADING = (): void => undefined
@@ -78,7 +79,7 @@ export function PaneColumn(props: PaneColumnProps): JSX.Element {
   const {
     pane, share, isActive, activeNote, activeBacklinks, anchor, sourceMode, error,
     onActivate, register, onActiveHeading,
-    onSelectTab, onCloseTab, onPinTab, onNewTab, onReorderTab,
+    onSelectTab, onCloseTab, onPinTab, onNewTab, onMoveTab,
   } = props
   const tabPath = activeTab(pane.tabs)?.path
   /** The empty new-tab page has no path, so every file feature stays off. */
@@ -117,11 +118,12 @@ export function PaneColumn(props: PaneColumnProps): JSX.Element {
         active={pane.tabs.active}
         note={note}
         path={path}
+        paneId={pane.id}
         onSelect={onSelectTab}
         onClose={onCloseTab}
         onPin={onPinTab}
         onNew={onNewTab}
-        onReorder={onReorderTab}
+        onMoveTab={onMoveTab}
         onMenu={props.onMenu}
       />
       <MainPane

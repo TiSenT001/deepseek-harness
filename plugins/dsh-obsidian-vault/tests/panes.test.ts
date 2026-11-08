@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import {
-  activatePane, closePane, EMPTY_PANES, mapActive, mapAllPanes, mapPane, resizePanePair, splitPane,
+  activatePane, closePane, EMPTY_PANES, mapActive, mapAllPanes, mapPane, moveTabBetween, resizePanePair, splitPane,
+  type PanesState,
 } from '../src/client/ui/panes.ts'
 import { EMPTY_TABS, makeTab, openTab, type TabsState } from '../src/client/ui/tabs.ts'
 
@@ -97,4 +98,44 @@ test('resizePanePair keeps the pair total and clamps to the minimum', () => {
   assert.equal(clamped.panes[0]!.size, 0.95)
   assert.ok(Math.abs(clamped.panes[1]!.size - 0.05) < 1e-9)
   assert.equal(resizePanePair(state, 3, 0.5), state)
+})
+
+const twoPanes = (left: readonly string[], right: readonly string[]): PanesState => ({
+  panes: [
+    { id: 0, size: 1, tabs: withTabs(left) },
+    { id: 1, size: 1, tabs: withTabs(right) },
+  ],
+  active: 0,
+  direction: 'row',
+  nextId: 2,
+})
+
+test('dragging a tab into another pane moves it and focuses that pane', () => {
+  const state = moveTabBetween(twoPanes(['a', 'b'], ['c']), 0, 0, 1, 0)
+  assert.deepEqual(state.panes[0]!.tabs.items.map(tab => tab.path), ['b'])
+  assert.deepEqual(state.panes[1]!.tabs.items.map(tab => tab.path), ['a', 'c'])
+  assert.equal(state.active, 1)
+})
+
+test('moving the last tab out collapses the source pane', () => {
+  const state = moveTabBetween(twoPanes(['a'], ['b']), 0, 0, 1, 1)
+  assert.equal(state.panes.length, 1)
+  assert.deepEqual(state.panes[0]!.tabs.items.map(tab => tab.path), ['b', 'a'])
+  assert.equal(state.active, 0)
+})
+
+test('dropping a document the target already shows focuses it instead of duplicating', () => {
+  const state = moveTabBetween(twoPanes(['dup'], ['dup', 'b']), 0, 0, 1, 1)
+  assert.deepEqual(state.panes[0]!.tabs.items.map(tab => tab.path), ['dup', 'b'])
+  assert.equal(state.panes[0]!.tabs.active, 0)
+  assert.equal(state.active, 0)
+})
+
+test('moving inside one pane reorders without changing the active pane', () => {
+  const state = moveTabBetween(
+    { ...EMPTY_PANES, panes: [{ id: 0, size: 1, tabs: withTabs(['a', 'b', 'c']) }], active: 0 },
+    0, 0, 0, 2,
+  )
+  assert.deepEqual(state.panes[0]!.tabs.items.map(tab => tab.path), ['b', 'c', 'a'])
+  assert.equal(state.active, 0)
 })
