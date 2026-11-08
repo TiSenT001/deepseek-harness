@@ -2470,6 +2470,7 @@ window.__ModuleLoader__.load({
 			})();
 			const threshold = (limits !== null && metric.key in limits ? limits[metric.key] : metric.threshold) ?? void 0;
 			const thresholdY = threshold === void 0 ? null : Math.min(CHART_H - PAD, Math.max(PAD, yAt(threshold)));
+			const tagY = thresholdY === null ? null : Math.min(CHART_H - 11, Math.max(11, thresholdY));
 			const overThreshold = threshold !== void 0 && latest !== null && latest.value > threshold;
 			const readout = hover !== null && visible[hover] !== void 0 ? `${shortDate(visible[hover].ts)} · ${metric.format(visible[hover].value)}` : latest !== null ? `最新 ${metric.format(latest.value)}` : "暂无采样";
 			const footer = /* @__PURE__ */ (0, react_jsx_runtime.jsxs)(react_jsx_runtime.Fragment, { children: [
@@ -2577,7 +2578,7 @@ window.__ModuleLoader__.load({
 								})
 							]
 						}),
-						/* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+						/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
 							ref: chartRef,
 							className: "bc-trend-chart",
 							onMouseMove: handleMove,
@@ -2587,7 +2588,7 @@ window.__ModuleLoader__.load({
 							onPointerUp: handlePointerUp,
 							onPointerCancel: handlePointerUp,
 							onDoubleClick: resetZoom,
-							children: /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("svg", {
+							children: [/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("svg", {
 								viewBox: `0 0 ${CHART_W} ${CHART_H}`,
 								width: "100%",
 								height: "170",
@@ -2599,19 +2600,14 @@ window.__ModuleLoader__.load({
 										d: area,
 										className: "bc-trend-area"
 									}),
-									threshold !== void 0 && thresholdY !== null && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)(react_jsx_runtime.Fragment, { children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("line", {
+									threshold !== void 0 && thresholdY !== null && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("line", {
 										x1: 0,
 										x2: CHART_W,
 										y1: thresholdY,
 										y2: thresholdY,
 										className: "bc-trend-threshold",
 										vectorEffect: "non-scaling-stroke"
-									}), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("text", {
-										x: 8,
-										y: thresholdY - 4,
-										className: "bc-trend-threshold-label",
-										children: ["告警线 ", metric.format(threshold)]
-									})] }),
+									}),
 									count > 1 && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("path", {
 										d: line,
 										className: "bc-trend-line",
@@ -2637,7 +2633,15 @@ window.__ModuleLoader__.load({
 										className: "bc-trend-dot"
 									})
 								]
-							})
+							}), threshold !== void 0 && thresholdY !== null && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
+								className: `bc-trend-threshold-tag${overThreshold ? " bc-trend-threshold-tag-over" : ""}`,
+								style: { top: `${(tagY ?? thresholdY) / CHART_H * 100}%` },
+								children: [
+									overThreshold ? "已超告警线" : "告警线",
+									" ",
+									metric.format(threshold)
+								]
+							})]
 						}),
 						/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
 							className: "bc-trend-axis",
@@ -3435,14 +3439,34 @@ window.__ModuleLoader__.load({
   font-size: 12px;
 }
 
-.bc-trend-threshold {
-  stroke: color-mix(in srgb, var(--dsw-alias-state-warning-primary, #e0b341) 80%, transparent);
-  stroke-width: 1;
-  stroke-dasharray: 4 4;
+.bc-trend-chart {
+  position: relative;
 }
-.bc-trend-threshold-label {
-  fill: color-mix(in srgb, var(--dsw-alias-state-warning-primary, #e0b341) 85%, transparent);
-  font-size: 10px;
+.bc-trend-threshold {
+  stroke: var(--dsw-alias-state-warning-primary, #e0b341);
+  stroke-width: 1.2;
+  stroke-dasharray: 5 4;
+  opacity: 0.8;
+}
+.bc-trend-threshold-tag {
+  position: absolute;
+  right: 8px;
+  transform: translateY(-50%);
+  padding: 1px 7px;
+  border: 1px solid color-mix(in srgb, var(--dsw-alias-state-warning-primary, #e0b341) 45%, transparent);
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--dsw-alias-bg-layer-1, #1d1d22) 88%, transparent);
+  color: var(--dsw-alias-state-warning-primary, #e0b341);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  line-height: 16px;
+  pointer-events: none;
+  backdrop-filter: blur(2px);
+}
+.bc-trend-threshold-tag-over {
+  color: var(--dsw-alias-label-primary, #f9fafb);
+  border-color: var(--dsw-alias-state-error-primary, #e35d6a);
+  background: color-mix(in srgb, var(--dsw-alias-state-error-primary, #e35d6a) 22%, var(--dsw-alias-bg-layer-1, #1d1d22));
 }
 .bc-trend-delta {
   margin-right: 8px;

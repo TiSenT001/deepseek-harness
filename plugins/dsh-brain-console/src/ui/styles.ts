@@ -369,14 +369,34 @@ const STYLES = `
   font-size: 12px;
 }
 
-.bc-trend-threshold {
-  stroke: color-mix(in srgb, var(--dsw-alias-state-warning-primary, #e0b341) 80%, transparent);
-  stroke-width: 1;
-  stroke-dasharray: 4 4;
+.bc-trend-chart {
+  position: relative;
 }
-.bc-trend-threshold-label {
-  fill: color-mix(in srgb, var(--dsw-alias-state-warning-primary, #e0b341) 85%, transparent);
-  font-size: 10px;
+.bc-trend-threshold {
+  stroke: var(--dsw-alias-state-warning-primary, #e0b341);
+  stroke-width: 1.2;
+  stroke-dasharray: 5 4;
+  opacity: 0.8;
+}
+.bc-trend-threshold-tag {
+  position: absolute;
+  right: 8px;
+  transform: translateY(-50%);
+  padding: 1px 7px;
+  border: 1px solid color-mix(in srgb, var(--dsw-alias-state-warning-primary, #e0b341) 45%, transparent);
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--dsw-alias-bg-layer-1, #1d1d22) 88%, transparent);
+  color: var(--dsw-alias-state-warning-primary, #e0b341);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  line-height: 16px;
+  pointer-events: none;
+  backdrop-filter: blur(2px);
+}
+.bc-trend-threshold-tag-over {
+  color: var(--dsw-alias-label-primary, #f9fafb);
+  border-color: var(--dsw-alias-state-error-primary, #e35d6a);
+  background: color-mix(in srgb, var(--dsw-alias-state-error-primary, #e35d6a) 22%, var(--dsw-alias-bg-layer-1, #1d1d22));
 }
 .bc-trend-delta {
   margin-right: 8px;

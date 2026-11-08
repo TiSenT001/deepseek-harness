@@ -211,6 +211,8 @@ export function TrendDialog({ metric, points, onOpenFailed, onClose }: TrendDial
   const configured = limits !== null && metric.key in limits ? limits[metric.key] : metric.threshold
   const threshold = configured ?? undefined
   const thresholdY = threshold === undefined ? null : Math.min(CHART_H - PAD, Math.max(PAD, yAt(threshold)))
+  // 标签是胶囊（高约 18px），中心点贴线但要夹在画布内，避免半截被裁掉
+  const tagY = thresholdY === null ? null : Math.min(CHART_H - 11, Math.max(11, thresholdY))
   const overThreshold = threshold !== undefined && latest !== null && latest.value > threshold
   const readout = hover !== null && visible[hover] !== undefined
     ? `${shortDate(visible[hover].ts)} · ${metric.format(visible[hover].value)}`
@@ -304,15 +306,10 @@ export function TrendDialog({ metric, points, onOpenFailed, onClose }: TrendDial
           <svg viewBox={`0 0 ${CHART_W} ${CHART_H}`} width="100%" height="170" preserveAspectRatio="none" role="img" aria-label={`${metric.label}趋势图`}>
             {count > 1 && <path d={area} className="bc-trend-area" />}
             {threshold !== undefined && thresholdY !== null && (
-              <>
-                <line
-                  x1={0} x2={CHART_W} y1={thresholdY} y2={thresholdY}
-                  className="bc-trend-threshold" vectorEffect="non-scaling-stroke"
-                />
-                <text x={8} y={thresholdY - 4} className="bc-trend-threshold-label">
-                  告警线 {metric.format(threshold)}
-                </text>
-              </>
+              <line
+                x1={0} x2={CHART_W} y1={thresholdY} y2={thresholdY}
+                className="bc-trend-threshold" vectorEffect="non-scaling-stroke"
+              />
             )}
             {count > 1 && <path d={line} className="bc-trend-line" vectorEffect="non-scaling-stroke" />}
             {hover !== null && visible[hover] !== undefined && (
@@ -325,6 +322,14 @@ export function TrendDialog({ metric, points, onOpenFailed, onClose }: TrendDial
               <circle cx={CHART_W / 2} cy={yAt(visible[0].value)} r={4} className="bc-trend-dot" />
             )}
           </svg>
+          {threshold !== undefined && thresholdY !== null && (
+            <span
+              className={`bc-trend-threshold-tag${overThreshold ? ' bc-trend-threshold-tag-over' : ''}`}
+              style={{ top: `${((tagY ?? thresholdY) / CHART_H) * 100}%` }}
+            >
+              {overThreshold ? '已超告警线' : '告警线'} {metric.format(threshold)}
+            </span>
+          )}
         </div>
 
         <div className="bc-trend-axis">
