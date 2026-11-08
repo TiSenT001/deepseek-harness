@@ -12,7 +12,7 @@
  */
 import { useEffect, useState } from 'react'
 import {
-  loadBackups, loadCaches, loadFailedEdges, postManager, pruneBackups, pruneCaches,
+  DIAGNOSTICS_URL, loadBackups, loadCaches, loadFailedEdges, postManager, pruneBackups, pruneCaches,
 } from './api.ts'
 import { useConsoleActions } from './hooks/useConsoleActions.ts'
 import { useConsoleFeed } from './hooks/useConsoleFeed.ts'
@@ -24,6 +24,7 @@ import { CacheDialog } from './ui/CacheDialog.tsx'
 import { ConfirmDialog } from './ui/ConfirmDialog.tsx'
 import { reasonOf } from './ui/errors.ts'
 import { FailedEdgesDialog } from './ui/FailedEdgesDialog.tsx'
+import { IndexHealthDialog } from './ui/IndexHealthDialog.tsx'
 import { GroupActionDialog } from './ui/GroupActionDialog.tsx'
 import { IconButton } from './ui/IconButton.tsx'
 import { LogDock } from './ui/LogDock.tsx'
@@ -58,6 +59,7 @@ export function ConsolePage(): JSX.Element {
   const [backupOpen, setBackupOpen] = useState(false)
   const [cacheOpen, setCacheOpen] = useState(false)
   const [failedOpen, setFailedOpen] = useState(false)
+  const [indexOpen, setIndexOpen] = useState(false)
   const [trend, setTrend] = useState<MetricKey | null>(null)
   const [detailName, setDetailName] = useState<string | null>(null)
   const [stopGroup, setStopGroup] = useState<{ group: string; names: string[] } | null>(null)
@@ -65,6 +67,14 @@ export function ConsolePage(): JSX.Element {
   const [stopUnit, setStopUnit] = useState<{ name: string; dependents: string[] } | null>(null)
   const [clearLogOpen, setClearLogOpen] = useState(false)
   const [shutdownOpen, setShutdownOpen] = useState(false)
+
+  // 诊断包：19998 的响应带 Content-Disposition，锚点点击即下载，不需要页面内预览
+  const downloadDiagnostics = (): void => {
+    const anchor = document.createElement('a')
+    anchor.href = DIAGNOSTICS_URL
+    anchor.rel = 'noopener'
+    anchor.click()
+  }
 
   // 开机启动开关（写 HKCU Run；管理器下次登录自启并按上次状态恢复服务）
   const [workingBusy, setWorkingBusy] = useState<string | null>(null)
@@ -227,6 +237,8 @@ export function ConsolePage(): JSX.Element {
                 onBackup={() => void actions.backup()}
                 onPrune={() => setBackupOpen(true)}
                 onCaches={() => setCacheOpen(true)}
+    onIndex={() => setIndexOpen(true)}
+    onDiagnostics={downloadDiagnostics}
                 onToggleAutostart={() => void toggleAutostart()}
                 onShutdown={() => setShutdownOpen(true)}
               />

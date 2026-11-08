@@ -5,6 +5,7 @@
  * 只读——降权/清理策略由 edge_reinforcer 与指标快照的阈值机制负责，面板不在这里改库。
  */
 import { useEffect, useState } from 'react'
+import { ignoreFailedEdge } from '../api.ts'
 import { reasonOf } from './errors.ts'
 import { Button, Modal } from './primitives.ts'
 import type { FailedEdgesListing } from './types.ts'
@@ -32,6 +33,29 @@ export function FailedEdgesDialog({ load, onClose }: FailedEdgesDialogProps): JS
   const [listing, setListing] = useState<FailedEdgesListing | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
+  const [ignoring, setIgnoring] = useState<string | null>(null)
+
+  const reload = async (): Promise<void> => {
+    try {
+      setListing(await load())
+    } catch (e) {
+      setError(reasonOf(e))
+    }
+  }
+
+  // 忽略：写忽略表后重拉清单，行消失但边本身不删（趋势与明细口径一致）。
+  const ignoreOne = async (source: string, target: string): Promise<void> => {
+    const key = `${source}\n${target}`
+    setIgnoring(key)
+    try {
+      await ignoreFailedEdge(source, target)
+      await reload()
+    } catch (e) {
+      setError(reasonOf(e))
+    } finally {
+      setIgnoring(null)
+    }
+  }
 
   useEffect(() => {
     void (async () => {
@@ -88,6 +112,15 @@ export function FailedEdgesDialog({ load, onClose }: FailedEdgesDialogProps): JS
                   {shortName(edge.source)} → {shortName(edge.target)}
                 </span>
                 <span className="bc-failed-count">失败 {edge.failures}</span>
+                <button
+                  type="button"
+                  className="bc-failed-ignore"
+                  disabled={ignoring !== null}
+                  title="加入忽略名单：不删除边，只从待消解清单隐藏"
+                  onClick={() => void ignoreOne(edge.source, edge.target)}
+                >
+                  {ignoring === `${edge.source}\n${edge.target}` ? '处理中…' : '忽略'}
+                </button>
               </div>
               <div className="bc-failed-sub">
                 {edge.origin ?? '未知来源'} · 权重 {edge.weight.toFixed(3)}

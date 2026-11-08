@@ -149,6 +149,29 @@ export interface FailedEdge {
 export interface FailedEdgesListing {
   total: number | null
   edges: FailedEdge[]
+  /** 已被「忽略」的失败边条数（不在 edges 里）。 */
+  ignored_total?: number
+}
+
+/** `/index/health`：索引与嵌入覆盖。 */
+export interface IndexHealth {
+  notes: number | null
+  vec: {
+    total: number | null
+    fresh_24h: number | null
+    missing: number | null
+    missing_sample: string[]
+    orphans: number | null
+    last_indexed_at: string | null
+  }
+  chunks: {
+    notes: number | null
+    rows: number | null
+    last_indexed_at: string | null
+    stale_days: number | null
+  }
+  pending: number | null
+  db_size_mb: number | null
 }
 
 /** `/status/history` 里的一个采样点；老快照没有的字段为 null。 */

@@ -23,6 +23,10 @@ export interface MoreMenuProps {
   onBackup: () => void
   onPrune: () => void
   onCaches: () => void
+  /** 打开「索引与嵌入状态」对话框 */
+  onIndex: () => void
+  /** 下载诊断包 zip */
+  onDiagnostics: () => void
   onToggleAutostart: () => void
   /** 关闭启动器（停全部单元并结束管理器） */
   onShutdown: () => void
@@ -34,13 +38,16 @@ export interface MoreMenuProps {
  * @returns 菜单入口（含锚定菜单）
  */
 export function MoreMenu({
-  autostart, busy, onBackup, onPrune, onCaches, onToggleAutostart, onShutdown,
+  autostart, busy, onBackup, onPrune, onCaches, onIndex, onDiagnostics, onToggleAutostart, onShutdown,
 }: MoreMenuProps): JSX.Element {
   const [open, setOpen] = useState(false)
   const items: SharedMenuEntry[] = [
     { id: 'backup', label: busy === 'backup' ? '备份中…' : '立即备份', disabled: busy !== null },
     { id: 'prune', label: '清理备份…', disabled: busy !== null },
     { id: 'caches', label: '清理缓存…', disabled: busy !== null },
+    { type: 'separator', id: 'index-separator' },
+    { id: 'index', label: '索引与嵌入状态…', disabled: busy !== null },
+    { id: 'diagnostics', label: '下载诊断包', disabled: busy !== null },
   ]
   if (autostart !== null && autostart.supported) {
     items.push(
@@ -58,6 +65,8 @@ export function MoreMenu({
     if (id === 'backup') onBackup()
     else if (id === 'prune') onPrune()
     else if (id === 'caches') onCaches()
+    else if (id === 'index') onIndex()
+    else if (id === 'diagnostics') onDiagnostics()
     else if (id === 'autostart') onToggleAutostart()
     else if (id === 'shutdown') onShutdown()
   }

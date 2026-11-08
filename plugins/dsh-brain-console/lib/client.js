@@ -88,6 +88,13 @@ window.__ModuleLoader__.load({
 		const pruneBackups = (keep) => postJson("/actions/prune-backups", { keep });
 		/** 失败边明细：KPI 点开时读一次实时清单。 */
 		const loadFailedEdges = () => jget("/quality/failed-edges?limit=80");
+		/** 把一条失败边加入忽略名单（不删边，只从待消解清单隐藏）。 */
+		const ignoreFailedEdge = (source, target) => postJson("/quality/failed-edges/ignore", {
+			source,
+			target
+		});
+		/** 诊断包下载地址（zip：状态 + 单元 + 趋势 + 各单元日志尾部）。 */
+		const DIAGNOSTICS_URL = `${API}/diagnostics/bundle`;
 		/** 指标趋势：一次取满一年，对话框里再按 7/30/90/365 天切窗口。 */
 		const loadHistory = () => jget("/status/history?days=365");
 		/** 缓存对话框的回调同样模块级（引用稳定）。 */
@@ -993,6 +1000,25 @@ window.__ModuleLoader__.load({
 			const [listing, setListing] = (0, react.useState)(null);
 			const [error, setError] = (0, react.useState)(null);
 			const [copied, setCopied] = (0, react.useState)(false);
+			const [ignoring, setIgnoring] = (0, react.useState)(null);
+			const reload = async () => {
+				try {
+					setListing(await load());
+				} catch (e) {
+					setError(reasonOf(e));
+				}
+			};
+			const ignoreOne = async (source, target) => {
+				setIgnoring(`${source}\n${target}`);
+				try {
+					await ignoreFailedEdge(source, target);
+					await reload();
+				} catch (e) {
+					setError(reasonOf(e));
+				} finally {
+					setIgnoring(null);
+				}
+			};
 			(0, react.useEffect)(() => {
 				(async () => {
 					try {
@@ -1057,18 +1083,29 @@ window.__ModuleLoader__.load({
 							className: "bc-failed-row",
 							children: [/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
 								className: "bc-failed-main",
-								children: [/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
-									className: "bc-failed-name",
-									title: `${edge.source}\n→ ${edge.target}`,
-									children: [
-										shortName(edge.source),
-										" → ",
-										shortName(edge.target)
-									]
-								}), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
-									className: "bc-failed-count",
-									children: ["失败 ", edge.failures]
-								})]
+								children: [
+									/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
+										className: "bc-failed-name",
+										title: `${edge.source}\n→ ${edge.target}`,
+										children: [
+											shortName(edge.source),
+											" → ",
+											shortName(edge.target)
+										]
+									}),
+									/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
+										className: "bc-failed-count",
+										children: ["失败 ", edge.failures]
+									}),
+									/* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
+										type: "button",
+										className: "bc-failed-ignore",
+										disabled: ignoring !== null,
+										title: "加入忽略名单：不删除边，只从待消解清单隐藏",
+										onClick: () => void ignoreOne(edge.source, edge.target),
+										children: ignoring === `${edge.source}\n${edge.target}` ? "处理中…" : "忽略"
+									})
+								]
 							}), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
 								className: "bc-failed-sub",
 								children: [
@@ -1097,6 +1134,16 @@ window.__ModuleLoader__.load({
 				]
 			});
 		}
+		//#endregion
+		//#region src/ui/IndexHealthDialog.tsx
+		/**
+		* 索引与嵌入状态：回答「知识真的进脑子了吗」。
+		*
+		* 只读展示三条链路的最新覆盖：
+		* 1. 笔记向量（vec_cache）——vault_watch 实时写，缺向量 = 新笔记还没进语义检索；
+		* 2. 分块索引（chunk_index）——body_daemon 维护，滞后说明长文分块检索看的是旧内容；
+		* 3. 嵌入重试队列（embed_pending）。
+		*/
 		//#endregion
 		//#region src/ui/GroupActionDialog.tsx
 		/**
@@ -1316,7 +1363,7 @@ window.__ModuleLoader__.load({
 		* @param props - 开机启动状态、忙碌标记与各动作
 		* @returns 菜单入口（含锚定菜单）
 		*/
-		function MoreMenu({ autostart, busy, onBackup, onPrune, onCaches, onToggleAutostart, onShutdown }) {
+		function MoreMenu({ autostart, busy, onBackup, onPrune, onCaches, onIndex, onDiagnostics, onToggleAutostart, onShutdown }) {
 			const [open, setOpen] = (0, react.useState)(false);
 			const items = [
 				{
@@ -1332,6 +1379,20 @@ window.__ModuleLoader__.load({
 				{
 					id: "caches",
 					label: "清理缓存…",
+					disabled: busy !== null
+				},
+				{
+					type: "separator",
+					id: "index-separator"
+				},
+				{
+					id: "index",
+					label: "索引与嵌入状态…",
+					disabled: busy !== null
+				},
+				{
+					id: "diagnostics",
+					label: "下载诊断包",
 					disabled: busy !== null
 				}
 			];
@@ -1356,6 +1417,8 @@ window.__ModuleLoader__.load({
 				if (id === "backup") onBackup();
 				else if (id === "prune") onPrune();
 				else if (id === "caches") onCaches();
+				else if (id === "index") onIndex();
+				else if (id === "diagnostics") onDiagnostics();
 				else if (id === "autostart") onToggleAutostart();
 				else if (id === "shutdown") onShutdown();
 			};
@@ -3145,6 +3208,76 @@ window.__ModuleLoader__.load({
     margin-left: auto;
   }
 }
+.bc-failed-ignore {
+  flex: none;
+  padding: 1px 8px;
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--dsw-alias-label-secondary);
+  font-size: 11px;
+  cursor: pointer;
+}
+.bc-failed-ignore:hover:not(:disabled) {
+  color: var(--dsw-alias-label-primary);
+  border-color: var(--dsw-alias-border-l2);
+}
+.bc-failed-ignore:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.bc-index-health {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.bc-index-health h4 {
+  margin: 0 0 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--dsw-alias-label-primary);
+}
+.bc-index-note {
+  margin-left: 6px;
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--dsw-alias-label-tertiary);
+}
+.bc-index-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 3px 0;
+  font-size: 12px;
+  color: var(--dsw-alias-label-secondary);
+}
+.bc-index-row strong {
+  font-weight: 500;
+  color: var(--dsw-alias-label-primary);
+  text-align: right;
+}
+.bc-index-warn {
+  color: var(--dsw-alias-state-warning-primary, #e0b341) !important;
+}
+.bc-index-sample {
+  font-weight: 400;
+  color: var(--dsw-alias-label-tertiary);
+}
+.bc-coverage {
+  height: 4px;
+  margin: 4px 0 8px;
+  border-radius: 2px;
+  overflow: hidden;
+  background: var(--dsw-alias-bg-layer-2, rgba(128, 128, 128, 0.14));
+}
+.bc-coverage-fill {
+  height: 100%;
+  border-radius: 2px;
+  background: var(--dsw-alias-label-primary, #f9fafb);
+  transition: width 0.2s ease;
+}
 `;
 		/**
 		* 注入控制台样式表。已有同 id 的元素时改写其内容，
@@ -3196,6 +3329,7 @@ window.__ModuleLoader__.load({
 			const [backupOpen, setBackupOpen] = (0, react.useState)(false);
 			const [cacheOpen, setCacheOpen] = (0, react.useState)(false);
 			const [failedOpen, setFailedOpen] = (0, react.useState)(false);
+			const [indexOpen, setIndexOpen] = (0, react.useState)(false);
 			const [trend, setTrend] = (0, react.useState)(null);
 			const [detailName, setDetailName] = (0, react.useState)(null);
 			const [stopGroup, setStopGroup] = (0, react.useState)(null);
@@ -3203,6 +3337,12 @@ window.__ModuleLoader__.load({
 			const [stopUnit, setStopUnit] = (0, react.useState)(null);
 			const [clearLogOpen, setClearLogOpen] = (0, react.useState)(false);
 			const [shutdownOpen, setShutdownOpen] = (0, react.useState)(false);
+			const downloadDiagnostics = () => {
+				const anchor = document.createElement("a");
+				anchor.href = DIAGNOSTICS_URL;
+				anchor.rel = "noopener";
+				anchor.click();
+			};
 			const [workingBusy, setWorkingBusy] = (0, react.useState)(null);
 			const toggleAutostart = async () => {
 				const autostart = feed.autostart;
@@ -3368,6 +3508,8 @@ window.__ModuleLoader__.load({
 													onBackup: () => void actions.backup(),
 													onPrune: () => setBackupOpen(true),
 													onCaches: () => setCacheOpen(true),
+													onIndex: () => setIndexOpen(true),
+													onDiagnostics: downloadDiagnostics,
 													onToggleAutostart: () => void toggleAutostart(),
 													onShutdown: () => setShutdownOpen(true)
 												})

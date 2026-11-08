@@ -6,7 +6,7 @@
  */
 import type {
   BackupListing, BatchRestartResult, BatchStartResult, BatchStopResult, CacheListing, CachePruneResult,
-  FailedEdgesListing, HistoryListing, PruneResult, Unit, UnitAction,
+  FailedEdgesListing, HistoryListing, IndexHealth, PruneResult, Unit, UnitAction,
 } from './ui/types.ts'
 
 /** brain_manager 的 HTTP 地址。 */
@@ -57,6 +57,16 @@ export const pruneBackups = (keep: number): Promise<PruneResult> =>
 /** 失败边明细：KPI 点开时读一次实时清单。 */
 export const loadFailedEdges = (): Promise<FailedEdgesListing> =>
   jget<FailedEdgesListing>('/quality/failed-edges?limit=80')
+
+/** 索引与嵌入状态：只读覆盖与新鲜度。 */
+export const loadIndexHealth = (): Promise<IndexHealth> => jget<IndexHealth>('/index/health')
+
+/** 把一条失败边加入忽略名单（不删边，只从待消解清单隐藏）。 */
+export const ignoreFailedEdge = (source: string, target: string): Promise<{ ok: boolean; ignored: number }> =>
+  postJson<{ ok: boolean; ignored: number }>('/quality/failed-edges/ignore', { source, target })
+
+/** 诊断包下载地址（zip：状态 + 单元 + 趋势 + 各单元日志尾部）。 */
+export const DIAGNOSTICS_URL = `${API}/diagnostics/bundle`
 
 /** 指标趋势：一次取满一年，对话框里再按 7/30/90/365 天切窗口。 */
 export const loadHistory = (): Promise<HistoryListing> => jget<HistoryListing>('/status/history?days=365')
