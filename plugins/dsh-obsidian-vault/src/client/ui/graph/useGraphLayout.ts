@@ -200,8 +200,10 @@ export function useGraphLayout({ visible, forces, animate }: GraphLayoutInput): 
 
   useEffect(() => {
     if (positions.length === 0) return
-    const reduced = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches === true
-    const plan = buildRevealPlan(positionsRef.current, visible.edges, reduced)
+    // A replay is an explicit user action: animate it even when the OS reports
+    // reduced motion. The entrance is short and non-looping, and skipping it
+    // made the button look broken on machines with animations disabled.
+    const plan = buildRevealPlan(positionsRef.current, visible.edges, false)
     planRef.current = plan
     const replaying = replayToken !== lastReplay.current
     lastReplay.current = replayToken
@@ -210,7 +212,7 @@ export function useGraphLayout({ visible, forces, animate }: GraphLayoutInput): 
     if (!replaying && hasRevealed.current) return
     hasRevealed.current = true
     revealRef.current = 0
-    if (reduced || plan.duration === 0) {
+    if (plan.duration === 0) {
       revealRef.current = 1
       simRef.current?.setAnimate(animateRef.current)
       loopRef.current?.()
