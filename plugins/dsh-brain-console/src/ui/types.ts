@@ -192,6 +192,13 @@ export interface IndexHealth {
   }
   pending: number | null
   db_size_mb: number | null
+  /** 按领域（domain 空则顶层目录）的向量覆盖 */
+  by_domain?: {
+    name: string
+    total: number
+    covered: number
+    missing: number
+  }[]
 }
 
 /** `/embed/status`：补嵌/重建任务的实时进度。 */

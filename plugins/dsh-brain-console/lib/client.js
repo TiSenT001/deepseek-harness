@@ -1451,6 +1451,41 @@ window.__ModuleLoader__.load({
 								})
 							] }),
 							/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("section", { children: [
+								/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("h4", { children: ["按领域覆盖 ", /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+									className: "bc-index-note",
+									children: "向量 / 笔记"
+								})] }),
+								(health.by_domain ?? []).length === 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+									className: "bc-index-row",
+									children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: "暂无领域数据" }), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("strong", { children: "—" })]
+								}),
+								(health.by_domain ?? []).map((bucket) => {
+									const percent = bucket.total > 0 ? bucket.covered / bucket.total * 100 : 0;
+									return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+										className: "bc-index-domain-row",
+										children: [
+											/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+												className: "bc-index-domain-name",
+												title: bucket.name,
+												children: bucket.name
+											}),
+											/* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+												className: "bc-index-domain-bar",
+												children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", { style: { width: `${percent}%` } })
+											}),
+											/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
+												className: bucket.missing > 0 ? "bc-index-warn" : "",
+												children: [
+													bucket.covered,
+													" / ",
+													bucket.total
+												]
+											})
+										]
+									}, bucket.name);
+								})
+							] }),
+							/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("section", { children: [
 								/* @__PURE__ */ (0, react_jsx_runtime.jsx)("h4", { children: "重试队列" }),
 								/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
 									className: "bc-index-row",
@@ -1498,6 +1533,14 @@ window.__ModuleLoader__.load({
 												num(health.notes),
 												" 篇）"
 											]
+										}),
+										/* @__PURE__ */ (0, react_jsx_runtime.jsx)(Button, {
+											size: "sm",
+											variant: "ghost",
+											disabled: busy || running,
+											title: "忽略内容哈希，逐篇重建全部分块（会重写数万分块行）；数十秒到数分钟，期间可取消",
+											onClick: () => void run("chunk:force"),
+											children: "分块全量重建（强制）"
 										}),
 										(health.chunks.missing ?? 0) > 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)(Button, {
 											size: "sm",
@@ -3813,6 +3856,36 @@ window.__ModuleLoader__.load({
   font-weight: 400;
   color: var(--dsw-alias-label-tertiary);
 }
+.bc-index-domain-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 90px auto;
+  gap: 8px;
+  align-items: center;
+  padding: 3px 0;
+  font-size: 12px;
+  color: var(--dsw-alias-label-secondary);
+}
+.bc-index-domain-name {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.bc-index-domain-bar {
+  height: 4px;
+  border-radius: 2px;
+  overflow: hidden;
+  background: var(--dsw-alias-bg-layer-2, rgba(128, 128, 128, 0.14));
+}
+.bc-index-domain-bar > div {
+  height: 100%;
+  border-radius: 2px;
+  background: var(--dsw-alias-label-primary, #f9fafb);
+}
+.bc-index-domain-row > span:last-child {
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
 .bc-coverage {
   height: 4px;
   margin: 4px 0 8px;

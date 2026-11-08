@@ -230,6 +230,25 @@ export function IndexHealthDialog({ onClose }: IndexHealthDialogProps): JSX.Elem
           </section>
 
           <section>
+            <h4>按领域覆盖 <span className="bc-index-note">向量 / 笔记</span></h4>
+            {(health.by_domain ?? []).length === 0 && (
+              <div className="bc-index-row"><span>暂无领域数据</span><strong>—</strong></div>
+            )}
+            {(health.by_domain ?? []).map((bucket) => {
+              const percent = bucket.total > 0 ? (bucket.covered / bucket.total) * 100 : 0
+              return (
+                <div className="bc-index-domain-row" key={bucket.name}>
+                  <span className="bc-index-domain-name" title={bucket.name}>{bucket.name}</span>
+                  <div className="bc-index-domain-bar"><div style={{ width: `${percent}%` }} /></div>
+                  <span className={bucket.missing > 0 ? 'bc-index-warn' : ''}>
+                    {bucket.covered} / {bucket.total}
+                  </span>
+                </div>
+              )
+            })}
+          </section>
+
+          <section>
             <h4>重试队列</h4>
             <div className="bc-index-row">
               <span>embed_pending</span>
@@ -255,6 +274,11 @@ export function IndexHealthDialog({ onClose }: IndexHealthDialogProps): JSX.Elem
               <Button size="sm" variant="ghost" disabled={busy || running}
                 onClick={() => void run('chunk:rebuild')}>
                 分块增量重建（{num(health.notes)} 篇）
+              </Button>
+              <Button size="sm" variant="ghost" disabled={busy || running}
+                title="忽略内容哈希，逐篇重建全部分块（会重写数万分块行）；数十秒到数分钟，期间可取消"
+                onClick={() => void run('chunk:force')}>
+                分块全量重建（强制）
               </Button>
               {(health.chunks.missing ?? 0) > 0 && (
                 <Button size="sm" variant="ghost" disabled={busy || running}

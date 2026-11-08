@@ -1032,6 +1032,36 @@ const STYLES = `
   font-weight: 400;
   color: var(--dsw-alias-label-tertiary);
 }
+.bc-index-domain-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 90px auto;
+  gap: 8px;
+  align-items: center;
+  padding: 3px 0;
+  font-size: 12px;
+  color: var(--dsw-alias-label-secondary);
+}
+.bc-index-domain-name {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.bc-index-domain-bar {
+  height: 4px;
+  border-radius: 2px;
+  overflow: hidden;
+  background: var(--dsw-alias-bg-layer-2, rgba(128, 128, 128, 0.14));
+}
+.bc-index-domain-bar > div {
+  height: 100%;
+  border-radius: 2px;
+  background: var(--dsw-alias-label-primary, #f9fafb);
+}
+.bc-index-domain-row > span:last-child {
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
 .bc-coverage {
   height: 4px;
   margin: 4px 0 8px;
