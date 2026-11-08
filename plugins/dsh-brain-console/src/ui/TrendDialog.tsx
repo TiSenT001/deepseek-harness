@@ -33,6 +33,17 @@ function clampView(start: number, end: number, total: number): { start: number; 
   return { start: safeStart, end: safeStart + size - 1 }
 }
 
+/** 悬停采样点的标记：外圈光晕 + 空心环 + 中心点，避免实心白点糊在线上。 */
+function MarkerPoint({ cx, cy }: { cx: number; cy: number }): JSX.Element {
+  return (
+    <g className="bc-trend-marker" pointerEvents="none">
+      <circle cx={cx} cy={cy} r={9} className="bc-trend-dot-halo" />
+      <circle cx={cx} cy={cy} r={4.5} className="bc-trend-dot-ring" />
+      <circle cx={cx} cy={cy} r={1.8} className="bc-trend-dot-core" />
+    </g>
+  )
+}
+
 export interface TrendDialogProps {
   /** 指标定义（标签、单位、格式化） */
   metric: MetricSpec
@@ -315,11 +326,11 @@ export function TrendDialog({ metric, points, onOpenFailed, onClose }: TrendDial
             {hover !== null && visible[hover] !== undefined && (
               <>
                 <line x1={xAt(hover)} x2={xAt(hover)} y1={0} y2={CHART_H} className="bc-trend-guide" vectorEffect="non-scaling-stroke" />
-                <circle cx={xAt(hover)} cy={yAt(visible[hover].value)} r={4} className="bc-trend-dot" />
+                <MarkerPoint cx={xAt(hover)} cy={yAt(visible[hover].value)} />
               </>
             )}
             {count === 1 && visible[0] !== undefined && (
-              <circle cx={CHART_W / 2} cy={yAt(visible[0].value)} r={4} className="bc-trend-dot" />
+              <MarkerPoint cx={CHART_W / 2} cy={yAt(visible[0].value)} />
             )}
           </svg>
           {threshold !== undefined && thresholdY !== null && (

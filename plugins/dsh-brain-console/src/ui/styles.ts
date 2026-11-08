@@ -408,6 +408,20 @@ const STYLES = `
   font-weight: 600;
 }
 
+.bc-trend-marker {
+  pointer-events: none;
+}
+.bc-trend-dot-halo {
+  fill: color-mix(in srgb, var(--dsw-alias-label-primary, #f9fafb) 14%, transparent);
+}
+.bc-trend-dot-ring {
+  fill: var(--dsw-alias-bg-layer-1, #1d1d22);
+  stroke: var(--dsw-alias-label-primary, #f9fafb);
+  stroke-width: 2;
+}
+.bc-trend-dot-core {
+  fill: var(--dsw-alias-label-primary, #f9fafb);
+}
 .bc-trend-guide {
   stroke: var(--dsw-alias-border-l4);
   stroke-width: 1;

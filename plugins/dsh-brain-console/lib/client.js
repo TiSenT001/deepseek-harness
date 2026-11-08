@@ -2309,6 +2309,33 @@ window.__ModuleLoader__.load({
 				end: safeStart + size - 1
 			};
 		}
+		/** 悬停采样点的标记：外圈光晕 + 空心环 + 中心点，避免实心白点糊在线上。 */
+		function MarkerPoint({ cx, cy }) {
+			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("g", {
+				className: "bc-trend-marker",
+				pointerEvents: "none",
+				children: [
+					/* @__PURE__ */ (0, react_jsx_runtime.jsx)("circle", {
+						cx,
+						cy,
+						r: 9,
+						className: "bc-trend-dot-halo"
+					}),
+					/* @__PURE__ */ (0, react_jsx_runtime.jsx)("circle", {
+						cx,
+						cy,
+						r: 4.5,
+						className: "bc-trend-dot-ring"
+					}),
+					/* @__PURE__ */ (0, react_jsx_runtime.jsx)("circle", {
+						cx,
+						cy,
+						r: 1.8,
+						className: "bc-trend-dot-core"
+					})
+				]
+			});
+		}
 		/**
 		* 渲染指标趋势对话框。
 		* @param props - 指标、采样点与回调
@@ -2620,17 +2647,13 @@ window.__ModuleLoader__.load({
 										y2: CHART_H,
 										className: "bc-trend-guide",
 										vectorEffect: "non-scaling-stroke"
-									}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("circle", {
+									}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)(MarkerPoint, {
 										cx: xAt(hover),
-										cy: yAt(visible[hover].value),
-										r: 4,
-										className: "bc-trend-dot"
+										cy: yAt(visible[hover].value)
 									})] }),
-									count === 1 && visible[0] !== void 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("circle", {
+									count === 1 && visible[0] !== void 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsx)(MarkerPoint, {
 										cx: CHART_W / 2,
-										cy: yAt(visible[0].value),
-										r: 4,
-										className: "bc-trend-dot"
+										cy: yAt(visible[0].value)
 									})
 								]
 							}), threshold !== void 0 && thresholdY !== null && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
@@ -3478,6 +3501,20 @@ window.__ModuleLoader__.load({
   font-weight: 600;
 }
 
+.bc-trend-marker {
+  pointer-events: none;
+}
+.bc-trend-dot-halo {
+  fill: color-mix(in srgb, var(--dsw-alias-label-primary, #f9fafb) 14%, transparent);
+}
+.bc-trend-dot-ring {
+  fill: var(--dsw-alias-bg-layer-1, #1d1d22);
+  stroke: var(--dsw-alias-label-primary, #f9fafb);
+  stroke-width: 2;
+}
+.bc-trend-dot-core {
+  fill: var(--dsw-alias-label-primary, #f9fafb);
+}
 .bc-trend-guide {
   stroke: var(--dsw-alias-border-l4);
   stroke-width: 1;
