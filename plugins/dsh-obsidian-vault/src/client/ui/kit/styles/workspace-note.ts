@@ -73,7 +73,7 @@ export const WORKSPACE_NOTE_STYLE = `
   box-shadow: inset 2px 0 0 var(--dsw-alias-brand-primary, #4d6bfe);
 }
 .ov-main { display: flex; flex: 1 1 auto; flex-direction: column; min-height: 0; min-width: 0; }
-.ov-note { display: flex; flex-direction: column; min-height: 0; height: 100%; }
+.ov-note { display: flex; flex-direction: column; min-height: 0; min-width: 0; height: 100%; overflow: hidden; container-type: inline-size; }
 .ov-note-head {
   padding: 10px 16px 6px;
   border-bottom: 1px solid var(--dsw-alias-border-l1, #2a2a30);

@@ -303,24 +303,40 @@ button.ov-plugin-info {
   100% { background: transparent; }
 }
 .ov-narrow-only { display: none; }
-.ov-graph-tools .ov-select { align-self: center; }
+.ov-graph-tools .ov-select { align-self: center; min-width: 0; }
 .ov-graph-tools .ov-select-trigger {
-  min-width: 96px;
+  min-width: 72px;
   padding: 3px 6px;
   font-size: 12px;
 }
 .ov-graph-tools {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 6px;
+  row-gap: 4px;
+  min-width: 0;
   padding: 6px 10px;
   border-bottom: 1px solid var(--dsw-alias-border-l1, #2a2a30);
   flex: 0 0 auto;
 }
+.ov-graph-tools > * { min-width: 0; }
 .ov-graph-stats {
   color: var(--dsw-alias-label-tertiary, #8b8b94);
   font-size: 12px;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 160px;
+}
+.ov-graph-tools .ov-grow { flex: 1 1 0; }
+.ov-graph-tools .ov-graph-filter { flex: 1 1 96px; }
+/* A narrow pane drops the counts and the spacer before wrapping, so the
+   filter and the icon buttons still share one row. */
+@container (max-width: 560px) {
+  .ov-graph-tools .ov-graph-stats,
+  .ov-graph-tools .ov-grow { display: none; }
+  .ov-graph-tools .ov-select-trigger { min-width: 64px; }
 }
 @media (max-width: 720px) {
   .ov-pill-label, .ov-pill-kbd { display: none; }
