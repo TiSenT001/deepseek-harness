@@ -29,13 +29,15 @@ type PaneSurfaceCallbacks = Pick<
   MainPaneProps,
   | 'onRetry' | 'onReading' | 'onSwitchToReading' | 'onSource' | 'onSaved'
   | 'onOpen' | 'onCreate' | 'onTag' | 'onPathFilter' | 'onMenu' | 'onCenter'
-  | 'onCloseGraph' | 'onOpenSettings'
+  | 'onCloseGraph' | 'onOpenSettings' | 'emptyActions' | 'onEmptySearch'
 >
 
 /** Props for {@link PaneColumn}: the shared surface props plus pane routing. */
 export interface PaneColumnProps extends PaneSurfaceCallbacks {
   readonly t: MainPaneProps['t']
   readonly labels: MainPaneProps['labels']
+  /** Vault display name, shown by the empty tab. */
+  readonly vaultName?: string
   readonly version: number | undefined
   /** The page's view toggle; only the active pane shows the graph or a plugin. */
   readonly view: MainPaneProps['view']
@@ -123,6 +125,9 @@ export function PaneColumn(props: PaneColumnProps): JSX.Element {
       <MainPane
         t={props.t}
         labels={props.labels}
+        vaultName={props.vaultName}
+        emptyActions={props.emptyActions}
+        onEmptySearch={props.onEmptySearch}
         view={isActive ? props.view : 'note'}
         path={path}
         isMarkdown={isMarkdown}

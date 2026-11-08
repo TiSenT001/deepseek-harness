@@ -42,6 +42,10 @@ export interface VaultWorkspaceProps {
   readonly status: StatusProps['status']
   /** The whole tab/pane hook result; the columns read their slices from it. */
   readonly tabs: ReturnType<typeof useVaultTabs>
+  /** Action cards shown while no tab is open. */
+  readonly emptyActions?: MainProps['emptyActions']
+  /** Open the quick switcher from the empty tab's search row. */
+  readonly onEmptySearch?: MainProps['onEmptySearch']
   readonly bookmarks: ReturnType<typeof useVaultBookmarks>
   readonly overlays: ReturnType<typeof useOverlayState>
   readonly menuGroups: CommandSurface['menuGroups']
@@ -112,6 +116,7 @@ export function VaultWorkspace(props: VaultWorkspaceProps): JSX.Element {
     sourceMode, error, onActiveHeading, onNewTab, reload, onReading, onSource, onShowNoteView,
     onOpenWithAnchor, onCreateNote, onOpenPath, activeHeading, onRail,
     onHeading, onShiftHeading, onClosePanes, onQuickCommand, onVaultSwitched, variant, onVariant,
+    emptyActions, onEmptySearch,
   } = props
   const history = activeTab(tabs.tabs)?.history ?? { items: [], index: -1 }
   const labels = useMemo<MainProps['labels']>(() => ({
@@ -168,6 +173,9 @@ export function VaultWorkspace(props: VaultWorkspaceProps): JSX.Element {
           <MainColumn
             t={t}
             labels={labels}
+            vaultName={vaultNameOf(status?.root) ?? t('vault')}
+            emptyActions={emptyActions}
+            onEmptySearch={onEmptySearch}
             panes={tabs.panes}
             activePane={tabs.activePane}
             direction={tabs.direction}

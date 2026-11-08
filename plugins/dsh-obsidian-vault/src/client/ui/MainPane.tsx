@@ -6,10 +6,11 @@
 import type { BacklinkDto, NoteDto } from '../../protocol.ts'
 import type { MarkdownLabels } from '../primitives.ts'
 import type { Translate } from '../i18n.ts'
-import { EmptyState, ErrorState, LoadingState } from './kit/index.ts'
+import { ErrorState, LoadingState } from './kit/index.ts'
 import { FileView } from './files/FileView.tsx'
 import { GraphView } from './GraphView.tsx'
 import { NoteView, type ElementRef } from './NoteView.tsx'
+import { VaultEmptyState, type VaultEmptyAction } from './VaultEmptyState.tsx'
 import type { MenuScene } from './menu/registry.ts'
 import { css } from './theme.ts'
 
@@ -19,6 +20,12 @@ export interface MainPaneProps {
   readonly labels: MarkdownLabels
   readonly view: 'note' | 'graph'
   readonly path: string | undefined
+  /** Display name of the active vault, for the empty tab. */
+  readonly vaultName?: string
+  /** Cards shown while no tab is open. */
+  readonly emptyActions?: readonly VaultEmptyAction[]
+  /** Open the quick switcher from the empty tab's search row. */
+  readonly onEmptySearch?: () => void
   readonly isMarkdown: boolean
   readonly note: NoteDto | undefined
   readonly sourceMode: boolean
@@ -52,7 +59,7 @@ export interface MainPaneProps {
  */
 export function MainPane(props: MainPaneProps): JSX.Element {
   const {
-    t, labels, view, path, isMarkdown, note, sourceMode, error, scrollRef, anchor, backlinks,
+    t, labels, view, path, vaultName, emptyActions, onEmptySearch, isMarkdown, note, sourceMode, error, scrollRef, anchor, backlinks,
     version, onRetry, onReading, onSwitchToReading, onSource, onSaved,
     onOpen, onCreate, onTag, onPathFilter, onMenu, onCenter,
     onCloseGraph, onOpenSettings,
@@ -92,7 +99,14 @@ export function MainPane(props: MainPaneProps): JSX.Element {
           )
           : path === undefined
           // The ribbon, the top bar, and Ctrl+O already open the switcher.
-          ? <EmptyState title={t('empty')} hint={t('emptyHint')} icon="files" />
+          ? (
+            <VaultEmptyState
+              t={t}
+              {...(vaultName === undefined ? {} : { vaultName })}
+              actions={emptyActions ?? []}
+              onSearch={() => onEmptySearch?.()}
+            />
+          )
             : isMarkdown && note === undefined
             ? <LoadingState label={t('loadingIndex')} />
             : isMarkdown && note !== undefined && !sourceMode

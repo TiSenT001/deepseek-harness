@@ -85,6 +85,9 @@ export function MainColumn(props: MainColumnProps): JSX.Element {
           <PaneColumn
             t={props.t}
             labels={props.labels}
+            vaultName={props.vaultName}
+            emptyActions={props.emptyActions}
+            onEmptySearch={props.onEmptySearch}
             version={props.version}
             view={props.view}
             pane={pane}

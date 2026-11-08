@@ -26,6 +26,7 @@ import { useVaultCommands } from './useVaultCommands.ts'
 import { useVaultShortcuts } from './useVaultShortcuts.ts'
 import { useVaultTabs } from './useVaultTabs.ts'
 import { readViewMemory, writeViewMemory } from './viewMemory.ts'
+import { type VaultEmptyAction } from './VaultEmptyState.tsx'
 import { VaultWorkspace } from './VaultWorkspace.tsx'
 import { css, STYLE } from './theme.ts'
 
@@ -243,6 +244,15 @@ export function VaultPage({ pickDirectory, hasPicker }: VaultPageProps = {}): JS
     askConfirm: ask.askConfirm,
   })
 
+  const emptyActions = useMemo<readonly VaultEmptyAction[]>(() => [
+    { id: 'new-note', label: t('newNote'), hint: 'Ctrl+N', icon: 'newNote', run: () => vaultActions.createNote('') },
+    { id: 'open-note', label: t('openNote'), hint: 'Ctrl+O', icon: 'note', run: openQuick },
+    { id: 'new-canvas', label: t('purNewCanvas'), icon: 'canvas', run: openPurStudio },
+    { id: 'graph', label: t('graph'), icon: 'graph', run: () => setView('graph') },
+    { id: 'search', label: t('searchAll'), hint: 'Ctrl+F', icon: 'search', run: openSearch },
+    { id: 'switch-vault', label: t('switchVault'), icon: 'files', run: openVaults },
+  ], [openPurStudio, openQuick, openSearch, openVaults, t, vaultActions])
+
   const { menuGroups, commands, runCommand } = useVaultCommands({
     askText: ask.askText,
     t,
@@ -287,6 +297,8 @@ export function VaultPage({ pickDirectory, hasPicker }: VaultPageProps = {}): JS
       <style>{STYLE}</style>
       <VaultWorkspace
         t={t}
+        emptyActions={emptyActions}
+        onEmptySearch={openQuick}
         status={status}
         tabs={tabsApi}
         bookmarks={bookmarks}
