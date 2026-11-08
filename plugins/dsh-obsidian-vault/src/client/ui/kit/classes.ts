@@ -71,6 +71,7 @@ export const css = {
   docTabLabel: 'ov-doctab-label',
   docTabClose: 'ov-doctab-close',
   docTabNew: 'ov-doctab-new',
+  docTabMenu: 'ov-doctab-menu',
   rail: 'ov-rail',
   tabs: 'ov-tabs',
   tab: 'ov-tab',

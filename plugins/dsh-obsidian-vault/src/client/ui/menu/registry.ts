@@ -132,6 +132,11 @@ function sceneGroups(scene: MenuScene, { t, actions, folders, bookmarks, tabs, p
           leaf('new-tab', t('newTab'), actions.newTab),
           leaf('quick', t('quickSwitch'), actions.quickSwitch, { shortcut: 'Ctrl O' }),
         ],
+        [
+          leaf('split-right', t('splitRight'), () => actions.splitPane('row')),
+          leaf('split-down', t('splitDown'), () => actions.splitPane('column')),
+          leaf('close-pane', t('closePane'), actions.closePane, { disabled: panes <= 1 }),
+        ],
         [leaf('close-all', t('closeAll'), actions.closeAllTabs, { disabled: tabs === 0 })],
       ]
     case 'editor':

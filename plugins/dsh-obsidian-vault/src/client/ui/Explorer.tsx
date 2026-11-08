@@ -185,6 +185,12 @@ export function Explorer({
                 }
                 actions.open(row.node.path, { preview: true })
               }}
+              onAuxClick={(event) => {
+                // Middle click opens a permanent tab, like Obsidian.
+                if (event.button !== 1 || row.node.kind === 'dir') return
+                event.preventDefault()
+                actions.open(row.node.path, { newTab: true })
+              }}
               draggable
               onDragStart={(event) => {
                 event.stopPropagation()

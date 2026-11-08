@@ -158,6 +158,19 @@ export function TabStrip({
       >
         +
       </button>
+      <button
+        type="button"
+        className={css.docTabMenu}
+        title={t('tabMenu')}
+        aria-label={t('tabMenu')}
+        aria-haspopup="menu"
+        onClick={(event) => {
+          const rect = event.currentTarget.getBoundingClientRect()
+          onMenu({ kind: 'tabbar-empty' }, rect.left, rect.bottom)
+        }}
+      >
+        …
+      </button>
       {overflow && tabs.length > 0
         ? (
           <button

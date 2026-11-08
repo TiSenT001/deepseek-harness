@@ -77,6 +77,7 @@ export const ZH = {
   hideOrphans: '隐藏孤立',
   resetView: '重置视图',
   newTab: '新标签页',
+  tabMenu: '标签页操作',
   closeTab: '关闭标签页',
   closeOthers: '关闭其他标签页',
   closeAll: '关闭全部标签页',

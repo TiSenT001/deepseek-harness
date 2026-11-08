@@ -78,6 +78,7 @@ export const EN: Dict = {
   hideOrphans: 'Hide orphans',
   resetView: 'Reset view',
   newTab: 'New tab',
+  tabMenu: 'Tab actions',
   closeTab: 'Close tab',
   closeOthers: 'Close other tabs',
   closeAll: 'Close all tabs',

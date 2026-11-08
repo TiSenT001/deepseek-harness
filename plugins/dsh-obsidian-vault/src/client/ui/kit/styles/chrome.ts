@@ -377,6 +377,15 @@ button.ov-plugin-info {
   padding: 0 10px;
   cursor: pointer;
 }
+.ov-doctab-menu {
+  border: 0;
+  background: none;
+  color: var(--dsw-alias-label-tertiary, #8b8b94);
+  font-size: 13px;
+  padding: 0 7px;
+  cursor: pointer;
+}
+.ov-doctab-menu:hover { color: var(--dsw-alias-label-primary, #f9fafb); }
 .ov-doctab-overflow {
   border: 0;
   background: none;

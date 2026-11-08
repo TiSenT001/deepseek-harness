@@ -13,6 +13,11 @@ export interface VaultShortcutInput {
   readonly onSearch: () => void
   /** Ctrl/Cmd+P: open the palette in command mode. */
   readonly onCommands: () => void
+  /** Ctrl/Cmd+T: open the switcher in new-tab mode. */
+  readonly onNewTab: () => void
+  /** Ctrl+Tab / Ctrl+Shift+Tab: cycle the active pane's tabs. */
+  readonly onNextTab: () => void
+  readonly onPrevTab: () => void
   /** Escape: close every transient surface. */
   readonly onEscape: () => void
   /** Alt+Left. */
@@ -26,7 +31,7 @@ export interface VaultShortcutInput {
  * @param input - the commands each shortcut runs.
  */
 export function useVaultShortcuts({
-  onToggleQuick, onSearch, onCommands, onEscape, onBack, onForward,
+  onToggleQuick, onSearch, onCommands, onNewTab, onNextTab, onPrevTab, onEscape, onBack, onForward,
 }: VaultShortcutInput): void {
   useEffect(() => {
     const onKey = (event: KeyboardEvent): void => {
@@ -34,6 +39,17 @@ export function useVaultShortcuts({
       if (accel && event.key.toLowerCase() === 'o') {
         event.preventDefault()
         onToggleQuick()
+        return
+      }
+      if (accel && event.key.toLowerCase() === 't') {
+        event.preventDefault()
+        onNewTab()
+        return
+      }
+      if (accel && event.key === 'Tab') {
+        event.preventDefault()
+        if (event.shiftKey) onPrevTab()
+        else onNextTab()
         return
       }
       if (accel && event.key.toLowerCase() === 'f') {
@@ -62,5 +78,5 @@ export function useVaultShortcuts({
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [onBack, onCommands, onEscape, onForward, onSearch, onToggleQuick])
+  }, [onBack, onCommands, onEscape, onForward, onNewTab, onNextTab, onPrevTab, onSearch, onToggleQuick])
 }

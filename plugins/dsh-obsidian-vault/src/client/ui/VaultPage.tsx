@@ -78,7 +78,7 @@ export function VaultPage({ pickDirectory, hasPicker }: VaultPageProps = {}): JS
   const tabsApi = useVaultTabs(restoredWorkspace === undefined ? undefined : panesFromSaved(restoredWorkspace))
   const {
     tabs, panes, activePane, direction, openPath, goBack, goForward, closeTab, mapTabs, splitPane, closePane,
-    reset: resetTabs, restore: restoreTabs,
+    reset: resetTabs, restore: restoreTabs, selectTab,
   } = tabsApi
   const current = activeTab(tabs)
   const path = current?.path
@@ -176,6 +176,13 @@ export function VaultPage({ pickDirectory, hasPicker }: VaultPageProps = {}): JS
     onToggleQuick: toggleQuick,
     onSearch: openSearch,
     onCommands: openCommands,
+    onNewTab: openNewTab,
+    onNextTab: () => {
+      if (tabs.items.length > 1) selectTab((tabs.active + 1) % tabs.items.length)
+    },
+    onPrevTab: () => {
+      if (tabs.items.length > 1) selectTab((tabs.active - 1 + tabs.items.length) % tabs.items.length)
+    },
     onEscape: closeTransient,
     onBack: goBack,
     onForward: goForward,
