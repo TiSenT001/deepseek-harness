@@ -64,8 +64,8 @@ export const FRAME_STYLE = `
 }
 .ov-ribbon-item-active,
 .ov-ribbon-item-active:hover {
-  color: var(--dsw-alias-brand-primary, #7d94ff);
-  background: color-mix(in srgb, var(--dsw-alias-brand-primary, #4d6bfe) 14%, transparent);
+  color: var(--dsw-alias-label-primary, #e8e8ea);
+  background: var(--dsw-alias-bg-layer-2, rgba(128, 128, 128, 0.14));
 }
 .ov-ribbon-spacer { flex: 1 1 auto; }
 .ov-splitter {
