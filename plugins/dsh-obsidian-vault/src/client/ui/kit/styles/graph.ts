@@ -52,8 +52,14 @@ export const GRAPH_STYLE = `/* Graph filter controls. */
   cursor: pointer;
 }
 .ov-graph-legend-item:hover { border-color: var(--dsw-alias-border-l2, #3a3a42); }
-.ov-graph-legend-item-active {
-  color: var(--dsw-alias-label-primary, #e8e8ea);
+.ov-graph-legend-item-active,
+.ov-graph-legend-item-active:hover {
+  color: var(--ov-accent, #4d6bfe);
+  border-color: var(--ov-accent, #4d6bfe);
+  background: color-mix(in srgb, var(--ov-accent, #4d6bfe) 16%, transparent);
+}
+.ov-graph-legend-item-active .ov-graph-legend-count {
+  color: var(--ov-accent, #4d6bfe);
 }
 .ov-graph-legend-dot { width: 8px; height: 8px; border-radius: 50%; flex: 0 0 auto; }
 .ov-graph-legend-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

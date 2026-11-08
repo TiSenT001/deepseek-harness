@@ -316,6 +316,7 @@ export const EN: Dict = {
   printMarginNone: "None",
   printMarginWide: "Wide",
   printScale: "Text size",
+  printPageGroup: "Page",
   printScaleSmall: "Small (90%)",
   printScaleNormal: "Normal",
   printScaleLarge: "Large (115%)",

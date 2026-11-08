@@ -172,6 +172,7 @@ export const css = {
   selectOption: 'ov-select-option',
   selectCheck: 'ov-select-check',
   imageChoice: 'ov-image-choice',
+  printDialog: 'ov-print-dialog',
   printBody: 'ov-print-body',
   printOptions: 'ov-print-options',
   printPreview: 'ov-print-preview',

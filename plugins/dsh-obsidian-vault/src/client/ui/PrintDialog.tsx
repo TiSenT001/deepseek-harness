@@ -68,7 +68,7 @@ export function PrintDialog({ t, element, title, onCancel, onConfirm }: PrintDia
       }}
     >
       <div
-        className={`${css.dialog} ${css.settingsDialog}`}
+        className={`${css.dialog} ${css.settingsDialog} ${css.printDialog}`}
         role="dialog"
         aria-label={t('printTitle')}
         onMouseDown={event => event.stopPropagation()}
@@ -81,6 +81,7 @@ export function PrintDialog({ t, element, title, onCancel, onConfirm }: PrintDia
         </header>
         <div className={`${css.dialogBody} ${css.printBody}`}>
           <div className={css.printOptions}>
+            <div className={css.settingsGroup}>{t('printPageGroup')}</div>
             <SettingsRow label={t('printPaperSize')}>
               <Select
                 value={paper}

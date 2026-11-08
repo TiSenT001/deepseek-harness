@@ -315,6 +315,7 @@ export const ZH = {
   printMarginNone: "无",
   printMarginWide: "宽",
   printScale: "字号",
+  printPageGroup: "页面",
   printScaleSmall: "小（90%）",
   printScaleNormal: "标准",
   printScaleLarge: "大（115%）",
