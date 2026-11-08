@@ -170,6 +170,11 @@ export interface IndexHealth {
   chunks: {
     notes: number | null
     rows: number | null
+    /** 有内容但还没分块的笔记数。 */
+    missing?: number | null
+    missing_sample?: string[]
+    /** 0 字节空笔记数。 */
+    empty?: number | null
     last_indexed_at: string | null
     stale_days: number | null
   }

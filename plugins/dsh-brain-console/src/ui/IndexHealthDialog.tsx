@@ -210,6 +210,12 @@ export function IndexHealthDialog({ onClose }: IndexHealthDialogProps): JSX.Elem
               <span>已分块笔记 / 总笔记</span>
               <strong>{num(health.chunks.notes)} / {num(health.notes)}</strong>
             </div>
+            {(health.chunks.empty ?? 0) > 0 && (
+              <div className="bc-index-row">
+                <span>空笔记（0 字节，不需分块）</span>
+                <strong>{num(health.chunks.empty)} 篇</strong>
+              </div>
+            )}
             <div className="bc-index-row">
               <span>分块总数</span>
               <strong>{num(health.chunks.rows)}</strong>
@@ -250,10 +256,10 @@ export function IndexHealthDialog({ onClose }: IndexHealthDialogProps): JSX.Elem
                 onClick={() => void run('chunk:rebuild')}>
                 分块增量重建（{num(health.notes)} 篇）
               </Button>
-              {(health.chunks.notes ?? 0) < (health.notes ?? 0) && (
+              {(health.chunks.missing ?? 0) > 0 && (
                 <Button size="sm" variant="ghost" disabled={busy || running}
                   onClick={() => void run('chunk:fill')}>
-                  补分块缺失（{num((health.notes ?? 0) - (health.chunks.notes ?? 0))} 篇）
+                  补分块缺失（{num(health.chunks.missing)} 篇）
                 </Button>
               )}
             </div>

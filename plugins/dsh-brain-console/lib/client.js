@@ -1377,6 +1377,10 @@ window.__ModuleLoader__.load({
 										num(health.notes)
 									] })]
 								}),
+								(health.chunks.empty ?? 0) > 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+									className: "bc-index-row",
+									children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: "空笔记（0 字节，不需分块）" }), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("strong", { children: [num(health.chunks.empty), " 篇"] })]
+								}),
 								/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
 									className: "bc-index-row",
 									children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: "分块总数" }), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("strong", { children: num(health.chunks.rows) })]
@@ -1438,14 +1442,14 @@ window.__ModuleLoader__.load({
 												" 篇）"
 											]
 										}),
-										(health.chunks.notes ?? 0) < (health.notes ?? 0) && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)(Button, {
+										(health.chunks.missing ?? 0) > 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)(Button, {
 											size: "sm",
 											variant: "ghost",
 											disabled: busy || running,
 											onClick: () => void run("chunk:fill"),
 											children: [
 												"补分块缺失（",
-												num((health.notes ?? 0) - (health.chunks.notes ?? 0)),
+												num(health.chunks.missing),
 												" 篇）"
 											]
 										})
