@@ -227,6 +227,7 @@ export function ConsolePage(): JSX.Element {
                 title="定位到第一个异常单元"
                 onClick={focusAbnormal}
               >
+                <span className="bc-status-dot" aria-hidden="true" />
                 {abnormalCount} 个异常
               </button>
             )}

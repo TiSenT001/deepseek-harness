@@ -84,7 +84,12 @@ export function UnitSection({
             onClick={() => onStopAll(group)}
           />
         )}
-        {abnormal > 0 && <span className="bc-section-warn">{abnormal} 个异常</span>}
+        {abnormal > 0 && (
+          <span className="bc-section-warn">
+            <span className="bc-status-dot" aria-hidden="true" />
+            {abnormal} 个异常
+          </span>
+        )}
         <span className="bc-rule" />
       </div>
       <div className="bc-grid">

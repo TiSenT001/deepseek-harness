@@ -3004,7 +3004,14 @@ window.__ModuleLoader__.load({
 						}),
 						abnormal > 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
 							className: "bc-section-warn",
-							children: [abnormal, " 个异常"]
+							children: [
+								/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+									className: "bc-status-dot",
+									"aria-hidden": "true"
+								}),
+								abnormal,
+								" 个异常"
+							]
 						}),
 						/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { className: "bc-rule" })
 					]
@@ -3257,20 +3264,24 @@ window.__ModuleLoader__.load({
 }
 /* 顶部异常提示 chip：只有运行中但健康探测失败时出现 */
 .bc-header-alert {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   flex: none;
   height: 22px;
-  padding: 0 8px;
-  border: 1px solid var(--dsw-alias-state-error-primary);
-  border-radius: var(--dsw-radius-full);
-  background: var(--dsw-alias-state-error-tertiary);
-  color: var(--dsw-alias-state-error-primary);
+  padding: 0 9px;
+  border: 1px solid color-mix(in srgb, var(--dsw-alias-state-error-primary, #e35d6a) 45%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--dsw-alias-state-error-primary, #e35d6a) 10%, transparent);
+  color: var(--dsw-alias-state-error-primary, #e35d6a);
   font: inherit;
   font-size: 12px;
+  font-variant-numeric: tabular-nums;
   cursor: pointer;
 }
 @media (hover: hover) {
   .bc-header-alert:hover {
-    background: var(--dsw-alias-state-error-secondary);
+    background: color-mix(in srgb, var(--dsw-alias-state-error-primary, #e35d6a) 16%, transparent);
   }
 }
 .bc-header-alert:focus-visible {
@@ -3541,8 +3552,24 @@ window.__ModuleLoader__.load({
   font-variant-numeric: tabular-nums;
 }
 .bc-section-warn {
-  color: var(--dsw-alias-state-error-primary);
-  font-size: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 20px;
+  padding: 0 8px;
+  border: 1px solid color-mix(in srgb, var(--dsw-alias-state-error-primary, #e35d6a) 45%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--dsw-alias-state-error-primary, #e35d6a) 10%, transparent);
+  color: var(--dsw-alias-state-error-primary, #e35d6a);
+  font-size: 11.5px;
+  font-variant-numeric: tabular-nums;
+}
+.bc-status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  flex: none;
 }
 .bc-rule {
   flex: 1 1 auto;
@@ -4472,7 +4499,14 @@ window.__ModuleLoader__.load({
 											className: "bc-header-alert",
 											title: "定位到第一个异常单元",
 											onClick: focusAbnormal,
-											children: [abnormalCount, " 个异常"]
+											children: [
+												/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+													className: "bc-status-dot",
+													"aria-hidden": "true"
+												}),
+												abnormalCount,
+												" 个异常"
+											]
 										}),
 										/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
 											className: "bc-header-actions",
