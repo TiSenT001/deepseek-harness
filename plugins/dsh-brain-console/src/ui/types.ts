@@ -161,6 +161,9 @@ export interface IndexHealth {
     fresh_24h: number | null
     missing: number | null
     missing_sample: string[]
+    /** 0 字节空笔记数（不需要向量，单列以避免误判为缺漏）。 */
+    empty?: number | null
+    empty_sample?: string[]
     orphans: number | null
     last_indexed_at: string | null
   }
@@ -172,6 +175,23 @@ export interface IndexHealth {
   }
   pending: number | null
   db_size_mb: number | null
+}
+
+/** `/embed/status`：补嵌/重建任务的实时进度。 */
+export interface EmbedJobStatus {
+  state: 'idle' | 'running' | 'done' | 'cancelled' | 'error'
+  mode: string | null
+  label: string | null
+  total: number
+  done: number
+  failed: number
+  current: string | null
+  started_at: string | null
+  finished_at: string | null
+  eta_s: number | null
+  elapsed_s?: number | null
+  error: string | null
+  failures: { path: string; reason: string }[]
 }
 
 /** `/status/history` 里的一个采样点；老快照没有的字段为 null。 */

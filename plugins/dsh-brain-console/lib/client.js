@@ -1137,12 +1137,10 @@ window.__ModuleLoader__.load({
 		//#endregion
 		//#region src/ui/IndexHealthDialog.tsx
 		/**
-		* 索引与嵌入状态：回答「知识真的进脑子了吗」。
+		* 索引与嵌入状态：回答「知识真的进脑子了吗」，并提供补嵌 / 重建入口。
 		*
-		* 只读展示三条链路的最新覆盖：
-		* 1. 笔记向量（vec_cache）——vault_watch 实时写，缺向量 = 新笔记还没进语义检索；
-		* 2. 分块索引（chunk_index）——body_daemon 维护，滞后说明长文分块检索看的是旧内容；
-		* 3. 嵌入重试队列（embed_pending）。
+		* 只读部分展示三条链路的最新覆盖；动作部分触发管理器里的后台任务，
+		* 运行期间每秒轮询一次进度（完成数 / 总数 / 当前笔记 / 失败 / ETA）。
 		*/
 		//#endregion
 		//#region src/ui/GroupActionDialog.tsx
@@ -3208,6 +3206,62 @@ window.__ModuleLoader__.load({
     margin-left: auto;
   }
 }
+.bc-embed-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 4px;
+}
+.bc-embed-job {
+  margin-top: 12px;
+  padding: 10px;
+  border: 1px solid var(--dsw-alias-border-l1);
+  border-radius: 8px;
+  background: var(--dsw-alias-bg-layer-1, rgba(128, 128, 128, 0.04));
+}
+.bc-embed-job-head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 6px;
+  font-size: 12px;
+  color: var(--dsw-alias-label-secondary);
+}
+.bc-embed-job-head strong {
+  color: var(--dsw-alias-label-primary);
+  font-weight: 600;
+}
+.bc-embed-job-head > span {
+  flex: 1 1 auto;
+  font-variant-numeric: tabular-nums;
+}
+.bc-embed-current {
+  margin-top: 4px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-family: var(--ds-font-family-code, monospace);
+  font-size: 11px;
+  color: var(--dsw-alias-label-tertiary);
+}
+.bc-embed-failures {
+  margin-top: 8px;
+  font-size: 11px;
+  color: var(--dsw-alias-label-tertiary);
+}
+.bc-embed-failures summary {
+  cursor: pointer;
+}
+.bc-embed-failures ul {
+  margin: 6px 0 0;
+  padding-left: 16px;
+  max-height: 120px;
+  overflow: auto;
+}
+.bc-embed-failures code {
+  font-size: 11px;
+}
+
 .bc-failed-ignore {
   flex: none;
   padding: 1px 8px;

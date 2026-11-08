@@ -6,7 +6,7 @@
  */
 import type {
   BackupListing, BatchRestartResult, BatchStartResult, BatchStopResult, CacheListing, CachePruneResult,
-  FailedEdgesListing, HistoryListing, IndexHealth, PruneResult, Unit, UnitAction,
+  EmbedJobStatus, FailedEdgesListing, HistoryListing, IndexHealth, PruneResult, Unit, UnitAction,
 } from './ui/types.ts'
 
 /** brain_manager 的 HTTP 地址。 */
@@ -64,6 +64,17 @@ export const loadIndexHealth = (): Promise<IndexHealth> => jget<IndexHealth>('/i
 /** 把一条失败边加入忽略名单（不删边，只从待消解清单隐藏）。 */
 export const ignoreFailedEdge = (source: string, target: string): Promise<{ ok: boolean; ignored: number }> =>
   postJson<{ ok: boolean; ignored: number }>('/quality/failed-edges/ignore', { source, target })
+
+/** 补嵌/重建任务状态。 */
+export const loadEmbedStatus = (): Promise<EmbedJobStatus> => jget<EmbedJobStatus>('/embed/status')
+
+/** 启动补嵌/重建任务（vec:fill / vec:rebuild / chunk:fill / chunk:rebuild）。 */
+export const startEmbed = (mode: string): Promise<{ ok: boolean; error?: string; status?: EmbedJobStatus }> =>
+  postJson<{ ok: boolean; error?: string; status?: EmbedJobStatus }>('/embed/start', { mode })
+
+/** 请求取消当前任务（当前笔记处理完即停）。 */
+export const cancelEmbed = (): Promise<{ ok: boolean; status?: EmbedJobStatus }> =>
+  postJson<{ ok: boolean; status?: EmbedJobStatus }>('/embed/cancel', {})
 
 /** 诊断包下载地址（zip：状态 + 单元 + 趋势 + 各单元日志尾部）。 */
 export const DIAGNOSTICS_URL = `${API}/diagnostics/bundle`

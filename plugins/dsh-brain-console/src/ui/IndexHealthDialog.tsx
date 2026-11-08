@@ -1,16 +1,14 @@
 /**
- * 索引与嵌入状态：回答「知识真的进脑子了吗」。
+ * 索引与嵌入状态：回答「知识真的进脑子了吗」，并提供补嵌 / 重建入口。
  *
- * 只读展示三条链路的最新覆盖：
- * 1. 笔记向量（vec_cache）——vault_watch 实时写，缺向量 = 新笔记还没进语义检索；
- * 2. 分块索引（chunk_index）——body_daemon 维护，滞后说明长文分块检索看的是旧内容；
- * 3. 嵌入重试队列（embed_pending）。
+ * 只读部分展示三条链路的最新覆盖；动作部分触发管理器里的后台任务，
+ * 运行期间每秒轮询一次进度（完成数 / 总数 / 当前笔记 / 失败 / ETA）。
  */
-import { useEffect, useState } from 'react'
-import { loadIndexHealth } from '../api.ts'
+import { useEffect, useRef, useState } from 'react'
+import { cancelEmbed, loadEmbedStatus, loadIndexHealth, startEmbed } from '../api.ts'
 import { reasonOf } from './errors.ts'
 import { Button, Modal } from './primitives.ts'
-import type { IndexHealth } from './types.ts'
+import type { EmbedJobStatus, IndexHealth } from './types.ts'
 
 export interface IndexHealthDialogProps {
   /** 关闭对话框。 */
@@ -32,14 +30,54 @@ function Coverage({ percent }: { percent: number | null }): JSX.Element {
   )
 }
 
+/** 运行中的任务：进度条 + 计数 + 当前笔记 + 取消。 */
+function JobProgress({ job, onCancel }: { job: EmbedJobStatus; onCancel: () => void }): JSX.Element {
+  const percent = job.total > 0 ? Math.min(100, (job.done / job.total) * 100) : 0
+  const summary = job.state === 'running'
+    ? `${job.done} / ${job.total} 篇 · 失败 ${job.failed} · 已用 ${job.elapsed_s ?? 0}s${job.eta_s === null ? '' : ` · 预计剩余 ${job.eta_s}s`}`
+    : job.state === 'done'
+      ? `完成：${job.done} / ${job.total} 篇，失败 ${job.failed}`
+      : job.state === 'cancelled'
+        ? `已取消：处理到 ${job.done} / ${job.total} 篇`
+        : `出错：${job.error ?? '未知原因'}`
+  return (
+    <div className="bc-embed-job">
+      <div className="bc-embed-job-head">
+        <strong>{job.label ?? job.mode}</strong>
+        <span>{summary}</span>
+        {job.state === 'running' && (
+          <Button size="sm" variant="ghost" onClick={onCancel}>取消</Button>
+        )}
+      </div>
+      <Coverage percent={percent} />
+      {job.current !== null && job.state === 'running' && (
+        <div className="bc-embed-current" title={job.current}>当前：{job.current}</div>
+      )}
+      {job.failures.length > 0 && (
+        <details className="bc-embed-failures">
+          <summary>失败 {job.failed} 篇（点开看前 {job.failures.length} 条）</summary>
+          <ul>
+            {job.failures.map((item) => (
+              <li key={item.path}><code>{item.path}</code> — {item.reason}</li>
+            ))}
+          </ul>
+        </details>
+      )}
+    </div>
+  )
+}
+
 /**
  * 渲染索引与嵌入状态对话框。
  * @param props - 关闭回调
- * @returns 对话框元素（挂载即拉一次）
+ * @returns 对话框元素（挂载即拉一次状态，运行中每秒刷新）
  */
 export function IndexHealthDialog({ onClose }: IndexHealthDialogProps): JSX.Element {
   const [health, setHealth] = useState<IndexHealth | null>(null)
+  const [job, setJob] = useState<EmbedJobStatus | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
+  const timer = useRef<number | null>(null)
 
   const load = async (): Promise<void> => {
     try {
@@ -50,16 +88,74 @@ export function IndexHealthDialog({ onClose }: IndexHealthDialogProps): JSX.Elem
     }
   }
 
-  useEffect(() => { void load() }, [])
+  const poll = (): void => {
+    if (timer.current !== null) return
+    timer.current = window.setInterval(() => {
+      void (async () => {
+        try {
+          const status = await loadEmbedStatus()
+          setJob(status)
+          if (status.state !== 'running') {
+            if (timer.current !== null) {
+              window.clearInterval(timer.current)
+              timer.current = null
+            }
+            await load()
+          }
+        } catch (e) {
+          setError(reasonOf(e))
+        }
+      })()
+    }, 1000)
+  }
+
+  useEffect(() => {
+    void (async () => {
+      await load()
+      try {
+        const status = await loadEmbedStatus()
+        setJob(status)
+        if (status.state === 'running') poll()
+      } catch {
+        // 状态接口不可用时只显示只读健康信息
+      }
+    })()
+    return () => {
+      if (timer.current !== null) window.clearInterval(timer.current)
+    }
+  }, [])
+
+  const run = async (mode: string): Promise<void> => {
+    setBusy(true)
+    try {
+      const result = await startEmbed(mode)
+      if (result.status) setJob(result.status)
+      if (result.ok) poll()
+      else setError(result.error ?? '任务未启动')
+    } catch (e) {
+      setError(reasonOf(e))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const cancel = async (): Promise<void> => {
+    try {
+      await cancelEmbed()
+    } catch (e) {
+      setError(reasonOf(e))
+    }
+  }
 
   const percent = health !== null && health.notes !== null && health.notes > 0 && health.vec.total !== null
     ? Math.min(100, (health.vec.total / health.notes) * 100)
     : null
   const stale = health?.chunks.stale_days
+  const running = job?.state === 'running'
 
   return (
     <Modal open onClose={onClose} title="索引与嵌入" closeLabel="关闭"
-      description="只读状态；不触发重建"
+      description="只读状态 + 手动补嵌；任务在管理器后台跑，关掉面板也会继续"
       footer={(
         <>
           <Button size="sm" variant="ghost" onClick={() => void load()}>刷新</Button>
@@ -81,13 +177,19 @@ export function IndexHealthDialog({ onClose }: IndexHealthDialogProps): JSX.Elem
               <span>缺少向量</span>
               <strong className={health.vec.missing ? 'bc-index-warn' : ''}>
                 {num(health.vec.missing)} 篇
-                {health.vec.missing_sample.length > 0 && (
-                  <span className="bc-index-sample" title={health.vec.missing_sample.join('\n')}>
+                {(health.vec.missing_sample ?? []).length > 0 && (
+                  <span className="bc-index-sample" title={(health.vec.missing_sample ?? []).join('\n')}>
                     （如 {health.vec.missing_sample[0]}）
                   </span>
                 )}
               </strong>
             </div>
+            {(health.vec.empty ?? 0) > 0 && (
+              <div className="bc-index-row">
+                <span>空笔记（0 字节，不需向量）</span>
+                <strong>{num(health.vec.empty)} 篇</strong>
+              </div>
+            )}
             <div className="bc-index-row">
               <span>最近 24h 更新</span>
               <strong>{num(health.vec.fresh_24h)} 篇</strong>
@@ -131,6 +233,31 @@ export function IndexHealthDialog({ onClose }: IndexHealthDialogProps): JSX.Elem
               <span>库大小</span>
               <strong>{num(health.db_size_mb, ' MB')}</strong>
             </div>
+          </section>
+
+          <section>
+            <h4>手动补嵌</h4>
+            <div className="bc-embed-actions">
+              <Button size="sm" variant="ghost" disabled={busy || running || (health.vec.missing ?? 0) === 0}
+                onClick={() => void run('vec:fill')}>
+                补向量缺失（{num(health.vec.missing)} 篇）
+              </Button>
+              <Button size="sm" variant="ghost" disabled={busy || running}
+                onClick={() => void run('vec:rebuild')}>
+                全量重建向量（{num(health.notes)} 篇）
+              </Button>
+              <Button size="sm" variant="ghost" disabled={busy || running}
+                onClick={() => void run('chunk:rebuild')}>
+                分块增量重建（{num(health.notes)} 篇）
+              </Button>
+              {(health.chunks.notes ?? 0) < (health.notes ?? 0) && (
+                <Button size="sm" variant="ghost" disabled={busy || running}
+                  onClick={() => void run('chunk:fill')}>
+                  补分块缺失（{num((health.notes ?? 0) - (health.chunks.notes ?? 0))} 篇）
+                </Button>
+              )}
+            </div>
+            {job !== null && job.state !== 'idle' && <JobProgress job={job} onCancel={() => void cancel()} />}
           </section>
         </div>
       )}
