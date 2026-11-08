@@ -14,15 +14,19 @@ export interface MetricSpec {
   unit: string
   /** 数值格式化 */
   format: (value: number) => string
+  /** 告警阈值：趋势图画出虚线，越过时读数标红 */
+  threshold?: number
+  /** 哪个方向是坏的方向（用于 24h 变化着色） */
+  badWhen?: 'up' | 'down'
 }
 
 /** 指标顺序与指标带一致。 */
 export const METRICS: readonly MetricSpec[] = [
-  { key: 'db_size_mb', label: '数据库', unit: 'MB', format: (value) => formatMegabytes(value) },
+  { key: 'db_size_mb', label: '数据库', unit: 'MB', format: (value) => formatMegabytes(value), threshold: 800, badWhen: 'up' },
   { key: 'edges', label: '知识边', unit: '条', format: (value) => formatCount(value) },
   { key: 'notes', label: '笔记', unit: '篇', format: (value) => formatCount(value) },
   { key: 'sessions', label: '记忆', unit: '条', format: (value) => formatCount(value) },
-  { key: 'failure_edges', label: '失败边', unit: '条', format: (value) => formatCount(value) },
+  { key: 'failure_edges', label: '失败边', unit: '条', format: (value) => formatCount(value), threshold: 300, badWhen: 'up' },
 ]
 
 /** 按 key 取指标定义。 */

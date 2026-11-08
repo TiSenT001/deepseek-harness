@@ -2148,6 +2148,25 @@ window.__ModuleLoader__.load({
 			};
 			const latest = count > 0 ? visible[count - 1] ?? null : null;
 			const first = visible[0];
+			const change = (() => {
+				if (latest === null || count < 2) return null;
+				const cutoff = Date.now() - 864e5;
+				let base = visible[0];
+				let older = false;
+				for (const point of visible) if (parseTs(point.ts) <= cutoff) {
+					base = point;
+					older = true;
+				}
+				const delta = latest.value - base.value;
+				return {
+					delta,
+					percent: base.value === 0 ? null : delta / base.value * 100,
+					older
+				};
+			})();
+			const threshold = metric.threshold;
+			const thresholdY = threshold === void 0 ? null : Math.min(CHART_H - PAD, Math.max(PAD, yAt(threshold)));
+			const overThreshold = threshold !== void 0 && latest !== null && latest.value > threshold;
 			const readout = hover !== null && visible[hover] !== void 0 ? `${shortDate(visible[hover].ts)} · ${metric.format(visible[hover].value)}` : latest !== null ? `最新 ${metric.format(latest.value)}` : "暂无采样";
 			const footer = /* @__PURE__ */ (0, react_jsx_runtime.jsxs)(react_jsx_runtime.Fragment, { children: [
 				zoomed && /* @__PURE__ */ (0, react_jsx_runtime.jsx)(Button, {
@@ -2189,9 +2208,26 @@ window.__ModuleLoader__.load({
 									onClick: () => setDays(range.days),
 									children: range.label
 								}, range.days))
-							}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+							}), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
 								className: "bc-trend-readout",
-								children: readout
+								children: [
+									change !== null && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
+										className: `bc-trend-delta${metric.badWhen === "up" && change.delta > 0 ? " bc-trend-delta-bad" : ""}`,
+										title: change.older ? "与 24 小时前的采样点比较" : "窗口不足 24 小时，与窗口首点比较",
+										children: [
+											change.older ? "24h" : "窗口",
+											" ",
+											change.delta > 0 ? "+" : "",
+											metric.format(change.delta),
+											change.percent === null ? "" : `（${change.percent > 0 ? "+" : ""}${change.percent.toFixed(1)}%）`
+										]
+									}),
+									overThreshold && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+										className: "bc-trend-delta bc-trend-delta-bad",
+										children: "超告警"
+									}),
+									readout
+								]
 							})]
 						}),
 						/* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
@@ -2216,6 +2252,19 @@ window.__ModuleLoader__.load({
 										d: area,
 										className: "bc-trend-area"
 									}),
+									threshold !== void 0 && thresholdY !== null && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)(react_jsx_runtime.Fragment, { children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("line", {
+										x1: 0,
+										x2: CHART_W,
+										y1: thresholdY,
+										y2: thresholdY,
+										className: "bc-trend-threshold",
+										vectorEffect: "non-scaling-stroke"
+									}), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("text", {
+										x: 8,
+										y: thresholdY - 4,
+										className: "bc-trend-threshold-label",
+										children: ["告警线 ", metric.format(threshold)]
+									})] }),
 									count > 1 && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("path", {
 										d: line,
 										className: "bc-trend-line",
@@ -2256,7 +2305,7 @@ window.__ModuleLoader__.load({
 							children: [
 								"数据不足：当前窗口只有 ",
 								count,
-								" 个采样点。管理器每 6 小时采一次，攒两次就会有折线。"
+								" 个采样点。管理器每小时采一次，攒两次就会有折线。"
 							]
 						}) : /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
 							className: "bc-trend-hint",
@@ -2631,7 +2680,9 @@ window.__ModuleLoader__.load({
 				key: "db_size_mb",
 				label: "数据库",
 				unit: "MB",
-				format: (value) => formatMegabytes(value)
+				format: (value) => formatMegabytes(value),
+				threshold: 800,
+				badWhen: "up"
 			},
 			{
 				key: "edges",
@@ -2655,7 +2706,9 @@ window.__ModuleLoader__.load({
 				key: "failure_edges",
 				label: "失败边",
 				unit: "条",
-				format: (value) => formatCount(value)
+				format: (value) => formatCount(value),
+				threshold: 300,
+				badWhen: "up"
 			}
 		];
 		/** 按 key 取指标定义。 */
@@ -2919,6 +2972,25 @@ window.__ModuleLoader__.load({
   fill: color-mix(in srgb, var(--dsw-alias-brand-primary) 8%, transparent);
   stroke: none;
 }
+.bc-trend-threshold {
+  stroke: color-mix(in srgb, var(--dsw-alias-state-warning-primary, #e0b341) 80%, transparent);
+  stroke-width: 1;
+  stroke-dasharray: 4 4;
+}
+.bc-trend-threshold-label {
+  fill: color-mix(in srgb, var(--dsw-alias-state-warning-primary, #e0b341) 85%, transparent);
+  font-size: 10px;
+}
+.bc-trend-delta {
+  margin-right: 8px;
+  font-variant-numeric: tabular-nums;
+  color: var(--dsw-alias-label-secondary);
+}
+.bc-trend-delta-bad {
+  color: var(--dsw-alias-state-error-primary, #e35d6a);
+  font-weight: 600;
+}
+
 .bc-trend-guide {
   stroke: var(--dsw-alias-border-l4);
   stroke-width: 1;

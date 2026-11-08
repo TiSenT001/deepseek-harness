@@ -253,6 +253,25 @@ const STYLES = `
   fill: color-mix(in srgb, var(--dsw-alias-brand-primary) 8%, transparent);
   stroke: none;
 }
+.bc-trend-threshold {
+  stroke: color-mix(in srgb, var(--dsw-alias-state-warning-primary, #e0b341) 80%, transparent);
+  stroke-width: 1;
+  stroke-dasharray: 4 4;
+}
+.bc-trend-threshold-label {
+  fill: color-mix(in srgb, var(--dsw-alias-state-warning-primary, #e0b341) 85%, transparent);
+  font-size: 10px;
+}
+.bc-trend-delta {
+  margin-right: 8px;
+  font-variant-numeric: tabular-nums;
+  color: var(--dsw-alias-label-secondary);
+}
+.bc-trend-delta-bad {
+  color: var(--dsw-alias-state-error-primary, #e35d6a);
+  font-weight: 600;
+}
+
 .bc-trend-guide {
   stroke: var(--dsw-alias-border-l4);
   stroke-width: 1;

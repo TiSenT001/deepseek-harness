@@ -91,6 +91,10 @@ await page.route('**/units/restart-batch', (r) => r.fulfill({ status: 200, conte
 await page.route('**/units/*/start', (r) => r.fulfill({ status: 200, contentType: 'application/json', body: '{"ok":true}' }))
 await page.route('**/units/*/stop', (r) => r.fulfill({ status: 200, contentType: 'application/json', body: '{"ok":true}' }))
 await page.route('**/units/*/restart', (r) => r.fulfill({ status: 200, contentType: 'application/json', body: '{"ok":true}' }))
+await page.route('**/quality/failed-edges/ignore', (r) => r.fulfill({ status: 200, contentType: 'application/json', body: '{"ok":true,"ignored":0}' }))
+await page.route('**/quality/failed-edges/unignore', (r) => r.fulfill({ status: 200, contentType: 'application/json', body: '{"ok":true,"ignored":0}' }))
+await page.route('**/embed/start', (r) => r.fulfill({ status: 200, contentType: 'application/json', body: '{"ok":true}' }))
+await page.route('**/embed/cancel', (r) => r.fulfill({ status: 200, contentType: 'application/json', body: '{"ok":true}' }))
 
 /** 等卡片出现；管理器刚好在重启时（另一个窗口改后端）等一等再判失败。 */
 const waitForCards = async (timeout = 8000) => {
@@ -239,6 +243,52 @@ try {
     if (!(await menu.count())) throw new Error('菜单没弹出')
     await closeOverlay()
     return '已弹出'
+  })
+
+  await soft('⋯ 菜单含索引与诊断入口', async () => {
+    await page.locator('.bc-header').getByRole('button', { name: '更多操作' }).click()
+    await page.waitForTimeout(500)
+    const texts = await page.locator('[role="menu"]').innerText().catch(() => '')
+    const need = ['索引与嵌入状态', '下载诊断包']
+    const missing = need.filter((k) => !texts.includes(k))
+    if (missing.length) {
+      await closeOverlay()
+      throw new Error(`缺 ${missing.join('/')}`)
+    }
+    await closeOverlay()
+    return need.join(' / ')
+  })
+
+  await soft('索引与嵌入状态对话框能打开', async () => {
+    await page.locator('.bc-header').getByRole('button', { name: '更多操作' }).click()
+    await page.waitForTimeout(400)
+    await page.locator('[role="menu"]').getByText('索引与嵌入状态…').click()
+    await page.waitForTimeout(1500)
+    const dialog = page.getByRole('dialog')
+    if (!(await dialog.count())) throw new Error('对话框没打开')
+    const text = await dialog.innerText()
+    const need = ['笔记向量', '分块索引', '手动补嵌']
+    const missing = need.filter((k) => !text.includes(k))
+    const rows = await dialog.locator('.bc-index-row').count()
+    await closeOverlay()
+    if (missing.length) throw new Error(`缺 ${missing.join('/')}`)
+    if (rows === 0) throw new Error('没有任何覆盖行')
+    return `${rows} 行覆盖`
+  })
+
+  await soft('趋势图含 24h 变化与告警线', async () => {
+    const kpi = page.locator('.bc-kpi-action', { hasText: '失败边' }).first()
+    if (!(await kpi.count())) throw new Error('没有可点的「失败边」指标')
+    await kpi.click()
+    await page.waitForTimeout(1500)
+    const dialog = page.getByRole('dialog')
+    if (!(await dialog.count())) throw new Error('对话框没打开')
+    const delta = await dialog.locator('.bc-trend-delta').count()
+    const threshold = await dialog.locator('.bc-trend-threshold').count()
+    await closeOverlay()
+    if (delta === 0) throw new Error('没有 24h 变化读数')
+    if (threshold === 0) throw new Error('没有告警线')
+    return `24h 变化 ${delta} 处 · 告警线 ${threshold} 条`
   })
 
   record('运行期间无 pageerror', pageErrors.length === 0, pageErrors.join(' | ').slice(0, 200))

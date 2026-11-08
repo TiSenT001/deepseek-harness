@@ -145,6 +145,29 @@ export function TrendDialog({ metric, points, onOpenFailed, onClose }: TrendDial
 
   const latest = count > 0 ? visible[count - 1] ?? null : null
   const first = visible[0]
+
+  // 24h 变化：取窗口内距现在最近、且不晚于 24h 前的那个点做基准；
+  // 窗口更短（例如刚攒了 2 个小时的点）时退回窗口首点，并标记「基准不足 24h」。
+  const change = (() => {
+    if (latest === null || count < 2) return null
+    const cutoff = Date.now() - 86400000
+    let base = visible[0]!
+    let older = false
+    for (const point of visible) {
+      if (parseTs(point.ts) <= cutoff) {
+        base = point
+        older = true
+      }
+    }
+    const delta = latest.value - base.value
+    const percent = base.value === 0 ? null : (delta / base.value) * 100
+    return { delta, percent, older }
+  })()
+
+  // 阈值线：超出可视范围时夹到上下边，标签仍然显示，避免线消失让人以为没阈值。
+  const threshold = metric.threshold
+  const thresholdY = threshold === undefined ? null : Math.min(CHART_H - PAD, Math.max(PAD, yAt(threshold)))
+  const overThreshold = threshold !== undefined && latest !== null && latest.value > threshold
   const readout = hover !== null && visible[hover] !== undefined
     ? `${shortDate(visible[hover].ts)} · ${metric.format(visible[hover].value)}`
     : latest !== null
@@ -184,7 +207,19 @@ export function TrendDialog({ metric, points, onOpenFailed, onClose }: TrendDial
               </Button>
             ))}
           </div>
-          <span className="bc-trend-readout">{readout}</span>
+          <span className="bc-trend-readout">
+            {change !== null && (
+              <span
+                className={`bc-trend-delta${(metric.badWhen === 'up' && change.delta > 0) ? ' bc-trend-delta-bad' : ''}`}
+                title={change.older ? '与 24 小时前的采样点比较' : '窗口不足 24 小时，与窗口首点比较'}
+              >
+                {change.older ? '24h' : '窗口'} {change.delta > 0 ? '+' : ''}{metric.format(change.delta)}
+                {change.percent === null ? '' : `（${change.percent > 0 ? '+' : ''}${change.percent.toFixed(1)}%）`}
+              </span>
+            )}
+            {overThreshold && <span className="bc-trend-delta bc-trend-delta-bad">超告警</span>}
+            {readout}
+          </span>
         </div>
 
         <div
@@ -200,6 +235,17 @@ export function TrendDialog({ metric, points, onOpenFailed, onClose }: TrendDial
         >
           <svg viewBox={`0 0 ${CHART_W} ${CHART_H}`} width="100%" height="170" preserveAspectRatio="none" role="img" aria-label={`${metric.label}趋势图`}>
             {count > 1 && <path d={area} className="bc-trend-area" />}
+            {threshold !== undefined && thresholdY !== null && (
+              <>
+                <line
+                  x1={0} x2={CHART_W} y1={thresholdY} y2={thresholdY}
+                  className="bc-trend-threshold" vectorEffect="non-scaling-stroke"
+                />
+                <text x={8} y={thresholdY - 4} className="bc-trend-threshold-label">
+                  告警线 {metric.format(threshold)}
+                </text>
+              </>
+            )}
             {count > 1 && <path d={line} className="bc-trend-line" vectorEffect="non-scaling-stroke" />}
             {hover !== null && visible[hover] !== undefined && (
               <>
@@ -221,7 +267,7 @@ export function TrendDialog({ metric, points, onOpenFailed, onClose }: TrendDial
 
         {count < 2 ? (
           <div className="bc-trend-empty">
-            数据不足：当前窗口只有 {count} 个采样点。管理器每 6 小时采一次，攒两次就会有折线。
+            数据不足：当前窗口只有 {count} 个采样点。管理器每小时采一次，攒两次就会有折线。
           </div>
         ) : (
           <div className="bc-trend-hint">滚轮缩放 · 拖拽平移 · 双击重置</div>
