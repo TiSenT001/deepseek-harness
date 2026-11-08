@@ -108,6 +108,25 @@ async function whenImagesReady(win: Window): Promise<void> {
 }
 
 /**
+ * Build the standalone HTML document for one article. The Host's PDF route
+ * renders this same document, so print and export cannot drift apart.
+ * @param element - the rendered note article.
+ * @param title - document title.
+ * @param options - page box choices.
+ * @returns a complete HTML document.
+ */
+export function printDocumentHtml(element: HTMLElement, title: string, options: PrintOptions = {}): string {
+  const copy = element.cloneNode(true) as HTMLElement
+  // Buttons in the reading view are chrome, not note content.
+  for (const button of [...copy.querySelectorAll('button')]) button.remove()
+  const escaped = title.replace(/[&<>"]/g, (character) => {
+    const map: Readonly<Record<string, string>> = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }
+    return map[character] ?? character
+  })
+  return `<!doctype html><html><head><meta charset="utf-8"><title>${escaped}</title><style>${PRINT_CSS}${pageRule(options)}</style></head><body>${copy.outerHTML}</body></html>`
+}
+
+/**
  * Open the print window for one element.
  * @param element - the rendered note article.
  * @param title - document title for the print job.

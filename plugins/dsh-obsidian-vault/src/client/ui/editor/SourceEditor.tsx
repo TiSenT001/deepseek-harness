@@ -7,6 +7,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { Translate } from '../../i18n.ts'
 import { ApiError, fetchFile, saveNote, writeAsset } from '../../api.ts'
+import { appendImageToCanvas, createCanvasWithImage } from '../canvas-link.ts'
+import { ImageInsertDialog, type ImageInsertMode } from '../ImageInsertDialog.tsx'
 import { css } from '../theme.ts'
 import { markdownTokens, tokenClass } from './markdown-tokens.ts'
 import {
@@ -86,6 +88,8 @@ export function SourceEditor({ t, path, text, mtime, onReading, onSaved }: Sourc
   const [active, setActive] = useState(0)
   /** True while pasted images are being stored; the caret waits in place. */
   const [uploading, setUploading] = useState(false)
+  /** Images waiting for the placement dialog. */
+  const [pendingFiles, setPendingFiles] = useState<readonly File[] | undefined>()
   const findInput = useRef<HTMLInputElement | null>(null)
   const matches = useMemo<Match[]>(() => findMatches(draft, query), [draft, query])
 
@@ -160,16 +164,32 @@ export function SourceEditor({ t, path, text, mtime, onReading, onSaved }: Sourc
     reader.readAsDataURL(file)
   }), [t])
 
-  /** Store pasted images in the vault and embed them at the caret. */
+  /** Queue pasted images; the placement dialog asks where they should live. */
   const uploadImages = useCallback((files: readonly File[]): void => {
     const images = files.filter(file => file.type.startsWith('image/'))
     if (images.length === 0) return
+    setPendingFiles(images)
+  }, [])
+
+  /** Store the queued images and embed them at the caret. */
+  const applyInsert = useCallback((mode: ImageInsertMode): void => {
+    const files = pendingFiles ?? []
+    setPendingFiles(undefined)
+    if (files.length === 0) return
     setUploading(true)
     void (async () => {
       try {
-        for (const file of images) {
-          const path = await writeAsset(file.name, await readDataUrl(file))
-          insertAtCursor(`\n![[${path}]]\n`)
+        for (const file of files) {
+          const dataUrl = await readDataUrl(file)
+          const alt = file.name.replace(/\.[^.]+$/, '')
+          if (mode.kind === 'file') {
+            insertAtCursor(`\n![[${await writeAsset(file.name, dataUrl)}]]\n`)
+            continue
+          }
+          const placed = mode.kind === 'new-canvas'
+            ? await createCanvasWithImage(mode.name, file.name, dataUrl)
+            : await appendImageToCanvas(mode.path, file.name, dataUrl)
+          insertAtCursor(`\n![${alt}](${placed.link})\n`)
         }
       } catch (cause) {
         setState({ kind: 'error', message: cause instanceof Error ? cause.message : t('imageUploadFailed') })
@@ -177,7 +197,7 @@ export function SourceEditor({ t, path, text, mtime, onReading, onSaved }: Sourc
         setUploading(false)
       }
     })()
-  }, [insertAtCursor, readDataUrl, t])
+  }, [insertAtCursor, pendingFiles, readDataUrl, t])
 
   const reload = useCallback((): void => {
     void fetchFile(path)
@@ -441,6 +461,17 @@ export function SourceEditor({ t, path, text, mtime, onReading, onSaved }: Sourc
               ? t('unsaved')
               : t('editorHint')}
       </div>
+      {pendingFiles === undefined
+        ? null
+        : (
+          <ImageInsertDialog
+            t={t}
+            count={pendingFiles.length}
+            defaultName={`${path.split('/').pop()?.replace(/\.md$/i, '') ?? '笔记'}-图片`}
+            onCancel={() => setPendingFiles(undefined)}
+            onConfirm={applyInsert}
+          />
+        )}
     </div>
   )
 }

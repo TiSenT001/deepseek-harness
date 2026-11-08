@@ -27,6 +27,7 @@ import { headingAnchor } from '../../vault/syntax.ts'
 import { Callout } from './Callout.tsx'
 import { printNote } from './printNote.ts'
 import { PrintDialog } from './PrintDialog.tsx'
+import { exportPdf } from '../pdf-export.ts'
 import { css } from './theme.ts'
 
 /** A ref object without depending on a specific React typings generation. */
@@ -75,6 +76,8 @@ export function NoteView({
   const [embeds, setEmbeds] = useState<ReadonlyMap<string, string>>(new Map())
   const [inlineBacklinks, toggleInlineBacklinks] = useInlineBacklinks()
   const [printOpen, setPrintOpen] = useState(false)
+  /** Last PDF export failure; cleared on the next attempt. */
+  const [pdfError, setPdfError] = useState<string | undefined>()
   const bodyRef = useRef<HTMLDivElement>(null)
   const articleRef = useRef<HTMLElement | null>(null)
   const { preview, show: showPreview, hide: hidePreview } = useHoverPreview()
@@ -229,6 +232,7 @@ export function NoteView({
 
   return (
     <article className={css.note} ref={articleRef}>
+      {pdfError === undefined ? null : <div className={css.banner}>{pdfError}</div>}
       <NoteHeader
         t={t}
         note={note}
@@ -297,10 +301,18 @@ export function NoteView({
           <PrintDialog
             t={t}
             onCancel={() => setPrintOpen(false)}
-            onConfirm={(options) => {
+            onConfirm={(action, options) => {
               setPrintOpen(false)
               const article = articleRef.current
-              if (article !== null) printNote(article, note.title, options)
+              if (article === null) return
+              if (action === 'print') {
+                printNote(article, note.title, options)
+                return
+              }
+              setPdfError(undefined)
+              void exportPdf(article, note.title, options).catch((cause: unknown) => {
+                setPdfError(cause instanceof Error ? cause.message : t('pdfFailed'))
+              })
             }}
           />
         )

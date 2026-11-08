@@ -171,6 +171,7 @@ export const css = {
   selectMenu: 'ov-select-menu',
   selectOption: 'ov-select-option',
   selectCheck: 'ov-select-check',
+  imageChoice: 'ov-image-choice',
   callout: 'ov-callout',
   calloutHead: 'ov-callout-head',
   calloutTitle: 'ov-callout-title',

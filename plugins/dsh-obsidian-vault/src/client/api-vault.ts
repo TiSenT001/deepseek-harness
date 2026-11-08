@@ -47,13 +47,14 @@ export function assetUrl(path: string, download = false): string {
  * Store one pasted image inside the vault.
  * @param name - original file name; the Host derives the stem from it.
  * @param dataUrl - the image as a base64 data URL.
+ * @param folder - vault-relative folder; defaults to the Host's attachment folder.
  * @returns the vault-relative path the image was written to.
  */
-export async function writeAsset(name: string, dataUrl: string): Promise<string> {
+export async function writeAsset(name: string, dataUrl: string, folder?: string): Promise<string> {
   const dto = await request<{ path: string }>('asset/write', {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ name, data: dataUrl }),
+    body: JSON.stringify({ name, data: dataUrl, ...(folder === undefined ? {} : { folder }) }),
   })
   return dto.path
 }

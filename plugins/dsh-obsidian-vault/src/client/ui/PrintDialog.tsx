@@ -17,7 +17,7 @@ import { css } from './theme.ts'
 export interface PrintDialogProps {
   readonly t: Translate
   readonly onCancel: () => void
-  readonly onConfirm: (options: PrintOptions) => void
+  readonly onConfirm: (action: 'print' | 'pdf', options: PrintOptions) => void
 }
 
 /**
@@ -91,8 +91,11 @@ export function PrintDialog({ t, onCancel, onConfirm }: PrintDialogProps): JSX.E
             />
           </SettingsRow>
           <div className={css.settingsActions}>
-            <button type="button" className={css.dialogButton} onClick={() => onConfirm({ paper, orientation, margins })}>
+            <button type="button" className={css.dialogButton} onClick={() => onConfirm('print', { paper, orientation, margins })}>
               {t('print')}
+            </button>
+            <button type="button" className={css.dialogButton} onClick={() => onConfirm('pdf', { paper, orientation, margins })}>
+              {t('exportPdf')}
             </button>
             <button type="button" className={css.button} onClick={onCancel}>
               {t('cancel')}

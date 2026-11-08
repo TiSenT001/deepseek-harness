@@ -212,6 +212,8 @@ button.ov-plugin-info {
 .ov-settings-unit { font-size: 11px; color: var(--dsw-alias-label-tertiary, #8b8b94); }
 .ov-settings-hint { font-size: 10.5px; color: var(--dsw-alias-label-tertiary, #8b8b94); }
 .ov-settings-actions { display: flex; align-items: center; gap: 8px; margin-top: 4px; }
+.ov-image-choice { display: flex; align-items: center; gap: 8px; padding: 3px 0; font-size: 12px; cursor: pointer; }
+.ov-image-choice input { margin: 0; }
 .ov-flash { animation: ov-flash 1.6s ease-out; }
 @keyframes ov-flash {
   0% { background: rgba(77, 107, 254, .3); }

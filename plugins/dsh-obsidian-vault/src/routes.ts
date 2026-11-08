@@ -16,6 +16,7 @@ import { serveConfigRoute } from './config-endpoints.ts'
 import { servePluginRoute } from './plugin-endpoints.ts'
 import { VaultFiles } from './vault/files.ts'
 import { planAssetWrite } from './vault/asset-write.ts'
+import { renderPdf } from './pdf-export.ts'
 import { resolvePurImage } from './vault/pur-image.ts'
 import { PACKAGE_ROOT, PLUGIN_DATA_FOLDER, PUR_ASSETS_FOLDER, SETTINGS_FILE } from './package-root.ts'
 import { launchProgram, listOpenPrograms, resolveOpenTarget } from './system-open.ts'
@@ -272,6 +273,44 @@ async function dispatch(
       const root = registry.active()?.path ?? registry.vault.status().root
       await new VaultFiles(root).writeBytes(plan.path, plan.bytes)
       send(response, 200, { path: plan.path })
+      return
+    }
+    case 'pdf': {
+      // Export path: render the same standalone document the print window shows.
+      if (request.method !== 'POST') {
+        send(response, 405, { error: 'POST required' })
+        return
+      }
+      const body = await readJson(request)
+      const html = typeof body['html'] === 'string' ? body['html'] : ''
+      if (html.length === 0) {
+        send(response, 400, { error: 'html is required' })
+        return
+      }
+      const host = request.headers.host ?? '127.0.0.1:3080'
+      const origin = host.startsWith('http') ? host : `http://${host}`
+      const paper = typeof body['paper'] === 'string' ? body['paper'] : undefined
+      const orientation = body['orientation'] === 'portrait' || body['orientation'] === 'landscape'
+        ? body['orientation']
+        : undefined
+      const margins = body['margins'] === 'default' || body['margins'] === 'narrow' || body['margins'] === 'none'
+        ? body['margins']
+        : undefined
+      const pdf = await renderPdf(html, request.headers.cookie, origin, {
+        ...(paper === undefined ? {} : { paper }),
+        ...(orientation === undefined ? {} : { orientation }),
+        ...(margins === undefined ? {} : { margins }),
+      })
+      if (pdf === undefined) {
+        send(response, 501, { error: 'pdf renderer unavailable' })
+        return
+      }
+      response.writeHead(200, {
+        'content-type': 'application/pdf',
+        'content-disposition': 'attachment; filename="note.pdf"',
+        'cache-control': 'no-store',
+      })
+      response.end(pdf)
       return
     }
     case 'pur/embedders': {
