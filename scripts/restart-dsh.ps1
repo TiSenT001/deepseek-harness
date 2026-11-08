@@ -28,6 +28,8 @@
 #>
 [CmdletBinding()]
 param(
+  # 知识库根目录：给宿主插件的 BRAIN_ROOT 用；空字符串表示不设置
+  [string]$BrainRoot = 'G:\个人知识库\.brain',
   [switch]$NoKill,
   [switch]$DryRun,
   # GUI 终端的默认起始目录。DSH 的终端控制器优先读这个环境变量；
@@ -109,6 +111,12 @@ Write-Log 'port 3080 free, starting server'
 # 3) 拉起新服务器并等 URL
 $env:PATH = $NodeDir + ';' + $PnpmDir + ';' + $env:PATH
 # GUI 终端默认起在 $TerminalCwd（终端控制器优先读这个变量）
+# 宿主插件 dsh-brain-console 靠 BRAIN_ROOT 定位 .brain（面板的「启动管理器」路由）；
+# 从别的 shell / 调度器重启时这个变量常常不在，统一在脚本里兜住。
+if ($BrainRoot -ne '') {
+  $env:BRAIN_ROOT = $BrainRoot
+  if (-not $env:OBSIDIAN_VAULT) { $env:OBSIDIAN_VAULT = Split-Path -Parent $BrainRoot }
+}
 if ($TerminalCwd -ne '') { $env:DSH_TERMINAL_CWD = $TerminalCwd }
 Write-Log ('terminal cwd: ' + $env:DSH_TERMINAL_CWD)
 $url = $null
