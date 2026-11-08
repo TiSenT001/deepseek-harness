@@ -6,7 +6,7 @@
  * Layout changes are allowed, but they must be re-recorded and reviewed as a diff.
  *
  * Usage:
- *   node --experimental-strip-types scripts/regen-goldens.mjs [--suite all|controller|menu|render|geometry] [--scenario <substring>]
+ *   node --experimental-strip-types scripts/regen-expected.mjs [--suite all|controller|menu|render|geometry] [--scenario <substring>]
  *
  * Suites:
  *   controller  replay CONTROLLER_SCENARIOS and rewrite every step snapshot.
@@ -14,7 +14,7 @@
  *   render      render traces from RENDER_INPUTS (canvas calls + image loads).
  *   geometry    pin offsets, pin world positions, pin hit tests and line endpoints.
  *
- * The replay helpers come from tests/helpers/golden-harness.ts, the same module the
+ * The replay helpers come from tests/helpers/expected-harness.ts, the same module the
  * tests use, so a re-record cannot drift from what the tests compare against.
  */
 import { readFileSync, writeFileSync } from 'node:fs'
@@ -23,22 +23,22 @@ import { fileURLToPath } from 'node:url'
 const root = new URL('../', import.meta.url)
 const load = async (relative) => import(new URL(relative, root).href)
 
-const { CONTROLLER_SCENARIOS, MENU_SCENARIOS } = await load('tests/helpers/pur-controller-golden.ts')
-const { RENDER_INPUTS } = await load('tests/helpers/pur-render-golden.ts')
+const { CONTROLLER_SCENARIOS, MENU_SCENARIOS } = await load('tests/helpers/pur-controller-expected.ts')
+const { RENDER_INPUTS } = await load('tests/helpers/pur-render-expected.ts')
 const {
   GEOMETRY_ELEMENTS,
   GOLDEN_PIN_WORLD,
   GOLDEN_PIN_OFFSETS,
   GOLDEN_PIN_AT,
   GOLDEN_LINE_ENDPOINT_AT,
-} = await load('tests/helpers/pur-geometry-golden.ts')
-const { replayScenario, replayMenu } = await load('tests/helpers/golden-harness.ts')
+} = await load('tests/helpers/pur-geometry-expected.ts')
+const { replayScenario, replayMenu } = await load('tests/helpers/expected-harness.ts')
 const { drawScene, pinPosition, pinWorldPosition, pinAt, lineEndpointAt } = await load('src/pur-kernel/index.ts')
 const { RenderRecorder } = await load('tests/helpers/pur-render-recorder.ts')
 
-const controllerPath = fileURLToPath(new URL('tests/helpers/pur-controller-golden.ts', root))
-const renderPath = fileURLToPath(new URL('tests/helpers/pur-render-golden.ts', root))
-const geometryPath = fileURLToPath(new URL('tests/helpers/pur-geometry-golden.ts', root))
+const controllerPath = fileURLToPath(new URL('tests/helpers/pur-controller-expected.ts', root))
+const renderPath = fileURLToPath(new URL('tests/helpers/pur-render-expected.ts', root))
+const geometryPath = fileURLToPath(new URL('tests/helpers/pur-geometry-expected.ts', root))
 
 /**
  * Locate the array literal assigned to an exported constant.

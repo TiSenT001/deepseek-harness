@@ -25,7 +25,7 @@ import {
   GOLDEN_PIN_WORLD,
   GOLDEN_WORLD_RECTS,
   GOLDEN_WRAP,
-} from './helpers/pur-geometry-golden.ts'
+} from './helpers/pur-geometry-expected.ts'
 
 /** Width the upstream run measured: ten units per code point. */
 const measure = (text: string): number => [...text].length * 10

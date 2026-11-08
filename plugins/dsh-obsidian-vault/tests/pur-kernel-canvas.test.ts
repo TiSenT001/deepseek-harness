@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { elementsToJsonCanvas, jsonCanvasToElements, PUR_META, PurDocumentError } from '../src/pur-kernel/index.ts'
 import type { PurElement, PurTextElement } from '../src/pur-kernel/index.ts'
-import { GOLDEN_CANVAS, GOLDEN_ELEMENTS, GOLDEN_IMPORTED, GOLDEN_LEGACY_ELEMENTS } from './helpers/pur-golden.ts'
+import { GOLDEN_CANVAS, GOLDEN_ELEMENTS, GOLDEN_IMPORTED, GOLDEN_LEGACY_ELEMENTS } from './helpers/pur-expected.ts'
 
 test('exports the upstream JSON Canvas document', () => {
   assert.deepEqual(elementsToJsonCanvas(GOLDEN_ELEMENTS), GOLDEN_CANVAS)

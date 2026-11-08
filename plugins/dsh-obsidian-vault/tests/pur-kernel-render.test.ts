@@ -7,8 +7,8 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { drawScene } from '../src/pur-kernel/index.ts'
 import type { PurRenderLabels, PurScene } from '../src/pur-kernel/index.ts'
-import { GOLDEN_RENDER, RENDER_INPUTS } from './helpers/pur-render-golden.ts'
-import type { RenderSceneInput } from './helpers/pur-render-golden.ts'
+import { GOLDEN_RENDER, RENDER_INPUTS } from './helpers/pur-render-expected.ts'
+import type { RenderSceneInput } from './helpers/pur-render-expected.ts'
 import { RenderRecorder } from './helpers/pur-render-recorder.ts'
 
 /** Copy the adapter supplies in place of upstream's hardcoded strings. */

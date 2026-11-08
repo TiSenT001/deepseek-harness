@@ -22,7 +22,7 @@
     "build": "tsdown --config tsdown.config.ts && tsdown --config tsdown.popout.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "node --test --experimental-strip-types \"tests/**/*.test.ts\"",
-    "regen:goldens": "node --experimental-strip-types scripts/regen-goldens.mjs",
+    "regen:expected": "node --experimental-strip-types scripts/regen-expected.mjs",
     "bench:large": "node --experimental-strip-types scripts/pur-large-doc-bench.mjs",
     "check:boundaries": "node scripts/check-boundaries.mjs",
     "bench:vault": "node --experimental-strip-types scripts/vault-scale-bench.mjs",

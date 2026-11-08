@@ -6,6 +6,8 @@
  * 点数不足时明确提示「数据不足」，不画一条假线。失败边指标额外给一个「查看明细」入口。
  */
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { loadTrendThresholds, saveTrendThreshold } from '../api.ts'
+import { reasonOf } from './errors.ts'
 import { Button, Modal } from './primitives.ts'
 import type { MetricSpec } from './metrics.ts'
 import { parseTs, shortDate } from './time.ts'
@@ -50,6 +52,10 @@ export function TrendDialog({ metric, points, onOpenFailed, onClose }: TrendDial
   const [days, setDays] = useState(30)
   const [hover, setHover] = useState<number | null>(null)
   const [zoom, setZoom] = useState<{ start: number; end: number } | null>(null)
+  const [limits, setLimits] = useState<Record<string, number | null> | null>(null)
+  const [limitOpen, setLimitOpen] = useState(false)
+  const [draft, setDraft] = useState('')
+  const [limitError, setLimitError] = useState<string | null>(null)
   const chartRef = useRef<HTMLDivElement | null>(null)
   const dragRef = useRef<{ x: number; start: number; end: number } | null>(null)
 
@@ -104,11 +110,42 @@ export function TrendDialog({ metric, points, onOpenFailed, onClose }: TrendDial
     return () => element.removeEventListener('wheel', handleWheel)
   }, [total, view.start, view.end])
 
+  // 阈值从管理器读（面板可改，跨会话保留）；读不到就用指标自带的默认值。
+  useEffect(() => {
+    void (async () => {
+      try {
+        setLimits((await loadTrendThresholds()).thresholds)
+      } catch {
+        setLimits(null)
+      }
+    })()
+  }, [])
+
   // 切窗口/换指标时重置缩放和悬停，避免窗口对不上
   useEffect(() => {
     setZoom(null)
     setHover(null)
   }, [days, metric.key])
+
+  const saveLimit = async (clear: boolean): Promise<void> => {
+    const value = clear ? null : Number(draft)
+    if (!clear && (draft.trim() === '' || !Number.isFinite(value) || (value as number) <= 0)) {
+      setLimitError('请输入正数')
+      return
+    }
+    try {
+      const result = await saveTrendThreshold(metric.key, value)
+      if (!result.ok) {
+        setLimitError(result.error ?? '保存失败')
+        return
+      }
+      if (result.thresholds !== undefined) setLimits(result.thresholds)
+      setLimitOpen(false)
+      setLimitError(null)
+    } catch (e) {
+      setLimitError(reasonOf(e))
+    }
+  }
 
   const handleMove = (event: React.MouseEvent<HTMLDivElement>): void => {
     if (count === 0) return
@@ -170,8 +207,9 @@ export function TrendDialog({ metric, points, onOpenFailed, onClose }: TrendDial
     return { delta, percent, label: older ? '24h' : '较上次' }
   })()
 
-  // 阈值线：超出可视范围时夹到上下边，标签仍然显示，避免线消失让人以为没阈值。
-  const threshold = metric.threshold
+  // 阈值线：面板里设置的值优先于指标默认值；null 表示不画。
+  const configured = limits !== null && metric.key in limits ? limits[metric.key] : metric.threshold
+  const threshold = configured ?? undefined
   const thresholdY = threshold === undefined ? null : Math.min(CHART_H - PAD, Math.max(PAD, yAt(threshold)))
   const overThreshold = threshold !== undefined && latest !== null && latest.value > threshold
   const readout = hover !== null && visible[hover] !== undefined
@@ -213,6 +251,13 @@ export function TrendDialog({ metric, points, onOpenFailed, onClose }: TrendDial
               </Button>
             ))}
           </div>
+          <Button size="sm" variant="ghost" onClick={() => {
+            setLimitOpen((open) => !open)
+            setDraft(threshold === undefined ? '' : String(threshold))
+            setLimitError(null)
+          }}>
+            阈值
+          </Button>
           <span className="bc-trend-readout">
             {change !== null && (
               <span
@@ -227,6 +272,23 @@ export function TrendDialog({ metric, points, onOpenFailed, onClose }: TrendDial
             {readout}
           </span>
         </div>
+
+        {limitOpen && (
+          <div className="bc-trend-limit-row">
+            <span>告警线</span>
+            <input
+              type="number"
+              min="0"
+              className="bc-trend-limit-input"
+              value={draft}
+              placeholder={metric.threshold === undefined ? '留空 = 不画线' : String(metric.threshold)}
+              onChange={(event) => setDraft(event.target.value)}
+            />
+            <Button size="sm" variant="ghost" onClick={() => void saveLimit(false)}>保存</Button>
+            <Button size="sm" variant="ghost" onClick={() => void saveLimit(true)}>清除</Button>
+            {limitError !== null && <span className="bc-index-warn">{limitError}</span>}
+          </div>
+        )}
 
         <div
           ref={chartRef}

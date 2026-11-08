@@ -9,8 +9,8 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { PurController, createHistory, pushHistory, redoHistory, undoHistory } from '../src/pur-kernel/index.ts'
 import type { PurElement } from '../src/pur-kernel/index.ts'
-import { CONTROLLER_SCENARIOS, MENU_SCENARIOS } from './helpers/pur-controller-golden.ts'
-import { LABELS, envOf, replayMenu, runOp, snapshotOf } from './helpers/golden-harness.ts'
+import { CONTROLLER_SCENARIOS, MENU_SCENARIOS } from './helpers/pur-controller-expected.ts'
+import { LABELS, envOf, replayMenu, runOp, snapshotOf } from './helpers/expected-harness.ts'
 
 CONTROLLER_SCENARIOS.forEach((scenario) => {
   test(`controller scenario ${scenario.name} matches upstream`, () => {

@@ -25,6 +25,8 @@ export interface MoreMenuProps {
   onCaches: () => void
   /** 打开「索引与嵌入状态」对话框 */
   onIndex: () => void
+  /** 打开「自动恢复记录」对话框 */
+  onAutoRecover: () => void
   /** 下载诊断包 zip */
   onDiagnostics: () => void
   onToggleAutostart: () => void
@@ -38,7 +40,7 @@ export interface MoreMenuProps {
  * @returns 菜单入口（含锚定菜单）
  */
 export function MoreMenu({
-  autostart, busy, onBackup, onPrune, onCaches, onIndex, onDiagnostics, onToggleAutostart, onShutdown,
+  autostart, busy, onBackup, onPrune, onCaches, onIndex, onAutoRecover, onDiagnostics, onToggleAutostart, onShutdown,
 }: MoreMenuProps): JSX.Element {
   const [open, setOpen] = useState(false)
   const items: SharedMenuEntry[] = [
@@ -47,6 +49,7 @@ export function MoreMenu({
     { id: 'caches', label: '清理缓存…', disabled: busy !== null },
     { type: 'separator', id: 'index-separator' },
     { id: 'index', label: '索引与嵌入状态…', disabled: busy !== null },
+    { id: 'auto-recover', label: '自动恢复记录…', disabled: busy !== null },
     { id: 'diagnostics', label: '下载诊断包', disabled: busy !== null },
   ]
   if (autostart !== null && autostart.supported) {
@@ -66,6 +69,7 @@ export function MoreMenu({
     else if (id === 'prune') onPrune()
     else if (id === 'caches') onCaches()
     else if (id === 'index') onIndex()
+    else if (id === 'auto-recover') onAutoRecover()
     else if (id === 'diagnostics') onDiagnostics()
     else if (id === 'autostart') onToggleAutostart()
     else if (id === 'shutdown') onShutdown()

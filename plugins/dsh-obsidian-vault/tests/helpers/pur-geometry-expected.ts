@@ -1,7 +1,7 @@
 /**
  * Golden vectors captured by running the upstream Pur Studio `main.js` geometry
  * and hit-testing code. Text is measured as 10 units per code point.
- * @module dsh-obsidian-vault/tests/helpers/pur-geometry-golden
+ * @module dsh-obsidian-vault/tests/helpers/pur-geometry-expected
  */
 import type { PurElement, PurPin } from '../../src/pur-kernel/types.ts'
 import type { PurLineEndpointHit, PurPinHit } from '../../src/pur-kernel/hit-test.ts'

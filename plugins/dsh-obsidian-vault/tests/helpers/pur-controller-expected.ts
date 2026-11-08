@@ -5,7 +5,7 @@
  * Date.now() is pinned at 1000. The pin scenarios were re-recorded after the
  * code-node card moved its pin rows below the header, so their step points name
  * where the pins are actually drawn.
- * @module dsh-obsidian-vault/tests/helpers/pur-controller-golden
+ * @module dsh-obsidian-vault/tests/helpers/pur-controller-expected
  */
 import type { PurElement } from '../../src/pur-kernel/types.ts'
 

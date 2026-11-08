@@ -6,7 +6,7 @@
  */
 import type {
   BackupListing, BatchRestartResult, BatchStartResult, BatchStopResult, CacheListing, CachePruneResult,
-  EmbedJobStatus, FailedEdgesListing, HistoryListing, IndexHealth, PruneResult, RestoreResult, Unit, UnitAction,
+  AutoRecoverStatus, EmbedJobStatus, FailedEdgesListing, HistoryListing, IndexHealth, PruneResult, RestoreResult, TrendThresholds, Unit, UnitAction,
 } from './ui/types.ts'
 
 /** brain_manager 的 HTTP 地址。 */
@@ -53,6 +53,20 @@ export const loadUnits = (): Promise<{ units: Unit[] }> => jget<{ units: Unit[] 
 export const loadBackups = (): Promise<BackupListing> => jget<BackupListing>('/actions/backups')
 export const pruneBackups = (keep: number): Promise<PruneResult> =>
   postJson<PruneResult>('/actions/prune-backups', { keep })
+
+/** 趋势告警阈值。 */
+export const loadTrendThresholds = (): Promise<TrendThresholds> => jget<TrendThresholds>('/trend/thresholds')
+
+/** 设置/清除某个指标的告警阈值（value 传 null 表示不画线）。 */
+export const saveTrendThreshold = (
+  metric: string,
+  value: number | null,
+): Promise<{ ok: boolean; error?: string; thresholds?: Record<string, number | null> }> =>
+  postJson<{ ok: boolean; error?: string; thresholds?: Record<string, number | null> }>(
+    '/trend/thresholds', { metric, value })
+
+/** 自愈记录：最近 20 次自动恢复尝试。 */
+export const loadAutoRecover = (): Promise<AutoRecoverStatus> => jget<AutoRecoverStatus>('/auto-recover')
 
 /** 从备份快照恢复（停服 → 安全备份 → 覆盖 → 恢复运行）。 */
 export const restoreBackup = (name: string): Promise<RestoreResult> =>

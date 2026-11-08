@@ -1,7 +1,7 @@
 /**
  * Golden vectors captured by running the upstream Pur Studio `main.js` data
  * layer over {@link GOLDEN_ELEMENTS}. The kernel must reproduce them exactly.
- * @module dsh-obsidian-vault/tests/helpers/pur-golden
+ * @module dsh-obsidian-vault/tests/helpers/pur-expected
  */
 import type { PurCanvasDocument } from '../../src/pur-kernel/canvas-types.ts'
 import type { PurElement } from '../../src/pur-kernel/types.ts'

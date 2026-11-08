@@ -216,19 +216,19 @@ node --experimental-strip-types scripts/pur-large-doc-bench.mjs '<url>' --elemen
 
 ```sh
 # 全部重录（控制器轨迹 + 菜单树 + 渲染调用 + 引脚几何）
-npm run regen:goldens
+npm run regen:expected
 
 # 只重录某一类
-node --experimental-strip-types scripts/regen-goldens.mjs --suite controller
-node --experimental-strip-types scripts/regen-goldens.mjs --suite menu
-node --experimental-strip-types scripts/regen-goldens.mjs --suite render
-node --experimental-strip-types scripts/regen-goldens.mjs --suite geometry
+node --experimental-strip-types scripts/regen-expected.mjs --suite controller
+node --experimental-strip-types scripts/regen-expected.mjs --suite menu
+node --experimental-strip-types scripts/regen-expected.mjs --suite render
+node --experimental-strip-types scripts/regen-expected.mjs --suite geometry
 
 # 只重录名字匹配的场景（其余原样保留）
-node --experimental-strip-types scripts/regen-goldens.mjs --suite controller --scenario pin-new-line
+node --experimental-strip-types scripts/regen-expected.mjs --suite controller --scenario pin-new-line
 ```
 
-- 场景数据来自 `tests/helpers/pur-controller-golden.ts`，回放与断言共用 `tests/helpers/golden-harness.ts`，重录不会和测试逻辑分叉。
+- 场景数据来自 `tests/helpers/pur-controller-expected.ts`，回放与断言共用 `tests/helpers/expected-harness.ts`，重录不会和测试逻辑分叉。
 - 场景按「一个元素一行」的紧凑 JSON 写回（40 个控制器场景约 2.3k 行，而不是 36k），改一个字段只动一行，diff 可读。
 - 重录后必须跑 `npm test`；如果某个场景的轨迹与旧基线不同，在提交信息里写明「有意偏离」的原因。
 

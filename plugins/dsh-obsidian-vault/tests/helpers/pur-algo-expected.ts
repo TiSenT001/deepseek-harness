@@ -2,7 +2,7 @@
  * Golden vectors captured by running upstream Pur Studio's YAML reader, IR
  * importer and code generators. Generated-code strings carry the ZERO labels
  * that reproduce upstream text byte for byte.
- * @module dsh-obsidian-vault/tests/helpers/pur-algo-golden
+ * @module dsh-obsidian-vault/tests/helpers/pur-algo-expected
  */
 import type { PurCodegenCoreLabels, PurCodegenHtmlLabels, PurCodegenJavaScriptLabels, PurCodegenPythonLabels } from '../../src/pur-kernel/codegen-labels.ts'
 import type { PurElement, PurGroupElement } from '../../src/pur-kernel/types.ts'

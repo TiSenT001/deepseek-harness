@@ -285,10 +285,28 @@ try {
     if (!(await dialog.count())) throw new Error('对话框没打开')
     const delta = await dialog.locator('.bc-trend-delta').count()
     const threshold = await dialog.locator('.bc-trend-threshold').count()
+    const limitButton = await dialog.getByRole('button', { name: '阈值' }).count()
     await closeOverlay()
     if (delta === 0) throw new Error('没有 24h 变化读数')
     if (threshold === 0) throw new Error('没有告警线')
-    return `24h 变化 ${delta} 处 · 告警线 ${threshold} 条`
+    if (limitButton === 0) throw new Error('没有阈值编辑入口')
+    return `24h 变化 ${delta} 处 · 告警线 ${threshold} 条 · 阈值入口 ${limitButton}`
+  })
+
+  await soft('自动恢复记录对话框能打开', async () => {
+    await page.locator('.bc-header').getByRole('button', { name: '更多操作' }).click()
+    await page.waitForTimeout(400)
+    await page.locator('[role="menu"]').getByText('自动恢复记录…').click()
+    await page.waitForTimeout(1200)
+    const dialog = page.getByRole('dialog')
+    if (!(await dialog.count())) throw new Error('对话框没打开')
+    const text = await dialog.innerText()
+    if (!text.includes('自动恢复记录')) throw new Error(`标题不对: ${text.slice(0, 40)}`)
+    const rows = await dialog.locator('.bc-auto-row').count()
+    const empty = text.includes('没有恢复记录')
+    await closeOverlay()
+    if (rows === 0 && !empty) throw new Error('既没有记录也不是空态')
+    return `${rows} 条记录${empty ? '（空态）' : ''}`
   })
 
   record('运行期间无 pageerror', pageErrors.length === 0, pageErrors.join(' | ').slice(0, 200))

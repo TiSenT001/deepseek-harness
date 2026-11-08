@@ -86,6 +86,15 @@ window.__ModuleLoader__.load({
 		/** 备份对话框的回调做成模块级常量：引用稳定，对话框只在挂载时拉一次列表。 */
 		const loadBackups = () => jget("/actions/backups");
 		const pruneBackups = (keep) => postJson("/actions/prune-backups", { keep });
+		/** 趋势告警阈值。 */
+		const loadTrendThresholds = () => jget("/trend/thresholds");
+		/** 设置/清除某个指标的告警阈值（value 传 null 表示不画线）。 */
+		const saveTrendThreshold = (metric, value) => postJson("/trend/thresholds", {
+			metric,
+			value
+		});
+		/** 自愈记录：最近 20 次自动恢复尝试。 */
+		const loadAutoRecover = () => jget("/auto-recover");
 		/** 从备份快照恢复（停服 → 安全备份 → 覆盖 → 恢复运行）。 */
 		const restoreBackup = (name) => postJson("/actions/restore", { name });
 		/** 失败边明细：KPI 点开时读一次实时清单。 */
@@ -1200,6 +1209,158 @@ window.__ModuleLoader__.load({
 			});
 		}
 		//#endregion
+		//#region src/ui/AutoRecoverDialog.tsx
+		/**
+		* 自动恢复记录：崩溃自愈线程最近 20 次尝试的时间线。
+		*
+		* 数据来自管理器 `/auto-recover`（自愈线程每 20 秒巡视一次）；只读展示，
+		* 不做任何操作。每条记录带单元名、尝试序号、结果、退出码与诊断包路径。
+		*/
+		/** 秒级时间戳 → 本地可读时间。 */
+		function when(at) {
+			const stamp = /* @__PURE__ */ new Date(at * 1e3);
+			if (Number.isNaN(stamp.getTime())) return "—";
+			return stamp.toLocaleString("zh-CN", { hour12: false });
+		}
+		/**
+		* 渲染自愈记录对话框。
+		* @param props - 关闭回调
+		* @returns 对话框元素（挂载即拉一次，可手动刷新）
+		*/
+		function AutoRecoverDialog({ onClose }) {
+			const [status, setStatus] = (0, react.useState)(null);
+			const [error, setError] = (0, react.useState)(null);
+			const [copied, setCopied] = (0, react.useState)(false);
+			const load = async () => {
+				try {
+					setStatus(await loadAutoRecover());
+					setError(null);
+				} catch (e) {
+					setError(reasonOf(e));
+				}
+			};
+			(0, react.useEffect)(() => {
+				load();
+			}, []);
+			const events = [...status?.events ?? []].reverse();
+			const counters = Object.entries(status?.counters ?? {}).filter(([, n]) => n > 0);
+			const summary = counters.length === 0 ? "还没有发生过自动恢复" : counters.map(([unit, n]) => `${unit} × ${n}`).join(" · ");
+			const copyBundles = async () => {
+				const paths = events.map((event) => event.bundle).filter((path) => Boolean(path));
+				if (paths.length === 0) return;
+				try {
+					await navigator.clipboard.writeText(paths.join("\n"));
+					setCopied(true);
+					window.setTimeout(() => setCopied(false), 1500);
+				} catch {}
+			};
+			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)(Modal, {
+				open: true,
+				onClose,
+				title: "自动恢复记录",
+				closeLabel: "关闭",
+				description: `每小时最多 ${status?.max_per_hour ?? 3} 次 · 退避 ${(status?.backoff_s ?? [
+					30,
+					120,
+					600
+				]).join(" / ")} 秒`,
+				footer: /* @__PURE__ */ (0, react_jsx_runtime.jsxs)(react_jsx_runtime.Fragment, { children: [
+					events.some((event) => event.bundle) && /* @__PURE__ */ (0, react_jsx_runtime.jsx)(Button, {
+						size: "sm",
+						variant: "ghost",
+						onClick: () => void copyBundles(),
+						children: copied ? "已复制" : "复制诊断包路径"
+					}),
+					/* @__PURE__ */ (0, react_jsx_runtime.jsx)(Button, {
+						size: "sm",
+						variant: "ghost",
+						onClick: () => void load(),
+						children: "刷新"
+					}),
+					/* @__PURE__ */ (0, react_jsx_runtime.jsx)(Button, {
+						size: "sm",
+						variant: "ghost",
+						onClick: onClose,
+						children: "关闭"
+					})
+				] }),
+				children: [
+					error !== null && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+						className: "bc-backup-error",
+						children: error
+					}),
+					status === null && error === null && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+						className: "bc-backup-empty",
+						children: "读取中…"
+					}),
+					status !== null && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+						className: "bc-auto",
+						children: [
+							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+								className: "bc-auto-summary",
+								children: summary
+							}),
+							events.length === 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+								className: "bc-backup-empty",
+								children: "没有恢复记录——进程都在正常运行。"
+							}),
+							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("ul", {
+								className: "bc-auto-list",
+								children: events.map((event, index) => /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("li", {
+									className: "bc-auto-row",
+									"data-ok": event.ok ? "true" : "false",
+									children: [
+										/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+											className: "bc-auto-main",
+											children: [
+												/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+													className: "bc-auto-dot",
+													"aria-hidden": "true"
+												}),
+												/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+													className: "bc-auto-unit",
+													children: event.unit
+												}),
+												/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
+													className: "bc-auto-attempt",
+													children: [
+														"第 ",
+														event.attempt,
+														" 次"
+													]
+												}),
+												/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+													className: "bc-auto-ok",
+													children: event.ok ? "已重启" : "重启失败"
+												}),
+												/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+													className: "bc-auto-time",
+													children: when(event.at)
+												})
+											]
+										}),
+										/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+											className: "bc-auto-sub",
+											children: [
+												"退出码 ",
+												event.exit_code ?? "—",
+												event.error !== null && event.error !== void 0 ? ` · ${event.error}` : ""
+											]
+										}),
+										event.bundle !== null && event.bundle !== void 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+											className: "bc-auto-bundle",
+											title: event.bundle,
+											children: event.bundle
+										})
+									]
+								}, `${event.unit}-${event.at}-${index}`))
+							})
+						]
+					})
+				]
+			});
+		}
+		//#endregion
 		//#region src/ui/IndexHealthDialog.tsx
 		/**
 		* 索引与嵌入状态：回答「知识真的进脑子了吗」，并提供补嵌 / 重建入口。
@@ -1784,7 +1945,7 @@ window.__ModuleLoader__.load({
 		* @param props - 开机启动状态、忙碌标记与各动作
 		* @returns 菜单入口（含锚定菜单）
 		*/
-		function MoreMenu({ autostart, busy, onBackup, onPrune, onCaches, onIndex, onDiagnostics, onToggleAutostart, onShutdown }) {
+		function MoreMenu({ autostart, busy, onBackup, onPrune, onCaches, onIndex, onAutoRecover, onDiagnostics, onToggleAutostart, onShutdown }) {
 			const [open, setOpen] = (0, react.useState)(false);
 			const items = [
 				{
@@ -1809,6 +1970,11 @@ window.__ModuleLoader__.load({
 				{
 					id: "index",
 					label: "索引与嵌入状态…",
+					disabled: busy !== null
+				},
+				{
+					id: "auto-recover",
+					label: "自动恢复记录…",
 					disabled: busy !== null
 				},
 				{
@@ -1839,6 +2005,7 @@ window.__ModuleLoader__.load({
 				else if (id === "prune") onPrune();
 				else if (id === "caches") onCaches();
 				else if (id === "index") onIndex();
+				else if (id === "auto-recover") onAutoRecover();
 				else if (id === "diagnostics") onDiagnostics();
 				else if (id === "autostart") onToggleAutostart();
 				else if (id === "shutdown") onShutdown();
@@ -2151,6 +2318,10 @@ window.__ModuleLoader__.load({
 			const [days, setDays] = (0, react.useState)(30);
 			const [hover, setHover] = (0, react.useState)(null);
 			const [zoom, setZoom] = (0, react.useState)(null);
+			const [limits, setLimits] = (0, react.useState)(null);
+			const [limitOpen, setLimitOpen] = (0, react.useState)(false);
+			const [draft, setDraft] = (0, react.useState)("");
+			const [limitError, setLimitError] = (0, react.useState)(null);
 			const chartRef = (0, react.useRef)(null);
 			const dragRef = (0, react.useRef)(null);
 			const series = (0, react.useMemo)(() => {
@@ -2211,9 +2382,37 @@ window.__ModuleLoader__.load({
 				view.end
 			]);
 			(0, react.useEffect)(() => {
+				(async () => {
+					try {
+						setLimits((await loadTrendThresholds()).thresholds);
+					} catch {
+						setLimits(null);
+					}
+				})();
+			}, []);
+			(0, react.useEffect)(() => {
 				setZoom(null);
 				setHover(null);
 			}, [days, metric.key]);
+			const saveLimit = async (clear) => {
+				const value = clear ? null : Number(draft);
+				if (!clear && (draft.trim() === "" || !Number.isFinite(value) || value <= 0)) {
+					setLimitError("请输入正数");
+					return;
+				}
+				try {
+					const result = await saveTrendThreshold(metric.key, value);
+					if (!result.ok) {
+						setLimitError(result.error ?? "保存失败");
+						return;
+					}
+					if (result.thresholds !== void 0) setLimits(result.thresholds);
+					setLimitOpen(false);
+					setLimitError(null);
+				} catch (e) {
+					setLimitError(reasonOf(e));
+				}
+			};
 			const handleMove = (event) => {
 				if (count === 0) return;
 				const rect = event.currentTarget.getBoundingClientRect();
@@ -2269,7 +2468,7 @@ window.__ModuleLoader__.load({
 					label: older ? "24h" : "较上次"
 				};
 			})();
-			const threshold = metric.threshold;
+			const threshold = (limits !== null && metric.key in limits ? limits[metric.key] : metric.threshold) ?? void 0;
 			const thresholdY = threshold === void 0 ? null : Math.min(CHART_H - PAD, Math.max(PAD, yAt(threshold)));
 			const overThreshold = threshold !== void 0 && latest !== null && latest.value > threshold;
 			const readout = hover !== null && visible[hover] !== void 0 ? `${shortDate(visible[hover].ts)} · ${metric.format(visible[hover].value)}` : latest !== null ? `最新 ${metric.format(latest.value)}` : "暂无采样";
@@ -2305,35 +2504,78 @@ window.__ModuleLoader__.load({
 					children: [
 						/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
 							className: "bc-trend-head",
-							children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
-								className: "bc-trend-ranges",
-								children: RANGES.map((range) => /* @__PURE__ */ (0, react_jsx_runtime.jsx)(Button, {
+							children: [
+								/* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+									className: "bc-trend-ranges",
+									children: RANGES.map((range) => /* @__PURE__ */ (0, react_jsx_runtime.jsx)(Button, {
+										size: "sm",
+										variant: days === range.days ? "outline" : "ghost",
+										onClick: () => setDays(range.days),
+										children: range.label
+									}, range.days))
+								}),
+								/* @__PURE__ */ (0, react_jsx_runtime.jsx)(Button, {
 									size: "sm",
-									variant: days === range.days ? "outline" : "ghost",
-									onClick: () => setDays(range.days),
-									children: range.label
-								}, range.days))
-							}), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
-								className: "bc-trend-readout",
-								children: [
-									change !== null && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
-										className: `bc-trend-delta${metric.badWhen === "up" && change.delta > 0 ? " bc-trend-delta-bad" : ""}`,
-										title: change.label === "24h" ? "与 24 小时前的采样点比较" : "窗口里没有 24 小时前的点，与上一个采样点比较",
-										children: [
-											change.label,
-											" ",
-											change.delta > 0 ? "+" : "",
-											metric.format(change.delta),
-											change.percent === null ? "" : `（${change.percent > 0 ? "+" : ""}${change.percent.toFixed(1)}%）`
-										]
-									}),
-									overThreshold && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-										className: "bc-trend-delta bc-trend-delta-bad",
-										children: "超告警"
-									}),
-									readout
-								]
-							})]
+									variant: "ghost",
+									onClick: () => {
+										setLimitOpen((open) => !open);
+										setDraft(threshold === void 0 ? "" : String(threshold));
+										setLimitError(null);
+									},
+									children: "阈值"
+								}),
+								/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
+									className: "bc-trend-readout",
+									children: [
+										change !== null && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
+											className: `bc-trend-delta${metric.badWhen === "up" && change.delta > 0 ? " bc-trend-delta-bad" : ""}`,
+											title: change.label === "24h" ? "与 24 小时前的采样点比较" : "窗口里没有 24 小时前的点，与上一个采样点比较",
+											children: [
+												change.label,
+												" ",
+												change.delta > 0 ? "+" : "",
+												metric.format(change.delta),
+												change.percent === null ? "" : `（${change.percent > 0 ? "+" : ""}${change.percent.toFixed(1)}%）`
+											]
+										}),
+										overThreshold && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+											className: "bc-trend-delta bc-trend-delta-bad",
+											children: "超告警"
+										}),
+										readout
+									]
+								})
+							]
+						}),
+						limitOpen && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+							className: "bc-trend-limit-row",
+							children: [
+								/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: "告警线" }),
+								/* @__PURE__ */ (0, react_jsx_runtime.jsx)("input", {
+									type: "number",
+									min: "0",
+									className: "bc-trend-limit-input",
+									value: draft,
+									placeholder: metric.threshold === void 0 ? "留空 = 不画线" : String(metric.threshold),
+									onChange: (event) => setDraft(event.target.value)
+								}),
+								/* @__PURE__ */ (0, react_jsx_runtime.jsx)(Button, {
+									size: "sm",
+									variant: "ghost",
+									onClick: () => void saveLimit(false),
+									children: "保存"
+								}),
+								/* @__PURE__ */ (0, react_jsx_runtime.jsx)(Button, {
+									size: "sm",
+									variant: "ghost",
+									onClick: () => void saveLimit(true),
+									children: "清除"
+								}),
+								limitError !== null && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+									className: "bc-index-warn",
+									children: limitError
+								})
+							]
 						}),
 						/* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
 							ref: chartRef,
@@ -3112,6 +3354,85 @@ window.__ModuleLoader__.load({
   border-radius: 8px;
   color: var(--dsw-alias-label-tertiary);
   font-size: 10.5px;
+}
+
+.bc-auto-summary {
+  margin-bottom: 8px;
+  font-size: 12px;
+  color: var(--dsw-alias-label-secondary);
+}
+.bc-auto-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.bc-auto-row {
+  padding: 7px 4px;
+  border-bottom: 1px solid var(--dsw-alias-border-l1);
+}
+.bc-auto-main {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 12px;
+}
+.bc-auto-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--dsw-alias-state-success-primary, #3fb950);
+}
+.bc-auto-row[data-ok='false'] .bc-auto-dot {
+  background: var(--dsw-alias-state-error-primary, #e35d6a);
+}
+.bc-auto-unit {
+  font-weight: 600;
+  color: var(--dsw-alias-label-primary);
+  font-family: var(--ds-font-family-code, monospace);
+}
+.bc-auto-attempt,
+.bc-auto-ok,
+.bc-auto-time {
+  color: var(--dsw-alias-label-tertiary);
+}
+.bc-auto-time {
+  margin-left: auto;
+  font-variant-numeric: tabular-nums;
+}
+.bc-auto-sub,
+.bc-auto-bundle {
+  margin-left: 15px;
+  font-size: 11px;
+  color: var(--dsw-alias-label-tertiary);
+}
+.bc-auto-bundle {
+  margin-top: 2px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-family: var(--ds-font-family-code, monospace);
+  opacity: 0.8;
+}
+
+.bc-trend-limit-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 8px 0;
+  font-size: 12px;
+  color: var(--dsw-alias-label-secondary);
+}
+.bc-trend-limit-input {
+  width: 96px;
+  padding: 2px 6px;
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--dsw-alias-label-primary);
+  font-size: 12px;
 }
 
 .bc-trend-threshold {
@@ -3951,6 +4272,7 @@ window.__ModuleLoader__.load({
 			const [cacheOpen, setCacheOpen] = (0, react.useState)(false);
 			const [failedOpen, setFailedOpen] = (0, react.useState)(false);
 			const [indexOpen, setIndexOpen] = (0, react.useState)(false);
+			const [autoRecoverOpen, setAutoRecoverOpen] = (0, react.useState)(false);
 			const [trend, setTrend] = (0, react.useState)(null);
 			const [detailName, setDetailName] = (0, react.useState)(null);
 			const [stopGroup, setStopGroup] = (0, react.useState)(null);
@@ -4130,6 +4452,7 @@ window.__ModuleLoader__.load({
 													onPrune: () => setBackupOpen(true),
 													onCaches: () => setCacheOpen(true),
 													onIndex: () => setIndexOpen(true),
+													onAutoRecover: () => setAutoRecoverOpen(true),
 													onDiagnostics: downloadDiagnostics,
 													onToggleAutostart: () => void toggleAutostart(),
 													onShutdown: () => setShutdownOpen(true)
@@ -4247,6 +4570,7 @@ window.__ModuleLoader__.load({
 						onClose: () => setFailedOpen(false)
 					}),
 					indexOpen && /* @__PURE__ */ (0, react_jsx_runtime.jsx)(IndexHealthDialog, { onClose: () => setIndexOpen(false) }),
+					autoRecoverOpen && /* @__PURE__ */ (0, react_jsx_runtime.jsx)(AutoRecoverDialog, { onClose: () => setAutoRecoverOpen(false) }),
 					cacheOpen && /* @__PURE__ */ (0, react_jsx_runtime.jsx)(CacheDialog, {
 						load: loadCaches,
 						prune: pruneCaches,

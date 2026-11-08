@@ -1,9 +1,9 @@
 /**
  * Shared replay harness for the recorded golden scenarios: the same controller
  * calls, the same pinned environment and the same serialization are used by the
- * tests and by {@link ../scripts/regen-goldens.mjs}, so a re-record cannot drift
+ * tests and by {@link ../scripts/regen-expected.mjs}, so a re-record cannot drift
  * from what the tests compare against.
- * @module dsh-obsidian-vault/tests/helpers/golden-harness
+ * @module dsh-obsidian-vault/tests/helpers/expected-harness
  */
 import assert from 'node:assert/strict'
 import { PurController } from '../../src/pur-kernel/index.ts'
@@ -17,14 +17,14 @@ import type {
   PurMenuEntry,
   PurPointerEvent,
 } from '../../src/pur-kernel/index.ts'
-import { CATEGORY_TITLES, LITERAL_TITLES, PRESET_TITLES } from './pur-controller-golden.ts'
+import { CATEGORY_TITLES, LITERAL_TITLES, PRESET_TITLES } from './pur-controller-expected.ts'
 import type {
   ControllerOp,
   ControllerScenario,
   ControllerSnapshot,
   MenuScenario,
   MenuNode,
-} from './pur-controller-golden.ts'
+} from './pur-controller-expected.ts'
 
 /** Copy the adapter supplies in place of upstream's hardcoded strings. */
 export const LABELS: PurControllerLabels = {

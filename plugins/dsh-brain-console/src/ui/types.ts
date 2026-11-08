@@ -71,6 +71,33 @@ export interface BackupListing {
   total_mb: number
 }
 
+/** `/trend/thresholds`：告警阈值（未设置时为默认值，null 表示不画线）。 */
+export interface TrendThresholds {
+  thresholds: Record<string, number | null>
+  defaults: Record<string, number>
+}
+
+/** 自愈线程记录的一条恢复尝试。 */
+export interface AutoRecoverEvent {
+  unit: string
+  at: number
+  attempt: number
+  ok: boolean
+  exit_code: number | null
+  error: string | null
+  bundle?: string | null
+}
+
+/** `/auto-recover` 的返回。 */
+export interface AutoRecoverStatus {
+  counters: Record<string, number>
+  events: AutoRecoverEvent[]
+  max_per_hour: number
+  backoff_s: number[]
+  last_error?: string | null
+  thread_alive?: boolean
+}
+
 /** `/actions/restore` 的结果。 */
 export interface RestoreResult {
   ok: boolean

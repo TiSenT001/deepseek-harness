@@ -5,7 +5,7 @@
  * implementation while every other card still mirrors upstream.
  * Each call string is one canvas mutation in order; text is measured as 10 units
  * per code point.
- * @module dsh-obsidian-vault/tests/helpers/pur-render-golden
+ * @module dsh-obsidian-vault/tests/helpers/pur-render-expected
  */
 import type { PurElement } from '../../src/pur-kernel/types.ts'
 

@@ -19,7 +19,7 @@ import {
   UPSTREAM_JS,
   UPSTREAM_PY,
   YAML_INPUTS,
-} from './helpers/pur-algo-golden.ts'
+} from './helpers/pur-algo-expected.ts'
 
 /** Id source reproducing the ids the upstream run allocated. */
 function counterIds(start = 1000): () => string {
