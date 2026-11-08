@@ -341,6 +341,8 @@ export function ConsolePage(): JSX.Element {
         <FailedEdgesDialog load={loadFailedEdges} onClose={() => setFailedOpen(false)} />
       )}
 
+      {indexOpen && <IndexHealthDialog onClose={() => setIndexOpen(false)} />}
+
       {cacheOpen && (
         <CacheDialog
           load={loadCaches}

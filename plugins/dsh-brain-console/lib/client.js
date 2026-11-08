@@ -88,11 +88,19 @@ window.__ModuleLoader__.load({
 		const pruneBackups = (keep) => postJson("/actions/prune-backups", { keep });
 		/** 失败边明细：KPI 点开时读一次实时清单。 */
 		const loadFailedEdges = () => jget("/quality/failed-edges?limit=80");
+		/** 索引与嵌入状态：只读覆盖与新鲜度。 */
+		const loadIndexHealth = () => jget("/index/health");
 		/** 把一条失败边加入忽略名单（不删边，只从待消解清单隐藏）。 */
 		const ignoreFailedEdge = (source, target) => postJson("/quality/failed-edges/ignore", {
 			source,
 			target
 		});
+		/** 补嵌/重建任务状态。 */
+		const loadEmbedStatus = () => jget("/embed/status");
+		/** 启动补嵌/重建任务（vec:fill / vec:rebuild / chunk:fill / chunk:rebuild）。 */
+		const startEmbed = (mode) => postJson("/embed/start", { mode });
+		/** 请求取消当前任务（当前笔记处理完即停）。 */
+		const cancelEmbed = () => postJson("/embed/cancel", {});
 		/** 诊断包下载地址（zip：状态 + 单元 + 趋势 + 各单元日志尾部）。 */
 		const DIAGNOSTICS_URL = `${API}/diagnostics/bundle`;
 		/** 指标趋势：一次取满一年，对话框里再按 7/30/90/365 天切窗口。 */
@@ -1142,6 +1150,317 @@ window.__ModuleLoader__.load({
 		* 只读部分展示三条链路的最新覆盖；动作部分触发管理器里的后台任务，
 		* 运行期间每秒轮询一次进度（完成数 / 总数 / 当前笔记 / 失败 / ETA）。
 		*/
+		/** 把可能为空的数值格式化成「—」。 */
+		function num(value, suffix = "") {
+			return value === null || value === void 0 ? "—" : `${value}${suffix}`;
+		}
+		/** 覆盖率进度条（0–100）。 */
+		function Coverage({ percent }) {
+			const width = percent === null ? 0 : Math.max(0, Math.min(100, percent));
+			return /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+				className: "bc-coverage",
+				role: "img",
+				"aria-label": `覆盖 ${percent === null ? "未知" : width.toFixed(1) + "%"}`,
+				children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+					className: "bc-coverage-fill",
+					style: { width: `${width}%` }
+				})
+			});
+		}
+		/** 运行中的任务：进度条 + 计数 + 当前笔记 + 取消。 */
+		function JobProgress({ job, onCancel }) {
+			const percent = job.total > 0 ? Math.min(100, job.done / job.total * 100) : 0;
+			const summary = job.state === "running" ? `${job.done} / ${job.total} 篇 · 失败 ${job.failed} · 已用 ${job.elapsed_s ?? 0}s${job.eta_s === null ? "" : ` · 预计剩余 ${job.eta_s}s`}` : job.state === "done" ? `完成：${job.done} / ${job.total} 篇，失败 ${job.failed}` : job.state === "cancelled" ? `已取消：处理到 ${job.done} / ${job.total} 篇` : `出错：${job.error ?? "未知原因"}`;
+			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+				className: "bc-embed-job",
+				children: [
+					/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+						className: "bc-embed-job-head",
+						children: [
+							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("strong", { children: job.label ?? job.mode }),
+							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: summary }),
+							job.state === "running" && /* @__PURE__ */ (0, react_jsx_runtime.jsx)(Button, {
+								size: "sm",
+								variant: "ghost",
+								onClick: onCancel,
+								children: "取消"
+							})
+						]
+					}),
+					/* @__PURE__ */ (0, react_jsx_runtime.jsx)(Coverage, { percent }),
+					job.current !== null && job.state === "running" && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+						className: "bc-embed-current",
+						title: job.current,
+						children: ["当前：", job.current]
+					}),
+					job.failures.length > 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("details", {
+						className: "bc-embed-failures",
+						children: [/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("summary", { children: [
+							"失败 ",
+							job.failed,
+							" 篇（点开看前 ",
+							job.failures.length,
+							" 条）"
+						] }), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("ul", { children: job.failures.map((item) => /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("li", { children: [
+							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("code", { children: item.path }),
+							" — ",
+							item.reason
+						] }, item.path)) })]
+					})
+				]
+			});
+		}
+		/**
+		* 渲染索引与嵌入状态对话框。
+		* @param props - 关闭回调
+		* @returns 对话框元素（挂载即拉一次状态，运行中每秒刷新）
+		*/
+		function IndexHealthDialog({ onClose }) {
+			const [health, setHealth] = (0, react.useState)(null);
+			const [job, setJob] = (0, react.useState)(null);
+			const [error, setError] = (0, react.useState)(null);
+			const [busy, setBusy] = (0, react.useState)(false);
+			const timer = (0, react.useRef)(null);
+			const load = async () => {
+				try {
+					setHealth(await loadIndexHealth());
+					setError(null);
+				} catch (e) {
+					setError(reasonOf(e));
+				}
+			};
+			const poll = () => {
+				if (timer.current !== null) return;
+				timer.current = window.setInterval(() => {
+					(async () => {
+						try {
+							const status = await loadEmbedStatus();
+							setJob(status);
+							if (status.state !== "running") {
+								if (timer.current !== null) {
+									window.clearInterval(timer.current);
+									timer.current = null;
+								}
+								await load();
+							}
+						} catch (e) {
+							setError(reasonOf(e));
+						}
+					})();
+				}, 1e3);
+			};
+			(0, react.useEffect)(() => {
+				(async () => {
+					await load();
+					try {
+						const status = await loadEmbedStatus();
+						setJob(status);
+						if (status.state === "running") poll();
+					} catch {}
+				})();
+				return () => {
+					if (timer.current !== null) window.clearInterval(timer.current);
+				};
+			}, []);
+			const run = async (mode) => {
+				setBusy(true);
+				try {
+					const result = await startEmbed(mode);
+					if (result.status) setJob(result.status);
+					if (result.ok) poll();
+					else setError(result.error ?? "任务未启动");
+				} catch (e) {
+					setError(reasonOf(e));
+				} finally {
+					setBusy(false);
+				}
+			};
+			const cancel = async () => {
+				try {
+					await cancelEmbed();
+				} catch (e) {
+					setError(reasonOf(e));
+				}
+			};
+			const percent = health !== null && health.notes !== null && health.notes > 0 && health.vec.total !== null ? Math.min(100, health.vec.total / health.notes * 100) : null;
+			const stale = health?.chunks.stale_days;
+			const running = job?.state === "running";
+			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)(Modal, {
+				open: true,
+				onClose,
+				title: "索引与嵌入",
+				closeLabel: "关闭",
+				description: "只读状态 + 手动补嵌；任务在管理器后台跑，关掉面板也会继续",
+				footer: /* @__PURE__ */ (0, react_jsx_runtime.jsxs)(react_jsx_runtime.Fragment, { children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)(Button, {
+					size: "sm",
+					variant: "ghost",
+					onClick: () => void load(),
+					children: "刷新"
+				}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)(Button, {
+					size: "sm",
+					variant: "ghost",
+					onClick: onClose,
+					children: "关闭"
+				})] }),
+				children: [
+					error !== null && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+						className: "bc-backup-error",
+						children: error
+					}),
+					health === null && error === null && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+						className: "bc-backup-empty",
+						children: "读取中…"
+					}),
+					health !== null && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+						className: "bc-index-health",
+						children: [
+							/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("section", { children: [
+								/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("h4", { children: ["笔记向量 ", /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+									className: "bc-index-note",
+									children: "vec_cache"
+								})] }),
+								/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+									className: "bc-index-row",
+									children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: "已向量 / 总笔记" }), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("strong", { children: [
+										num(health.vec.total),
+										" / ",
+										num(health.notes)
+									] })]
+								}),
+								/* @__PURE__ */ (0, react_jsx_runtime.jsx)(Coverage, { percent }),
+								/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+									className: "bc-index-row",
+									children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: "缺少向量" }), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("strong", {
+										className: health.vec.missing ? "bc-index-warn" : "",
+										children: [
+											num(health.vec.missing),
+											" 篇",
+											(health.vec.missing_sample ?? []).length > 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
+												className: "bc-index-sample",
+												title: (health.vec.missing_sample ?? []).join("\n"),
+												children: [
+													"（如 ",
+													health.vec.missing_sample[0],
+													"）"
+												]
+											})
+										]
+									})]
+								}),
+								(health.vec.empty ?? 0) > 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+									className: "bc-index-row",
+									children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: "空笔记（0 字节，不需向量）" }), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("strong", { children: [num(health.vec.empty), " 篇"] })]
+								}),
+								/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+									className: "bc-index-row",
+									children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: "最近 24h 更新" }), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("strong", { children: [num(health.vec.fresh_24h), " 篇"] })]
+								}),
+								/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+									className: "bc-index-row",
+									children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: "最后写入" }), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("strong", { children: health.vec.last_indexed_at ?? "—" })]
+								}),
+								/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+									className: "bc-index-row",
+									children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: "孤儿向量（笔记已删）" }), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("strong", { children: num(health.vec.orphans) })]
+								})
+							] }),
+							/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("section", { children: [
+								/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("h4", { children: ["分块索引 ", /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+									className: "bc-index-note",
+									children: "chunk_index"
+								})] }),
+								/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+									className: "bc-index-row",
+									children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: "已分块笔记 / 总笔记" }), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("strong", { children: [
+										num(health.chunks.notes),
+										" / ",
+										num(health.notes)
+									] })]
+								}),
+								/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+									className: "bc-index-row",
+									children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: "分块总数" }), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("strong", { children: num(health.chunks.rows) })]
+								}),
+								/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+									className: "bc-index-row",
+									children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: "最后索引" }), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("strong", {
+										className: stale !== null && stale !== void 0 && stale > 2 ? "bc-index-warn" : "",
+										children: [health.chunks.last_indexed_at ?? "—", stale !== null && stale !== void 0 && ` · 滞后 ${stale} 天`]
+									})]
+								})
+							] }),
+							/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("section", { children: [
+								/* @__PURE__ */ (0, react_jsx_runtime.jsx)("h4", { children: "重试队列" }),
+								/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+									className: "bc-index-row",
+									children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: "embed_pending" }), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("strong", { children: [num(health.pending), " 篇"] })]
+								}),
+								/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+									className: "bc-index-row",
+									children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: "库大小" }), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("strong", { children: num(health.db_size_mb, " MB") })]
+								})
+							] }),
+							/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("section", { children: [
+								/* @__PURE__ */ (0, react_jsx_runtime.jsx)("h4", { children: "手动补嵌" }),
+								/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+									className: "bc-embed-actions",
+									children: [
+										/* @__PURE__ */ (0, react_jsx_runtime.jsxs)(Button, {
+											size: "sm",
+											variant: "ghost",
+											disabled: busy || running || (health.vec.missing ?? 0) === 0,
+											onClick: () => void run("vec:fill"),
+											children: [
+												"补向量缺失（",
+												num(health.vec.missing),
+												" 篇）"
+											]
+										}),
+										/* @__PURE__ */ (0, react_jsx_runtime.jsxs)(Button, {
+											size: "sm",
+											variant: "ghost",
+											disabled: busy || running,
+											onClick: () => void run("vec:rebuild"),
+											children: [
+												"全量重建向量（",
+												num(health.notes),
+												" 篇）"
+											]
+										}),
+										/* @__PURE__ */ (0, react_jsx_runtime.jsxs)(Button, {
+											size: "sm",
+											variant: "ghost",
+											disabled: busy || running,
+											onClick: () => void run("chunk:rebuild"),
+											children: [
+												"分块增量重建（",
+												num(health.notes),
+												" 篇）"
+											]
+										}),
+										(health.chunks.notes ?? 0) < (health.notes ?? 0) && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)(Button, {
+											size: "sm",
+											variant: "ghost",
+											disabled: busy || running,
+											onClick: () => void run("chunk:fill"),
+											children: [
+												"补分块缺失（",
+												num((health.notes ?? 0) - (health.chunks.notes ?? 0)),
+												" 篇）"
+											]
+										})
+									]
+								}),
+								job !== null && job.state !== "idle" && /* @__PURE__ */ (0, react_jsx_runtime.jsx)(JobProgress, {
+									job,
+									onCancel: () => void cancel()
+								})
+							] })
+						]
+					})
+				]
+			});
+		}
 		//#endregion
 		//#region src/ui/GroupActionDialog.tsx
 		/**
@@ -3678,6 +3997,7 @@ window.__ModuleLoader__.load({
 						load: loadFailedEdges,
 						onClose: () => setFailedOpen(false)
 					}),
+					indexOpen && /* @__PURE__ */ (0, react_jsx_runtime.jsx)(IndexHealthDialog, { onClose: () => setIndexOpen(false) }),
 					cacheOpen && /* @__PURE__ */ (0, react_jsx_runtime.jsx)(CacheDialog, {
 						load: loadCaches,
 						prune: pruneCaches,
