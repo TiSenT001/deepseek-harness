@@ -114,14 +114,24 @@ export function buildRevealPlan(
 }
 
 /**
+ * Linear entrance progress of one node, before easing.
+ * @param reveal - overall progress in [0, 1].
+ * @param threshold - node start from {@link RevealPlan.thresholds}.
+ * @returns progress in [0, 1]; 0 before the node starts.
+ */
+export function revealLocal(reveal: number, threshold: number): number {
+  if (reveal >= 1) return 1
+  return Math.min(1, Math.max(0, (reveal - threshold) / NODE_WINDOW))
+}
+
+/**
  * Entrance progress of one node at a given replay time.
  * @param reveal - overall progress in [0, 1].
  * @param threshold - node start from {@link RevealPlan.thresholds}.
  * @returns eased progress in [0, 1]; 0 before the node starts.
  */
 export function revealEntrance(reveal: number, threshold: number): number {
-  if (reveal >= 1) return 1
-  const local = Math.min(1, Math.max(0, (reveal - threshold) / NODE_WINDOW))
+  const local = revealLocal(reveal, threshold)
   // Fast start, soft landing: a dot that grows in is less mechanical than a
   // linear fade.
   return 1 - (1 - local) ** 3
@@ -136,4 +146,25 @@ export function revealEntrance(reveal: number, threshold: number): number {
  */
 export function edgeEntrance(reveal: number, sourceThreshold: number, targetThreshold: number): number {
   return Math.min(revealEntrance(reveal, sourceThreshold), revealEntrance(reveal, targetThreshold))
+}
+
+/** Start radius of a node that is just appearing, as a share of its final one. */
+const GROW_FROM = 0.55
+/** Overshoot strength of the ease-out-back curve. */
+const OVERSHOOT = 2.1
+
+/**
+ * Node radius multiplier during the entrance: grows from {@link GROW_FROM} to 1
+ * and passes slightly above 1 before settling, which reads as a small elastic
+ * settle rather than a bounce.
+ * @param local - linear progress from {@link revealLocal}.
+ * @returns the radius multiplier, briefly around 1.05 near the end.
+ */
+export function entranceScale(local: number): number {
+  if (local <= 0) return GROW_FROM
+  if (local >= 1) return 1
+  const c1 = OVERSHOOT
+  const c3 = c1 + 1
+  const shifted = local - 1
+  return GROW_FROM + (1 - GROW_FROM) * (1 + c3 * shifted ** 3 + c1 * shifted ** 2)
 }

@@ -11,7 +11,7 @@ import { colorByKey, type GraphColorBy } from './colors.ts'
 import { labelAlpha, type LabelBox } from './labels.ts'
 import { screenRadius } from './node-size.ts'
 import { LABEL_FONT, labelFont, type Palette } from './palette.ts'
-import { edgeEntrance, revealEntrance, type RevealPlan } from '../reveal.ts'
+import { edgeEntrance, entranceScale, revealEntrance, revealLocal, type RevealPlan } from '../reveal.ts'
 import type { GraphStage } from './stage.ts'
 
 /** Above this many edges the hover highlight draws as two batched passes. */
@@ -182,7 +182,7 @@ export function drawScene(scene: SceneInput): SceneStats {
   for (const node of positions) {
     const entrance = reveal >= 1 ? 1 : entranceOf(node.path)
     if (entrance <= 0.01) continue
-    const radius = screenRadius(node.radius, scale, zoom) * (0.55 + 0.45 * entrance)
+    const radius = screenRadius(node.radius, scale, zoom) * entranceScale(reveal >= 1 ? 1 : revealLocal(reveal, thresholdOf(node.path)))
     if (
       node.x + radius < view.left || node.x - radius > view.right
       || node.y + radius < view.top || node.y - radius > view.bottom

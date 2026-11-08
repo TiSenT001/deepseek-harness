@@ -6,7 +6,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import type { GraphEdgeInput, SimNode } from '../src/client/graph/layout.ts'
-import { buildRevealPlan, edgeEntrance, EMPTY_PLAN, revealEntrance } from '../src/client/graph/reveal.ts'
+import { buildRevealPlan, edgeEntrance, EMPTY_PLAN, entranceScale, revealEntrance, revealLocal } from '../src/client/graph/reveal.ts'
 
 /** Minimal simulated node with the fields the plan reads. */
 function node(path: string, degree: number, depth = 1): SimNode {
@@ -74,4 +74,24 @@ test('entrance rises from zero to one and never regresses', () => {
 test('an edge follows the later endpoint', () => {
   assert.equal(edgeEntrance(0.2, 0, 0), revealEntrance(0.2, 0))
   assert.equal(edgeEntrance(0.2, 0.9, 0), revealEntrance(0.2, 0.9))
+})
+
+test('the node scale grows past 1 and settles with a slight overshoot', () => {
+  assert.equal(entranceScale(0), 0.55)
+  assert.equal(entranceScale(1), 1)
+  let peak = 0
+  for (let step = 0; step <= 100; step += 1) {
+    const value = entranceScale(step / 100)
+    assert.ok(value >= 0.55 && value <= 1.1, `scale out of range: ${value}`)
+    peak = Math.max(peak, value)
+  }
+  assert.ok(peak > 1.02 && peak < 1.08, `peak overshoot: ${peak}`)
+})
+
+test('local window progress feeds the scale curve', () => {
+  const threshold = 0.2
+  assert.equal(revealLocal(0.1, threshold), 0)
+  assert.equal(revealLocal(0.6, threshold), 1)
+  const middle = revealLocal(0.2 + 0.11, threshold)
+  assert.ok(middle > 0 && middle < 1)
 })
