@@ -30,10 +30,11 @@ New-Item -ItemType Directory -Force -Path $DshHome | Out-Null
 $log = Join-Path $DshHome 'dsh-web.log'
 $err = Join-Path $DshHome 'dsh-web.err.log'
 
-function LatestUrl([string]$path) {
+function LatestUrl([string]$path, [int]$skip = 0) {
   if (-not (Test-Path -LiteralPath $path)) { return $null }
-  $lines = Get-Content -LiteralPath $path -Tail 80 -ErrorAction SilentlyContinue
-  for ($index = $lines.Count - 1; $index -ge 0; $index -= 1) {
+  $lines = @(Get-Content -LiteralPath $path -ErrorAction SilentlyContinue)
+  $start = [Math]::Max($skip, $lines.Count - 80)
+  for ($index = $lines.Count - 1; $index -ge $start; $index -= 1) {
     if ($lines[$index] -match 'dsh web: (http://\S+)') { return $Matches[1].Trim() }
   }
   return $null
@@ -67,6 +68,9 @@ if ([string]::IsNullOrWhiteSpace($env:DEEPSEEK_API_KEY)) {
   Write-Host 'DEEPSEEK_API_KEY is not set; sign in through the GUI account panel or set it in machine.env.ps1.' -ForegroundColor Yellow
 }
 
+# Only URLs appended after this launch count: the log already holds URLs from
+# earlier runs, and the newest process prints its token a moment later.
+$before = if (Test-Path -LiteralPath $log) { @(Get-Content -LiteralPath $log).Count } else { 0 }
 $arguments = @('--import', 'tsx/esm', 'apps/cli/src/bin.ts', 'web', '--no-open', '--port', "$Port")
 Write-Host "Starting dsh web on port $Port (DSH_HOME=$DshHome)"
 Push-Location $RepoRoot
@@ -81,7 +85,7 @@ $deadline = (Get-Date).AddSeconds(90)
 $url = $null
 while ((Get-Date) -lt $deadline) {
   Start-Sleep -Milliseconds 700
-  $url = LatestUrl $log
+  $url = LatestUrl $log $before
   if ($null -ne $url) { break }
 }
 if ($null -eq $url) {
