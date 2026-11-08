@@ -12,13 +12,15 @@ import { useCallback, useEffect, useState } from 'react'
 import { reasonOf } from './errors.ts'
 import { formatMegabytes } from './format.ts'
 import { Button, Modal } from './primitives.ts'
-import type { BackupListing, PruneResult } from './types.ts'
+import type { BackupListing, PruneResult, RestoreResult } from './types.ts'
 
 export interface BackupDialogProps {
   /** 拉取快照列表 */
   load: () => Promise<BackupListing>
   /** 执行清理；keep = 保留最近几个（管理器侧还会再夹一次下限 1） */
   prune: (keep: number) => Promise<PruneResult>
+  /** 用某个快照恢复（会短暂停服，管理器先自动备份当前库） */
+  restore: (name: string) => Promise<RestoreResult>
   /** 清理成功后通知页面刷新概览指标 */
   onChanged: () => void
   /** 关闭对话框 */
@@ -33,12 +35,15 @@ const DEFAULT_KEEP = 2
  * @param props - 读写回调与关闭命令
  * @returns 对话框元素（挂载即打开，由父组件条件渲染）
  */
-export function BackupDialog({ load, prune, onChanged, onClose }: BackupDialogProps): JSX.Element {
+export function BackupDialog({ load, prune, restore, onChanged, onClose }: BackupDialogProps): JSX.Element {
   const [listing, setListing] = useState<BackupListing | null>(null)
   const [keep, setKeep] = useState(DEFAULT_KEEP)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [result, setResult] = useState<PruneResult | null>(null)
+  const [armed, setArmed] = useState<string | null>(null)
+  const [restoring, setRestoring] = useState<string | null>(null)
+  const [restoreNote, setRestoreNote] = useState<string | null>(null)
 
   /** 重新拉列表；保留数收进 [1, 快照数] 区间，避免列表变短后停在上一次的大值。 */
   const refresh = useCallback(async (): Promise<void> => {
@@ -80,6 +85,31 @@ export function BackupDialog({ load, prune, onChanged, onClose }: BackupDialogPr
       setError(reasonOf(e))
     } finally {
       setBusy(false)
+    }
+  }
+
+  const runRestore = async (name: string): Promise<void> => {
+    setRestoring(name)
+    setError(null)
+    setRestoreNote(null)
+    try {
+      const answer = await restore(name)
+      if (!answer.ok) {
+        setError(answer.error ?? '恢复失败')
+        return
+      }
+      const failed = answer.failed ?? []
+      setRestoreNote(
+        `已用 ${answer.restored} 恢复；当前库已备份为 ${answer.safety}`
+        + (failed.length > 0 ? `；未能重启：${failed.join('、')}` : ''),
+      )
+      onChanged()
+      await refresh()
+    } catch (e) {
+      setError(reasonOf(e))
+    } finally {
+      setRestoring(null)
+      setArmed(null)
     }
   }
 
@@ -149,10 +179,40 @@ export function BackupDialog({ load, prune, onChanged, onClose }: BackupDialogPr
                   <span className="bc-backup-tag">{index < keep ? '保留' : '将删除'}</span>
                 </div>
                 <div className="bc-backup-sub">{file.at} · {formatMegabytes(file.size_mb)}</div>
+                <div className="bc-backup-actions">
+                  {armed === file.name ? (
+                    <>
+                      <button
+                        type="button"
+                        className="bc-backup-restore bc-backup-restore-danger"
+                        disabled={restoring !== null || busy}
+                        onClick={() => void runRestore(file.name)}
+                      >
+                        {restoring === file.name ? '恢复中…' : '确认覆盖（先备份当前库）'}
+                      </button>
+                      <button type="button" className="bc-backup-cancel" disabled={restoring !== null}
+                        onClick={() => setArmed(null)}>取消</button>
+                    </>
+                  ) : (
+                    <button
+                      type="button"
+                      className="bc-backup-restore"
+                      disabled={restoring !== null || busy}
+                      title="停止所有服务，用此快照覆盖 brain.db（当前库会先另存）"
+                      onClick={() => setArmed(file.name)}
+                    >
+                      恢复…
+                    </button>
+                  )}
+                </div>
               </li>
             ))}
           </ul>
         </>
+      )}
+
+      {restoreNote !== null && (
+        <div className="bc-backup-done" role="status">{restoreNote}</div>
       )}
 
       {result !== null && (

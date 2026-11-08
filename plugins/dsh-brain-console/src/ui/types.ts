@@ -28,6 +28,8 @@ export interface Unit {
   health_error?: string | null
   /** 管理器子进程意外退出时的退出码；在跑或人工停止时为 null */
   last_exit_code?: number | null
+  /** 崩溃后被自动恢复的次数（来自 /auto-recover 计数） */
+  auto_restarts?: number
   /** 启动顺序依赖的单元名（先启依赖） */
   depends?: string[]
   /** 启动参数（展示用） */
@@ -67,6 +69,16 @@ export interface BackupListing {
   files: BackupFile[]
   /** 全部快照体积累计（MB） */
   total_mb: number
+}
+
+/** `/actions/restore` 的结果。 */
+export interface RestoreResult {
+  ok: boolean
+  error?: string
+  restored?: string
+  safety?: string
+  started?: string[]
+  failed?: string[]
 }
 
 /** `/actions/prune-backups` 的结果。 */

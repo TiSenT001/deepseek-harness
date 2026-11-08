@@ -86,6 +86,8 @@ window.__ModuleLoader__.load({
 		/** 备份对话框的回调做成模块级常量：引用稳定，对话框只在挂载时拉一次列表。 */
 		const loadBackups = () => jget("/actions/backups");
 		const pruneBackups = (keep) => postJson("/actions/prune-backups", { keep });
+		/** 从备份快照恢复（停服 → 安全备份 → 覆盖 → 恢复运行）。 */
+		const restoreBackup = (name) => postJson("/actions/restore", { name });
 		/** 失败边明细：KPI 点开时读一次实时清单。 */
 		const loadFailedEdges = () => jget("/quality/failed-edges?limit=80");
 		/** 索引与嵌入状态：只读覆盖与新鲜度。 */
@@ -606,12 +608,15 @@ window.__ModuleLoader__.load({
 		* @param props - 读写回调与关闭命令
 		* @returns 对话框元素（挂载即打开，由父组件条件渲染）
 		*/
-		function BackupDialog({ load, prune, onChanged, onClose }) {
+		function BackupDialog({ load, prune, restore, onChanged, onClose }) {
 			const [listing, setListing] = (0, react.useState)(null);
 			const [keep, setKeep] = (0, react.useState)(DEFAULT_KEEP);
 			const [busy, setBusy] = (0, react.useState)(false);
 			const [error, setError] = (0, react.useState)(null);
 			const [result, setResult] = (0, react.useState)(null);
+			const [armed, setArmed] = (0, react.useState)(null);
+			const [restoring, setRestoring] = (0, react.useState)(null);
+			const [restoreNote, setRestoreNote] = (0, react.useState)(null);
 			/** 重新拉列表；保留数收进 [1, 快照数] 区间，避免列表变短后停在上一次的大值。 */
 			const refresh = (0, react.useCallback)(async () => {
 				try {
@@ -649,6 +654,27 @@ window.__ModuleLoader__.load({
 					setError(reasonOf(e));
 				} finally {
 					setBusy(false);
+				}
+			};
+			const runRestore = async (name) => {
+				setRestoring(name);
+				setError(null);
+				setRestoreNote(null);
+				try {
+					const answer = await restore(name);
+					if (!answer.ok) {
+						setError(answer.error ?? "恢复失败");
+						return;
+					}
+					const failed = answer.failed ?? [];
+					setRestoreNote(`已用 ${answer.restored} 恢复；当前库已备份为 ${answer.safety}` + (failed.length > 0 ? `；未能重启：${failed.join("、")}` : ""));
+					onChanged();
+					await refresh();
+				} catch (e) {
+					setError(reasonOf(e));
+				} finally {
+					setRestoring(null);
+					setArmed(null);
 				}
 			};
 			const footer = /* @__PURE__ */ (0, react_jsx_runtime.jsxs)(react_jsx_runtime.Fragment, { children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)(Button, {
@@ -721,26 +747,57 @@ window.__ModuleLoader__.load({
 						children: files.map((file, index) => /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("li", {
 							className: "bc-backup-row",
 							"data-doomed": index >= keep || void 0,
-							children: [/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-								className: "bc-backup-main",
-								children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-									className: "bc-backup-name",
-									title: file.name,
-									children: file.name
-								}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-									className: "bc-backup-tag",
-									children: index < keep ? "保留" : "将删除"
-								})]
-							}), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-								className: "bc-backup-sub",
-								children: [
-									file.at,
-									" · ",
-									formatMegabytes(file.size_mb)
-								]
-							})]
+							children: [
+								/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+									className: "bc-backup-main",
+									children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+										className: "bc-backup-name",
+										title: file.name,
+										children: file.name
+									}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+										className: "bc-backup-tag",
+										children: index < keep ? "保留" : "将删除"
+									})]
+								}),
+								/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+									className: "bc-backup-sub",
+									children: [
+										file.at,
+										" · ",
+										formatMegabytes(file.size_mb)
+									]
+								}),
+								/* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+									className: "bc-backup-actions",
+									children: armed === file.name ? /* @__PURE__ */ (0, react_jsx_runtime.jsxs)(react_jsx_runtime.Fragment, { children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
+										type: "button",
+										className: "bc-backup-restore bc-backup-restore-danger",
+										disabled: restoring !== null || busy,
+										onClick: () => void runRestore(file.name),
+										children: restoring === file.name ? "恢复中…" : "确认覆盖（先备份当前库）"
+									}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
+										type: "button",
+										className: "bc-backup-cancel",
+										disabled: restoring !== null,
+										onClick: () => setArmed(null),
+										children: "取消"
+									})] }) : /* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
+										type: "button",
+										className: "bc-backup-restore",
+										disabled: restoring !== null || busy,
+										title: "停止所有服务，用此快照覆盖 brain.db（当前库会先另存）",
+										onClick: () => setArmed(file.name),
+										children: "恢复…"
+									})
+								})
+							]
 						}, file.name))
 					})] }),
+					restoreNote !== null && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+						className: "bc-backup-done",
+						role: "status",
+						children: restoreNote
+					}),
 					result !== null && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
 						className: "bc-backup-done",
 						role: "status",
@@ -2977,6 +3034,43 @@ window.__ModuleLoader__.load({
   fill: color-mix(in srgb, var(--dsw-alias-brand-primary) 8%, transparent);
   stroke: none;
 }
+.bc-backup-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 4px;
+}
+.bc-backup-restore,
+.bc-backup-cancel {
+  padding: 1px 8px;
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--dsw-alias-label-secondary);
+  font-size: 11px;
+  cursor: pointer;
+}
+.bc-backup-restore:hover:not(:disabled),
+.bc-backup-cancel:hover:not(:disabled) {
+  color: var(--dsw-alias-label-primary);
+}
+.bc-backup-restore-danger {
+  border-color: var(--dsw-alias-state-error-primary, #e35d6a);
+  color: var(--dsw-alias-state-error-primary, #e35d6a);
+}
+.bc-backup-restore:disabled,
+.bc-backup-cancel:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.bc-badge-auto {
+  margin-left: 8px;
+  padding: 0 6px;
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 8px;
+  color: var(--dsw-alias-label-tertiary);
+  font-size: 10.5px;
+}
+
 .bc-trend-threshold {
   stroke: color-mix(in srgb, var(--dsw-alias-state-warning-primary, #e0b341) 80%, transparent);
   stroke-width: 1;
@@ -4060,6 +4154,7 @@ window.__ModuleLoader__.load({
 					backupOpen && /* @__PURE__ */ (0, react_jsx_runtime.jsx)(BackupDialog, {
 						load: loadBackups,
 						prune: pruneBackups,
+						restore: restoreBackup,
 						onChanged: () => {
 							feed.load();
 						},

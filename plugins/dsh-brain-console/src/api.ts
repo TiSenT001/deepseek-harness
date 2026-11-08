@@ -6,7 +6,7 @@
  */
 import type {
   BackupListing, BatchRestartResult, BatchStartResult, BatchStopResult, CacheListing, CachePruneResult,
-  EmbedJobStatus, FailedEdgesListing, HistoryListing, IndexHealth, PruneResult, Unit, UnitAction,
+  EmbedJobStatus, FailedEdgesListing, HistoryListing, IndexHealth, PruneResult, RestoreResult, Unit, UnitAction,
 } from './ui/types.ts'
 
 /** brain_manager 的 HTTP 地址。 */
@@ -53,6 +53,10 @@ export const loadUnits = (): Promise<{ units: Unit[] }> => jget<{ units: Unit[] 
 export const loadBackups = (): Promise<BackupListing> => jget<BackupListing>('/actions/backups')
 export const pruneBackups = (keep: number): Promise<PruneResult> =>
   postJson<PruneResult>('/actions/prune-backups', { keep })
+
+/** 从备份快照恢复（停服 → 安全备份 → 覆盖 → 恢复运行）。 */
+export const restoreBackup = (name: string): Promise<RestoreResult> =>
+  postJson<RestoreResult>('/actions/restore', { name })
 
 /** 失败边明细：KPI 点开时读一次实时清单。 */
 export const loadFailedEdges = (): Promise<FailedEdgesListing> =>

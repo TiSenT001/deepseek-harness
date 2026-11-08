@@ -12,7 +12,7 @@
  */
 import { useEffect, useState } from 'react'
 import {
-  DIAGNOSTICS_URL, loadBackups, loadCaches, loadFailedEdges, postManager, pruneBackups, pruneCaches,
+  DIAGNOSTICS_URL, loadBackups, loadCaches, loadFailedEdges, postManager, pruneBackups, pruneCaches, restoreBackup,
 } from './api.ts'
 import { useConsoleActions } from './hooks/useConsoleActions.ts'
 import { useConsoleFeed } from './hooks/useConsoleFeed.ts'
@@ -323,6 +323,7 @@ export function ConsolePage(): JSX.Element {
         <BackupDialog
           load={loadBackups}
           prune={pruneBackups}
+            restore={restoreBackup}
           onChanged={() => { void feed.load() }}
           onClose={() => setBackupOpen(false)}
         />
