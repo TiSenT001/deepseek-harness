@@ -409,18 +409,15 @@ const STYLES = `
 }
 
 .bc-trend-marker {
+  position: absolute;
+  width: 11px;
+  height: 11px;
+  margin: -5.5px 0 0 -5.5px;
+  border: 2px solid var(--dsw-alias-label-primary, #f9fafb);
+  border-radius: 50%;
+  background: var(--dsw-alias-bg-layer-1, #1d1d22);
+  box-shadow: 0 0 0 5px color-mix(in srgb, var(--dsw-alias-label-primary, #f9fafb) 12%, transparent);
   pointer-events: none;
-}
-.bc-trend-dot-halo {
-  fill: color-mix(in srgb, var(--dsw-alias-label-primary, #f9fafb) 14%, transparent);
-}
-.bc-trend-dot-ring {
-  fill: var(--dsw-alias-bg-layer-1, #1d1d22);
-  stroke: var(--dsw-alias-label-primary, #f9fafb);
-  stroke-width: 2;
-}
-.bc-trend-dot-core {
-  fill: var(--dsw-alias-label-primary, #f9fafb);
 }
 .bc-trend-guide {
   stroke: var(--dsw-alias-border-l4);

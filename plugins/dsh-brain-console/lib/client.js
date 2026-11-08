@@ -2309,33 +2309,6 @@ window.__ModuleLoader__.load({
 				end: safeStart + size - 1
 			};
 		}
-		/** 悬停采样点的标记：外圈光晕 + 空心环 + 中心点，避免实心白点糊在线上。 */
-		function MarkerPoint({ cx, cy }) {
-			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("g", {
-				className: "bc-trend-marker",
-				pointerEvents: "none",
-				children: [
-					/* @__PURE__ */ (0, react_jsx_runtime.jsx)("circle", {
-						cx,
-						cy,
-						r: 9,
-						className: "bc-trend-dot-halo"
-					}),
-					/* @__PURE__ */ (0, react_jsx_runtime.jsx)("circle", {
-						cx,
-						cy,
-						r: 4.5,
-						className: "bc-trend-dot-ring"
-					}),
-					/* @__PURE__ */ (0, react_jsx_runtime.jsx)("circle", {
-						cx,
-						cy,
-						r: 1.8,
-						className: "bc-trend-dot-core"
-					})
-				]
-			});
-		}
 		/**
 		* 渲染指标趋势对话框。
 		* @param props - 指标、采样点与回调
@@ -2615,56 +2588,66 @@ window.__ModuleLoader__.load({
 							onPointerUp: handlePointerUp,
 							onPointerCancel: handlePointerUp,
 							onDoubleClick: resetZoom,
-							children: [/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("svg", {
-								viewBox: `0 0 ${CHART_W} ${CHART_H}`,
-								width: "100%",
-								height: "170",
-								preserveAspectRatio: "none",
-								role: "img",
-								"aria-label": `${metric.label}趋势图`,
-								children: [
-									count > 1 && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("path", {
-										d: area,
-										className: "bc-trend-area"
-									}),
-									threshold !== void 0 && thresholdY !== null && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("line", {
-										x1: 0,
-										x2: CHART_W,
-										y1: thresholdY,
-										y2: thresholdY,
-										className: "bc-trend-threshold",
-										vectorEffect: "non-scaling-stroke"
-									}),
-									count > 1 && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("path", {
-										d: line,
-										className: "bc-trend-line",
-										vectorEffect: "non-scaling-stroke"
-									}),
-									hover !== null && visible[hover] !== void 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)(react_jsx_runtime.Fragment, { children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("line", {
-										x1: xAt(hover),
-										x2: xAt(hover),
-										y1: 0,
-										y2: CHART_H,
-										className: "bc-trend-guide",
-										vectorEffect: "non-scaling-stroke"
-									}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)(MarkerPoint, {
-										cx: xAt(hover),
-										cy: yAt(visible[hover].value)
-									})] }),
-									count === 1 && visible[0] !== void 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsx)(MarkerPoint, {
-										cx: CHART_W / 2,
-										cy: yAt(visible[0].value)
-									})
-								]
-							}), threshold !== void 0 && thresholdY !== null && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
-								className: `bc-trend-threshold-tag${overThreshold ? " bc-trend-threshold-tag-over" : ""}`,
-								style: { top: `${(tagY ?? thresholdY) / CHART_H * 100}%` },
-								children: [
-									overThreshold ? "已超告警线" : "告警线",
-									" ",
-									metric.format(threshold)
-								]
-							})]
+							children: [
+								/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("svg", {
+									viewBox: `0 0 ${CHART_W} ${CHART_H}`,
+									width: "100%",
+									height: "170",
+									preserveAspectRatio: "none",
+									role: "img",
+									"aria-label": `${metric.label}趋势图`,
+									children: [
+										count > 1 && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("path", {
+											d: area,
+											className: "bc-trend-area"
+										}),
+										threshold !== void 0 && thresholdY !== null && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("line", {
+											x1: 0,
+											x2: CHART_W,
+											y1: thresholdY,
+											y2: thresholdY,
+											className: "bc-trend-threshold",
+											vectorEffect: "non-scaling-stroke"
+										}),
+										count > 1 && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("path", {
+											d: line,
+											className: "bc-trend-line",
+											vectorEffect: "non-scaling-stroke"
+										}),
+										hover !== null && visible[hover] !== void 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("line", {
+											x1: xAt(hover),
+											x2: xAt(hover),
+											y1: 0,
+											y2: CHART_H,
+											className: "bc-trend-guide",
+											vectorEffect: "non-scaling-stroke"
+										})
+									]
+								}),
+								hover !== null && visible[hover] !== void 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+									className: "bc-trend-marker",
+									style: {
+										left: `${xAt(hover) / CHART_W * 100}%`,
+										top: `${yAt(visible[hover].value) / CHART_H * 100}%`
+									}
+								}),
+								count === 1 && visible[0] !== void 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+									className: "bc-trend-marker",
+									style: {
+										left: "50%",
+										top: `${yAt(visible[0].value) / CHART_H * 100}%`
+									}
+								}),
+								threshold !== void 0 && thresholdY !== null && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
+									className: `bc-trend-threshold-tag${overThreshold ? " bc-trend-threshold-tag-over" : ""}`,
+									style: { top: `${(tagY ?? thresholdY) / CHART_H * 100}%` },
+									children: [
+										overThreshold ? "已超告警线" : "告警线",
+										" ",
+										metric.format(threshold)
+									]
+								})
+							]
 						}),
 						/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
 							className: "bc-trend-axis",
@@ -3502,18 +3485,15 @@ window.__ModuleLoader__.load({
 }
 
 .bc-trend-marker {
+  position: absolute;
+  width: 11px;
+  height: 11px;
+  margin: -5.5px 0 0 -5.5px;
+  border: 2px solid var(--dsw-alias-label-primary, #f9fafb);
+  border-radius: 50%;
+  background: var(--dsw-alias-bg-layer-1, #1d1d22);
+  box-shadow: 0 0 0 5px color-mix(in srgb, var(--dsw-alias-label-primary, #f9fafb) 12%, transparent);
   pointer-events: none;
-}
-.bc-trend-dot-halo {
-  fill: color-mix(in srgb, var(--dsw-alias-label-primary, #f9fafb) 14%, transparent);
-}
-.bc-trend-dot-ring {
-  fill: var(--dsw-alias-bg-layer-1, #1d1d22);
-  stroke: var(--dsw-alias-label-primary, #f9fafb);
-  stroke-width: 2;
-}
-.bc-trend-dot-core {
-  fill: var(--dsw-alias-label-primary, #f9fafb);
 }
 .bc-trend-guide {
   stroke: var(--dsw-alias-border-l4);

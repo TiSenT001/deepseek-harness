@@ -33,17 +33,6 @@ function clampView(start: number, end: number, total: number): { start: number; 
   return { start: safeStart, end: safeStart + size - 1 }
 }
 
-/** 悬停采样点的标记：外圈光晕 + 空心环 + 中心点，避免实心白点糊在线上。 */
-function MarkerPoint({ cx, cy }: { cx: number; cy: number }): JSX.Element {
-  return (
-    <g className="bc-trend-marker" pointerEvents="none">
-      <circle cx={cx} cy={cy} r={9} className="bc-trend-dot-halo" />
-      <circle cx={cx} cy={cy} r={4.5} className="bc-trend-dot-ring" />
-      <circle cx={cx} cy={cy} r={1.8} className="bc-trend-dot-core" />
-    </g>
-  )
-}
-
 export interface TrendDialogProps {
   /** 指标定义（标签、单位、格式化） */
   metric: MetricSpec
@@ -316,7 +305,7 @@ export function TrendDialog({ metric, points, onOpenFailed, onClose }: TrendDial
         >
           <svg viewBox={`0 0 ${CHART_W} ${CHART_H}`} width="100%" height="170" preserveAspectRatio="none" role="img" aria-label={`${metric.label}趋势图`}>
             {count > 1 && <path d={area} className="bc-trend-area" />}
-            {threshold !== undefined && thresholdY !== null && (
+{threshold !== undefined && thresholdY !== null && (
               <line
                 x1={0} x2={CHART_W} y1={thresholdY} y2={thresholdY}
                 className="bc-trend-threshold" vectorEffect="non-scaling-stroke"
@@ -324,15 +313,27 @@ export function TrendDialog({ metric, points, onOpenFailed, onClose }: TrendDial
             )}
             {count > 1 && <path d={line} className="bc-trend-line" vectorEffect="non-scaling-stroke" />}
             {hover !== null && visible[hover] !== undefined && (
-              <>
-                <line x1={xAt(hover)} x2={xAt(hover)} y1={0} y2={CHART_H} className="bc-trend-guide" vectorEffect="non-scaling-stroke" />
-                <MarkerPoint cx={xAt(hover)} cy={yAt(visible[hover].value)} />
-              </>
-            )}
-            {count === 1 && visible[0] !== undefined && (
-              <MarkerPoint cx={CHART_W / 2} cy={yAt(visible[0].value)} />
+              <line x1={xAt(hover)} x2={xAt(hover)} y1={0} y2={CHART_H} className="bc-trend-guide" vectorEffect="non-scaling-stroke" />
             )}
           </svg>
+          {hover !== null && visible[hover] !== undefined && (
+            <span
+              className="bc-trend-marker"
+              style={{
+                left: `${(xAt(hover) / CHART_W) * 100}%`,
+                top: `${(yAt(visible[hover].value) / CHART_H) * 100}%`,
+              }}
+            />
+          )}
+          {count === 1 && visible[0] !== undefined && (
+            <span
+              className="bc-trend-marker"
+              style={{
+                left: '50%',
+                top: `${(yAt(visible[0].value) / CHART_H) * 100}%`,
+              }}
+            />
+          )}
           {threshold !== undefined && thresholdY !== null && (
             <span
               className={`bc-trend-threshold-tag${overThreshold ? ' bc-trend-threshold-tag-over' : ''}`}
