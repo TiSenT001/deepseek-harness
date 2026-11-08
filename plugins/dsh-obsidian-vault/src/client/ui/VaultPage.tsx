@@ -53,6 +53,8 @@ export function VaultPage({ pickDirectory, hasPicker }: VaultPageProps = {}): JS
   // What the user left open last time; read once, before the first paint, so
   // the reading area opens on the same page instead of an empty state.
   const remembered = useRef(readViewMemory())
+  /** Last real tab path; kept while the graph view shows without a tab. */
+  const lastPathRef = useRef(remembered.current?.path)
   const [activeHeading, setActiveHeading] = useState<string | undefined>()
   const [filter, setFilter] = useState('')
   const [rail, setRail] = useState<Rail>(() => railOf(remembered.current?.rail))
@@ -101,16 +103,29 @@ export function VaultPage({ pickDirectory, hasPicker }: VaultPageProps = {}): JS
     if (viewRestored.current || status === undefined) return
     viewRestored.current = true
     const memory = remembered.current
-    if (memory?.path === undefined) return
-    if (memory.root !== undefined && memory.root !== status.root) return
+    if (memory === undefined) return
+    // A record from another vault must not carry the view or the path over.
+    if (memory.root !== undefined && memory.root !== status.root) {
+      setView('note')
+      setRail('outline')
+      return
+    }
+    if (memory.path === undefined) return
     openPath(memory.path)
   }, [openPath, status])
 
-  // Persist whatever the reading area shows. A closed tab keeps the last page,
-  // so reopening the knowledge base still lands on it.
+  // Persist whatever the reading area shows. The graph view can be open with no
+  // tab at all, so the last real path rides along and the view itself is always
+  // written; otherwise reopening the panel dropped back to the note view.
   useEffect(() => {
-    if (path === undefined || status === undefined) return
-    writeViewMemory({ root: status.root, path, view, rail })
+    if (status === undefined) return
+    if (path !== undefined) lastPathRef.current = path
+    writeViewMemory({
+      root: status.root,
+      ...(lastPathRef.current === undefined ? {} : { path: lastPathRef.current }),
+      view,
+      rail,
+    })
   }, [path, rail, status, view])
 
   const overlays = useOverlayState({ openPath })
