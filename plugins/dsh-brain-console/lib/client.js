@@ -2150,18 +2150,23 @@ window.__ModuleLoader__.load({
 			const first = visible[0];
 			const change = (() => {
 				if (latest === null || count < 2) return null;
-				const cutoff = Date.now() - 864e5;
-				let base = visible[0];
-				let older = false;
-				for (const point of visible) if (parseTs(point.ts) <= cutoff) {
-					base = point;
-					older = true;
+				const target = Date.now() - 864e5;
+				let best = visible[0];
+				let bestDistance = Math.abs(parseTs(best.ts) - target);
+				for (const point of visible) {
+					const distance = Math.abs(parseTs(point.ts) - target);
+					if (distance < bestDistance) {
+						best = point;
+						bestDistance = distance;
+					}
 				}
+				const older = bestDistance <= 6 * 36e5;
+				const base = older ? best : visible[count - 2] ?? best;
 				const delta = latest.value - base.value;
 				return {
 					delta,
 					percent: base.value === 0 ? null : delta / base.value * 100,
-					older
+					label: older ? "24h" : "较上次"
 				};
 			})();
 			const threshold = metric.threshold;
@@ -2213,9 +2218,9 @@ window.__ModuleLoader__.load({
 								children: [
 									change !== null && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
 										className: `bc-trend-delta${metric.badWhen === "up" && change.delta > 0 ? " bc-trend-delta-bad" : ""}`,
-										title: change.older ? "与 24 小时前的采样点比较" : "窗口不足 24 小时，与窗口首点比较",
+										title: change.label === "24h" ? "与 24 小时前的采样点比较" : "窗口里没有 24 小时前的点，与上一个采样点比较",
 										children: [
-											change.older ? "24h" : "窗口",
+											change.label,
 											" ",
 											change.delta > 0 ? "+" : "",
 											metric.format(change.delta),

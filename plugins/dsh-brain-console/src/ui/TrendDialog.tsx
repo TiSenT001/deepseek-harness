@@ -150,18 +150,24 @@ export function TrendDialog({ metric, points, onOpenFailed, onClose }: TrendDial
   // 窗口更短（例如刚攒了 2 个小时的点）时退回窗口首点，并标记「基准不足 24h」。
   const change = (() => {
     if (latest === null || count < 2) return null
-    const cutoff = Date.now() - 86400000
-    let base = visible[0]!
-    let older = false
+    // 取距离「24 小时前」最近的那个采样点做基准；偏差超过 6 小时说明窗口里
+    // 没有合适的当天基准，退回窗口首点，标签也改成「窗口」而不是谎报 24h。
+    const target = Date.now() - 86400000
+    let best = visible[0]!
+    let bestDistance = Math.abs(parseTs(best.ts) - target)
     for (const point of visible) {
-      if (parseTs(point.ts) <= cutoff) {
-        base = point
-        older = true
+      const distance = Math.abs(parseTs(point.ts) - target)
+      if (distance < bestDistance) {
+        best = point
+        bestDistance = distance
       }
     }
+    const older = bestDistance <= 6 * 3600000
+    // 没有合适的 24h 基准时，退而和上一个采样点比，标签说清楚是「较上次」。
+    const base = older ? best : (visible[count - 2] ?? best)
     const delta = latest.value - base.value
     const percent = base.value === 0 ? null : (delta / base.value) * 100
-    return { delta, percent, older }
+    return { delta, percent, label: older ? '24h' : '较上次' }
   })()
 
   // 阈值线：超出可视范围时夹到上下边，标签仍然显示，避免线消失让人以为没阈值。
@@ -211,9 +217,9 @@ export function TrendDialog({ metric, points, onOpenFailed, onClose }: TrendDial
             {change !== null && (
               <span
                 className={`bc-trend-delta${(metric.badWhen === 'up' && change.delta > 0) ? ' bc-trend-delta-bad' : ''}`}
-                title={change.older ? '与 24 小时前的采样点比较' : '窗口不足 24 小时，与窗口首点比较'}
+                title={change.label === '24h' ? '与 24 小时前的采样点比较' : '窗口里没有 24 小时前的点，与上一个采样点比较'}
               >
-                {change.older ? '24h' : '窗口'} {change.delta > 0 ? '+' : ''}{metric.format(change.delta)}
+                {change.label} {change.delta > 0 ? '+' : ''}{metric.format(change.delta)}
                 {change.percent === null ? '' : `（${change.percent > 0 ? '+' : ''}${change.percent.toFixed(1)}%）`}
               </span>
             )}
