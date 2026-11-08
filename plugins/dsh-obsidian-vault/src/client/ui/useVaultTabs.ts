@@ -10,6 +10,7 @@ import { noteOpen } from '../api.ts'
 import {
   activePane as activePaneOf, closePane as reduceClosePane, EMPTY_PANES, mapActive, mapAllPanes,
   moveTabBetween as reduceMoveTab, resizePanePair as reduceResizePair, splitPane as reduceSplit, activatePane as reduceActivate,
+  splitPaneWithTab as reduceSplitWithTab, type PaneDropSide,
   type PanesState, type SplitDirection,
 } from './panes.ts'
 import {
@@ -52,6 +53,8 @@ export interface VaultTabs {
   readonly moveTabTo: (fromPaneId: number, fromIndex: number, toPaneId: number, toIndex: number) => void
   /** Focus one pane by index. */
   readonly activatePane: (index: number) => void
+  /** Split the target pane at an edge and move the dragged tab there. */
+  readonly splitWithTab: (targetPaneId: number, sourcePaneId: number, sourceIndex: number, side: PaneDropSide) => void
   /** Split the active pane, moving its active tab into a new one. */
   readonly splitPane: (direction: SplitDirection) => void
   /** Close the active pane, dropping its tabs. */
@@ -143,6 +146,11 @@ export function useVaultTabs(initial?: PanesState): VaultTabs {
     setState(previous => reduceSplit(previous, direction))
   }, [])
 
+  const splitWithTab = useCallback((targetPaneId: number, sourcePaneId: number, sourceIndex: number, side: PaneDropSide) => {
+    setState(previous => reduceSplitWithTab(previous, targetPaneId, sourcePaneId, sourceIndex, side))
+    setAnchor(undefined)
+  }, [])
+
   const closePane = useCallback(() => {
     setState(previous => reduceClosePane(previous))
     setAnchor(undefined)
@@ -173,6 +181,6 @@ export function useVaultTabs(initial?: PanesState): VaultTabs {
     tabs: activePaneOf(state).tabs,
     anchor,
     openPath, newTab, selectTab, pinTab, closeTab, closeOthers, closeAll, goBack, goForward, moveTab, moveTabTo,
-    activatePane, splitPane, closePane, resizePanePair, mapTabs, reset, restore,
+    activatePane, splitPane, splitWithTab, closePane, resizePanePair, mapTabs, reset, restore,
   }
 }

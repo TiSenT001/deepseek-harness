@@ -30,7 +30,20 @@ export const FRAME_STYLE = `
   flex-direction: column;
   min-height: 0;
   min-width: 0;
+  position: relative;
 }
+/* Edge drop target while a tab is dragged over a pane. */
+.ov-pane-drop {
+  position: absolute;
+  z-index: 8;
+  pointer-events: none;
+  background: color-mix(in srgb, var(--dsw-alias-brand-primary, #4d6bfe) 14%, transparent);
+  border: 2px solid color-mix(in srgb, var(--dsw-alias-brand-primary, #4d6bfe) 70%, transparent);
+}
+.ov-pane-drop-left { top: 0; bottom: 0; left: 0; width: 32%; border-right: 0; }
+.ov-pane-drop-right { top: 0; bottom: 0; right: 0; width: 32%; border-left: 0; }
+.ov-pane-drop-top { left: 0; right: 0; top: 0; height: 32%; border-bottom: 0; }
+.ov-pane-drop-bottom { left: 0; right: 0; bottom: 0; height: 32%; border-top: 0; }
 /* Two classes so the rule outranks the panes' own display rules, which the
    later style blocks declare with equal specificity. */
 .ov-explorer.ov-pane-hidden, .ov-rail.ov-pane-hidden { display: none; }

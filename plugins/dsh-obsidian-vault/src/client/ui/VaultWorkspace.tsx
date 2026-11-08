@@ -195,6 +195,9 @@ export function VaultWorkspace(props: VaultWorkspaceProps): JSX.Element {
             onPinTab={tabs.pinTab}
             onNewTab={onNewTab}
             onMoveTab={tabs.moveTabTo}
+            onSplitTab={(targetPaneId, sourcePaneId, sourceIndex, side) => {
+              tabs.splitWithTab(targetPaneId, sourcePaneId, sourceIndex, side)
+            }}
             onRetry={() => {
               void reload()
             }}

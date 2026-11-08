@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import {
   activatePane, closePane, EMPTY_PANES, mapActive, mapAllPanes, mapPane, moveTabBetween, resizePanePair, splitPane,
+  splitPaneWithTab,
   type PanesState,
 } from '../src/client/ui/panes.ts'
 import { EMPTY_TABS, makeTab, openTab, type TabsState } from '../src/client/ui/tabs.ts'
@@ -138,4 +139,30 @@ test('moving inside one pane reorders without changing the active pane', () => {
   )
   assert.deepEqual(state.panes[0]!.tabs.items.map(tab => tab.path), ['b', 'c', 'a'])
   assert.equal(state.active, 0)
+})
+
+test('dropping a tab on a pane edge splits that pane and inserts the tab', () => {
+  const state = splitPaneWithTab(twoPanes(['a', 'b'], ['c']), 1, 0, 0, 'right')
+  assert.equal(state.panes.length, 3)
+  assert.deepEqual(state.panes[0]!.tabs.items.map(tab => tab.path), ['b'])
+  assert.deepEqual(state.panes[1]!.tabs.items.map(tab => tab.path), ['c'])
+  assert.deepEqual(state.panes[2]!.tabs.items.map(tab => tab.path), ['a'])
+  assert.equal(state.direction, 'row')
+  assert.equal(state.active, 2)
+})
+
+test('an edge drop that empties the source pane collapses it', () => {
+  const state = splitPaneWithTab(twoPanes(['a'], ['b']), 1, 0, 0, 'left')
+  assert.equal(state.panes.length, 2)
+  assert.deepEqual(state.panes[0]!.tabs.items.map(tab => tab.path), ['a'])
+  assert.deepEqual(state.panes[1]!.tabs.items.map(tab => tab.path), ['b'])
+  assert.equal(state.active, 0)
+})
+
+test('top and bottom edges split vertically', () => {
+  const state = splitPaneWithTab(twoPanes(['a'], ['b']), 1, 0, 0, 'bottom')
+  assert.equal(state.direction, 'column')
+  assert.deepEqual(state.panes[0]!.tabs.items.map(tab => tab.path), ['b'])
+  assert.deepEqual(state.panes[1]!.tabs.items.map(tab => tab.path), ['a'])
+  assert.equal(state.active, 1)
 })

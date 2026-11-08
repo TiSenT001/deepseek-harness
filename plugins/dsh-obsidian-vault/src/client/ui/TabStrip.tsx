@@ -9,6 +9,7 @@ import type { NoteDto } from '../../protocol.ts'
 import type { Translate } from '../i18n.ts'
 import type { MenuScene } from './menu/registry.ts'
 import type { DocTab } from './tabs.ts'
+import { readTabDrag, writeTabDrag } from './tab-drag.ts'
 import { css } from './theme.ts'
 
 /** Props for {@link TabStrip}. */
@@ -28,29 +29,6 @@ export interface TabStripProps {
   readonly onMoveTab: (fromPaneId: number, fromIndex: number, toPaneId: number, toIndex: number) => void
   /** Ask the page to open the shared context menu for a tab or the empty bar. */
   readonly onMenu: (scene: MenuScene, x: number, y: number) => void
-}
-
-/** Drag payload carried between tab strips, including another pane's. */
-const TAB_DRAG_TYPE = 'application/x-ov-tab'
-
-interface TabDragPayload {
-  readonly paneId: number
-  readonly index: number
-}
-
-/**
- * Read the drag payload; a foreign drag returns undefined.
- * @param transfer - drag data transfer.
- * @returns the parsed payload.
- */
-function readDragPayload(transfer: DataTransfer): TabDragPayload | undefined {
-  try {
-    const parsed = JSON.parse(transfer.getData(TAB_DRAG_TYPE)) as { readonly paneId?: unknown; readonly index?: unknown }
-    if (typeof parsed.paneId !== 'number' || typeof parsed.index !== 'number') return undefined
-    return { paneId: parsed.paneId, index: parsed.index }
-  } catch {
-    return undefined
-  }
 }
 
 /**
@@ -126,12 +104,14 @@ export function TabStrip({
         onDragOver={(event) => {
           // Dropping past the last tab (or onto an empty pane) appends it.
           event.preventDefault()
+          event.stopPropagation()
           event.dataTransfer.dropEffect = 'move'
           setDropIndex(tabs.length)
         }}
         onDrop={(event) => {
           event.preventDefault()
-          const payload = readDragPayload(event.dataTransfer)
+          event.stopPropagation()
+          const payload = readTabDrag(event.dataTransfer)
           if (payload !== undefined) onMoveTab(payload.paneId, payload.index, paneId, tabs.length)
           setDragFrom(undefined)
           setDropIndex(undefined)
@@ -153,7 +133,7 @@ export function TabStrip({
             onDragStart={(event) => {
               event.dataTransfer.effectAllowed = 'move'
               event.dataTransfer.setData('text/plain', tab.path)
-              event.dataTransfer.setData(TAB_DRAG_TYPE, JSON.stringify({ paneId, index } satisfies TabDragPayload))
+              writeTabDrag(event.dataTransfer, { paneId, index })
               setDragFrom(index)
             }}
             onDragOver={(event) => {
@@ -167,7 +147,7 @@ export function TabStrip({
             onDrop={(event) => {
               event.preventDefault()
               event.stopPropagation()
-              const payload = readDragPayload(event.dataTransfer)
+              const payload = readTabDrag(event.dataTransfer)
               if (payload !== undefined) onMoveTab(payload.paneId, payload.index, paneId, index)
               else if (dragFrom !== undefined) onMoveTab(paneId, dragFrom, paneId, index)
               setDragFrom(undefined)

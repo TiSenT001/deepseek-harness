@@ -106,6 +106,7 @@ export function MainColumn(props: MainColumnProps): JSX.Element {
             onPinTab={props.onPinTab}
             onNewTab={props.onNewTab}
             onMoveTab={props.onMoveTab}
+            onSplitTab={props.onSplitTab}
             onRetry={props.onRetry}
             onReading={props.onReading}
             onSwitchToReading={props.onSwitchToReading}

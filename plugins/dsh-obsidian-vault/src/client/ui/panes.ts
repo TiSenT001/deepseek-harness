@@ -144,8 +144,7 @@ export function moveTabBetween(
  * @param state - current panes.
  * @param direction - layout direction the strip shows after the split.
  */
-export function splitPane(state: PanesState, direction: SplitDirection): PanesState {
-  const source = activePane(state)
+export function splitPane(state: PanesState, direction: SplitDirection): PanesState {  const source = activePane(state)
   const tab = activeTab(source.tabs)
   const moved: TabsState = tab === undefined ? EMPTY_TABS : { items: [tab], active: 0 }
   const remaining = tab === undefined ? source.tabs : closeTab(source.tabs, source.tabs.active)
@@ -157,6 +156,58 @@ export function splitPane(state: PanesState, direction: SplitDirection): PanesSt
     return position === state.active ? [current, pane] : [current]
   })
   return { panes, active: state.active + 1, direction, nextId: state.nextId + 1 }
+}
+
+/** Edge of a pane that receives a dragged tab into a new split. */
+export type PaneDropSide = 'left' | 'right' | 'top' | 'bottom'
+
+/**
+ * Split one pane at an edge and put the dragged tab into the new pane. The
+ * source pane collapses when its last tab leaves, unless it is also the target.
+ * @param state - current panes.
+ * @param targetPaneId - pane whose edge receives the drop.
+ * @param sourcePaneId - pane holding the dragged tab.
+ * @param sourceIndex - index of the dragged tab.
+ * @param side - edge that was dropped on.
+ * @returns the next pane state.
+ */
+export function splitPaneWithTab(
+  state: PanesState,
+  targetPaneId: number,
+  sourcePaneId: number,
+  sourceIndex: number,
+  side: PaneDropSide,
+): PanesState {
+  const sourcePos = state.panes.findIndex(pane => pane.id === sourcePaneId)
+  const targetPos = state.panes.findIndex(pane => pane.id === targetPaneId)
+  if (sourcePos === -1 || targetPos === -1) return state
+  const source = state.panes[sourcePos]!
+  const tab = source.tabs.items[sourceIndex]
+  if (tab === undefined) return state
+  const target = state.panes[targetPos]!
+  const remaining = closeTab(source.tabs, sourceIndex)
+  let panes = state.panes.map((pane, position) => (position === sourcePos ? { ...pane, tabs: remaining } : pane))
+  if (remaining.items.length === 0 && panes.length > 1 && sourcePaneId !== targetPaneId) {
+    panes = panes.filter((_, position) => position !== sourcePos)
+  }
+  const focusPos = panes.findIndex(pane => pane.id === targetPaneId)
+  if (focusPos === -1) return state
+  const focusPane = panes[focusPos]!
+  const direction: SplitDirection = side === 'left' || side === 'right' ? 'row' : 'column'
+  const half = focusPane.size / 2
+  const created: PaneState = { id: state.nextId, size: half, tabs: { items: [tab], active: 0 } }
+  const before = side === 'left' || side === 'top'
+  const inserted = panes.flatMap((pane, position) => {
+    if (position !== focusPos) return [pane]
+    const resized = { ...pane, size: half }
+    return before ? [created, resized] : [resized, created]
+  })
+  return {
+    panes: inserted,
+    active: before ? focusPos : focusPos + 1,
+    direction,
+    nextId: state.nextId + 1,
+  }
 }
 
 /**
