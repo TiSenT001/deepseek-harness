@@ -99,8 +99,8 @@ Info "repository: $RepoRoot"
 Info "branch:     $branch"
 Info "vault:      $Vault"
 Info "DSH home:   $DshHome"
-if ($branch -ne 'feat/pur-studio-canvas') {
-  Warn 'This checkout is not on feat/pur-studio-canvas; local plugin work may be missing.'
+if ($branch -notmatch '^master(-[a-z0-9-]+)*$') {
+  Warn "This checkout is on '$branch', which is not a plugin branch (master or master-<plugin>); local plugin work may be missing."
 }
 
 Step 'Repository dependencies'

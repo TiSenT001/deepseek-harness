@@ -17,7 +17,7 @@
 ```powershell
 git clone https://github.com/TiSenT001/deepseek-harness.git
 cd deepseek-harness
-git checkout feat/pur-studio-canvas
+git checkout master
 powershell -File setup\setup-machine.ps1 -Vault "G:\个人知识库" -Shortcut
 ```
 
@@ -59,7 +59,7 @@ powershell -File setup\setup-machine.ps1 -Vault "G:\个人知识库" -Shortcut
 | vault 路径、终端目录、LSP 目录 | `setup/machine.env.ps1` | 否（已在 `.gitignore`） |
 | profile 里的绝对路径 | `$DSH_HOME/profiles/web/cordis.patch.yml` | 否（`.dsh-home/` 已忽略） |
 | 会话、账号凭证、截图附件 | `$DSH_HOME/` | 否 |
-| 插件源码、DSH 内部改动 | 仓库分支 `feat/pur-studio-canvas` | 是 |
+| 插件源码、DSH 内部改动 | 仓库分支 `master`（或对应插件分支 `master-<插件>`，见 `BRANCHES.md`） | 是 |
 
 ## 环境变量
 

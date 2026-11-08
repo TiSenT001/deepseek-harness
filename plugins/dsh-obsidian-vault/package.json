@@ -51,7 +51,7 @@
     "url": "https://github.com/TiSenT001/deepseek-harness.git",
     "directory": "plugins/dsh-obsidian-vault"
   },
-  "homepage": "https://github.com/TiSenT001/deepseek-harness/tree/feat/pur-studio-canvas/plugins/dsh-obsidian-vault",
+  "homepage": "https://github.com/TiSenT001/deepseek-harness/tree/master/plugins/dsh-obsidian-vault",
   "bugs": {
     "url": "https://github.com/TiSenT001/deepseek-harness/issues"
   },
