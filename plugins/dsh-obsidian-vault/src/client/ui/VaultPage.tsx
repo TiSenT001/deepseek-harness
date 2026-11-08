@@ -25,7 +25,7 @@ import { useVaultBookmarks } from './useVaultBookmarks.ts'
 import { useVaultCommands } from './useVaultCommands.ts'
 import { useVaultShortcuts } from './useVaultShortcuts.ts'
 import { useVaultTabs } from './useVaultTabs.ts'
-import { readViewMemory, writeViewMemory } from './viewMemory.ts'
+import { readHostViewMemory, readViewMemory, writeHostViewMemory, writeViewMemory, type ViewMemory } from './viewMemory.ts'
 import { type VaultEmptyAction } from './VaultEmptyState.tsx'
 import { VaultWorkspace } from './VaultWorkspace.tsx'
 import { css, STYLE } from './theme.ts'
@@ -102,17 +102,34 @@ export function VaultPage({ pickDirectory, hasPicker }: VaultPageProps = {}): JS
   const viewRestored = useRef(false)
   useEffect(() => {
     if (viewRestored.current || status === undefined) return
-    viewRestored.current = true
-    const memory = remembered.current
-    if (memory === undefined) return
-    // A record from another vault must not carry the view or the path over.
-    if (memory.root !== undefined && memory.root !== status.root) {
-      setView('note')
-      setRail('outline')
+    const apply = (memory: ViewMemory): void => {
+      // A record from another vault must not carry the view or the path over.
+      if (memory.root !== undefined && memory.root !== status.root) {
+        setView('note')
+        setRail('outline')
+        return
+      }
+      if (memory.view !== undefined) setView(memory.view)
+      if (memory.rail !== undefined) setRail(railOf(memory.rail))
+      if (memory.path !== undefined) openPath(memory.path)
+    }
+    const local = remembered.current
+    if (local !== undefined) {
+      viewRestored.current = true
+      apply(local)
       return
     }
-    if (memory.path === undefined) return
-    openPath(memory.path)
+    // No local record (another browser profile, or site data was cleared):
+    // fall back to the Host copy before showing the empty tab.
+    let cancelled = false
+    void readHostViewMemory(status.root).then((host) => {
+      if (cancelled || viewRestored.current) return
+      viewRestored.current = true
+      if (host !== undefined) apply(host)
+    })
+    return () => {
+      cancelled = true
+    }
   }, [openPath, status])
 
   // Persist whatever the reading area shows. The graph view can be open with no
@@ -120,13 +137,18 @@ export function VaultPage({ pickDirectory, hasPicker }: VaultPageProps = {}): JS
   // written; otherwise reopening the panel dropped back to the note view.
   useEffect(() => {
     if (status === undefined) return
+    // Until the remembered page is applied (local record or Host fallback), a
+    // write would replace the Host copy with the first-paint state and lose it.
+    if (!viewRestored.current) return
     if (path !== undefined) lastPathRef.current = path
-    writeViewMemory({
+    const memory = {
       root: status.root,
       ...(lastPathRef.current === undefined ? {} : { path: lastPathRef.current }),
       view,
       rail,
-    })
+    }
+    writeViewMemory(memory)
+    writeHostViewMemory(status.root, memory)
   }, [path, rail, status, view])
 
   const overlays = useOverlayState({ openPath })

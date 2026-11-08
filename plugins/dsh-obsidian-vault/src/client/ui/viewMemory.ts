@@ -5,6 +5,7 @@
  * not carry a foreign path across.
  * @module dsh-obsidian-vault/client/ui/viewMemory
  */
+import { request } from '../api.ts'
 
 /** Reading area the user left open. */
 export type RememberedView = 'note' | 'graph'
@@ -83,4 +84,34 @@ export function writeViewMemory(memory: ViewMemory): void {
   } catch {
     // Nothing to retry: the next change tries again.
   }
+}
+
+/**
+ * Read the durable copy from the Host. localStorage is per browser profile, so
+ * the Host copy lets another browser or cleared site data find the page again.
+ * @param root - absolute vault root.
+ * @returns the record, or undefined when absent or unreachable.
+ */
+export async function readHostViewMemory(root: string): Promise<ViewMemory | undefined> {
+  try {
+    const body = await request<{ readonly memory?: unknown }>(`view-memory?root=${encodeURIComponent(root)}`)
+    if (body.memory === null || body.memory === undefined) return undefined
+    return parseViewMemory(JSON.stringify(body.memory))
+  } catch {
+    return undefined
+  }
+}
+
+/**
+ * Persist the durable copy. Failures stay silent: the local copy still works
+ * for this browser.
+ * @param root - absolute vault root.
+ * @param memory - current view state.
+ */
+export function writeHostViewMemory(root: string, memory: ViewMemory): void {
+  void request('view-memory', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ root, memory }),
+  }).catch(() => undefined)
 }

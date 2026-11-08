@@ -31,6 +31,7 @@ import { clientSettings } from './settings.ts'
 import { runCodeSnippet } from './vault/run-code.ts'
 import { PUR_ASSET_SCHEME, readPurImage, storePurImage } from './vault/pur-store.ts'
 import { serveVaultRoute } from './vault-endpoints.ts'
+import { readStoredViewMemory, writeStoredViewMemory } from './view-memory-store.ts'
 import type { VaultIndex } from './vault/index.ts'
 import type { VaultRegistry } from './vault/registry.ts'
 import { CONTENT_TYPES, dispositionOf, extensionOf, logNoteOpen } from './routes-shared.ts'
@@ -118,6 +119,21 @@ async function dispatch(
     case 'status':
       send(response, 200, vault.status())
       return
+    case 'view-memory': {
+      if (request.method === 'POST') {
+        const body = await readJson(request) as { readonly root?: unknown; readonly memory?: unknown }
+        if (typeof body.root !== 'string' || body.root.length === 0) {
+          send(response, 400, { error: 'root is required' })
+          return
+        }
+        await writeStoredViewMemory(body.root, body.memory)
+        send(response, 200, { ok: true })
+        return
+      }
+      const root = url.searchParams.get('root') ?? ''
+      send(response, 200, { memory: await readStoredViewMemory(root) ?? null })
+      return
+    }
     case 'tree':
       send(response, 200, { nodes: vault.tree() })
       return
