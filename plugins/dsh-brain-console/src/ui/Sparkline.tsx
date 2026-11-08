@@ -1,9 +1,11 @@
 /**
- * 迷你趋势线：指标卡里那根 20px 高的折线。
+ * 迷你趋势线：指标卡里那根 20px 高的曲线（单调三次贝塞尔平滑）。
  *
  * 只在至少两个有效采样点时渲染（一个点画不出趋势）；
  * 用 viewBox + width="100%" 自适应卡片宽度。
  */
+import { smoothPath } from './smooth.ts'
+
 export interface SparklineProps {
   /** 按时间升序的数值（已过滤掉空值） */
   values: number[]
@@ -27,13 +29,11 @@ export function Sparkline({ values, height = 20, className }: SparklineProps): J
   const max = Math.max(...values)
   const span = max - min || 1
   const step = VIEW_WIDTH / (values.length - 1)
-  const points = values
-    .map((value, index) => {
-      const x = index * step
-      const y = height - padding - ((value - min) / span) * (height - padding * 2)
-      return `${x.toFixed(1)},${y.toFixed(1)}`
-    })
-    .join(' ')
+  const points = values.map((value, index) => ({
+    x: index * step,
+    y: height - padding - ((value - min) / span) * (height - padding * 2),
+  }))
+  const path = smoothPath(points)
 
   return (
     <svg
@@ -45,7 +45,7 @@ export function Sparkline({ values, height = 20, className }: SparklineProps): J
       role="img"
       aria-label="趋势"
     >
-      <polyline points={points} fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
+      <path d={path} fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
     </svg>
   )
 }

@@ -9,6 +9,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { Button, Modal } from './primitives.ts'
 import type { MetricSpec } from './metrics.ts'
 import { parseTs, shortDate } from './time.ts'
+import { smoothAreaPath, smoothPath } from './smooth.ts'
 import type { MetricPoint } from './types.ts'
 
 const CHART_W = 600
@@ -74,8 +75,9 @@ export function TrendDialog({ metric, points, onOpenFailed, onClose }: TrendDial
   const xAt = (index: number): number => (count <= 1 ? CHART_W / 2 : (index / (count - 1)) * CHART_W)
   const yAt = (value: number): number => CHART_H - PAD - ((value - min) / span) * (CHART_H - PAD * 2)
 
-  const line = visible.map((point, index) => `${xAt(index).toFixed(1)},${yAt(point.value).toFixed(1)}`).join(' ')
-  const area = count > 0 ? `0,${CHART_H} ${line} ${CHART_W},${CHART_H}` : ''
+  const plotPoints = visible.map((point, index) => ({ x: xAt(index), y: yAt(point.value) }))
+  const line = smoothPath(plotPoints)
+  const area = smoothAreaPath(plotPoints, CHART_H)
   const zoomed = zoom !== null && (view.end - view.start + 1) < total
 
   // 滚轮缩放：以光标为中心收放可见窗口（原生监听才能 preventDefault）
@@ -197,8 +199,8 @@ export function TrendDialog({ metric, points, onOpenFailed, onClose }: TrendDial
           onDoubleClick={resetZoom}
         >
           <svg viewBox={`0 0 ${CHART_W} ${CHART_H}`} width="100%" height="170" preserveAspectRatio="none" role="img" aria-label={`${metric.label}趋势图`}>
-            {count > 1 && <polygon points={area} className="bc-trend-area" />}
-            {count > 1 && <polyline points={line} className="bc-trend-line" vectorEffect="non-scaling-stroke" />}
+            {count > 1 && <path d={area} className="bc-trend-area" />}
+            {count > 1 && <path d={line} className="bc-trend-line" vectorEffect="non-scaling-stroke" />}
             {hover !== null && visible[hover] !== undefined && (
               <>
                 <line x1={xAt(hover)} x2={xAt(hover)} y1={0} y2={CHART_H} className="bc-trend-guide" vectorEffect="non-scaling-stroke" />
