@@ -3486,13 +3486,14 @@ window.__ModuleLoader__.load({
 
 .bc-trend-marker {
   position: absolute;
-  width: 11px;
-  height: 11px;
-  margin: -5.5px 0 0 -5.5px;
-  border: 2px solid var(--dsw-alias-label-primary, #f9fafb);
+  box-sizing: border-box;
+  width: 9px;
+  height: 9px;
+  margin: -4.5px 0 0 -4.5px;
+  border: 1.5px solid var(--dsw-alias-label-primary, #f9fafb);
   border-radius: 50%;
   background: var(--dsw-alias-bg-layer-1, #1d1d22);
-  box-shadow: 0 0 0 5px color-mix(in srgb, var(--dsw-alias-label-primary, #f9fafb) 12%, transparent);
+  box-shadow: 0 0 0 2.5px color-mix(in srgb, var(--dsw-alias-label-primary, #f9fafb) 12%, transparent);
   pointer-events: none;
 }
 .bc-trend-guide {
