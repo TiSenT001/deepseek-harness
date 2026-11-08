@@ -16,6 +16,8 @@ export type StoredView = 'note' | 'graph'
 interface StoredTab {
   readonly path: string
   readonly preview?: boolean
+  /** True for the empty new-tab page. */
+  readonly empty?: boolean
 }
 
 /** One pane in the persisted workspace. */
@@ -70,8 +72,13 @@ function sanitizeWorkspace(value: unknown): StoredWorkspace | undefined {
     const tabs: StoredTab[] = []
     for (const tabValue of pane.tabs) {
       if (tabValue === null || typeof tabValue !== 'object') return undefined
-      const tab = tabValue as { readonly path?: unknown; readonly preview?: unknown }
-      if (typeof tab.path !== 'string' || tab.path.length === 0 || tab.path.length > MAX_PATH) return undefined
+      const tab = tabValue as { readonly path?: unknown; readonly preview?: unknown; readonly empty?: unknown }
+      if (typeof tab.path !== 'string' || tab.path.length > MAX_PATH) return undefined
+      if (tab.path.length === 0) {
+        if (tab.empty !== true) return undefined
+        tabs.push({ path: '', empty: true })
+        continue
+      }
       tabs.push({ path: tab.path, ...(tab.preview === true ? { preview: true } : {}) })
     }
     panes.push({ tabs, active: pane.active, size: pane.size })

@@ -39,6 +39,8 @@ export interface VaultActionInput {
   readonly openQuickSwitcher: () => void
   /** A new tab is requested: the next quick-switcher pick opens in one. */
   readonly newTabPending: { current: boolean }
+  /** Append and focus an empty new-tab page. */
+  readonly addEmptyTab: () => void
   /** Collapse All, wired to the explorer's own expand state. */
   readonly collapseRef: { current: (() => void) | null }
   /** Add or remove one file's bookmark. */
@@ -61,7 +63,7 @@ export function useVaultActions(input: VaultActionInput): MenuActions {
     t, openPath, createTarget, mapTabs, reload, setError, closeTab, closeOthers, closeAllTabs, pinTab,
     splitPane, closePane,
     setView, setTreeOpen, setRailOpen, setRail, setFilter, openQuickSwitcher, newTabPending, collapseRef,
-    toggleBookmark, askText, askConfirm,
+    toggleBookmark, askText, askConfirm, addEmptyTab,
   } = input
 
   return useMemo<MenuActions>(() => {
@@ -158,10 +160,7 @@ export function useVaultActions(input: VaultActionInput): MenuActions {
       move,
       copy,
       copyPaths: paths => copy(paths.join('\n')),
-      newTab: () => {
-        newTabPending.current = true
-        openQuickSwitcher()
-      },
+      newTab: addEmptyTab,
       closeTab,
       closeOthers,
       closeAllTabs,
@@ -181,7 +180,7 @@ export function useVaultActions(input: VaultActionInput): MenuActions {
       toggleBookmark,
     }
   }, [
-    collapseRef, closeAllTabs, closeOthers, closeTab, createTarget, mapTabs, newTabPending, openPath,
+    addEmptyTab, collapseRef, closeAllTabs, closeOthers, closeTab, createTarget, mapTabs, newTabPending, openPath,
     openQuickSwitcher, pinTab, reload, setError, setFilter, setRail, setRailOpen,
     setTreeOpen, setView, splitPane, closePane, t, toggleBookmark,
   ])

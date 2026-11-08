@@ -4,7 +4,7 @@
  * unit-testable without React.
  * @module dsh-obsidian-vault/client/ui/panes
  */
-import { activeTab, closeTab, EMPTY_TABS, makeTab, type TabsState } from './tabs.ts'
+import { activeTab, closeTab, EMPTY_TABS, makeEmptyTab, makeTab, type TabsState } from './tabs.ts'
 
 /** Layout direction of the pane strip: side by side or stacked. */
 export type SplitDirection = 'row' | 'column'
@@ -138,6 +138,8 @@ export interface SavedTab {
   readonly path: string
   /** True for a preview tab; the next single click reuses it. */
   readonly preview?: boolean
+  /** True for the empty new-tab page, which has no file behind it. */
+  readonly empty?: boolean
 }
 
 /** One pane in the persisted workspace record. */
@@ -165,7 +167,7 @@ export function panesFromSaved(saved: SavedWorkspace): PanesState {
     id: index,
     size: Number.isFinite(pane.size) && pane.size > 0 ? pane.size : 1,
     tabs: {
-      items: pane.tabs.map(tab => makeTab(tab.path, tab.preview === true)),
+      items: pane.tabs.map(tab => (tab.empty === true ? makeEmptyTab() : makeTab(tab.path, tab.preview === true))),
       active: Math.min(Math.max(0, Math.floor(pane.active)), Math.max(0, pane.tabs.length - 1)),
     },
   }))
@@ -186,7 +188,9 @@ export function panesFromSaved(saved: SavedWorkspace): PanesState {
 export function savedFromPanes(state: PanesState): SavedWorkspace {
   return {
     panes: state.panes.map(pane => ({
-      tabs: pane.tabs.items.map(tab => ({ path: tab.path, ...(tab.preview ? { preview: true } : {}) })),
+      tabs: pane.tabs.items.map(tab => (tab.path.length === 0
+        ? { path: '', empty: true }
+        : { path: tab.path, ...(tab.preview ? { preview: true } : {}) })),
       active: pane.tabs.active,
       size: pane.size,
     })),

@@ -6,7 +6,7 @@
  * @module dsh-obsidian-vault/client/ui/viewMemory
  */
 import { request } from '../api.ts'
-import type { SavedWorkspace } from './panes.ts'
+import type { SavedTab, SavedWorkspace } from './panes.ts'
 
 /** Reading area the user left open. */
 export type RememberedView = 'note' | 'graph'
@@ -50,11 +50,17 @@ function sanitizeWorkspace(value: unknown): SavedWorkspace | undefined {
     const pane = paneValue as { readonly tabs?: unknown; readonly active?: unknown; readonly size?: unknown }
     if (!Array.isArray(pane.tabs) || pane.tabs.length > MAX_TABS) return undefined
     if (typeof pane.active !== 'number' || typeof pane.size !== 'number') return undefined
-    const tabs = []
+    const tabs: SavedTab[] = []
     for (const tabValue of pane.tabs) {
       if (tabValue === null || typeof tabValue !== 'object') return undefined
-      const tab = tabValue as { readonly path?: unknown; readonly preview?: unknown }
-      if (typeof tab.path !== 'string' || tab.path.length === 0 || tab.path.length > MAX_PATH) return undefined
+      const tab = tabValue as { readonly path?: unknown; readonly preview?: unknown; readonly empty?: unknown }
+      if (typeof tab.path !== 'string' || tab.path.length > MAX_PATH) return undefined
+      if (tab.path.length === 0) {
+        // Only the explicit new-tab placeholder may have no path.
+        if (tab.empty !== true) return undefined
+        tabs.push({ path: '', empty: true })
+        continue
+      }
       tabs.push({ path: tab.path, ...(tab.preview === true ? { preview: true } : {}) })
     }
     panes.push({ tabs, active: pane.active, size: pane.size })

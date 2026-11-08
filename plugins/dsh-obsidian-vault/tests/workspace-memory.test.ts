@@ -39,6 +39,20 @@ test('the empty page is a valid workspace record', () => {
   assert.deepEqual(restored.panes[0]?.tabs.items, [])
 })
 
+test('new-tab placeholders survive as explicit empty tabs', () => {
+  const state = panesFromSaved({
+    panes: [{ tabs: [{ path: '笔记.md' }, { path: '', empty: true }], active: 1, size: 1 }],
+    activePane: 0,
+    direction: 'row',
+  })
+  assert.equal(state.panes[0]?.tabs.items[1]?.path, '')
+  const saved = savedFromPanes(state)
+  assert.deepEqual(saved.panes[0]?.tabs, [{ path: '笔记.md' }, { path: '', empty: true }])
+  const restored = panesFromSaved(saved)
+  assert.equal(restored.panes[0]?.tabs.items[1]?.path, '')
+  assert.equal(restored.panes[0]?.tabs.active, 1)
+})
+
 test('a workspace survives the view-memory JSON round-trip', () => {
   const state = panesFromSaved({
     panes: [{ tabs: [{ path: '笔记.md' }], active: 0, size: 1 }],

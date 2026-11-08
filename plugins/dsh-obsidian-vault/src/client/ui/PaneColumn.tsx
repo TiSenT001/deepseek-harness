@@ -80,7 +80,9 @@ export function PaneColumn(props: PaneColumnProps): JSX.Element {
     onActivate, register, onActiveHeading,
     onSelectTab, onCloseTab, onPinTab, onNewTab, onReorderTab,
   } = props
-  const path = activeTab(pane.tabs)?.path
+  const tabPath = activeTab(pane.tabs)?.path
+  /** The empty new-tab page has no path, so every file feature stays off. */
+  const path = tabPath === '' ? undefined : tabPath
   const isMarkdown = path !== undefined && fileTypeOf(path).kind === 'markdown'
   const local = useNoteBundle(isActive ? undefined : path, props.version)
   const note = isActive ? activeNote : local.note

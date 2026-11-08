@@ -120,11 +120,13 @@ function sceneGroups(scene: MenuScene, { t, actions, folders, bookmarks, tabs, p
           leaf('split-down', t('splitDown'), () => actions.splitPane('column')),
           leaf('close-pane', t('closePane'), actions.closePane, { disabled: panes <= 1 }),
         ],
-        [
-          leaf('copy-path', t('copyPath'), () => actions.copy(scene.path)),
-          leaf('copy-link', t('copyWikilink'), () => actions.copy(wikilink(scene.path))),
-          leaf('graph', t('openInGraph'), () => actions.openGraph(scene.path)),
-        ],
+        scene.path.length === 0
+          ? []
+          : [
+            leaf('copy-path', t('copyPath'), () => actions.copy(scene.path)),
+            leaf('copy-link', t('copyWikilink'), () => actions.copy(wikilink(scene.path))),
+            leaf('graph', t('openInGraph'), () => actions.openGraph(scene.path)),
+          ],
       ]
     case 'tabbar-empty':
       return [

@@ -14,7 +14,7 @@ import {
 } from './panes.ts'
 import {
   closeOthers as reduceCloseOthers, closeTab as reduceCloseTab, goBack as reduceBack,
-  goForward as reduceForward, openTab as reduceOpen, pinTab as reducePin, reorderTabs,
+  goForward as reduceForward, makeEmptyTab, openTab as reduceOpen, pinTab as reducePin, reorderTabs,
   selectTab as reduceSelect, type TabsState,
 } from './tabs.ts'
 
@@ -38,6 +38,8 @@ export interface VaultTabs {
   /** Heading or block id the reading view must reveal. */
   readonly anchor: string | undefined
   readonly openPath: (path: string, options?: OpenOptions) => void
+  /** Append and focus an empty new-tab page. */
+  readonly newTab: () => void
   readonly selectTab: (index: number) => void
   readonly pinTab: (index: number) => void
   readonly closeTab: (index: number) => void
@@ -77,6 +79,14 @@ export function useVaultTabs(initial?: PanesState): VaultTabs {
       ...(options.newTab === true ? { newTab: true } : {}),
     })))
     void noteOpen(next)
+  }, [])
+
+  const newTab = useCallback(() => {
+    setAnchor(undefined)
+    setState(previous => mapActive(previous, tabs => ({
+      items: [...tabs.items, makeEmptyTab()],
+      active: tabs.items.length,
+    })))
   }, [])
 
   const selectTab = useCallback((index: number) => {
@@ -155,7 +165,7 @@ export function useVaultTabs(initial?: PanesState): VaultTabs {
     direction: state.direction,
     tabs: activePaneOf(state).tabs,
     anchor,
-    openPath, selectTab, pinTab, closeTab, closeOthers, closeAll, goBack, goForward, moveTab,
+    openPath, newTab, selectTab, pinTab, closeTab, closeOthers, closeAll, goBack, goForward, moveTab,
     activatePane, splitPane, closePane, resizePanePair, mapTabs, reset, restore,
   }
 }

@@ -78,10 +78,11 @@ export function VaultPage({ pickDirectory, hasPicker }: VaultPageProps = {}): JS
   const tabsApi = useVaultTabs(restoredWorkspace === undefined ? undefined : panesFromSaved(restoredWorkspace))
   const {
     tabs, panes, activePane, direction, openPath, goBack, goForward, closeTab, mapTabs, splitPane, closePane,
-    reset: resetTabs, restore: restoreTabs, selectTab,
+    reset: resetTabs, restore: restoreTabs, selectTab, newTab: addEmptyTab,
   } = tabsApi
   const current = activeTab(tabs)
-  const path = current?.path
+  /** The empty new-tab page has no file; the reading area shows the start page. */
+  const path = current?.path === '' ? undefined : current?.path
   const kind = path === undefined ? undefined : fileTypeOf(path).kind
   const isMarkdown = kind === 'markdown'
   const { status, tree, tags, note, backlinks, unlinked, error, setError, reload } = useVaultData(path)
@@ -168,9 +169,8 @@ export function VaultPage({ pickDirectory, hasPicker }: VaultPageProps = {}): JS
   const openReading = useCallback(() => setSourceMode(false), [])
   const openPurStudio = useCallback(() => { void createPurCanvas(t('purNewCanvas'), openPath).then(() => setView('note')) }, [openPath, t])
   const openNewTab = useCallback(() => {
-    newTabPending.current = true
-    openQuick()
-  }, [newTabPending, openQuick])
+    addEmptyTab()
+  }, [addEmptyTab])
 
   useVaultShortcuts({
     onToggleQuick: toggleQuick,
@@ -275,6 +275,7 @@ export function VaultPage({ pickDirectory, hasPicker }: VaultPageProps = {}): JS
     setFilter,
     openQuickSwitcher: openQuick,
     newTabPending,
+    addEmptyTab,
     collapseRef,
     toggleBookmark: bookmarks.toggle,
     askText: ask.askText,

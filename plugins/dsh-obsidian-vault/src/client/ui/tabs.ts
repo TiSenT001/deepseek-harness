@@ -35,6 +35,23 @@ export interface OpenOptions {
 export const EMPTY_TABS: TabsState = { items: [], active: 0 }
 
 /**
+ * Build a new-tab placeholder: an empty page with no file behind it.
+ * @returns the placeholder tab.
+ */
+export function makeEmptyTab(): DocTab {
+  return { path: '', preview: false, history: { items: [], index: -1 } }
+}
+
+/**
+ * Whether a tab is the empty new-tab page.
+ * @param tab - document tab.
+ * @returns true when it has no path.
+ */
+export function isEmptyTab(tab: DocTab): boolean {
+  return tab.path.length === 0
+}
+
+/**
  * Build one fresh tab.
  * @param path - vault-relative note path.
  * @param preview - whether it is a preview tab.
@@ -83,6 +100,14 @@ export function openTab(state: TabsState, path: string, options: OpenOptions = {
   }
   if (options.preview === true) {
     const current = activeTab(state)
+    // A click on an empty new-tab page fills that page instead of appending
+    // another preview tab next to it.
+    if (current !== undefined && current.path.length === 0) {
+      return {
+        items: state.items.map((tab, index) => (index === state.active ? makeTab(path, true) : tab)),
+        active: state.active,
+      }
+    }
     if (current !== undefined && current.preview) {
       // The preview tab is reused, but the navigation still joins its history
       // so the back/forward arrows walk every file the user clicked through.

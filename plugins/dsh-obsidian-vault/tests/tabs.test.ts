@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import {
-  closeOthers, closeTab, EMPTY_TABS, goBack, goForward, makeTab, openTab, pinTab, remapPath, removePath,
+  closeOthers, closeTab, EMPTY_TABS, goBack, goForward, isEmptyTab, makeEmptyTab, makeTab, openTab, pinTab, remapPath, removePath,
   reorderTabs, selectTab,
   type TabsState,
 } from '../src/client/ui/tabs.ts'
@@ -13,6 +13,15 @@ test('a single click opens a preview tab', () => {
   assert.equal(state.items.length, 1)
   assert.equal(state.items[0]!.preview, true)
   assert.equal(state.active, 0)
+})
+
+test('an empty new-tab page is filled by the next single click', () => {
+  const empty: TabsState = { items: [makeEmptyTab()], active: 0 }
+  assert.equal(isEmptyTab(empty.items[0]!), true)
+  const filled = openTab(empty, 'a.md', { preview: true })
+  assert.equal(filled.items.length, 1)
+  assert.equal(filled.items[0]!.path, 'a.md')
+  assert.equal(filled.items[0]!.preview, true)
 })
 
 test('a second single click reuses the preview tab and records history', () => {

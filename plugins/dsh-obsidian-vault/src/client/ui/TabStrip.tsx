@@ -41,6 +41,8 @@ export function TabStrip({
   const [open, setOpen] = useState(false)
   const [dragFrom, setDragFrom] = useState<number | undefined>()
   const [dropIndex, setDropIndex] = useState<number | undefined>()
+  /** Empty new-tab pages have no file name; they read as their own tab. */
+  const labelOf = (tab: DocTab): string => (tab.path.length === 0 ? t('newTab') : tabTitle(t, tab.path, note, path))
 
   useEffect(() => {
     const element = stripRef.current
@@ -99,7 +101,7 @@ export function TabStrip({
             role="tab"
             aria-selected={index === active}
             className={`${css.docTab} ${index === active ? css.docTabActive : ''} ${tab.preview ? css.docTabPreview : ''} ${dropIndex === index && dragFrom !== index ? css.doctabDrop : ''}`.trim()}
-            title={tab.path}
+            title={tab.path.length === 0 ? t('newTab') : tab.path}
             draggable
             onClick={() => onSelect(index)}
             onDoubleClick={() => onPin(index)}
@@ -134,7 +136,7 @@ export function TabStrip({
               onMenu({ kind: 'tab', index, path: tab.path, preview: tab.preview }, event.clientX, event.clientY)
             }}
           >
-            <span className={css.docTabLabel}>{tabTitle(t, tab.path, note, path)}</span>
+            <span className={css.docTabLabel}>{labelOf(tab)}</span>
             <button
               type="button"
               className={css.docTabClose}
@@ -196,13 +198,13 @@ export function TabStrip({
                   type="button"
                   role="menuitem"
                   className={`${css.tabOverflowItem} ${index === active ? css.tabOverflowActive : ''}`.trim()}
-                  title={tab.path}
+                  title={tab.path.length === 0 ? t('newTab') : tab.path}
                   onClick={() => {
                     onSelect(index)
                     setOpen(false)
                   }}
                 >
-                  {tabTitle(t, tab.path, note, path)}
+                  {labelOf(tab)}
                 </button>
                 <button
                   type="button"
