@@ -15,8 +15,8 @@ import { dirname, join } from "node:path";
 const name = "dsh-brain-console";
 const inject = ["webServer"];
 const MANAGER_URL = "http://127.0.0.1:19998";
-const BRAIN_ROOT = process.env.BRAIN_ROOT ?? "G:\\个人知识库\\.brain";
-const PYTHONW = process.env.BRAIN_PYTHONW ?? "C:\\Users\\Administrator\\AppData\\Local\\Programs\\Python\\Python311\\pythonw.exe";
+const BRAIN_ROOT = process.env.BRAIN_ROOT ?? (process.env.OBSIDIAN_VAULT ? join(process.env.OBSIDIAN_VAULT, ".brain") : "");
+const PYTHONW = process.env.BRAIN_PYTHONW ?? "pythonw.exe";
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 async function managerAlive() {
 	try {
@@ -41,6 +41,10 @@ let managerStartingSince = null;
 /** 去抖窗口要覆盖管理器恢复服务的耗时。 */
 const MANAGER_START_WINDOW_MS = 12e4;
 async function startManager(res) {
+	if (BRAIN_ROOT.length === 0) {
+		send(res, 500, { error: "BRAIN_ROOT is not configured: set BRAIN_ROOT or OBSIDIAN_VAULT for the dsh process" });
+		return;
+	}
 	if (await managerAlive()) {
 		managerStartingSince = null;
 		send(res, 200, {
@@ -88,7 +92,7 @@ async function spawnManager(res) {
 				cwd: BRAIN_ROOT,
 				env: {
 					...process.env,
-					PATH: `${dirname(PYTHONW)};${process.env.PATH ?? ""}`
+					PATH: `${PYTHONW.includes("\\") || PYTHONW.includes("/") ? `${dirname(PYTHONW)};` : ""}${process.env.PATH ?? ""}`
 				}
 			}).unref();
 		} finally {

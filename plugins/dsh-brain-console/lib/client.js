@@ -1381,7 +1381,79 @@ window.__ModuleLoader__.load({
 			});
 		}
 		//#endregion
+		//#region src/ui/smooth.ts
+		/** 统一保留一位小数，减小 path 体积。 */
+		function fmt(value) {
+			return value.toFixed(1);
+		}
+		/**
+		* 生成平滑折线的 SVG path。
+		* @param points - 按 x 升序的采样点（至少 1 个）
+		* @returns `M … C …` 形式的 path；点不足时退化成直线段
+		*/
+		function smoothPath(points) {
+			const count = points.length;
+			if (count === 0) return "";
+			const first = points[0];
+			if (count === 1) return `M ${fmt(first.x)} ${fmt(first.y)}`;
+			const second = points[1];
+			if (count === 2) return `M ${fmt(first.x)} ${fmt(first.y)} L ${fmt(second.x)} ${fmt(second.y)}`;
+			const dx = [];
+			const slope = [];
+			for (let index = 0; index < count - 1; index += 1) {
+				const left = points[index];
+				const right = points[index + 1];
+				const width = right.x - left.x;
+				dx.push(width);
+				slope.push(width === 0 ? 0 : (right.y - left.y) / width);
+			}
+			const tangent = new Array(count).fill(0);
+			tangent[0] = slope[0] ?? 0;
+			tangent[count - 1] = slope[count - 2] ?? 0;
+			for (let index = 1; index < count - 1; index += 1) {
+				const previous = slope[index - 1] ?? 0;
+				const next = slope[index] ?? 0;
+				if (previous * next <= 0) {
+					tangent[index] = 0;
+					continue;
+				}
+				const w1 = 2 * (dx[index] ?? 0) + (dx[index - 1] ?? 0);
+				const w2 = (dx[index] ?? 0) + 2 * (dx[index - 1] ?? 0);
+				tangent[index] = (w1 + w2) / (w1 / previous + w2 / next);
+			}
+			let path = `M ${fmt(first.x)} ${fmt(first.y)}`;
+			for (let index = 0; index < count - 1; index += 1) {
+				const left = points[index];
+				const right = points[index + 1];
+				const width = dx[index] ?? 0;
+				const c1x = left.x + width / 3;
+				const c1y = left.y + (tangent[index] ?? 0) * width / 3;
+				const c2x = right.x - width / 3;
+				const c2y = right.y - (tangent[index + 1] ?? 0) * width / 3;
+				path += ` C ${fmt(c1x)} ${fmt(c1y)}, ${fmt(c2x)} ${fmt(c2y)}, ${fmt(right.x)} ${fmt(right.y)}`;
+			}
+			return path;
+		}
+		/**
+		* 面积填充路径：平滑曲线 + 回落到基线闭合。
+		* @param points - 采样点（按 x 升序）
+		* @param baseline - 基线 y（通常图表底部）
+		* @returns 闭合的 SVG path
+		*/
+		function smoothAreaPath(points, baseline) {
+			if (points.length === 0) return "";
+			const first = points[0];
+			const last = points[points.length - 1];
+			return `${smoothPath(points)} L ${fmt(last.x)} ${fmt(baseline)} L ${fmt(first.x)} ${fmt(baseline)} Z`;
+		}
+		//#endregion
 		//#region src/ui/Sparkline.tsx
+		/**
+		* 迷你趋势线：指标卡里那根 20px 高的曲线（单调三次贝塞尔平滑）。
+		*
+		* 只在至少两个有效采样点时渲染（一个点画不出趋势）；
+		* 用 viewBox + width="100%" 自适应卡片宽度。
+		*/
 		const VIEW_WIDTH = 100;
 		/**
 		* 渲染一条迷你折线。
@@ -1394,11 +1466,10 @@ window.__ModuleLoader__.load({
 			const min = Math.min(...values);
 			const span = Math.max(...values) - min || 1;
 			const step = VIEW_WIDTH / (values.length - 1);
-			const points = values.map((value, index) => {
-				const x = index * step;
-				const y = height - padding - (value - min) / span * (height - padding * 2);
-				return `${x.toFixed(1)},${y.toFixed(1)}`;
-			}).join(" ");
+			const path = smoothPath(values.map((value, index) => ({
+				x: index * step,
+				y: height - padding - (value - min) / span * (height - padding * 2)
+			})));
 			return /* @__PURE__ */ (0, react_jsx_runtime.jsx)("svg", {
 				className: className === void 0 ? "bc-spark" : `bc-spark ${className}`,
 				viewBox: `0 0 ${VIEW_WIDTH} ${height}`,
@@ -1407,8 +1478,8 @@ window.__ModuleLoader__.load({
 				preserveAspectRatio: "none",
 				role: "img",
 				"aria-label": "趋势",
-				children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)("polyline", {
-					points,
+				children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)("path", {
+					d: path,
 					fill: "none",
 					stroke: "currentColor",
 					strokeWidth: "1.5",
@@ -1622,8 +1693,12 @@ window.__ModuleLoader__.load({
 			const span = max - min || 1;
 			const xAt = (index) => count <= 1 ? CHART_W / 2 : index / (count - 1) * CHART_W;
 			const yAt = (value) => CHART_H - PAD - (value - min) / span * (CHART_H - PAD * 2);
-			const line = visible.map((point, index) => `${xAt(index).toFixed(1)},${yAt(point.value).toFixed(1)}`).join(" ");
-			const area = count > 0 ? `0,${CHART_H} ${line} ${CHART_W},${CHART_H}` : "";
+			const plotPoints = visible.map((point, index) => ({
+				x: xAt(index),
+				y: yAt(point.value)
+			}));
+			const line = smoothPath(plotPoints);
+			const area = smoothAreaPath(plotPoints, CHART_H);
 			const zoomed = zoom !== null && view.end - view.start + 1 < total;
 			(0, react.useEffect)(() => {
 				const element = chartRef.current;
@@ -1753,12 +1828,12 @@ window.__ModuleLoader__.load({
 								role: "img",
 								"aria-label": `${metric.label}趋势图`,
 								children: [
-									count > 1 && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("polygon", {
-										points: area,
+									count > 1 && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("path", {
+										d: area,
 										className: "bc-trend-area"
 									}),
-									count > 1 && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("polyline", {
-										points: line,
+									count > 1 && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("path", {
+										d: line,
 										className: "bc-trend-line",
 										vectorEffect: "non-scaling-stroke"
 									}),
