@@ -6,10 +6,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { GraphDto, GraphNodeDto } from '../../../protocol.ts'
 import { type GraphNodeInput, type SimNode } from '../../graph/layout.ts'
+import { buildRevealPlan, EMPTY_PLAN, type RevealPlan } from '../../graph/reveal.ts'
 import { startSimulation, type SimulationHandle } from '../../graph/simulation.ts'
 import type { GraphSettings } from '../../graph/settings.ts'
-
-const EMPTY_HIDDEN: ReadonlySet<string> = new Set()
 
 /**
  * Deterministic fallback placement when the simulation fails to start.
@@ -51,8 +50,10 @@ export interface GraphLayout {
   readonly positionsRef: { current: readonly SimNode[] }
   readonly edgesRef: { current: GraphDto['edges'] }
   readonly nodeInfoRef: { current: ReadonlyMap<string, GraphNodeDto> }
-  readonly hidden: ReadonlySet<string>
-  readonly hiddenRef: { current: ReadonlySet<string> }
+  /** Overall replay progress in [0, 1]; the scene reads it every frame. */
+  readonly revealRef: { current: number }
+  /** Per-node replay plan; thresholds drive the staggered entrance. */
+  readonly planRef: { current: RevealPlan }
   /** False while the simulation is still moving. */
   readonly settledRef: { current: boolean }
   /** Frame-loop waker the canvas fills in on mount. */
@@ -74,10 +75,11 @@ export interface GraphLayout {
  */
 export function useGraphLayout({ visible, forces, animate }: GraphLayoutInput): GraphLayout {
   const [positions, setPositions] = useState<readonly SimNode[]>([])
-  const [reveal, setReveal] = useState(1)
+  const [replayToken, setReplayToken] = useState(0)
   const positionsRef = useRef<readonly SimNode[]>([])
   const edgesRef = useRef<GraphDto['edges']>([])
-  const hiddenRef = useRef<ReadonlySet<string>>(EMPTY_HIDDEN)
+  const revealRef = useRef(0)
+  const planRef = useRef<RevealPlan>(EMPTY_PLAN)
   const settledRef = useRef(true)
   const loopRef = useRef<(() => void) | null>(null)
   /** The live force session; null before the first graph arrives. */
@@ -188,39 +190,50 @@ export function useGraphLayout({ visible, forces, animate }: GraphLayoutInput): 
     simRef.current?.setAnimate(animate)
   }, [animate])
 
-  // Time-lapse reveal: nodes appear in degree order over a short window.
+  // Time-lapse reveal: every node fades and scales in on its own start time, so
+  // a replay spreads as a wave instead of unhiding sorted batches. The progress
+  // lives in a ref: an animation frame does not re-render React.
+  const nodeKey = useMemo(() => visible.nodes.map(node => node.path).sort().join('\n'), [visible.nodes])
+  /** Replay trigger already consumed; a refetch must not replay on its own. */
+  const lastReplay = useRef(0)
+  const hasRevealed = useRef(false)
+
   useEffect(() => {
-    if (reveal >= 1) {
-      // The reveal just finished (or this is the first paint): re-arm the warm
-      // session so a replay never ends with the continuous motion asleep.
+    if (positions.length === 0) return
+    const reduced = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches === true
+    const plan = buildRevealPlan(positionsRef.current, visible.edges, reduced)
+    planRef.current = plan
+    const replaying = replayToken !== lastReplay.current
+    lastReplay.current = replayToken
+    // First layout and explicit replay animate; a background refetch keeps the
+    // current frame instead of restarting the wave.
+    if (!replaying && hasRevealed.current) return
+    hasRevealed.current = true
+    revealRef.current = 0
+    if (reduced || plan.duration === 0) {
+      revealRef.current = 1
       simRef.current?.setAnimate(animateRef.current)
       loopRef.current?.()
       return
     }
     let frame = 0
     const started = performance.now()
-    const duration = Math.min(3000, Math.max(600, positions.length * 6))
     const tick = (now: number): void => {
-      const ratio = Math.min(1, (now - started) / duration)
-      setReveal(ratio)
-      // Each reveal step unhides nodes, which the sleeping loop would miss.
+      const ratio = Math.min(1, (now - started) / plan.duration)
+      revealRef.current = ratio
+      // The scene reads the ref, so the sleeping loop must be poked each frame.
       loopRef.current?.()
       if (ratio < 1) frame = requestAnimationFrame(tick)
+      else simRef.current?.setAnimate(animateRef.current)
     }
     frame = requestAnimationFrame(tick)
     return () => cancelAnimationFrame(frame)
-  }, [reveal >= 1])
+  }, [nodeKey, replayToken, positions.length, visible.edges])
 
-  const hidden = useMemo(() => {
-    if (reveal >= 1) return EMPTY_HIDDEN
-    const ranked = [...positions].sort((left, right) => right.degree - left.degree)
-    const keep = Math.floor(ranked.length * reveal)
-    return new Set(ranked.slice(keep).map(node => node.path))
-  }, [positions, reveal])
-
-  hiddenRef.current = hidden
-
-  const replay = useCallback(() => setReveal(0), [])
+  const replay = useCallback(() => {
+    revealRef.current = 0
+    setReplayToken(token => token + 1)
+  }, [])
 
   const pin = useCallback((path: string) => {
     const node = positionsRef.current.find(item => item.path === path)
@@ -236,6 +249,6 @@ export function useGraphLayout({ visible, forces, animate }: GraphLayoutInput): 
   }, [])
 
   return {
-    positions, positionsRef, edgesRef, nodeInfoRef, hidden, hiddenRef, settledRef, loopRef, replay, pin, movePin, unpin,
+    positions, positionsRef, edgesRef, nodeInfoRef, revealRef, planRef, settledRef, loopRef, replay, pin, movePin, unpin,
   }
 }

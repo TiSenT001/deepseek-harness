@@ -149,7 +149,8 @@ export function GraphView(props: GraphViewProps): JSX.Element {
           positions={layout.positionsRef}
           edges={layout.edgesRef}
           camera={camera.cameraRef}
-          hidden={layout.hiddenRef}
+          reveal={layout.revealRef}
+  plan={layout.planRef}
           nodeInfo={layout.nodeInfoRef}
           settings={data.settingsRef}
           hasCenter={scope !== undefined}

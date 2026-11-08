@@ -10,6 +10,8 @@ import { attachGraphInput } from '../graph/render/input.ts'
 import { layoutLabels, type LabelBox } from '../graph/render/labels.ts'
 import { LABEL_FONT, readPalette, type Palette } from '../graph/render/palette.ts'
 import { drawScene, edgeKey, worldViewport } from '../graph/render/scene.ts'
+import type { RevealPlan } from '../graph/reveal.ts'
+import { revealEntrance } from '../graph/reveal.ts'
 import { GraphStage } from '../graph/render/stage.ts'
 import type { GraphSettings } from '../graph/settings.ts'
 
@@ -25,7 +27,8 @@ export interface GraphCanvasProps {
   readonly positions: { current: readonly SimNode[] }
   readonly edges: { current: readonly GraphEdgeInput[] }
   readonly camera: { current: GraphCamera }
-  readonly hidden: { current: ReadonlySet<string> }
+  readonly reveal: { current: number }
+  readonly plan: { current: RevealPlan }
   readonly nodeInfo: { current: ReadonlyMap<string, GraphNodeDto> }
   readonly settings: { current: GraphSettings }
   /** True for the local graph, where the opened note is the centre. */
@@ -167,7 +170,8 @@ export function GraphCanvas(props: GraphCanvasProps): JSX.Element {
         panY,
         positions: current.positions.current,
         edges: current.edges.current,
-        hidden: current.hidden.current,
+        reveal: current.reveal.current,
+        plan: current.plan.current,
         nodeInfo: current.nodeInfo.current,
         settings: current.settings.current,
         labels,
@@ -209,6 +213,10 @@ export function GraphCanvas(props: GraphCanvasProps): JSX.Element {
       camera: () => propsRef.current.camera.current,
       nodeScale: () => propsRef.current.settings.current.display.nodeScale,
       nodeInfo: () => propsRef.current.nodeInfo.current,
+      interactive: (path) => revealEntrance(
+        propsRef.current.reveal.current,
+        propsRef.current.plan.current.thresholds.get(path) ?? 0,
+      ) >= 0.6,
     }, {
       onHover: wakeHover,
       onActivate: (node) => {

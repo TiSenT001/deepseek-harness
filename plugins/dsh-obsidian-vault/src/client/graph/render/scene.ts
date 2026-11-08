@@ -11,6 +11,7 @@ import { colorByKey, type GraphColorBy } from './colors.ts'
 import { labelAlpha, type LabelBox } from './labels.ts'
 import { screenRadius } from './node-size.ts'
 import { LABEL_FONT, labelFont, type Palette } from './palette.ts'
+import { edgeEntrance, revealEntrance, type RevealPlan } from '../reveal.ts'
 import type { GraphStage } from './stage.ts'
 
 /** Above this many edges the hover highlight draws as two batched passes. */
@@ -33,7 +34,10 @@ export interface SceneInput {
   readonly panY: number
   readonly positions: readonly SimNode[]
   readonly edges: readonly GraphEdgeInput[]
-  readonly hidden: ReadonlySet<string>
+  /** Overall replay progress in [0, 1]; 1 means fully revealed. */
+  readonly reveal: number
+  /** Per-node replay start times. */
+  readonly plan: RevealPlan
   readonly nodeInfo: ReadonlyMap<string, GraphNodeDto>
   readonly settings: GraphSettings
   readonly labels: readonly LabelBox[]
@@ -82,7 +86,7 @@ export function edgeKey(source: string, target: string): string {
  * @returns how many nodes and edges survived viewport culling.
  */
 export function drawScene(scene: SceneInput): SceneStats {
-  const { ctx, width, height, zoom, positions, edges, hidden, nodeInfo, settings, labels, hover, palette, stage } = scene
+  const { ctx, width, height, zoom, positions, edges, reveal, plan, nodeInfo, settings, labels, hover, palette, stage } = scene
   ctx.clearRect(0, 0, width, height)
   const stats = { drawnNodes: 0, drawnEdges: 0 }
   if (positions.length === 0) return stats
@@ -101,6 +105,8 @@ export function drawScene(scene: SceneInput): SceneStats {
     || (from.y > view.bottom && to.y > view.bottom)
 
   const index = new Map(positions.map(node => [node.path, node]))
+  const thresholdOf = (path: string): number => plan.thresholds.get(path) ?? 0
+  const entranceOf = (path: string): number => revealEntrance(reveal, thresholdOf(path))
   const neighbours = hover === undefined ? undefined : neighbourSet(edges, hover)
   const hovering = neighbours !== undefined
   const batched = edges.length > BATCHED_EDGES
@@ -116,39 +122,48 @@ export function drawScene(scene: SceneInput): SceneStats {
   const edgeAlphas = new Map<string, number>()
   if (batched) {
     const passes = stage.passes(hovering)
+    // During a replay, batch edges into four alpha steps so they bloom with
+    // their endpoints instead of snapping in as one stroke.
+    const levels = reveal < 1 ? [0.25, 0.5, 0.75, 1] : [1]
     const drawPass = (alpha: number, color: string, lineWidth: number, onlyNeighbours: boolean): void => {
-      if (alpha <= 0.01) return
-      ctx.strokeStyle = color
-      ctx.globalAlpha = alpha
-      ctx.lineWidth = lineWidth
-      ctx.beginPath()
-      for (const edge of edges) {
-        if (hidden.has(edge.source) || hidden.has(edge.target)) continue
-        const isNeighbour = hovering && neighbours.has(edge.source) && neighbours.has(edge.target)
-        if (onlyNeighbours !== isNeighbour) continue
-        const from = index.get(edge.source)
-        const to = index.get(edge.target)
-        if (from === undefined || to === undefined) continue
-        if (edgeOffscreen(from, to)) continue
-        stats.drawnEdges += 1
-        ctx.moveTo(from.x, from.y)
-        ctx.lineTo(to.x, to.y)
-        if (onlyNeighbours) edgeAlphas.set(edgeKey(edge.source, edge.target), alpha)
+      for (const level of levels) {
+        const passAlpha = alpha * level
+        if (passAlpha <= 0.01) continue
+        ctx.strokeStyle = color
+        ctx.globalAlpha = passAlpha
+        ctx.lineWidth = lineWidth
+        ctx.beginPath()
+        for (const edge of edges) {
+          const entrance = edgeEntrance(reveal, thresholdOf(edge.source), thresholdOf(edge.target))
+          if (entrance < 0.02) continue
+          if (reveal < 1 && Math.ceil(entrance * 4) / 4 !== level) continue
+          const isNeighbour = hovering && neighbours.has(edge.source) && neighbours.has(edge.target)
+          if (onlyNeighbours !== isNeighbour) continue
+          const from = index.get(edge.source)
+          const to = index.get(edge.target)
+          if (from === undefined || to === undefined) continue
+          if (edgeOffscreen(from, to)) continue
+          if (level === 1) stats.drawnEdges += 1
+          ctx.moveTo(from.x, from.y)
+          ctx.lineTo(to.x, to.y)
+          if (onlyNeighbours) edgeAlphas.set(edgeKey(edge.source, edge.target), passAlpha)
+        }
+        ctx.stroke()
       }
-      ctx.stroke()
     }
     drawPass(passes.bg, palette.edge, baseEdgeWidth, false)
     drawPass(passes.fg, palette.edgeActive, activeEdgeWidth, true)
   } else {
     for (const edge of edges) {
-      if (hidden.has(edge.source) || hidden.has(edge.target)) continue
+      const entrance = edgeEntrance(reveal, thresholdOf(edge.source), thresholdOf(edge.target))
+      if (entrance < 0.02) continue
       const from = index.get(edge.source)
       const to = index.get(edge.target)
       if (from === undefined || to === undefined) continue
       if (edgeOffscreen(from, to)) continue
       const isNeighbour = hovering && neighbours.has(edge.source) && neighbours.has(edge.target)
       const target = hovering ? (isNeighbour ? 1 : 0.2) : 0.65
-      const alpha = stage.edge(edgeKey(edge.source, edge.target), target)
+      const alpha = stage.edge(edgeKey(edge.source, edge.target), target) * entrance
       if (alpha <= 0.01) continue
       stats.drawnEdges += 1
       edgeAlphas.set(edgeKey(edge.source, edge.target), alpha)
@@ -165,8 +180,9 @@ export function drawScene(scene: SceneInput): SceneStats {
   // --- nodes ---
   const anims = new Map<string, { fade: number; dim: number; lift: number }>()
   for (const node of positions) {
-    if (hidden.has(node.path)) continue
-    const radius = screenRadius(node.radius, scale, zoom)
+    const entrance = reveal >= 1 ? 1 : entranceOf(node.path)
+    if (entrance <= 0.01) continue
+    const radius = screenRadius(node.radius, scale, zoom) * (0.55 + 0.45 * entrance)
     if (
       node.x + radius < view.left || node.x - radius > view.right
       || node.y + radius < view.top || node.y - radius > view.bottom
@@ -190,7 +206,7 @@ export function drawScene(scene: SceneInput): SceneStats {
       tint: tintTarget,
     })
     anims.set(node.path, anim)
-    const alpha = anim.fade * anim.dim * (active || isCenter ? 1 : 0.85)
+    const alpha = anim.fade * anim.dim * (active || isCenter ? 1 : 0.85) * entrance
     if (alpha <= 0.02) continue
     stats.drawnNodes += 1
     ctx.globalAlpha = alpha
@@ -207,7 +223,7 @@ export function drawScene(scene: SceneInput): SceneStats {
       if (active) {
         ctx.strokeStyle = palette.ring
         ctx.lineWidth = 2.2 / zoom
-        ctx.globalAlpha = anim.fade
+        ctx.globalAlpha = anim.fade * entrance
         ctx.stroke()
       }
     }
@@ -225,7 +241,7 @@ export function drawScene(scene: SceneInput): SceneStats {
       if (y < view.top - 20 * labelScale || y > view.bottom + 20 * labelScale) continue
       const active = hover === label.path
       const anim = anims.get(label.path)
-      const fade = anim?.fade ?? 1
+      const fade = (anim?.fade ?? 1) * (reveal >= 1 ? 1 : entranceOf(label.path))
       const alpha = active ? fade : fade * (anim?.dim ?? 1) * globalLabelAlpha
       if (alpha <= 0.02) continue
       ctx.globalAlpha = alpha

@@ -14,6 +14,8 @@ export interface InputState {
   readonly camera: () => GraphCamera
   readonly nodeScale: () => number
   readonly nodeInfo: () => ReadonlyMap<string, GraphNodeDto>
+  /** Whether a node is far enough into its entrance to accept pointer input. */
+  readonly interactive?: (path: string) => boolean
 }
 
 /** What the handlers report back. */
@@ -73,8 +75,11 @@ export function attachGraphInput(
     return { x: (x - camera.panX) / camera.zoom, y: (y - camera.panY) / camera.zoom }
   }
 
-  const pick = (clientX: number, clientY: number): SimNode | undefined =>
-    hitTest(state.positions(), toWorld(clientX, clientY), state.camera().zoom, state.nodeScale())
+  const pick = (clientX: number, clientY: number): SimNode | undefined => {
+    const node = hitTest(state.positions(), toWorld(clientX, clientY), state.camera().zoom, state.nodeScale())
+    if (node !== undefined && state.interactive?.(node.path) === false) return undefined
+    return node
+  }
 
   const movedBeyondThreshold = (event: PointerEvent): boolean =>
     downAt !== null && Math.hypot(event.clientX - downAt.x, event.clientY - downAt.y) > DRAG_THRESHOLD
