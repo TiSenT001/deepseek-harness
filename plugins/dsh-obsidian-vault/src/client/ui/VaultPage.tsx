@@ -11,6 +11,7 @@ import { createT } from '../i18n.ts'
 import { fileTypeOf } from '../../filetypes.ts'
 import { useVaultData } from './useVaultData.ts'
 import { activeTab } from './tabs.ts'
+import { panesFromSaved, savedFromPanes } from './panes.ts'
 import type { PaneHandlers } from './PaneColumn.tsx'
 import type { Rail } from './Panels.tsx'
 import type { RibbonId } from './Ribbon.tsx'
@@ -54,6 +55,8 @@ export function VaultPage({ pickDirectory, hasPicker }: VaultPageProps = {}): JS
   // What the user left open last time; read once, before the first paint, so
   // the reading area opens on the same page instead of an empty state.
   const remembered = useRef(readViewMemory())
+  /** Workspace restored before the first paint, so tabs never flash empty. */
+  const restoredWorkspace = remembered.current?.workspace
   /** Last real tab path; kept while the graph view shows without a tab. */
   const lastPathRef = useRef(remembered.current?.path)
   const [activeHeading, setActiveHeading] = useState<string | undefined>()
@@ -72,10 +75,10 @@ export function VaultPage({ pickDirectory, hasPicker }: VaultPageProps = {}): JS
   const { lang, variant, setVariant } = useVaultAppearance(rootRef)
   const { railNarrow, treeNarrow, treeOpen, railOpen, setTreeOpen, setRailOpen } = useResponsivePanes()
   const widths = usePaneWidths()
-  const tabsApi = useVaultTabs()
+  const tabsApi = useVaultTabs(restoredWorkspace === undefined ? undefined : panesFromSaved(restoredWorkspace))
   const {
-    tabs, panes, activePane, openPath, goBack, goForward, closeTab, mapTabs, splitPane, closePane,
-    reset: resetTabs,
+    tabs, panes, activePane, direction, openPath, goBack, goForward, closeTab, mapTabs, splitPane, closePane,
+    reset: resetTabs, restore: restoreTabs,
   } = tabsApi
   const current = activeTab(tabs)
   const path = current?.path
@@ -99,24 +102,29 @@ export function VaultPage({ pickDirectory, hasPicker }: VaultPageProps = {}): JS
   // Restore the page the user left open. The status tells us which vault the
   // record belongs to; a mismatch keeps the first-paint state instead of
   // opening a path that may not exist in this vault.
-  const viewRestored = useRef(false)
+  const viewRestored = useRef(restoredWorkspace !== undefined)
   useEffect(() => {
-    if (viewRestored.current || status === undefined) return
-    const apply = (memory: ViewMemory): void => {
-      // A record from another vault must not carry the view or the path over.
-      if (memory.root !== undefined && memory.root !== status.root) {
-        setView('note')
-        setRail('outline')
-        return
-      }
+    if (status === undefined) return
+    const local = remembered.current
+    // A record from another vault must not restore tabs, view, or a path.
+    if (local?.root !== undefined && local.root !== status.root) {
+      resetTabs()
+      setView('note')
+      setRail('outline')
+      viewRestored.current = true
+      return
+    }
+    if (viewRestored.current) return
+    const apply = (memory: ViewMemory, withTabs: boolean): void => {
+      if (withTabs && memory.workspace !== undefined) restoreTabs(panesFromSaved(memory.workspace))
       if (memory.view !== undefined) setView(memory.view)
       if (memory.rail !== undefined) setRail(railOf(memory.rail))
-      if (memory.path !== undefined) openPath(memory.path)
+      // A legacy record has no workspace and only remembers the active path.
+      if (memory.workspace === undefined && memory.path !== undefined) openPath(memory.path)
     }
-    const local = remembered.current
     if (local !== undefined) {
       viewRestored.current = true
-      apply(local)
+      apply(local, false)
       return
     }
     // No local record (another browser profile, or site data was cleared):
@@ -125,16 +133,15 @@ export function VaultPage({ pickDirectory, hasPicker }: VaultPageProps = {}): JS
     void readHostViewMemory(status.root).then((host) => {
       if (cancelled || viewRestored.current) return
       viewRestored.current = true
-      if (host !== undefined) apply(host)
+      if (host !== undefined) apply(host, true)
     })
     return () => {
       cancelled = true
     }
-  }, [openPath, status])
+  }, [openPath, resetTabs, restoreTabs, status])
 
-  // Persist whatever the reading area shows. The graph view can be open with no
-  // tab at all, so the last real path rides along and the view itself is always
-  // written; otherwise reopening the panel dropped back to the note view.
+  // Persist whatever the reading area shows, including every pane and tab, so a
+  // restart restores the workspace instead of only the active note.
   useEffect(() => {
     if (status === undefined) return
     // Until the remembered page is applied (local record or Host fallback), a
@@ -146,10 +153,11 @@ export function VaultPage({ pickDirectory, hasPicker }: VaultPageProps = {}): JS
       ...(lastPathRef.current === undefined ? {} : { path: lastPathRef.current }),
       view,
       rail,
+      workspace: savedFromPanes({ panes, active: activePane, direction, nextId: panes.length }),
     }
     writeViewMemory(memory)
     writeHostViewMemory(status.root, memory)
-  }, [path, rail, status, view])
+  }, [activePane, direction, panes, path, rail, status, view])
 
   const overlays = useOverlayState({ openPath })
   const {

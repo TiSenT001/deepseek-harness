@@ -58,14 +58,16 @@ export interface VaultTabs {
   readonly mapTabs: (fn: (tabs: TabsState) => TabsState) => void
   /** Drop every pane and the pending anchor (used on a vault switch). */
   readonly reset: () => void
+  /** Replace every pane with a restored workspace. */
+  readonly restore: (next: PanesState) => void
 }
 
 /**
  * Own the pane state.
  * @returns the pane snapshot plus every mutation the UI dispatches.
  */
-export function useVaultTabs(): VaultTabs {
-  const [state, setState] = useState<PanesState>(EMPTY_PANES)
+export function useVaultTabs(initial?: PanesState): VaultTabs {
+  const [state, setState] = useState<PanesState>(initial ?? EMPTY_PANES)
   const [anchor, setAnchor] = useState<string | undefined>()
 
   const openPath = useCallback((next: string, options: OpenOptions = {}) => {
@@ -142,6 +144,11 @@ export function useVaultTabs(): VaultTabs {
     setAnchor(undefined)
   }, [])
 
+  const restore = useCallback((next: PanesState) => {
+    setState(next)
+    setAnchor(undefined)
+  }, [])
+
   return {
     panes: state.panes,
     activePane: state.active,
@@ -149,6 +156,6 @@ export function useVaultTabs(): VaultTabs {
     tabs: activePaneOf(state).tabs,
     anchor,
     openPath, selectTab, pinTab, closeTab, closeOthers, closeAll, goBack, goForward, moveTab,
-    activatePane, splitPane, closePane, resizePanePair, mapTabs, reset,
+    activatePane, splitPane, closePane, resizePanePair, mapTabs, reset, restore,
   }
 }

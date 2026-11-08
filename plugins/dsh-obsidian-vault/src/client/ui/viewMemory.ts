@@ -6,6 +6,7 @@
  * @module dsh-obsidian-vault/client/ui/viewMemory
  */
 import { request } from '../api.ts'
+import type { SavedWorkspace } from './panes.ts'
 
 /** Reading area the user left open. */
 export type RememberedView = 'note' | 'graph'
@@ -20,10 +21,47 @@ export interface ViewMemory {
   readonly view?: RememberedView
   /** Right-rail panel. */
   readonly rail?: string
+  /** Every pane and tab, so a restart keeps the whole workspace. */
+  readonly workspace?: SavedWorkspace
 }
 
 /** localStorage key holding the JSON record. */
 export const VIEW_MEMORY_KEY = 'ov.view.last.v1'
+
+/** Bounds for records read from storage or the Host. */
+const MAX_PANES = 8
+const MAX_TABS = 50
+const MAX_PATH = 4096
+const MAX_RAIL = 64
+
+/**
+ * Validate a persisted workspace record.
+ * @param value - untrusted value from storage or the Host.
+ * @returns the record, or undefined when it cannot be trusted.
+ */
+function sanitizeWorkspace(value: unknown): SavedWorkspace | undefined {
+  if (value === null || typeof value !== 'object') return undefined
+  const input = value as { readonly panes?: unknown; readonly activePane?: unknown; readonly direction?: unknown }
+  if (!Array.isArray(input.panes) || input.panes.length === 0 || input.panes.length > MAX_PANES) return undefined
+  if (input.direction !== 'row' && input.direction !== 'column') return undefined
+  const panes = []
+  for (const paneValue of input.panes) {
+    if (paneValue === null || typeof paneValue !== 'object') return undefined
+    const pane = paneValue as { readonly tabs?: unknown; readonly active?: unknown; readonly size?: unknown }
+    if (!Array.isArray(pane.tabs) || pane.tabs.length > MAX_TABS) return undefined
+    if (typeof pane.active !== 'number' || typeof pane.size !== 'number') return undefined
+    const tabs = []
+    for (const tabValue of pane.tabs) {
+      if (tabValue === null || typeof tabValue !== 'object') return undefined
+      const tab = tabValue as { readonly path?: unknown; readonly preview?: unknown }
+      if (typeof tab.path !== 'string' || tab.path.length === 0 || tab.path.length > MAX_PATH) return undefined
+      tabs.push({ path: tab.path, ...(tab.preview === true ? { preview: true } : {}) })
+    }
+    panes.push({ tabs, active: pane.active, size: pane.size })
+  }
+  if (typeof input.activePane !== 'number') return undefined
+  return { panes, activePane: input.activePane, direction: input.direction }
+}
 
 /**
  * Read the stored record.
@@ -33,12 +71,14 @@ export const VIEW_MEMORY_KEY = 'ov.view.last.v1'
 export function parseViewMemory(raw: string | null): ViewMemory | undefined {
   if (raw === null) return undefined
   try {
-    const parsed = JSON.parse(raw) as { readonly root?: unknown; readonly path?: unknown; readonly view?: unknown; readonly rail?: unknown }
+    const parsed = JSON.parse(raw) as { readonly root?: unknown; readonly path?: unknown; readonly view?: unknown; readonly rail?: unknown; readonly workspace?: unknown }
+    const workspace = sanitizeWorkspace(parsed.workspace)
     const memory: ViewMemory = {
       ...(typeof parsed.root === 'string' ? { root: parsed.root } : {}),
       ...(typeof parsed.path === 'string' && parsed.path.length > 0 ? { path: parsed.path } : {}),
       ...(parsed.view === 'graph' || parsed.view === 'note' ? { view: parsed.view } : {}),
       ...(typeof parsed.rail === 'string' ? { rail: parsed.rail } : {}),
+      ...(workspace === undefined ? {} : { workspace }),
     }
     return memory
   } catch {
@@ -58,6 +98,7 @@ export function serializeViewMemory(memory: ViewMemory): string {
     ...(memory.path === undefined ? {} : { path: memory.path }),
     ...(memory.view === undefined ? {} : { view: memory.view }),
     ...(memory.rail === undefined ? {} : { rail: memory.rail }),
+    ...(memory.workspace === undefined ? {} : { workspace: memory.workspace }),
   })
 }
 

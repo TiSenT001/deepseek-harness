@@ -12,11 +12,32 @@ import { PLUGIN_DATA_FOLDER } from './package-root.ts'
 /** Reading area the user left open. */
 export type StoredView = 'note' | 'graph'
 
+/** One tab in the persisted workspace. */
+interface StoredTab {
+  readonly path: string
+  readonly preview?: boolean
+}
+
+/** One pane in the persisted workspace. */
+interface StoredPane {
+  readonly tabs: readonly StoredTab[]
+  readonly active: number
+  readonly size: number
+}
+
+/** The persisted pane layout. */
+interface StoredWorkspace {
+  readonly panes: readonly StoredPane[]
+  readonly activePane: number
+  readonly direction: 'row' | 'column'
+}
+
 /** One vault's remembered page. */
 export interface StoredViewMemory {
   readonly path?: string
   readonly view?: StoredView
   readonly rail?: string
+  readonly workspace?: StoredWorkspace
 }
 
 /** File holding every vault's record. */
@@ -25,20 +46,49 @@ const STORE_FILE = join(PLUGIN_DATA_FOLDER, 'view-memory.json')
 const MAX_ROOT = 4096
 const MAX_PATH = 4096
 const MAX_RAIL = 64
+const MAX_PANES = 8
+const MAX_TABS = 50
 
 interface StoreFile {
   readonly version: 1
   readonly vaults: Record<string, StoredViewMemory>
 }
 
+/** Validate one workspace record from disk or a request. */
+function sanitizeWorkspace(value: unknown): StoredWorkspace | undefined {
+  if (value === null || typeof value !== 'object') return undefined
+  const input = value as { readonly panes?: unknown; readonly activePane?: unknown; readonly direction?: unknown }
+  if (!Array.isArray(input.panes) || input.panes.length === 0 || input.panes.length > MAX_PANES) return undefined
+  if (input.direction !== 'row' && input.direction !== 'column') return undefined
+  if (typeof input.activePane !== 'number') return undefined
+  const panes: StoredPane[] = []
+  for (const paneValue of input.panes) {
+    if (paneValue === null || typeof paneValue !== 'object') return undefined
+    const pane = paneValue as { readonly tabs?: unknown; readonly active?: unknown; readonly size?: unknown }
+    if (!Array.isArray(pane.tabs) || pane.tabs.length > MAX_TABS) return undefined
+    if (typeof pane.active !== 'number' || typeof pane.size !== 'number' || !Number.isFinite(pane.size)) return undefined
+    const tabs: StoredTab[] = []
+    for (const tabValue of pane.tabs) {
+      if (tabValue === null || typeof tabValue !== 'object') return undefined
+      const tab = tabValue as { readonly path?: unknown; readonly preview?: unknown }
+      if (typeof tab.path !== 'string' || tab.path.length === 0 || tab.path.length > MAX_PATH) return undefined
+      tabs.push({ path: tab.path, ...(tab.preview === true ? { preview: true } : {}) })
+    }
+    panes.push({ tabs, active: pane.active, size: pane.size })
+  }
+  return { panes, activePane: input.activePane, direction: input.direction }
+}
+
 /** Validate one record from disk or a request. */
 function sanitize(value: unknown): StoredViewMemory | undefined {
   if (value === null || typeof value !== 'object') return undefined
-  const input = value as { readonly path?: unknown; readonly view?: unknown; readonly rail?: unknown }
-  const memory: { path?: string; view?: StoredView; rail?: string } = {}
+  const input = value as { readonly path?: unknown; readonly view?: unknown; readonly rail?: unknown; readonly workspace?: unknown }
+  const memory: { path?: string; view?: StoredView; rail?: string; workspace?: StoredWorkspace } = {}
   if (typeof input.path === 'string' && input.path.length > 0 && input.path.length <= MAX_PATH) memory.path = input.path
   if (input.view === 'note' || input.view === 'graph') memory.view = input.view
   if (typeof input.rail === 'string' && input.rail.length <= MAX_RAIL) memory.rail = input.rail
+  const workspace = sanitizeWorkspace(input.workspace)
+  if (workspace !== undefined) memory.workspace = workspace
   return Object.keys(memory).length === 0 ? undefined : memory
 }
 

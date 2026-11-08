@@ -4,7 +4,7 @@
  * unit-testable without React.
  * @module dsh-obsidian-vault/client/ui/panes
  */
-import { activeTab, closeTab, EMPTY_TABS, type TabsState } from './tabs.ts'
+import { activeTab, closeTab, EMPTY_TABS, makeTab, type TabsState } from './tabs.ts'
 
 /** Layout direction of the pane strip: side by side or stacked. */
 export type SplitDirection = 'row' | 'column'
@@ -130,5 +130,67 @@ export function resizePanePair(state: PanesState, index: number, first: number):
     ...state,
     panes: state.panes.map((pane, position) =>
       position === index ? { ...pane, size: clamped } : position === index + 1 ? { ...pane, size: sum - clamped } : pane),
+  }
+}
+
+/** One tab in the persisted workspace record. */
+export interface SavedTab {
+  readonly path: string
+  /** True for a preview tab; the next single click reuses it. */
+  readonly preview?: boolean
+}
+
+/** One pane in the persisted workspace record. */
+export interface SavedPane {
+  readonly tabs: readonly SavedTab[]
+  readonly active: number
+  readonly size: number
+}
+
+/** Every pane plus the layout metadata the workspace restores on mount. */
+export interface SavedWorkspace {
+  readonly panes: readonly SavedPane[]
+  readonly activePane: number
+  readonly direction: SplitDirection
+}
+
+/**
+ * Rebuild the live pane state from a stored record. The caller has already
+ * validated path strings and bounds; this only clamps indexes and sizes.
+ * @param saved - persisted panes.
+ * @returns the pane state to hand to the tab hook.
+ */
+export function panesFromSaved(saved: SavedWorkspace): PanesState {
+  const panes: PaneState[] = saved.panes.map((pane, index) => ({
+    id: index,
+    size: Number.isFinite(pane.size) && pane.size > 0 ? pane.size : 1,
+    tabs: {
+      items: pane.tabs.map(tab => makeTab(tab.path, tab.preview === true)),
+      active: Math.min(Math.max(0, Math.floor(pane.active)), Math.max(0, pane.tabs.length - 1)),
+    },
+  }))
+  if (panes.length === 0) return EMPTY_PANES
+  return {
+    panes,
+    active: Math.min(Math.max(0, Math.floor(saved.activePane)), panes.length - 1),
+    direction: saved.direction === 'column' ? 'column' : 'row',
+    nextId: panes.length,
+  }
+}
+
+/**
+ * Take a snapshot of the live panes for persistence.
+ * @param state - current pane state.
+ * @returns the serialisable record, with tab history intentionally dropped.
+ */
+export function savedFromPanes(state: PanesState): SavedWorkspace {
+  return {
+    panes: state.panes.map(pane => ({
+      tabs: pane.tabs.items.map(tab => ({ path: tab.path, ...(tab.preview ? { preview: true } : {}) })),
+      active: pane.tabs.active,
+      size: pane.size,
+    })),
+    activePane: state.active,
+    direction: state.direction,
   }
 }
