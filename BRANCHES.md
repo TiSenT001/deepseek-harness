@@ -12,30 +12,38 @@
 - 官方相关分支用 `upstream-` 前缀：它的父分支是 `origin/master`，不是 `master`。
 - 临时分支用 `tmp-` 前缀，合并后立即删除。
 - 新分支必须登记到下面的分支清单；删除分支时同步删除对应行。
+- `master` 受 GitHub 分支保护：必须走 PR，禁止直推和强推。
+- `origin` 对本账号只读（`push: false`），所有推送只发到 `fork`。
 
 ## 分支清单
 
 | 分支 | 父分支 | 用途 | 生命周期 |
 |---|---|---|---|
-| `master` | — | 插件主线：官方基线 + 插件集成 | 永久 |
+| `master` | — | 插件主线：官方基线 + 插件集成（受保护，PR 合并） | 永久 |
 | `master-obsidian` | `master` | DSH-obsidian 插件开发（`plugins/dsh-obsidian-vault`） | 永久 |
 | `master-brain` | `master` | TiSenT Brain 插件开发（`plugins/dsh-brain-console`） | 永久 |
 | `master-obsidian-pur` | `master-obsidian` | pur 子插件（`plugins/dsh-obsidian-vault/plugins/pur-studio`、`src/pur-*`） | 永久 |
-| `master-upstream` | `master` | 合并官方 `origin/master` 的临时落点 | 每次同步新建，合完删除 |
+| `master-upstream` | `master` | 合并官方 `origin/master` 的临时落点（走 PR） | 每次同步新建，合完删除 |
 | `upstream-eval-<topic>` | `origin/master` | 只读评估官方新特性，不合回 | 用完删除 |
 | `tmp-<topic>` | 任一 | 临时实验 | 用完删除 |
 
 ## 同步官方
 
+`master` 受保护，同步也走 PR：
+
 ```bash
 git fetch origin
 git switch -c master-upstream
-git merge origin/master
-# 解冲突并跑验证
-git switch master
-git merge --ff-only master-upstream
+git merge origin/master          # 解冲突并跑验证
+git push -u fork master-upstream
+gh pr create --base master --head master-upstream --title "chore: sync upstream master"
+gh pr merge <n> --merge          # 保留官方提交历史，不要 squash
+git switch master && git pull --ff-only
 git branch -d master-upstream
 ```
+
+确需绕过保护时，先在 GitHub 设置里临时关闭 master 的分支保护，处理完立即恢复；
+不要用 `--force` 推送。
 
 ## 部署
 
@@ -44,5 +52,6 @@ git branch -d master-upstream
 
 ## 提交约定
 
+- 改动进 `master` 一律走 PR（`master` 受保护）。
 - 一个提交只改一个插件的目录，便于 cherry-pick 和回滚。
 - 短任务分支用 `<父分支>-<任务>`（如 `master-brain-fix-retry`），合并后删除。
