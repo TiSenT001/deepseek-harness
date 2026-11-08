@@ -46,6 +46,10 @@ export interface VaultWorkspaceProps {
   readonly emptyActions?: MainProps['emptyActions']
   /** Open the quick switcher from the empty tab's search row. */
   readonly onEmptySearch?: MainProps['onEmptySearch']
+  /** Recently opened documents for the empty tab. */
+  readonly recentPaths?: MainProps['recentPaths']
+  /** Open one recent document from the empty tab. */
+  readonly onOpenRecent?: MainProps['onOpenRecent']
   readonly bookmarks: ReturnType<typeof useVaultBookmarks>
   readonly overlays: ReturnType<typeof useOverlayState>
   readonly menuGroups: CommandSurface['menuGroups']
@@ -116,7 +120,7 @@ export function VaultWorkspace(props: VaultWorkspaceProps): JSX.Element {
     sourceMode, error, onActiveHeading, onNewTab, reload, onReading, onSource, onShowNoteView,
     onOpenWithAnchor, onCreateNote, onOpenPath, activeHeading, onRail,
     onHeading, onShiftHeading, onClosePanes, onQuickCommand, onVaultSwitched, variant, onVariant,
-    emptyActions, onEmptySearch,
+    emptyActions, onEmptySearch, recentPaths, onOpenRecent,
   } = props
   const history = activeTab(tabs.tabs)?.history ?? { items: [], index: -1 }
   const labels = useMemo<MainProps['labels']>(() => ({
@@ -176,6 +180,8 @@ export function VaultWorkspace(props: VaultWorkspaceProps): JSX.Element {
             vaultName={vaultNameOf(status?.root) ?? t('vault')}
             emptyActions={emptyActions}
             onEmptySearch={onEmptySearch}
+            recentPaths={recentPaths}
+            onOpenRecent={onOpenRecent}
             panes={tabs.panes}
             activePane={tabs.activePane}
             direction={tabs.direction}

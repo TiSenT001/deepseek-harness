@@ -71,6 +71,16 @@ test('a workspace survives the view-memory JSON round-trip', () => {
   assert.equal(parsed?.workspace?.panes[0]?.tabs[0]?.path, '笔记.md')
 })
 
+test('the recent list survives the JSON round-trip', () => {
+  const raw = serializeViewMemory({ root: 'G:\\个人知识库', recent: ['a.md', 'b.md'] })
+  const parsed = parseViewMemory(raw)
+  assert.deepEqual(parsed?.recent, ['a.md', 'b.md'])
+  const cleaned = parseViewMemory(JSON.stringify({ root: 'x', recent: ['ok.md', '', 3, 'z.md'] }))
+  assert.deepEqual(cleaned?.recent, ['ok.md', 'z.md'])
+  const capped = parseViewMemory(JSON.stringify({ recent: Array.from({ length: 30 }, (_, index) => `n${index}.md`) }))
+  assert.equal(capped?.recent?.length, 20)
+})
+
 test('malformed workspace records are dropped, not whole records', () => {
   const badDirection = parseViewMemory(JSON.stringify({
     root: 'G:\\个人知识库',

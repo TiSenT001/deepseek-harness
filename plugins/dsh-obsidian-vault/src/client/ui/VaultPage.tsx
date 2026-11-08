@@ -63,6 +63,8 @@ export function VaultPage({ pickDirectory, hasPicker }: VaultPageProps = {}): JS
   const [filter, setFilter] = useState('')
   const [rail, setRail] = useState<Rail>(() => railOf(remembered.current?.rail))
   const [view, setView] = useState<'note' | 'graph'>(() => (remembered.current?.view === 'graph' ? 'graph' : 'note'))
+  /** Newest first; the empty start page lists these. */
+  const [recent, setRecent] = useState<readonly string[]>(() => remembered.current?.recent ?? [])
   // Reading and source are two views of the same Markdown file; attachments
   // and code files always render through the file view.
   const [sourceMode, setSourceMode] = useState(false)
@@ -120,6 +122,7 @@ export function VaultPage({ pickDirectory, hasPicker }: VaultPageProps = {}): JS
       if (withTabs && memory.workspace !== undefined) restoreTabs(panesFromSaved(memory.workspace))
       if (memory.view !== undefined) setView(memory.view)
       if (memory.rail !== undefined) setRail(railOf(memory.rail))
+      if (memory.recent !== undefined) setRecent(memory.recent)
       // A legacy record has no workspace and only remembers the active path.
       if (memory.workspace === undefined && memory.path !== undefined) openPath(memory.path)
     }
@@ -141,6 +144,13 @@ export function VaultPage({ pickDirectory, hasPicker }: VaultPageProps = {}): JS
     }
   }, [openPath, resetTabs, restoreTabs, status])
 
+  // Every visited document joins the recent list; reopening one moves it back
+  // to the front instead of duplicating the entry.
+  useEffect(() => {
+    if (path === undefined) return
+    setRecent(previous => [path, ...previous.filter(item => item !== path)].slice(0, 8))
+  }, [path])
+
   // Persist whatever the reading area shows, including every pane and tab, so a
   // restart restores the workspace instead of only the active note.
   useEffect(() => {
@@ -155,10 +165,11 @@ export function VaultPage({ pickDirectory, hasPicker }: VaultPageProps = {}): JS
       view,
       rail,
       workspace: savedFromPanes({ panes, active: activePane, direction, nextId: panes.length }),
+      ...(recent.length === 0 ? {} : { recent }),
     }
     writeViewMemory(memory)
     writeHostViewMemory(status.root, memory)
-  }, [activePane, direction, panes, path, rail, status, view])
+  }, [activePane, direction, panes, path, rail, recent, status, view])
 
   const overlays = useOverlayState({ openPath })
   const {
@@ -337,6 +348,8 @@ export function VaultPage({ pickDirectory, hasPicker }: VaultPageProps = {}): JS
         t={t}
         emptyActions={emptyActions}
         onEmptySearch={openQuick}
+        recentPaths={recent}
+        onOpenRecent={openPath}
         status={status}
         tabs={tabsApi}
         bookmarks={bookmarks}

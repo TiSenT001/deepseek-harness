@@ -39,6 +39,10 @@ export interface PaneColumnProps extends PaneSurfaceCallbacks {
   readonly labels: MainPaneProps['labels']
   /** Vault display name, shown by the empty tab. */
   readonly vaultName?: string
+  /** Recently opened documents for the empty tab. */
+  readonly recentPaths?: readonly string[]
+  /** Open one recent document from the empty tab. */
+  readonly onOpenRecent?: (path: string) => void
   readonly version: number | undefined
   /** The page's view toggle; only the active pane shows the graph or a plugin. */
   readonly view: MainPaneProps['view']
@@ -185,6 +189,8 @@ export function PaneColumn(props: PaneColumnProps): JSX.Element {
         vaultName={props.vaultName}
         emptyActions={props.emptyActions}
         onEmptySearch={props.onEmptySearch}
+        recentPaths={props.recentPaths}
+        onOpenRecent={props.onOpenRecent}
         view={isActive ? props.view : 'note'}
         path={path}
         isMarkdown={isMarkdown}

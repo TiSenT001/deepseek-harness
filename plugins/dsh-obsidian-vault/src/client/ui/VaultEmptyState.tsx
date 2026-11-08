@@ -24,6 +24,10 @@ export interface VaultEmptyStateProps {
   /** Display name of the active vault, when the status has arrived. */
   readonly vaultName?: string
   readonly actions: readonly VaultEmptyAction[]
+  /** Recently opened documents, newest first. */
+  readonly recent?: readonly string[]
+  /** Open one recent document. */
+  readonly onOpenRecent?: (path: string) => void
   /** Open the quick switcher; the search row behaves as its trigger. */
   readonly onSearch: () => void
 }
@@ -32,7 +36,7 @@ export interface VaultEmptyStateProps {
  * Render the empty workspace.
  * @param props - translated labels, the vault name, and the action cards.
  */
-export function VaultEmptyState({ t, vaultName, actions, onSearch }: VaultEmptyStateProps): JSX.Element {
+export function VaultEmptyState({ t, vaultName, actions, recent, onOpenRecent, onSearch }: VaultEmptyStateProps): JSX.Element {
   return (
     <div className={css.vaultEmpty} role="region" aria-label={t('empty')}>
       <div className={css.vaultEmptyBody}>
@@ -51,8 +55,38 @@ export function VaultEmptyState({ t, vaultName, actions, onSearch }: VaultEmptyS
             </button>
           ))}
         </div>
+        {recent === undefined || recent.length === 0 || onOpenRecent === undefined
+          ? null
+          : (
+            <div className={css.vaultEmptyRecent}>
+              <p className={css.vaultEmptyRecentTitle}>{t('recentlyOpened')}</p>
+              <div className={css.vaultEmptyRecentList}>
+                {recent.map(path => (
+                  <button
+                    key={path}
+                    type="button"
+                    className={css.vaultEmptyRecentItem}
+                    title={path}
+                    onClick={() => onOpenRecent(path)}
+                  >
+                    {recentLabel(path)}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
         <p className={css.vaultEmptyHint}>{t('emptyHint')}</p>
       </div>
     </div>
   )
+}
+
+/**
+ * Short label for a recent path; the full path stays in the tooltip.
+ * @param path - vault-relative document path.
+ * @returns the file name without the Markdown suffix.
+ */
+function recentLabel(path: string): string {
+  const name = path.slice(path.lastIndexOf('/') + 1)
+  return name.replace(/\.md$/i, '')
 }

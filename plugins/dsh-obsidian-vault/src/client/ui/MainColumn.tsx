@@ -88,6 +88,8 @@ export function MainColumn(props: MainColumnProps): JSX.Element {
             vaultName={props.vaultName}
             emptyActions={props.emptyActions}
             onEmptySearch={props.onEmptySearch}
+            recentPaths={props.recentPaths}
+            onOpenRecent={props.onOpenRecent}
             version={props.version}
             view={props.view}
             pane={pane}

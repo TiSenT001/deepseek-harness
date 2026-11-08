@@ -238,6 +238,42 @@ export const WORKSPACE_NOTE_STYLE = `
   line-height: 1.6;
   text-align: center;
 }
+.ov-vault-empty-recent {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-top: 4px;
+}
+.ov-vault-empty-recent-title {
+  margin: 0;
+  color: var(--dsw-alias-label-tertiary, #8b8b94);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.ov-vault-empty-recent-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.ov-vault-empty-recent-item {
+  max-width: 100%;
+  padding: 4px 9px;
+  border: 1px solid var(--dsw-alias-border-l1, #2a2a30);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--dsw-alias-label-secondary, #b6b6bd);
+  font: inherit;
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.ov-vault-empty-recent-item:hover {
+  border-color: var(--dsw-alias-border-l2, #3a3a42);
+  color: var(--dsw-alias-label-primary, #f9fafb);
+}
 .ov-quick-layer {
   position: fixed;
   inset: 0;

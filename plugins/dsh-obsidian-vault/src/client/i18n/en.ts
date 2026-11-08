@@ -26,6 +26,7 @@ export const EN: Dict = {
   emptyHint: 'Pick a note on the left, or press Ctrl+O to switch quickly.',
   emptySearchPlaceholder: 'Search notes, or press Ctrl+O to switch',
   openNote: 'Open note',
+  recentlyOpened: 'Recently opened',
   searchAll: 'Search all notes',
   refresh: 'Reload index',
   graph: 'Graph',

@@ -24,6 +24,10 @@ export interface MainPaneProps {
   readonly vaultName?: string
   /** Cards shown while no tab is open. */
   readonly emptyActions?: readonly VaultEmptyAction[]
+  /** Recently opened documents for the empty tab. */
+  readonly recentPaths?: readonly string[]
+  /** Open one recent document from the empty tab. */
+  readonly onOpenRecent?: (path: string) => void
   /** Open the quick switcher from the empty tab's search row. */
   readonly onEmptySearch?: () => void
   readonly isMarkdown: boolean
@@ -59,7 +63,7 @@ export interface MainPaneProps {
  */
 export function MainPane(props: MainPaneProps): JSX.Element {
   const {
-    t, labels, view, path, vaultName, emptyActions, onEmptySearch, isMarkdown, note, sourceMode, error, scrollRef, anchor, backlinks,
+    t, labels, view, path, vaultName, emptyActions, recentPaths, onOpenRecent, onEmptySearch, isMarkdown, note, sourceMode, error, scrollRef, anchor, backlinks,
     version, onRetry, onReading, onSwitchToReading, onSource, onSaved,
     onOpen, onCreate, onTag, onPathFilter, onMenu, onCenter,
     onCloseGraph, onOpenSettings,
@@ -104,6 +108,8 @@ export function MainPane(props: MainPaneProps): JSX.Element {
               t={t}
               {...(vaultName === undefined ? {} : { vaultName })}
               actions={emptyActions ?? []}
+              recent={recentPaths}
+              onOpenRecent={onOpenRecent}
               onSearch={() => onEmptySearch?.()}
             />
           )

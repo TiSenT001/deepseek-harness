@@ -40,6 +40,8 @@ export interface StoredViewMemory {
   readonly view?: StoredView
   readonly rail?: string
   readonly workspace?: StoredWorkspace
+  /** Most recently opened documents, newest first. */
+  readonly recent?: readonly string[]
 }
 
 /** File holding every vault's record. */
@@ -86,16 +88,27 @@ function sanitizeWorkspace(value: unknown): StoredWorkspace | undefined {
   return { panes, activePane: input.activePane, direction: input.direction }
 }
 
+/** Validate the recent list. */
+function sanitizeRecent(value: unknown): readonly string[] | undefined {
+  if (!Array.isArray(value)) return undefined
+  const paths = value
+    .filter((item): item is string => typeof item === 'string' && item.length > 0 && item.length <= MAX_PATH)
+    .slice(0, 20)
+  return paths.length === 0 ? undefined : paths
+}
+
 /** Validate one record from disk or a request. */
 function sanitize(value: unknown): StoredViewMemory | undefined {
   if (value === null || typeof value !== 'object') return undefined
-  const input = value as { readonly path?: unknown; readonly view?: unknown; readonly rail?: unknown; readonly workspace?: unknown }
-  const memory: { path?: string; view?: StoredView; rail?: string; workspace?: StoredWorkspace } = {}
+  const input = value as { readonly path?: unknown; readonly view?: unknown; readonly rail?: unknown; readonly workspace?: unknown; readonly recent?: unknown }
+  const memory: { path?: string; view?: StoredView; rail?: string; workspace?: StoredWorkspace; recent?: readonly string[] } = {}
   if (typeof input.path === 'string' && input.path.length > 0 && input.path.length <= MAX_PATH) memory.path = input.path
   if (input.view === 'note' || input.view === 'graph') memory.view = input.view
   if (typeof input.rail === 'string' && input.rail.length <= MAX_RAIL) memory.rail = input.rail
   const workspace = sanitizeWorkspace(input.workspace)
   if (workspace !== undefined) memory.workspace = workspace
+  const recent = sanitizeRecent(input.recent)
+  if (recent !== undefined) memory.recent = recent
   return Object.keys(memory).length === 0 ? undefined : memory
 }
 

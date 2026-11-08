@@ -23,6 +23,8 @@ export interface ViewMemory {
   readonly rail?: string
   /** Every pane and tab, so a restart keeps the whole workspace. */
   readonly workspace?: SavedWorkspace
+  /** Most recently opened documents, newest first. */
+  readonly recent?: readonly string[]
 }
 
 /** localStorage key holding the JSON record. */
@@ -74,17 +76,32 @@ function sanitizeWorkspace(value: unknown): SavedWorkspace | undefined {
  * @param raw - stored JSON, or null when absent.
  * @returns the record, or undefined when missing or unreadable.
  */
+/**
+ * Validate the recent list.
+ * @param value - untrusted value from storage or the Host.
+ * @returns at most 20 non-empty paths.
+ */
+function sanitizeRecent(value: unknown): readonly string[] | undefined {
+  if (!Array.isArray(value)) return undefined
+  const paths = value
+    .filter((item): item is string => typeof item === 'string' && item.length > 0 && item.length <= MAX_PATH)
+    .slice(0, 20)
+  return paths.length === 0 ? undefined : paths
+}
+
 export function parseViewMemory(raw: string | null): ViewMemory | undefined {
   if (raw === null) return undefined
   try {
-    const parsed = JSON.parse(raw) as { readonly root?: unknown; readonly path?: unknown; readonly view?: unknown; readonly rail?: unknown; readonly workspace?: unknown }
+    const parsed = JSON.parse(raw) as { readonly root?: unknown; readonly path?: unknown; readonly view?: unknown; readonly rail?: unknown; readonly workspace?: unknown; readonly recent?: unknown }
     const workspace = sanitizeWorkspace(parsed.workspace)
+    const recent = sanitizeRecent(parsed.recent)
     const memory: ViewMemory = {
       ...(typeof parsed.root === 'string' ? { root: parsed.root } : {}),
       ...(typeof parsed.path === 'string' && parsed.path.length > 0 ? { path: parsed.path } : {}),
       ...(parsed.view === 'graph' || parsed.view === 'note' ? { view: parsed.view } : {}),
       ...(typeof parsed.rail === 'string' ? { rail: parsed.rail } : {}),
       ...(workspace === undefined ? {} : { workspace }),
+      ...(recent === undefined ? {} : { recent }),
     }
     return memory
   } catch {
@@ -105,6 +122,7 @@ export function serializeViewMemory(memory: ViewMemory): string {
     ...(memory.view === undefined ? {} : { view: memory.view }),
     ...(memory.rail === undefined ? {} : { rail: memory.rail }),
     ...(memory.workspace === undefined ? {} : { workspace: memory.workspace }),
+    ...(memory.recent === undefined ? {} : { recent: memory.recent }),
   })
 }
 
