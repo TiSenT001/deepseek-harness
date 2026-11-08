@@ -43,6 +43,21 @@ export function assetUrl(path: string, download = false): string {
   return `${API_BASE}/asset?${download ? `${query}&download=1` : query}`
 }
 
+/**
+ * Store one pasted image inside the vault.
+ * @param name - original file name; the Host derives the stem from it.
+ * @param dataUrl - the image as a base64 data URL.
+ * @returns the vault-relative path the image was written to.
+ */
+export async function writeAsset(name: string, dataUrl: string): Promise<string> {
+  const dto = await request<{ path: string }>('asset/write', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ name, data: dataUrl }),
+  })
+  return dto.path
+}
+
 /** Read the notes linking to one path. */
 export async function fetchBacklinks(path: string): Promise<readonly BacklinkDto[]> {
   return (await request<{ items: readonly BacklinkDto[] }>(`backlinks?path=${encodeURIComponent(path)}`)).items

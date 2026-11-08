@@ -15,6 +15,7 @@ import { serveNoteSave } from './note-write.ts'
 import { serveConfigRoute } from './config-endpoints.ts'
 import { servePluginRoute } from './plugin-endpoints.ts'
 import { VaultFiles } from './vault/files.ts'
+import { planAssetWrite } from './vault/asset-write.ts'
 import { resolvePurImage } from './vault/pur-image.ts'
 import { PACKAGE_ROOT, PLUGIN_DATA_FOLDER, PUR_ASSETS_FOLDER, SETTINGS_FILE } from './package-root.ts'
 import { launchProgram, listOpenPrograms, resolveOpenTarget } from './system-open.ts'
@@ -253,6 +254,24 @@ async function dispatch(
         ...(download ? { 'content-disposition': dispositionOf(path) } : {}),
       })
       response.end(Buffer.from(asset))
+      return
+    }
+    case 'asset/write': {
+      // Pasted images land in the vault so a note can embed them with a normal
+      // wikilink; the client sends a data URL, the Host owns the file name.
+      if (request.method !== 'POST') {
+        send(response, 405, { error: 'POST required' })
+        return
+      }
+      const body = await readJson(request)
+      const plan = planAssetWrite(body)
+      if ('error' in plan) {
+        send(response, 400, plan)
+        return
+      }
+      const root = registry.active()?.path ?? registry.vault.status().root
+      await new VaultFiles(root).writeBytes(plan.path, plan.bytes)
+      send(response, 200, { path: plan.path })
       return
     }
     case 'pur/embedders': {

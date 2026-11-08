@@ -39,6 +39,41 @@ const PRINT_CSS = `
   .ov-backlinks { margin-top: 24px; border-top: 1px solid #dddddd; padding-top: 12px; }
 `
 
+/** Paper sizes the dialog offers; the browser understands these names. */
+export type PrintPaper = 'A4' | 'A3' | 'Letter'
+
+/** Sheet orientation. */
+export type PrintOrientation = 'portrait' | 'landscape'
+
+/** Page margin preset. */
+export type PrintMargins = 'default' | 'narrow' | 'none'
+
+/** Page box the dialog chooses; every field has a documented default. */
+export interface PrintOptions {
+  readonly paper?: PrintPaper
+  readonly orientation?: PrintOrientation
+  readonly margins?: PrintMargins
+}
+
+/** Margin presets in millimetres. */
+const MARGIN_MM: Readonly<Record<PrintMargins, string>> = {
+  default: '14mm',
+  narrow: '6mm',
+  none: '0',
+}
+
+/**
+ * Build the `@page` rule for one choice set.
+ * @param options - dialog choices.
+ * @returns the CSS rule the print window appends.
+ */
+function pageRule(options: PrintOptions): string {
+  const paper = options.paper ?? 'A4'
+  const orientation = options.orientation ?? 'portrait'
+  const margins = MARGIN_MM[options.margins ?? 'default']
+  return `@page { size: ${paper} ${orientation}; margin: ${margins}; }\n`
+}
+
 /**
  * Wait until every image in the print document has loaded and decoded.
  *
@@ -76,9 +111,10 @@ async function whenImagesReady(win: Window): Promise<void> {
  * Open the print window for one element.
  * @param element - the rendered note article.
  * @param title - document title for the print job.
+ * @param options - page box the dialog chose.
  * @returns false when the browser blocked the window.
  */
-export function printNote(element: HTMLElement, title: string): boolean {
+export function printNote(element: HTMLElement, title: string, options: PrintOptions = {}): boolean {
   const win = window.open('', '_blank', 'width=900,height=760')
   if (win === null) return false
   const base = document.createElement('base')
@@ -87,7 +123,7 @@ export function printNote(element: HTMLElement, title: string): boolean {
   win.document.title = title
   win.document.head.append(base)
   const style = win.document.createElement('style')
-  style.textContent = PRINT_CSS
+  style.textContent = PRINT_CSS + pageRule(options)
   win.document.head.append(style)
   const copy = element.cloneNode(true) as HTMLElement
   // Buttons in the reading view are chrome, not note content.

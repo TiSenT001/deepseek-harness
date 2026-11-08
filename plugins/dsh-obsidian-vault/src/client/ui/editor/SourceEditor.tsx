@@ -6,7 +6,7 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { Translate } from '../../i18n.ts'
-import { ApiError, fetchFile, saveNote } from '../../api.ts'
+import { ApiError, fetchFile, saveNote, writeAsset } from '../../api.ts'
 import { css } from '../theme.ts'
 import { markdownTokens, tokenClass } from './markdown-tokens.ts'
 import {
@@ -84,6 +84,8 @@ export function SourceEditor({ t, path, text, mtime, onReading, onSaved }: Sourc
   const [query, setQuery] = useState('')
   const [replacement, setReplacement] = useState('')
   const [active, setActive] = useState(0)
+  /** True while pasted images are being stored; the caret waits in place. */
+  const [uploading, setUploading] = useState(false)
   const findInput = useRef<HTMLInputElement | null>(null)
   const matches = useMemo<Match[]>(() => findMatches(draft, query), [draft, query])
 
@@ -137,6 +139,45 @@ export function SourceEditor({ t, path, text, mtime, onReading, onSaved }: Sourc
       element.setSelectionRange(result.start, result.end)
     })
   }, [schedule])
+
+  /** Insert text at the caret, keeping the caret after what was inserted. */
+  const insertAtCursor = useCallback((snippet: string): void => {
+    const element = area.current
+    const start = element?.selectionStart ?? latest.current.length
+    const end = element?.selectionEnd ?? start
+    applyEdit({
+      text: `${latest.current.slice(0, start)}${snippet}${latest.current.slice(end)}`,
+      start: start + snippet.length,
+      end: start + snippet.length,
+    })
+  }, [applyEdit])
+
+  /** Read one clipboard or dropped file as a data URL. */
+  const readDataUrl = useCallback((file: File): Promise<string> => new Promise<string>((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(String(reader.result ?? ''))
+    reader.onerror = () => reject(reader.error ?? new Error(t('imageUploadFailed')))
+    reader.readAsDataURL(file)
+  }), [t])
+
+  /** Store pasted images in the vault and embed them at the caret. */
+  const uploadImages = useCallback((files: readonly File[]): void => {
+    const images = files.filter(file => file.type.startsWith('image/'))
+    if (images.length === 0) return
+    setUploading(true)
+    void (async () => {
+      try {
+        for (const file of images) {
+          const path = await writeAsset(file.name, await readDataUrl(file))
+          insertAtCursor(`\n![[${path}]]\n`)
+        }
+      } catch (cause) {
+        setState({ kind: 'error', message: cause instanceof Error ? cause.message : t('imageUploadFailed') })
+      } finally {
+        setUploading(false)
+      }
+    })()
+  }, [insertAtCursor, readDataUrl, t])
 
   const reload = useCallback((): void => {
     void fetchFile(path)
@@ -232,6 +273,7 @@ export function SourceEditor({ t, path, text, mtime, onReading, onSaved }: Sourc
       {state.kind === 'error'
         ? <div className={css.codeNotice}>{t('saveFailed')}: {state.message}</div>
         : null}
+      {uploading ? <div className={css.codeNotice}>{t('imageUploading')}</div> : null}
       {findOpen
         ? (
           <div className={css.editorFind} role="search">
@@ -319,6 +361,22 @@ export function SourceEditor({ t, path, text, mtime, onReading, onSaved }: Sourc
             if (pre === null) return
             pre.scrollTop = event.currentTarget.scrollTop
             pre.scrollLeft = event.currentTarget.scrollLeft
+          }}
+          onPaste={(event) => {
+            const files = [...event.clipboardData.files]
+            if (!files.some(file => file.type.startsWith('image/'))) return
+            // The image replaces the clipboard's text; the embed carries the name.
+            event.preventDefault()
+            uploadImages(files)
+          }}
+          onDragOver={(event) => {
+            if ([...event.dataTransfer.items].some(item => item.kind === 'file')) event.preventDefault()
+          }}
+          onDrop={(event) => {
+            const files = [...event.dataTransfer.files]
+            if (files.length === 0) return
+            event.preventDefault()
+            uploadImages(files)
           }}
           onKeyDown={(event) => {
             const element = event.currentTarget

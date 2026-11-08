@@ -26,6 +26,7 @@ import { useHoverPreview } from './useHoverPreview.ts'
 import { headingAnchor } from '../../vault/syntax.ts'
 import { Callout } from './Callout.tsx'
 import { printNote } from './printNote.ts'
+import { PrintDialog } from './PrintDialog.tsx'
 import { css } from './theme.ts'
 
 /** A ref object without depending on a specific React typings generation. */
@@ -73,6 +74,7 @@ export function NoteView({
 }: NoteViewProps): JSX.Element {
   const [embeds, setEmbeds] = useState<ReadonlyMap<string, string>>(new Map())
   const [inlineBacklinks, toggleInlineBacklinks] = useInlineBacklinks()
+  const [printOpen, setPrintOpen] = useState(false)
   const bodyRef = useRef<HTMLDivElement>(null)
   const articleRef = useRef<HTMLElement | null>(null)
   const { preview, show: showPreview, hide: hidePreview } = useHoverPreview()
@@ -233,10 +235,7 @@ export function NoteView({
         onPathFilter={onPathFilter}
         onMenu={onMenu}
         {...(onSource === undefined ? {} : { onSource })}
-    onPrint={() => {
-      const article = articleRef.current
-      if (article !== null) printNote(article, note.title)
-    }}
+    onPrint={() => setPrintOpen(true)}
         {...(backlinks.length === 0 ? {} : { backlinksVisible: inlineBacklinks, onToggleBacklinks: toggleInlineBacklinks })}
       />
       <div className={css.scroll} ref={scrollRef as unknown as Ref<HTMLDivElement>}>
@@ -293,6 +292,19 @@ export function NoteView({
         </div>
       </div>
       <HoverPreviewCard preview={preview} />
+      {printOpen
+        ? (
+          <PrintDialog
+            t={t}
+            onCancel={() => setPrintOpen(false)}
+            onConfirm={(options) => {
+              setPrintOpen(false)
+              const article = articleRef.current
+              if (article !== null) printNote(article, note.title, options)
+            }}
+          />
+        )
+        : null}
     </article>
   )
 }
