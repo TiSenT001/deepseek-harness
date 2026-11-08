@@ -60,7 +60,6 @@ export function GraphToolbar(props: GraphToolbarProps): JSX.Element {
       <TagPicker t={t} options={tagOptions} value={tag} onChange={onTag} />
       {center === undefined ? null : (
         <Select
-          className={css.graphSelect}
           value={String(depth)}
           options={[1, 2, 3].map(value => ({ value: String(value), label: `${value} ${t('hops')}` }))}
           ariaLabel={t('hops')}

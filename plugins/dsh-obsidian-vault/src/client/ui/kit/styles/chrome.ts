@@ -257,6 +257,12 @@ button.ov-plugin-info {
   100% { background: transparent; }
 }
 .ov-narrow-only { display: none; }
+.ov-graph-tools .ov-select { align-self: center; }
+.ov-graph-tools .ov-select-trigger {
+  min-width: 96px;
+  padding: 3px 6px;
+  font-size: 12px;
+}
 .ov-graph-tools {
   display: flex;
   align-items: center;
