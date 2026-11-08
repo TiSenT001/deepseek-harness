@@ -1,3 +1,19 @@
+## 第一百零五轮：打印对话框重设计——分页预览与选项记忆（2026-11-08）
+
+- **布局重设计**：对话框从 920px 两栏改为 `min(1160px, 96vw)`，主体 `grid` 拆成 268px 选项栏（独立滚动 + 右边框）与自适应预览区；预览区固定「纸张 · 方向 / 共 N 页」信息条、可滚动的页面栈、底部估算说明；操作按钮回到标准 `dialogFooter`，摘要信息不再与顶栏重复。860px 以下转单列，选项栏限高 42vh。
+- **分页预览**：用离屏 iframe 按纸张内容宽（`sheetSizeOf` − `2 × marginPxOf`）测量文档高度，`ceil(total / contentHeight)` 得页数（上限 30）；每页一个白纸盒，内部 iframe 高 `(index+1) × contentHeight` 并 `translateY(-index × contentHeight)` 切片，页下标注「第 N 页」。`printDocumentHtml` 新增 `preview.contentWidth`，用 `@media screen` 收窄 body 宽度，测量与真实打印共用一个文档。`useFitScale` 以 `ResizeObserver` 按预览栏宽度缩放整页。
+- **字号语义修正**：`pageRule` 由 `body { zoom }` 改为 `body { font-size: calc(14px * scale) }`——zoom 会把排版撑出纸张内容框、右侧被裁切；`PRINT_CSS` 内固定 px 的字号（`pre/code`、属性区、标签 chip）改为 em，随字号缩。
+- **功能完善**：选项用 `localStorage`（`dsh-obsidian-vault:print-options`）逐字段校验后记忆；新增「恢复默认」；Escape 改为 window 监听（原 `dialog` 无 tabIndex 收不到键）；内容筛选抽出 `cloneForPrint`，打印窗口与 PDF/预览现在一致地剔除未勾选区块。
+- **缺陷修复**：`PrintDialog` 原先渲染在 `<article>` 内部，`cloneForPrint(article)` 会把对话框连同其预览 iframe 一起克隆（iframe 的 `srcdoc` 再嵌套整篇文档），实测 A4→A5 页数从 2 涨到 10、关闭属性后涨到 25。对话框移到 article 外，并在克隆时兜底移除 `.ov-dialog-layer`；修复后 A4 2 页 / A5 4 页且稳定。
+- **验证**：`tsc` 0、706/706、`tsdown` 成功；实机 A4 2 页、A5 4 页（关属性 4 页、正文高度 2420px）、5 个 Toggle 正常，截图 `.artifacts/ui/print-dialog{,-a5,-toggled}.png`；审核 `note.print-command` 改为「工具栏开对话框 → 主按钮打印」，1/1 通过、0 控制台错误。
+
+## 第一百零四轮：打印对话框风格统一（2026-11-08）
+
+- **复选框收编**：「包含内容」三项与「仅 PDF 生效」两项从原生 checkbox（`ov-image-choice`）换成 kit `SettingsRow + Toggle`，与设置页同一开关语言，标签列 104px 对齐其余下拉行；`ov-image-choice` 仅剩 ImageInsertDialog 使用。
+- **按钮体系统一**：底栏「打印」升为主按钮 `dialogButtonPrimary`，「导出 PDF」「取消」统一 `dialogButton`（取消此前误用 `css.button`）。
+- **布局微调**：`.ov-print-options > .ov-settings-group:first-child` 上边距归零，与设置区规则对齐。
+- **验证**：`tsc` 0、699/699、`tsdown` 成功；实机截图确认 5 个 Toggle 渲染与交互正常、标签列对齐、主按钮高亮（`.artifacts/ui/print-dialog*.png`）。
+
 ## 第一百零三轮：设置页迭代——双表单隐患修复与共享行组件（2026-11-08）
 
 - **双表单隐患修复**：vault/index 五字段（库路径、忽略列表、单文件上限、索引上限、索引深度）原本同时出现在「通用」区与 pur-studio 插件详情的画布设置里，两份独立草稿各自保存会互相覆盖陈旧值；画布设置区删掉这组字段（`CanvasSettingsDraft`/`draftOf`/`patchOf`/`MB` 常量与对应 JSX），唯一归属留在通用区（其模块注释本就声明 owns 这些字段）。

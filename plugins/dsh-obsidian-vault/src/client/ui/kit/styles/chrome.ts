@@ -214,32 +214,74 @@ button.ov-plugin-info {
 .ov-settings-actions { display: flex; align-items: center; gap: 8px; margin-top: 4px; }
 .ov-image-choice { display: flex; align-items: center; gap: 8px; padding: 3px 0; font-size: 12px; cursor: pointer; }
 .ov-image-choice input { margin: 0; }
-.ov-dialog.ov-print-dialog { width: min(920px, 94vw); }
-.ov-print-body { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 20px; align-items: start; }
-.ov-print-options { min-width: 0; }
-.ov-print-preview {
-  position: sticky;
-  top: 0;
+.ov-dialog.ov-print-dialog { width: min(1160px, 96vw); max-height: 88vh; }
+.ov-print-body {
+  display: grid;
+  grid-template-columns: 268px minmax(0, 1fr);
+  gap: 0;
+  padding: 0;
+  overflow: hidden;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+.ov-print-options {
+  min-width: 0;
+  overflow: auto;
+  padding: 14px 16px 16px;
+  border-right: 1px solid var(--dsw-alias-border-l1, rgba(128, 128, 128, 0.3));
+}
+.ov-print-options > .ov-settings-group:first-child { margin-top: 0; }
+.ov-print-preview { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+.ov-print-preview-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--dsw-alias-border-l1, rgba(128, 128, 128, 0.3));
+  flex: 0 0 auto;
+}
+.ov-print-preview-meta {
+  font-size: 11px;
+  color: var(--dsw-alias-label-tertiary, #8b8b94);
+  font-variant-numeric: tabular-nums;
+}
+.ov-print-pages {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
   display: flex;
   flex-direction: column;
-  gap: 8px;
   align-items: center;
-  padding: 10px;
-  border: 1px solid var(--dsw-alias-border-l1, rgba(128, 128, 128, 0.3));
-  border-radius: var(--ov-radius-m, 8px);
-  background: var(--dsw-alias-bg-layer-1, rgba(128, 128, 128, 0.06));
+  gap: 16px;
+  padding: 18px;
+  background: var(--dsw-alias-bg-layer-2, rgba(128, 128, 128, 0.06));
 }
-.ov-print-options .ov-select { width: 200px; max-width: 100%; }
+.ov-print-page { display: flex; flex-direction: column; align-items: center; gap: 6px; flex: 0 0 auto; }
+.ov-print-options .ov-select { width: 100%; max-width: 200px; }
 .ov-print-options .ov-select-trigger { width: 100%; }
 .ov-print-sheet {
   position: relative;
   overflow: hidden;
+  flex: 0 0 auto;
   background: #ffffff;
-  border: 1px solid var(--dsw-alias-border-l1, rgba(128, 128, 128, 0.3));
   border-radius: 2px;
   box-shadow: 0 8px 22px rgba(0, 0, 0, 0.35);
 }
+.ov-print-sheet-content { position: absolute; overflow: hidden; }
 .ov-print-frame { display: block; border: 0; transform-origin: top left; background: #ffffff; }
+.ov-print-page-label {
+  font-size: 10.5px;
+  color: var(--dsw-alias-label-tertiary, #8b8b94);
+  font-variant-numeric: tabular-nums;
+}
+.ov-print-preview-foot {
+  flex: 0 0 auto;
+  padding: 8px 16px;
+  border-top: 1px solid var(--dsw-alias-border-l1, rgba(128, 128, 128, 0.3));
+  font-size: 11px;
+  color: var(--dsw-alias-label-tertiary, #8b8b94);
+}
 .ov-dialog-footer {
   display: flex;
   gap: 8px;
@@ -249,7 +291,11 @@ button.ov-plugin-info {
 }
 @media (max-width: 860px) {
   .ov-print-body { grid-template-columns: minmax(0, 1fr); }
-  .ov-print-preview { position: static; }
+  .ov-print-options {
+    max-height: 42vh;
+    border-right: 0;
+    border-bottom: 1px solid var(--dsw-alias-border-l1, rgba(128, 128, 128, 0.3));
+  }
 }
 .ov-flash { animation: ov-flash 1.6s ease-out; }
 @keyframes ov-flash {

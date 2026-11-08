@@ -231,71 +231,73 @@ export function NoteView({
   }, [anchor, rendered])
 
   return (
-    <article className={css.note} ref={articleRef}>
-      {pdfError === undefined ? null : <div className={css.banner}>{pdfError}</div>}
-      <NoteHeader
-        t={t}
-        note={note}
-        onPathFilter={onPathFilter}
-        onMenu={onMenu}
-        {...(onSource === undefined ? {} : { onSource })}
-    onPrint={() => setPrintOpen(true)}
-        {...(backlinks.length === 0 ? {} : { backlinksVisible: inlineBacklinks, onToggleBacklinks: toggleInlineBacklinks })}
-      />
-      <div className={css.scroll} ref={scrollRef as unknown as Ref<HTMLDivElement>}>
-        <div
-          ref={bodyRef}
-          className={css.document}
-          onMouseOver={(event) => {
-            const anchorElement = (event.target as HTMLElement | null)?.closest?.('a[href^="https://dsh-obsidian.invalid/open"]')
-            if (!(anchorElement instanceof HTMLElement)) {
-              hidePreview()
-              return
-            }
-            const action = parseSentinel(anchorElement.getAttribute('href') ?? '')
-            if (action.kind !== 'open' || action.path === note.path) return
-            showPreview(action.path, event.clientX, event.clientY)
-          }}
-          onMouseLeave={hidePreview}
-          onContextMenu={(event) => {
-            event.preventDefault()
-            const selection = window.getSelection()?.toString() ?? ''
-            onMenu({ kind: 'editor', path: note.path, selection }, event.clientX, event.clientY)
-          }}
-        >
-          <NoteMeta t={t} note={note} onTag={onTag} />
-          <MarkdownDelegateProvider
-            openExternalLink={(href) => {
-              const action = parseSentinel(href)
-              if (action.kind === 'open') onOpen(action.path, action.anchor)
-              else if (action.kind === 'new') onCreate(action.target)
-              else if (action.kind === 'tag') onTag(action.tag)
-              else if (/^https?:/i.test(href)) window.open(href, '_blank', 'noopener,noreferrer')
+    <>
+      <article className={css.note} ref={articleRef}>
+        {pdfError === undefined ? null : <div className={css.banner}>{pdfError}</div>}
+        <NoteHeader
+          t={t}
+          note={note}
+          onPathFilter={onPathFilter}
+          onMenu={onMenu}
+          {...(onSource === undefined ? {} : { onSource })}
+          onPrint={() => setPrintOpen(true)}
+          {...(backlinks.length === 0 ? {} : { backlinksVisible: inlineBacklinks, onToggleBacklinks: toggleInlineBacklinks })}
+        />
+        <div className={css.scroll} ref={scrollRef as unknown as Ref<HTMLDivElement>}>
+          <div
+            ref={bodyRef}
+            className={css.document}
+            onMouseOver={(event) => {
+              const anchorElement = (event.target as HTMLElement | null)?.closest?.('a[href^="https://dsh-obsidian.invalid/open"]')
+              if (!(anchorElement instanceof HTMLElement)) {
+                hidePreview()
+                return
+              }
+              const action = parseSentinel(anchorElement.getAttribute('href') ?? '')
+              if (action.kind !== 'open' || action.path === note.path) return
+              showPreview(action.path, event.clientX, event.clientY)
+            }}
+            onMouseLeave={hidePreview}
+            onContextMenu={(event) => {
+              event.preventDefault()
+              const selection = window.getSelection()?.toString() ?? ''
+              onMenu({ kind: 'editor', path: note.path, selection }, event.clientX, event.clientY)
             }}
           >
-            <Segments items={rendered} labels={labels} prefix="" />
-          </MarkdownDelegateProvider>
-          {backlinks.length === 0 || !inlineBacklinks
-            ? null
-            : (
-              <section className={css.docBacklinks}>
-                <div className={css.docBacklinksTitle}>{t('backlinks')} · {backlinks.length}</div>
-                {backlinks.map(link => (
-                  <button
-                    key={`${link.path}:${link.line}`}
-                    type="button"
-                    className={css.docBacklinkRow}
-                    onClick={() => onOpen(link.path)}
-                  >
-                    <span className={css.docBacklinkTitle}>{link.title}</span>
-                    <span className={css.docBacklinkContext}>{link.context}</span>
-                  </button>
-                ))}
-              </section>
-            )}
+            <NoteMeta t={t} note={note} onTag={onTag} />
+            <MarkdownDelegateProvider
+              openExternalLink={(href) => {
+                const action = parseSentinel(href)
+                if (action.kind === 'open') onOpen(action.path, action.anchor)
+                else if (action.kind === 'new') onCreate(action.target)
+                else if (action.kind === 'tag') onTag(action.tag)
+                else if (/^https?:/i.test(href)) window.open(href, '_blank', 'noopener,noreferrer')
+              }}
+            >
+              <Segments items={rendered} labels={labels} prefix="" />
+            </MarkdownDelegateProvider>
+            {backlinks.length === 0 || !inlineBacklinks
+              ? null
+              : (
+                <section className={css.docBacklinks}>
+                  <div className={css.docBacklinksTitle}>{t('backlinks')} · {backlinks.length}</div>
+                  {backlinks.map(link => (
+                    <button
+                      key={`${link.path}:${link.line}`}
+                      type="button"
+                      className={css.docBacklinkRow}
+                      onClick={() => onOpen(link.path)}
+                    >
+                      <span className={css.docBacklinkTitle}>{link.title}</span>
+                      <span className={css.docBacklinkContext}>{link.context}</span>
+                    </button>
+                  ))}
+                </section>
+              )}
+          </div>
         </div>
-      </div>
-      <HoverPreviewCard preview={preview} />
+        <HoverPreviewCard preview={preview} />
+      </article>
       {printOpen
         ? (
           <PrintDialog
@@ -319,7 +321,7 @@ export function NoteView({
           />
         )
         : null}
-    </article>
+    </>
   )
 }
 

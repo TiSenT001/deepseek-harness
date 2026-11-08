@@ -1777,6 +1777,11 @@ try {
       }
     })
     await page.getByRole('button', { name: '打印', exact: true }).click()
+    // The toolbar button opens the settings dialog; its primary button prints.
+    const dialog = page.locator('.ov-print-dialog')
+    await dialog.waitFor({ timeout: 10000 })
+    await dialog.locator('.ov-print-page').first().waitFor({ timeout: 15000 })
+    await dialog.locator('.ov-dialog-button-primary').click()
     const calls = await page.evaluate(() => {
       const count = window.__printCalls ?? 0
       window.__restorePrint?.()

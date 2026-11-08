@@ -9,7 +9,8 @@
 const PRINT_CSS = `
   :root { color-scheme: light; }
   body {
-    margin: 28px auto;
+    box-sizing: border-box;
+    margin: 0 auto;
     max-width: 760px;
     padding: 0 20px;
     background: #ffffff;
@@ -17,7 +18,7 @@ const PRINT_CSS = `
     font: 14px/1.75 -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
   }
   h1, h2, h3, h4, h5, h6 { line-height: 1.35; page-break-after: avoid; }
-  pre, code { font-family: ui-monospace, "Cascadia Code", Consolas, monospace; font-size: 12px; }
+  pre, code { font-family: ui-monospace, "Cascadia Code", Consolas, monospace; font-size: 0.86em; }
   pre { padding: 10px 12px; border: 1px solid #dddddd; border-radius: 6px; overflow: auto; page-break-inside: avoid; }
   code { background: #f3f3f3; padding: 1px 4px; border-radius: 3px; }
   pre code { background: none; padding: 0; }
@@ -27,11 +28,11 @@ const PRINT_CSS = `
   th, td { border: 1px solid #dddddd; padding: 5px 8px; text-align: left; }
   .ov-callout { margin: 12px 0; padding: 8px 12px; border-left: 3px solid #888888; background: #f7f7f7; page-break-inside: avoid; }
   .ov-callout-title { font-weight: 600; }
-  .ov-properties { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 4px 14px; margin: 0 0 14px; font-size: 12px; color: #555555; }
+  .ov-properties { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 4px 14px; margin: 0 0 14px; font-size: 0.86em; color: #555555; }
   .ov-property-row { display: contents; }
   .ov-property-key { color: #777777; }
   .ov-tag-row { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
-  .ov-chip { border: 1px solid #dddddd; border-radius: 10px; padding: 1px 8px; font-size: 11px; color: #555555; }
+  .ov-chip { border: 1px solid #dddddd; border-radius: 10px; padding: 1px 8px; font-size: 0.79em; color: #555555; }
   .ov-note-head { margin-bottom: 18px; }
   .ov-breadcrumb { display: none; }
   .ov-hover-card, .ov-md-flash, script, style { display: none !important; }
@@ -104,7 +105,21 @@ export function sheetSizeOf(options: PrintOptions): { readonly width: number; re
 }
 
 /**
- * Build the `@page` rule and body scale for one choice set.
+ * Margin preset width in CSS pixels at 96 dpi, one side.
+ * @param margins - margin preset; undefined means the default.
+ * @returns the margin width in pixels.
+ */
+export function marginPxOf(margins: PrintMargins | undefined): number {
+  const mm = Number.parseFloat(MARGIN_MM[margins ?? 'default'] ?? MARGIN_MM['default'])
+  return Number.isFinite(mm) ? Math.round((mm * 96) / 25.4) : 53
+}
+
+/**
+ * Build the `@page` rule and body type scale for one choice set.
+ *
+ * The scale changes the body font size rather than zooming the box: zooming
+ * widens the layout past the page content box, which clips the right edge on
+ * paper, while a font scale re-flows the text the way a reader expects.
  * @param options - dialog choices.
  * @returns the CSS rules the print window appends.
  */
@@ -113,7 +128,7 @@ function pageRule(options: PrintOptions): string {
   const orientation = options.orientation ?? 'portrait'
   const margins = MARGIN_MM[options.margins ?? 'default'] ?? MARGIN_MM['default'] ?? '14mm'
   const scale = options.scale ?? 1
-  return `@page { size: ${paper} ${orientation}; margin: ${margins}; }\nbody { zoom: ${scale}; }\n`
+  return `@page { size: ${paper} ${orientation}; margin: ${margins}; }\nbody { font-size: calc(14px * ${scale}); }\n`
 }
 
 /**
@@ -150,17 +165,17 @@ async function whenImagesReady(win: Window): Promise<void> {
 }
 
 /**
- * Build the standalone HTML document for one article. The Host's PDF route
- * renders this same document, so print and export cannot drift apart.
+ * Clone the article with the reading chrome and the deselected sections removed.
  * @param element - the rendered note article.
- * @param title - document title.
- * @param options - page box choices.
- * @returns a complete HTML document.
+ * @param options - dialog choices; `content` selects what the document keeps.
+ * @returns a detached copy ready to append to a print document.
  */
-export function printDocumentHtml(element: HTMLElement, title: string, options: PrintOptions = {}): string {
+function cloneForPrint(element: HTMLElement, options: PrintOptions): HTMLElement {
   const copy = element.cloneNode(true) as HTMLElement
   // Buttons in the reading view are chrome, not note content.
   for (const button of [...copy.querySelectorAll('button')]) button.remove()
+  // A dialog nested in the article would clone its own preview frames.
+  for (const layer of [...copy.querySelectorAll('.ov-dialog-layer')]) layer.remove()
   const content = options.content ?? DEFAULT_PRINT_CONTENT
   const omit: readonly string[] = [
     ...(content.properties ? [] : ['.ov-properties']),
@@ -170,11 +185,34 @@ export function printDocumentHtml(element: HTMLElement, title: string, options: 
   for (const selector of omit) {
     for (const node of [...copy.querySelectorAll(selector)]) node.remove()
   }
+  return copy
+}
+
+/**
+ * Build the standalone HTML document for one article. The Host's PDF route
+ * renders this same document, so print and export cannot drift apart.
+ * @param element - the rendered note article.
+ * @param title - document title.
+ * @param options - page box choices.
+ * @param preview - when set, the body is narrowed to that many CSS pixels so a
+ *   screen preview can slice it into page-height windows.
+ * @returns a complete HTML document.
+ */
+export function printDocumentHtml(
+  element: HTMLElement,
+  title: string,
+  options: PrintOptions = {},
+  preview?: { readonly contentWidth: number },
+): string {
+  const copy = cloneForPrint(element, options)
   const escaped = title.replace(/[&<>"]/g, (character) => {
     const map: Readonly<Record<string, string>> = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }
     return map[character] ?? character
   })
-  return `<!doctype html><html><head><meta charset="utf-8"><title>${escaped}</title><style>${PRINT_CSS}${pageRule(options)}</style></head><body>${copy.outerHTML}</body></html>`
+  const screenRule = preview === undefined
+    ? ''
+    : `@media screen { html { background: #ffffff; } body { width: ${preview.contentWidth}px; } }\n`
+  return `<!doctype html><html><head><meta charset="utf-8"><title>${escaped}</title><style>${PRINT_CSS}${pageRule(options)}${screenRule}</style></head><body>${copy.outerHTML}</body></html>`
 }
 
 /**
@@ -195,10 +233,7 @@ export function printNote(element: HTMLElement, title: string, options: PrintOpt
   const style = win.document.createElement('style')
   style.textContent = PRINT_CSS + pageRule(options)
   win.document.head.append(style)
-  const copy = element.cloneNode(true) as HTMLElement
-  // Buttons in the reading view are chrome, not note content.
-  for (const button of [...copy.querySelectorAll('button')]) button.remove()
-  win.document.body.append(copy)
+  win.document.body.append(cloneForPrint(element, options))
   win.document.close()
   win.focus()
   // Images arrive after the DOM does; wait for them so the PDF has pictures.
