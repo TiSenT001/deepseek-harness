@@ -64,7 +64,7 @@ export function layoutLabels(
   // a zoomed-out graph still names its structure instead of becoming dots.
   const lowZoom = zoom <= labelThreshold(textFade)
 
-  const budget = lowZoom ? 18 : nodes.length > 200 ? 26 : nodes.length > 120 ? 60 : Number.POSITIVE_INFINITY
+  const budget = lowZoom ? 10 : nodes.length > 200 ? 26 : nodes.length > 120 ? 60 : Number.POSITIVE_INFINITY
   const minWidth = 20 * labelScale
   const maxWidth = 140 * labelScale
   const ranked = [...nodes].sort((left, right) => right.degree - left.degree)

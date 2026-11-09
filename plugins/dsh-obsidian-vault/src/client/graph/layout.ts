@@ -18,7 +18,7 @@ export * from './layout-seed.ts'
 /** Above this many nodes, repulsion switches to Barnes-Hut. */
 const QUADTREE_THRESHOLD = 300
 /** Collide disc radius and per-tick resolution strength (Obsidian sim.js). */
-const COLLIDE_RADIUS = 60
+const COLLIDE_RADIUS = 34
 const COLLIDE_STRENGTH = 0.5
 
 interface Link {

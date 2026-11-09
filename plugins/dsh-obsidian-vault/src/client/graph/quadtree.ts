@@ -237,7 +237,7 @@ export function repelForceNaive(nodes: VelocityNode[], alpha: number, strength: 
  * (x + vx), with no alpha factor. Each pair is visited once (higher index
  * against lower).
  * @param nodes - points to separate; velocities are mutated.
- * @param radius - disc radius, constant for all nodes (Obsidian: 60).
+ * @param radius - disc radius, constant for all nodes.
  * @param strength - fraction of the overlap resolved per tick (Obsidian: 0.5).
  */
 export function collideForce(nodes: VelocityNode[], radius: number, strength: number): void {
