@@ -713,14 +713,14 @@ try {
   await check('tabs.new-tab-flow', async () => {
     const before = await page.locator('.ov-doctab').count()
     await page.locator('.ov-doctab-new').click()
-    await sleep(300)
-    assert(await page.locator('.ov-quick').isVisible(), 'new-tab did not open switcher')
-    await page.locator('.ov-quick-input').fill('审核链接者')
-    await sleep(700)
-    await page.keyboard.press('Enter')
-    await sleep(900)
+    await sleep(400)
     const after = await page.locator('.ov-doctab').count()
-    assert(after === before + 1, `tab count ${before} -> ${after}`)
+    assert(after === before + 1, `new-tab count ${before} -> ${after}`)
+    assert(await page.locator('.ov-vault-empty').isVisible(), 'new tab did not show the empty page')
+    // Close the placeholder again so later checks start from the original tabs.
+    await page.locator('.ov-doctab-active .ov-doctab-close').click()
+    await sleep(400)
+    assert(await page.locator('.ov-doctab').count() === before, 'empty tab did not close')
   })
 
   await check('tabs.select-and-history', async () => {
@@ -1317,13 +1317,15 @@ try {
   })
 
   await check('graph.hops-select', async () => {
-    const select = page.locator('select[aria-label="跳"]')
+    const select = page.locator('button[aria-label="跳"]')
     assert((await select.count()) > 0, 'hops select missing on local graph')
-    await select.selectOption('2')
+    await select.click()
+    await page.locator('.ov-select-option', { hasText: '2' }).first().click()
     await sleep(1500)
     const stats = await page.locator('.ov-graph-stats').first().textContent()
     assert(/\d+ 节点/.test(stats ?? ''), `stats: ${stats}`)
-    await select.selectOption('1')
+    await select.click()
+    await page.locator('.ov-select-option', { hasText: '1' }).first().click()
     await sleep(1500)
   })
 
