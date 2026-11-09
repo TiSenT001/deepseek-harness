@@ -97,6 +97,10 @@ export const cancelEmbed = (): Promise<{ ok: boolean; status?: EmbedJobStatus }>
 /** 诊断包下载地址（zip：状态 + 单元 + 趋势 + 各单元日志尾部）。 */
 export const DIAGNOSTICS_URL = `${API}/diagnostics/bundle`
 
+/** 已落盘诊断包的下载地址（自愈记录里点路径即下载）。 */
+export const diagnosticsFileUrl = (name: string): string =>
+  `${API}/diagnostics/file?name=${encodeURIComponent(name)}`
+
 /** 指标趋势：一次取满一年，对话框里再按 7/30/90/365 天切窗口。 */
 export const loadHistory = (): Promise<HistoryListing> => jget<HistoryListing>('/status/history?days=365')
 

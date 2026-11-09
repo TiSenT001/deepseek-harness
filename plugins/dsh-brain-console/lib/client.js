@@ -114,6 +114,8 @@ window.__ModuleLoader__.load({
 		const cancelEmbed = () => postJson("/embed/cancel", {});
 		/** 诊断包下载地址（zip：状态 + 单元 + 趋势 + 各单元日志尾部）。 */
 		const DIAGNOSTICS_URL = `${API}/diagnostics/bundle`;
+		/** 已落盘诊断包的下载地址（自愈记录里点路径即下载）。 */
+		const diagnosticsFileUrl = (name) => `${API}/diagnostics/file?name=${encodeURIComponent(name)}`;
 		/** 指标趋势：一次取满一年，对话框里再按 7/30/90/365 天切窗口。 */
 		const loadHistory = () => jget("/status/history?days=365");
 		/** 缓存对话框的回调同样模块级（引用稳定）。 */
@@ -1350,7 +1352,12 @@ window.__ModuleLoader__.load({
 										event.bundle !== null && event.bundle !== void 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
 											className: "bc-auto-bundle",
 											title: event.bundle,
-											children: event.bundle
+											children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)("a", {
+												className: "bc-auto-bundle-link",
+												href: diagnosticsFileUrl(event.bundle.split(/[\\/]/).pop() ?? event.bundle),
+												download: true,
+												children: event.bundle
+											})
 										})
 									]
 								}, `${event.unit}-${event.at}-${index}`))
@@ -3475,7 +3482,14 @@ window.__ModuleLoader__.load({
   white-space: nowrap;
   text-overflow: ellipsis;
   font-family: var(--ds-font-family-code, monospace);
-  opacity: 0.8;
+}
+.bc-auto-bundle-link {
+  color: var(--dsw-alias-label-secondary);
+  text-decoration: underline dotted;
+  text-underline-offset: 2px;
+}
+.bc-auto-bundle-link:hover {
+  color: var(--dsw-alias-label-primary);
 }
 
 .bc-trend-limit-row {
