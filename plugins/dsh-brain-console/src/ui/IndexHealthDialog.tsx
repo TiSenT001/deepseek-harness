@@ -222,9 +222,11 @@ export function IndexHealthDialog({ onClose }: IndexHealthDialogProps): JSX.Elem
             </div>
             <div className="bc-index-row">
               <span>最后索引</span>
-              <strong className={stale !== null && stale !== undefined && stale > 2 ? 'bc-index-warn' : ''}>
+              <strong>
                 {health.chunks.last_indexed_at ?? '—'}
-                {stale !== null && stale !== undefined && ` · 滞后 ${stale} 天`}
+                {stale !== null && stale !== undefined && (
+                  <span className="bc-index-sample"> · 最后内容变化 {stale} 天前</span>
+                )}
               </strong>
             </div>
           </section>
@@ -246,6 +248,23 @@ export function IndexHealthDialog({ onClose }: IndexHealthDialogProps): JSX.Elem
                 </div>
               )
             })}
+          </section>
+
+          <section>
+            <h4>管道心跳 <span className="bc-index-note">cron 是否按时跑</span></h4>
+            {(health.crons ?? []).length === 0 && (
+              <div className="bc-index-row"><span>暂无心跳数据</span><strong>—</strong></div>
+            )}
+            {(health.crons ?? []).map((cron) => (
+              <div className="bc-cron-row" key={cron.name} data-status={cron.status}>
+                <span className="bc-cron-dot" aria-hidden="true" />
+                <span className="bc-cron-name">{cron.name}</span>
+                <span className="bc-cron-age">
+                  {cron.age_hours === null ? '从未运行' : `${cron.age_hours} 小时前`}
+                </span>
+                <span className="bc-cron-interval">每 {cron.interval_h} 小时</span>
+              </div>
+            ))}
           </section>
 
           <section>

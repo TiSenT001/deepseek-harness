@@ -219,6 +219,14 @@ export interface IndexHealth {
   }
   pending: number | null
   db_size_mb: number | null
+  /** 关键定时管道的心跳（分块/补嵌/索引/快照/备份） */
+  crons?: {
+    name: string
+    interval_h: number
+    last_run_at: string | null
+    age_hours: number | null
+    status: 'ok' | 'warn' | 'bad' | 'unknown'
+  }[]
   /** 按领域（domain 空则顶层目录）的向量覆盖 */
   by_domain?: {
     name: string

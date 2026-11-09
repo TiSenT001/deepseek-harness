@@ -1605,10 +1605,14 @@ window.__ModuleLoader__.load({
 								}),
 								/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
 									className: "bc-index-row",
-									children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: "最后索引" }), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("strong", {
-										className: stale !== null && stale !== void 0 && stale > 2 ? "bc-index-warn" : "",
-										children: [health.chunks.last_indexed_at ?? "—", stale !== null && stale !== void 0 && ` · 滞后 ${stale} 天`]
-									})]
+									children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: "最后索引" }), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("strong", { children: [health.chunks.last_indexed_at ?? "—", stale !== null && stale !== void 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
+										className: "bc-index-sample",
+										children: [
+											" · 最后内容变化 ",
+											stale,
+											" 天前"
+										]
+									})] })]
 								})
 							] }),
 							/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("section", { children: [
@@ -1645,6 +1649,42 @@ window.__ModuleLoader__.load({
 										]
 									}, bucket.name);
 								})
+							] }),
+							/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("section", { children: [
+								/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("h4", { children: ["管道心跳 ", /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+									className: "bc-index-note",
+									children: "cron 是否按时跑"
+								})] }),
+								(health.crons ?? []).length === 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+									className: "bc-index-row",
+									children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: "暂无心跳数据" }), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("strong", { children: "—" })]
+								}),
+								(health.crons ?? []).map((cron) => /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+									className: "bc-cron-row",
+									"data-status": cron.status,
+									children: [
+										/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+											className: "bc-cron-dot",
+											"aria-hidden": "true"
+										}),
+										/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+											className: "bc-cron-name",
+											children: cron.name
+										}),
+										/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+											className: "bc-cron-age",
+											children: cron.age_hours === null ? "从未运行" : `${cron.age_hours} 小时前`
+										}),
+										/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
+											className: "bc-cron-interval",
+											children: [
+												"每 ",
+												cron.interval_h,
+												" 小时"
+											]
+										})
+									]
+								}, cron.name))
 							] }),
 							/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("section", { children: [
 								/* @__PURE__ */ (0, react_jsx_runtime.jsx)("h4", { children: "重试队列" }),
@@ -4274,6 +4314,45 @@ window.__ModuleLoader__.load({
 .bc-index-domain-row > span:last-child {
   font-variant-numeric: tabular-nums;
   text-align: right;
+}
+
+.bc-cron-row {
+  display: grid;
+  grid-template-columns: 8px minmax(0, 1fr) auto auto;
+  gap: 8px;
+  align-items: center;
+  padding: 3px 0;
+  font-size: 12px;
+  color: var(--dsw-alias-label-secondary);
+}
+.bc-cron-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--dsw-alias-state-success-primary, #3fb950);
+}
+.bc-cron-row[data-status='warn'] .bc-cron-dot {
+  background: var(--dsw-alias-state-warning-primary, #e0b341);
+}
+.bc-cron-row[data-status='bad'] .bc-cron-dot {
+  background: var(--dsw-alias-state-error-primary, #e35d6a);
+}
+.bc-cron-row[data-status='unknown'] .bc-cron-dot {
+  background: var(--dsw-alias-label-tertiary, #8b8b94);
+}
+.bc-cron-name {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-family: var(--ds-font-family-code, monospace);
+}
+.bc-cron-age {
+  color: var(--dsw-alias-label-primary);
+  font-variant-numeric: tabular-nums;
+}
+.bc-cron-interval {
+  color: var(--dsw-alias-label-tertiary);
+  font-variant-numeric: tabular-nums;
 }
 
 .bc-coverage {
