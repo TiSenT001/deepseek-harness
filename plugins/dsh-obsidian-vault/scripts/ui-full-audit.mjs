@@ -831,6 +831,28 @@ try {
     assert(await page.locator('.ov-main-column .ov-vault-empty').first().isVisible(), 'empty state missing')
   })
 
+  await check('workspace.layouts', async () => {
+    await runPalette('工作区布局')
+    await sleep(400)
+    const dialog = page.locator('.ov-layouts-dialog')
+    assert(await dialog.isVisible(), 'layout manager did not open')
+    await dialog.locator('.ov-dialog-input').fill('审核布局')
+    await dialog.locator('.ov-dialog-button-primary').click()
+    await sleep(400)
+    const row = dialog.locator('.ov-layouts-row', { hasText: '审核布局' })
+    assert(await row.count() === 1, 'saved layout missing')
+    await row.locator('.ov-dialog-button', { hasText: '应用' }).click()
+    await sleep(600)
+    assert(await page.locator('.ov-layouts-dialog').count() === 0, 'layout dialog did not close')
+    // Remove the audit layout so the browser profile keeps no fixture state.
+    await runPalette('工作区布局')
+    await sleep(400)
+    await page.locator('.ov-layouts-row', { hasText: '审核布局' }).locator('.ov-dialog-button', { hasText: '删除' }).click()
+    await sleep(300)
+    await page.keyboard.press('Escape')
+    await sleep(300)
+  })
+
   // ================= 分屏 =================
   await check('panes.split-right', async () => {
     await openViaFilter('审核夹具')
