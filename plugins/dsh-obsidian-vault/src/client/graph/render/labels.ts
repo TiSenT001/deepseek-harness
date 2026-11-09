@@ -12,6 +12,8 @@ export interface LabelBox {
   readonly y: number
   /** Node radius in world units, so the scene can anchor the label below it. */
   readonly radius: number
+  /** True for the hub labels drawn below the normal text-fade threshold. */
+  readonly always?: boolean
 }
 
 export interface LabelOptions {
@@ -58,16 +60,11 @@ export function layoutLabels(
   options: LabelOptions,
 ): readonly LabelBox[] {
   const { zoom, hover, textFade = 0, labelScale = 1, neighbours } = options
-  // Below threshold we only show the hovered node's label.
-  if (zoom <= labelThreshold(textFade)) {
-    if (hover === undefined) return []
-    const node = nodes.find(n => n.path === hover)
-    if (node === undefined) return []
-    const text = node.title.length > 18 ? `${node.title.slice(0, 17)}…` : node.title
-    return [{ path: node.path, title: text, x: node.x, y: node.y, radius: node.radius }]
-  }
+  // Below the fade threshold, keep the hovered label plus a handful of hubs so
+  // a zoomed-out graph still names its structure instead of becoming dots.
+  const lowZoom = zoom <= labelThreshold(textFade)
 
-  const budget = nodes.length > 200 ? 26 : nodes.length > 120 ? 60 : Number.POSITIVE_INFINITY
+  const budget = lowZoom ? 18 : nodes.length > 200 ? 26 : nodes.length > 120 ? 60 : Number.POSITIVE_INFINITY
   const minWidth = 20 * labelScale
   const maxWidth = 140 * labelScale
   const ranked = [...nodes].sort((left, right) => right.degree - left.degree)
@@ -80,13 +77,16 @@ export function layoutLabels(
       || right.degree - left.degree)
   const taken: Array<{ x1: number; x2: number; y1: number; y2: number }> = []
   const labels: LabelBox[] = []
+  // A few hub names bypass overlap rejection at low zoom; otherwise a dense
+  // graph would show only the hovered label.
+  const forced = 0
   // Ensure the hovered node is drawn even if it overlaps, by reserving its
   // slot first. Obsidian always shows the hovered label.
   if (hover !== undefined) {
     const node = nodes.find(n => n.path === hover)
     if (node !== undefined) {
       const text = node.title.length > 18 ? `${node.title.slice(0, 17)}…` : node.title
-      const width = Math.min(maxWidth, Math.max(minWidth, measure(text)))
+      const width = Math.min(maxWidth, Math.max(minWidth, measure(text))) + 4 * labelScale
       taken.push({
         x1: node.x - width / 2,
         x2: node.x + width / 2,
@@ -100,7 +100,7 @@ export function layoutLabels(
     if (labels.length >= budget) break
     if (node.path === hover) continue
     const text = node.title.length > 18 ? `${node.title.slice(0, 17)}…` : node.title
-    const width = Math.min(maxWidth, Math.max(minWidth, measure(text)))
+    const width = Math.min(maxWidth, Math.max(minWidth, measure(text))) + 4 * labelScale
     const box = {
       x1: node.x - width / 2,
       x2: node.x + width / 2,
@@ -109,9 +109,16 @@ export function layoutLabels(
     }
     const overlaps = taken.some(other =>
       !(box.x2 < other.x1 || box.x1 > other.x2 || box.y2 < other.y1 || box.y1 > other.y2))
-    if (overlaps) continue
+    if (overlaps && labels.length >= forced) continue
     taken.push(box)
-    labels.push({ path: node.path, title: text, x: node.x, y: node.y, radius: node.radius })
+    labels.push({
+      path: node.path,
+      title: text,
+      x: node.x,
+      y: node.y,
+      radius: node.radius,
+      ...(lowZoom ? { always: true } : {}),
+    })
   }
   return labels
 }

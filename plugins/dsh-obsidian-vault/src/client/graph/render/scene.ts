@@ -234,6 +234,9 @@ export function drawScene(scene: SceneInput): SceneStats {
   if (labels.length > 0) {
     ctx.font = labelScale === 1 ? LABEL_FONT : labelFont(11 * labelScale)
     ctx.textAlign = 'center'
+    ctx.lineJoin = 'round'
+    ctx.lineWidth = 1.2 / zoom
+    ctx.strokeStyle = palette.labelHalo
     for (const label of labels) {
       // Cheap viewport reject; the canvas pre-filters with a wide margin, so
       // this only guards the labels that margin kept.
@@ -242,10 +245,12 @@ export function drawScene(scene: SceneInput): SceneStats {
       const active = hover === label.path
       const anim = anims.get(label.path)
       const fade = (anim?.fade ?? 1) * (reveal >= 1 ? 1 : entranceOf(label.path))
-      const alpha = active ? fade : fade * (anim?.dim ?? 1) * globalLabelAlpha
+      const labelAlphaFor = label.always === true ? Math.max(globalLabelAlpha, 1) : globalLabelAlpha
+      const alpha = active ? fade : fade * (anim?.dim ?? 1) * labelAlphaFor
       if (alpha <= 0.02) continue
       ctx.globalAlpha = alpha
-      ctx.fillStyle = active ? palette.labelActive : palette.label
+      ctx.fillStyle = active || label.always === true ? palette.labelActive : palette.label
+      ctx.strokeText(label.title, label.x, y + (anim?.lift ?? 0))
       ctx.fillText(label.title, label.x, y + (anim?.lift ?? 0))
     }
     ctx.globalAlpha = 1
