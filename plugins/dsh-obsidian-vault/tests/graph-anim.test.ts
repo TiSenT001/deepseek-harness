@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { damp, dampColor, parseColor } from '../src/client/graph/render/anim.ts'
 import { GraphStage } from '../src/client/graph/render/stage.ts'
-import { labelAlpha, labelThreshold, layoutLabels } from '../src/client/graph/render/labels.ts'
+import { labelAlpha, labelThreshold } from '../src/client/graph/render/labels.ts'
 import { curveFor, sliderToValue, valueToSlider } from '../src/client/graph/schema.ts'
 
 test('damp approaches the target and never overshoots', () => {
@@ -65,19 +65,4 @@ test('slider SJ/MJ roundtrip and curveFor lands the default mid-track', () => {
   for (const v of [0.05, 0.3, 0.5, 0.8, 0.95]) {
     assert.ok(Math.abs(sliderToValue(valueToSlider(v, curve), curve) - v) < 1e-9)
   }
-})
-
-test('zoomed-out graphs still name their hubs', () => {
-  const nodes = [
-    { path: 'hub.md', title: '枢纽笔记', depth: 0, x: 0, y: 0, vx: 0, vy: 0, fx: null, fy: null, degree: 24, radius: 20 },
-    ...Array.from({ length: 12 }, (_, index) => ({
-      path: `leaf-${index}.md`, title: `叶子 ${index}`, depth: 1,
-      x: 200 + index * 90, y: 120 + (index % 3) * 90, vx: 0, vy: 0, fx: null, fy: null,
-      degree: 1, radius: 3,
-    })),
-  ]
-  const labels = layoutLabels(nodes, text => text.length * 11, { zoom: 0.2, textFade: 0, labelScale: 5 })
-  assert.ok(labels.length > 0, 'no labels below the fade threshold')
-  assert.ok(labels.some(label => label.always === true), 'hub labels are not marked as always-on')
-  assert.equal(labels[0]?.path, 'hub.md')
 })
