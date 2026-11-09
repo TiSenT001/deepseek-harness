@@ -11,6 +11,20 @@ import type { SavedTab, SavedWorkspace } from './panes.ts'
 /** Reading area the user left open. */
 export type RememberedView = 'note' | 'graph'
 
+/** One named workspace layout, mirroring the Obsidian Workspaces core plugin. */
+export interface WorkspaceLayout {
+  /** User-chosen name; unique per vault. */
+  readonly name: string
+  /** Pane and tab arrangement. */
+  readonly workspace: SavedWorkspace
+  /** Reading area the layout opens. */
+  readonly view: RememberedView
+  /** Right-rail panel id. */
+  readonly rail: string
+  /** Epoch milliseconds, used to show the newest layouts first. */
+  readonly savedAt: number
+}
+
 /** What the workspace restores on the next mount. */
 export interface ViewMemory {
   /** Vault root the record belongs to; empty until the first status report. */
@@ -25,6 +39,8 @@ export interface ViewMemory {
   readonly workspace?: SavedWorkspace
   /** Most recently opened documents, newest first. */
   readonly recent?: readonly string[]
+  /** Named layouts the user saved for this vault. */
+  readonly layouts?: readonly WorkspaceLayout[]
 }
 
 /** localStorage key holding the JSON record. */
@@ -35,6 +51,8 @@ const MAX_PANES = 8
 const MAX_TABS = 50
 const MAX_PATH = 4096
 const MAX_RAIL = 64
+const MAX_LAYOUTS = 20
+const MAX_NAME = 60
 
 /**
  * Validate a persisted workspace record.
@@ -89,12 +107,47 @@ function sanitizeRecent(value: unknown): readonly string[] | undefined {
   return paths.length === 0 ? undefined : paths
 }
 
+/**
+ * Validate saved layouts. A layout whose workspace cannot be trusted is
+ * dropped on its own, not the whole record.
+ * @param value - untrusted value from storage or the Host.
+ * @returns at most 20 layouts with unique names.
+ */
+export function sanitizeLayouts(value: unknown): readonly WorkspaceLayout[] | undefined {
+  if (!Array.isArray(value)) return undefined
+  const layouts: WorkspaceLayout[] = []
+  const seen = new Set<string>()
+  for (const layoutValue of value) {
+    if (layoutValue === null || typeof layoutValue !== 'object') continue
+    const layout = layoutValue as {
+      readonly name?: unknown
+      readonly workspace?: unknown
+      readonly view?: unknown
+      readonly rail?: unknown
+      readonly savedAt?: unknown
+    }
+    if (typeof layout.name !== 'string') continue
+    const name = layout.name.trim()
+    if (name.length === 0 || name.length > MAX_NAME || seen.has(name)) continue
+    if (layout.view !== 'note' && layout.view !== 'graph') continue
+    if (typeof layout.rail !== 'string' || layout.rail.length > MAX_RAIL) continue
+    if (typeof layout.savedAt !== 'number' || !Number.isFinite(layout.savedAt)) continue
+    const workspace = sanitizeWorkspace(layout.workspace)
+    if (workspace === undefined) continue
+    seen.add(name)
+    layouts.push({ name, workspace, view: layout.view, rail: layout.rail, savedAt: layout.savedAt })
+    if (layouts.length >= MAX_LAYOUTS) break
+  }
+  return layouts.length === 0 ? undefined : layouts
+}
+
 export function parseViewMemory(raw: string | null): ViewMemory | undefined {
   if (raw === null) return undefined
   try {
-    const parsed = JSON.parse(raw) as { readonly root?: unknown; readonly path?: unknown; readonly view?: unknown; readonly rail?: unknown; readonly workspace?: unknown; readonly recent?: unknown }
+    const parsed = JSON.parse(raw) as { readonly root?: unknown; readonly path?: unknown; readonly view?: unknown; readonly rail?: unknown; readonly workspace?: unknown; readonly recent?: unknown; readonly layouts?: unknown }
     const workspace = sanitizeWorkspace(parsed.workspace)
     const recent = sanitizeRecent(parsed.recent)
+    const layouts = sanitizeLayouts(parsed.layouts)
     const memory: ViewMemory = {
       ...(typeof parsed.root === 'string' ? { root: parsed.root } : {}),
       ...(typeof parsed.path === 'string' && parsed.path.length > 0 ? { path: parsed.path } : {}),
@@ -102,6 +155,7 @@ export function parseViewMemory(raw: string | null): ViewMemory | undefined {
       ...(typeof parsed.rail === 'string' ? { rail: parsed.rail } : {}),
       ...(workspace === undefined ? {} : { workspace }),
       ...(recent === undefined ? {} : { recent }),
+      ...(layouts === undefined ? {} : { layouts }),
     }
     return memory
   } catch {
@@ -123,6 +177,7 @@ export function serializeViewMemory(memory: ViewMemory): string {
     ...(memory.rail === undefined ? {} : { rail: memory.rail }),
     ...(memory.workspace === undefined ? {} : { workspace: memory.workspace }),
     ...(memory.recent === undefined ? {} : { recent: memory.recent }),
+    ...(memory.layouts === undefined ? {} : { layouts: memory.layouts }),
   })
 }
 

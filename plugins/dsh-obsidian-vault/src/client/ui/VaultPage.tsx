@@ -13,6 +13,7 @@ import { useVaultData } from './useVaultData.ts'
 import { activeTab } from './tabs.ts'
 import { panesFromSaved, savedFromPanes } from './panes.ts'
 import type { PaneHandlers } from './PaneColumn.tsx'
+import type { CommandEntry } from './commands.ts'
 import type { Rail } from './Panels.tsx'
 import type { RibbonId } from './Ribbon.tsx'
 import { useHeadingShift } from './useHeadingShift.ts'
@@ -26,7 +27,8 @@ import { useVaultBookmarks } from './useVaultBookmarks.ts'
 import { useVaultCommands } from './useVaultCommands.ts'
 import { useVaultShortcuts } from './useVaultShortcuts.ts'
 import { useVaultTabs } from './useVaultTabs.ts'
-import { readHostViewMemory, readViewMemory, writeHostViewMemory, writeViewMemory, type ViewMemory } from './viewMemory.ts'
+import { readHostViewMemory, readViewMemory, writeHostViewMemory, writeViewMemory, type ViewMemory, type WorkspaceLayout } from './viewMemory.ts'
+import { WorkspaceLayoutsDialog } from './WorkspaceLayoutsDialog.tsx'
 import { type VaultEmptyAction } from './VaultEmptyState.tsx'
 import { VaultWorkspace } from './VaultWorkspace.tsx'
 import { css, STYLE } from './theme.ts'
@@ -65,6 +67,9 @@ export function VaultPage({ pickDirectory, hasPicker }: VaultPageProps = {}): JS
   const [view, setView] = useState<'note' | 'graph'>(() => (remembered.current?.view === 'graph' ? 'graph' : 'note'))
   /** Newest first; the empty start page lists these. */
   const [recent, setRecent] = useState<readonly string[]>(() => remembered.current?.recent ?? [])
+  /** Obsidian-style named layouts saved for this vault. */
+  const [layouts, setLayouts] = useState<readonly WorkspaceLayout[]>(() => remembered.current?.layouts ?? [])
+  const [layoutsOpen, setLayoutsOpen] = useState(false)
   // Reading and source are two views of the same Markdown file; attachments
   // and code files always render through the file view.
   const [sourceMode, setSourceMode] = useState(false)
@@ -114,6 +119,7 @@ export function VaultPage({ pickDirectory, hasPicker }: VaultPageProps = {}): JS
       resetTabs()
       setView('note')
       setRail('outline')
+      setLayouts([])
       viewRestored.current = true
       return
     }
@@ -123,6 +129,7 @@ export function VaultPage({ pickDirectory, hasPicker }: VaultPageProps = {}): JS
       if (memory.view !== undefined) setView(memory.view)
       if (memory.rail !== undefined) setRail(railOf(memory.rail))
       if (memory.recent !== undefined) setRecent(memory.recent)
+      if (memory.layouts !== undefined) setLayouts(memory.layouts)
       // A legacy record has no workspace and only remembers the active path.
       if (memory.workspace === undefined && memory.path !== undefined) openPath(memory.path)
     }
@@ -166,10 +173,11 @@ export function VaultPage({ pickDirectory, hasPicker }: VaultPageProps = {}): JS
       rail,
       workspace: savedFromPanes({ panes, active: activePane, direction, nextId: panes.length }),
       ...(recent.length === 0 ? {} : { recent }),
+      ...(layouts.length === 0 ? {} : { layouts }),
     }
     writeViewMemory(memory)
     writeHostViewMemory(status.root, memory)
-  }, [activePane, direction, panes, path, rail, recent, status, view])
+  }, [activePane, direction, layouts, panes, path, rail, recent, status, view])
 
   const overlays = useOverlayState({ openPath })
   const {
@@ -182,6 +190,27 @@ export function VaultPage({ pickDirectory, hasPicker }: VaultPageProps = {}): JS
   const openNewTab = useCallback(() => {
     addEmptyTab()
   }, [addEmptyTab])
+  /** Save the current panes, tabs, view, and rail under a name. */
+  const saveLayout = useCallback((name: string) => {
+    const layout: WorkspaceLayout = {
+      name,
+      workspace: savedFromPanes({ panes, active: activePane, direction, nextId: panes.length }),
+      view,
+      rail,
+      savedAt: Date.now(),
+    }
+    setLayouts(previous => [layout, ...previous.filter(item => item.name !== name)].slice(0, 20))
+  }, [activePane, direction, panes, rail, view])
+  /** Replace the current arrangement with a saved one. */
+  const applyLayout = useCallback((layout: WorkspaceLayout) => {
+    restoreTabs(panesFromSaved(layout.workspace))
+    setView(layout.view)
+    setRail(railOf(layout.rail))
+    setSourceMode(false)
+  }, [restoreTabs])
+  const deleteLayout = useCallback((name: string) => {
+    setLayouts(previous => previous.filter(item => item.name !== name))
+  }, [])
 
   useVaultShortcuts({
     onToggleQuick: toggleQuick,
@@ -206,6 +235,7 @@ export function VaultPage({ pickDirectory, hasPicker }: VaultPageProps = {}): JS
     setView('note')
     setActiveHeading(undefined)
     setSourceMode(false)
+    setLayouts([])
     clearScroll()
     void reload()
   }, [clearScroll, reload, resetTabs])
@@ -302,6 +332,10 @@ export function VaultPage({ pickDirectory, hasPicker }: VaultPageProps = {}): JS
     { id: 'switch-vault', label: t('switchVault'), icon: 'files', run: openVaults },
   ], [openPurStudio, openQuick, openSearch, openVaults, t, vaultActions])
 
+  const layoutCommands = useMemo<readonly CommandEntry[]>(() => [
+    { id: 'workspace.layouts', label: `${t('workspaces')}…`, run: () => setLayoutsOpen(true) },
+  ], [t])
+
   const { menuGroups, commands, runCommand } = useVaultCommands({
     askText: ask.askText,
     t,
@@ -334,6 +368,7 @@ export function VaultPage({ pickDirectory, hasPicker }: VaultPageProps = {}): JS
     closePane,
     paneCount: panes.length,
     purPath: path !== undefined && /\.purstudio$/i.test(path) ? path : undefined,
+    pageCommands: layoutCommands,
   })
 
   // The rail reads parsed notes only, so it hides for attachments and code
@@ -418,6 +453,18 @@ export function VaultPage({ pickDirectory, hasPicker }: VaultPageProps = {}): JS
         variant={variant}
         onVariant={setVariant}
       />
+      {layoutsOpen
+        ? (
+          <WorkspaceLayoutsDialog
+            t={t}
+            layouts={layouts}
+            onSave={saveLayout}
+            onApply={applyLayout}
+            onDelete={deleteLayout}
+            onClose={() => setLayoutsOpen(false)}
+          />
+        )
+        : null}
       {ask.node}
     </div>
   )

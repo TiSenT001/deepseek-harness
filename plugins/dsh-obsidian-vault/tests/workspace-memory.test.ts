@@ -105,3 +105,54 @@ test('malformed workspace records are dropped, not whole records', () => {
   }))
   assert.equal(tooManyPanes?.workspace, undefined)
 })
+
+test('named layouts round-trip and keep one entry per name', () => {
+  const workspace = savedFromPanes(panesFromSaved({
+    panes: [{ tabs: [{ path: '甲.md' }, { path: '乙.md' }], active: 0, size: 1 }],
+    activePane: 0,
+    direction: 'row',
+  }))
+  const raw = serializeViewMemory({
+    root: 'G:\\个人知识库',
+    layouts: [
+      { name: '写作', workspace, view: 'note', rail: 'outline', savedAt: 2 },
+      { name: '阅读', workspace, view: 'graph', rail: 'backlinks', savedAt: 1 },
+    ],
+  })
+  const parsed = parseViewMemory(raw)
+  assert.equal(parsed?.layouts?.length, 2)
+  assert.equal(parsed?.layouts?.[0]?.name, '写作')
+  assert.equal(parsed?.layouts?.[1]?.view, 'graph')
+  assert.equal(parsed?.layouts?.[0]?.workspace.panes[0]?.tabs.length, 2)
+})
+
+test('invalid or duplicate layouts are dropped individually', () => {
+  const workspace = savedFromPanes(panesFromSaved({
+    panes: [{ tabs: [{ path: '甲.md' }], active: 0, size: 1 }],
+    activePane: 0,
+    direction: 'row',
+  }))
+  const parsed = parseViewMemory(JSON.stringify({
+    layouts: [
+      { name: '好', workspace, view: 'note', rail: 'outline', savedAt: 1 },
+      { name: '好', workspace, view: 'graph', rail: 'outline', savedAt: 2 },
+      { name: '', workspace, view: 'note', rail: 'outline', savedAt: 1 },
+      { name: '坏', workspace: { panes: [] }, view: 'note', rail: 'outline', savedAt: 1 },
+      { name: '也坏', workspace, view: 'sideways', rail: 'outline', savedAt: 1 },
+    ],
+  }))
+  assert.deepEqual(parsed?.layouts?.map(layout => layout.name), ['好'])
+})
+
+test('the layout list is capped at twenty', () => {
+  const workspace = savedFromPanes(panesFromSaved({ panes: [{ tabs: [{ path: '甲.md' }], active: 0, size: 1 }], activePane: 0, direction: 'row' }))
+  const layouts = Array.from({ length: 25 }, (_, index) => ({
+    name: '布局 ' + index,
+    workspace,
+    view: 'note' as const,
+    rail: 'outline',
+    savedAt: index,
+  }))
+  const parsed = parseViewMemory(JSON.stringify({ layouts }))
+  assert.equal(parsed?.layouts?.length, 20)
+})

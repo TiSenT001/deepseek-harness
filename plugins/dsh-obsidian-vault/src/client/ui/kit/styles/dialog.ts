@@ -267,4 +267,53 @@ textarea.ov-input { resize: vertical; }
   font-size: 11px;
   color: var(--dsw-alias-label-tertiary, #8b8b94);
 }
+/* Named workspace layouts */
+.ov-layouts-dialog { width: min(560px, 94vw); }
+.ov-layouts-form { display: flex; gap: 8px; }
+.ov-layouts-form .ov-dialog-input { flex: 1 1 auto; }
+.ov-layouts-hint {
+  margin: 7px 0 10px;
+  color: var(--dsw-alias-label-tertiary, #8b8b94);
+  font-size: 11px;
+  line-height: 1.5;
+}
+.ov-layouts-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: min(52vh, 420px);
+  margin: 0;
+  padding: 0;
+  overflow: auto;
+  list-style: none;
+}
+.ov-layouts-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 10px;
+  border: 1px solid var(--dsw-alias-border-l1, #2a2a30);
+  border-radius: 8px;
+  background: var(--dsw-alias-bg-layer-1, #1b1b1f);
+}
+.ov-layouts-info { display: flex; min-width: 0; flex-direction: column; gap: 2px; }
+.ov-layouts-name {
+  overflow: hidden;
+  color: var(--dsw-alias-label-primary, #e8e8ea);
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ov-layouts-meta { color: var(--dsw-alias-label-tertiary, #8b8b94); font-size: 11px; }
+.ov-layouts-actions { display: flex; flex: none; gap: 6px; }
+.ov-layouts-empty {
+  margin: 8px 0 0;
+  padding: 16px;
+  border: 1px dashed var(--dsw-alias-border-l1, #2a2a30);
+  border-radius: 8px;
+  color: var(--dsw-alias-label-tertiary, #8b8b94);
+  font-size: 12px;
+  text-align: center;
+}
 `

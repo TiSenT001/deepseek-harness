@@ -34,6 +34,15 @@ interface StoredWorkspace {
   readonly direction: 'row' | 'column'
 }
 
+/** One named workspace layout. */
+interface StoredLayout {
+  readonly name: string
+  readonly workspace: StoredWorkspace
+  readonly view: StoredView
+  readonly rail: string
+  readonly savedAt: number
+}
+
 /** One vault's remembered page. */
 export interface StoredViewMemory {
   readonly path?: string
@@ -42,6 +51,8 @@ export interface StoredViewMemory {
   readonly workspace?: StoredWorkspace
   /** Most recently opened documents, newest first. */
   readonly recent?: readonly string[]
+  /** Named layouts the user saved for this vault. */
+  readonly layouts?: readonly StoredLayout[]
 }
 
 /** File holding every vault's record. */
@@ -52,6 +63,8 @@ const MAX_PATH = 4096
 const MAX_RAIL = 64
 const MAX_PANES = 8
 const MAX_TABS = 50
+const MAX_LAYOUTS = 20
+const MAX_NAME = 60
 
 interface StoreFile {
   readonly version: 1
@@ -97,11 +110,40 @@ function sanitizeRecent(value: unknown): readonly string[] | undefined {
   return paths.length === 0 ? undefined : paths
 }
 
+/** Validate saved layouts; one bad layout drops on its own. */
+function sanitizeLayouts(value: unknown): readonly StoredLayout[] | undefined {
+  if (!Array.isArray(value)) return undefined
+  const layouts: StoredLayout[] = []
+  const seen = new Set<string>()
+  for (const layoutValue of value) {
+    if (layoutValue === null || typeof layoutValue !== 'object') continue
+    const layout = layoutValue as {
+      readonly name?: unknown
+      readonly workspace?: unknown
+      readonly view?: unknown
+      readonly rail?: unknown
+      readonly savedAt?: unknown
+    }
+    if (typeof layout.name !== 'string') continue
+    const name = layout.name.trim()
+    if (name.length === 0 || name.length > MAX_NAME || seen.has(name)) continue
+    if (layout.view !== 'note' && layout.view !== 'graph') continue
+    if (typeof layout.rail !== 'string' || layout.rail.length > MAX_RAIL) continue
+    if (typeof layout.savedAt !== 'number' || !Number.isFinite(layout.savedAt)) continue
+    const workspace = sanitizeWorkspace(layout.workspace)
+    if (workspace === undefined) continue
+    seen.add(name)
+    layouts.push({ name, workspace, view: layout.view, rail: layout.rail, savedAt: layout.savedAt })
+    if (layouts.length >= MAX_LAYOUTS) break
+  }
+  return layouts.length === 0 ? undefined : layouts
+}
+
 /** Validate one record from disk or a request. */
 function sanitize(value: unknown): StoredViewMemory | undefined {
   if (value === null || typeof value !== 'object') return undefined
-  const input = value as { readonly path?: unknown; readonly view?: unknown; readonly rail?: unknown; readonly workspace?: unknown; readonly recent?: unknown }
-  const memory: { path?: string; view?: StoredView; rail?: string; workspace?: StoredWorkspace; recent?: readonly string[] } = {}
+  const input = value as { readonly path?: unknown; readonly view?: unknown; readonly rail?: unknown; readonly workspace?: unknown; readonly recent?: unknown; readonly layouts?: unknown }
+  const memory: { path?: string; view?: StoredView; rail?: string; workspace?: StoredWorkspace; recent?: readonly string[]; layouts?: readonly StoredLayout[] } = {}
   if (typeof input.path === 'string' && input.path.length > 0 && input.path.length <= MAX_PATH) memory.path = input.path
   if (input.view === 'note' || input.view === 'graph') memory.view = input.view
   if (typeof input.rail === 'string' && input.rail.length <= MAX_RAIL) memory.rail = input.rail
@@ -109,6 +151,8 @@ function sanitize(value: unknown): StoredViewMemory | undefined {
   if (workspace !== undefined) memory.workspace = workspace
   const recent = sanitizeRecent(input.recent)
   if (recent !== undefined) memory.recent = recent
+  const layouts = sanitizeLayouts(input.layouts)
+  if (layouts !== undefined) memory.layouts = layouts
   return Object.keys(memory).length === 0 ? undefined : memory
 }
 
