@@ -1239,6 +1239,58 @@ const STYLES = `
   font-variant-numeric: tabular-nums;
 }
 
+.bc-index-health {
+  max-height: min(64vh, 640px);
+  overflow-y: auto;
+  padding-right: 4px;
+  overscroll-behavior: contain;
+}
+.bc-index-section {
+  display: block;
+  margin: 0 0 4px;
+  padding: 0 0 8px;
+  border-bottom: 1px solid var(--dsw-alias-border-l1);
+}
+.bc-index-section:last-child {
+  border-bottom: 0;
+}
+.bc-index-section > summary {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 0;
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+}
+.bc-index-section > summary::-webkit-details-marker {
+  display: none;
+}
+.bc-index-section > summary::before {
+  content: '▸';
+  color: var(--dsw-alias-label-tertiary);
+  font-size: 10px;
+  transition: transform 0.12s ease;
+}
+.bc-index-section[open] > summary::before {
+  transform: rotate(90deg);
+}
+.bc-index-section > summary h4 {
+  margin: 0;
+}
+.bc-index-section > summary:hover h4 {
+  color: var(--dsw-alias-label-primary);
+}
+.bc-auto {
+  display: flex;
+  flex-direction: column;
+  max-height: min(62vh, 600px);
+}
+.bc-auto-list {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
 .bc-coverage {
   height: 4px;
   margin: 4px 0 8px;
