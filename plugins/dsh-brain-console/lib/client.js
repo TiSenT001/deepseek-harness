@@ -1539,235 +1539,257 @@ window.__ModuleLoader__.load({
 					health !== null && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
 						className: "bc-index-health",
 						children: [
-							/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("section", { children: [
-								/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("h4", { children: ["笔记向量 ", /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-									className: "bc-index-note",
-									children: "vec_cache"
-								})] }),
-								/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-									className: "bc-index-row",
-									children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: "已向量 / 总笔记" }), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("strong", { children: [
-										num(health.vec.total),
-										" / ",
-										num(health.notes)
-									] })]
-								}),
-								/* @__PURE__ */ (0, react_jsx_runtime.jsx)(Coverage, { percent }),
-								/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-									className: "bc-index-row",
-									children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: "缺少向量" }), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("strong", {
-										className: health.vec.missing ? "bc-index-warn" : "",
-										children: [
-											num(health.vec.missing),
-											" 篇",
-											(health.vec.missing_sample ?? []).length > 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
-												className: "bc-index-sample",
-												title: (health.vec.missing_sample ?? []).join("\n"),
-												children: [
-													"（如 ",
-													health.vec.missing_sample[0],
-													"）"
-												]
-											})
-										]
-									})]
-								}),
-								(health.vec.empty ?? 0) > 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-									className: "bc-index-row",
-									children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: "空笔记（0 字节，不需向量）" }), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("strong", { children: [num(health.vec.empty), " 篇"] })]
-								}),
-								/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-									className: "bc-index-row",
-									children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: "最近 24h 更新" }), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("strong", { children: [num(health.vec.fresh_24h), " 篇"] })]
-								}),
-								/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-									className: "bc-index-row",
-									children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: "最后写入" }), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("strong", { children: health.vec.last_indexed_at ?? "—" })]
-								}),
-								/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-									className: "bc-index-row",
-									children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: "孤儿向量（笔记已删）" }), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("strong", { children: num(health.vec.orphans) })]
-								})
-							] }),
-							/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("section", { children: [
-								/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("h4", { children: ["分块索引 ", /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-									className: "bc-index-note",
-									children: "chunk_index"
-								})] }),
-								/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-									className: "bc-index-row",
-									children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: "已分块笔记 / 总笔记" }), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("strong", { children: [
-										num(health.chunks.notes),
-										" / ",
-										num(health.notes)
-									] })]
-								}),
-								(health.chunks.empty ?? 0) > 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-									className: "bc-index-row",
-									children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: "空笔记（0 字节，不需分块）" }), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("strong", { children: [num(health.chunks.empty), " 篇"] })]
-								}),
-								/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-									className: "bc-index-row",
-									children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: "分块总数" }), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("strong", { children: num(health.chunks.rows) })]
-								}),
-								/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-									className: "bc-index-row",
-									children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: "最后索引" }), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("strong", { children: [health.chunks.last_indexed_at ?? "—", stale !== null && stale !== void 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
-										className: "bc-index-sample",
-										children: [
-											" · 最后内容变化 ",
-											stale,
-											" 天前"
-										]
-									})] })]
-								})
-							] }),
-							/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("section", { children: [
-								/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("h4", { children: ["按领域覆盖 ", /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-									className: "bc-index-note",
-									children: "向量 / 笔记"
-								})] }),
-								(health.by_domain ?? []).length === 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-									className: "bc-index-row",
-									children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: "暂无领域数据" }), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("strong", { children: "—" })]
-								}),
-								(health.by_domain ?? []).map((bucket) => {
-									const percent = bucket.total > 0 ? bucket.covered / bucket.total * 100 : 0;
-									return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-										className: "bc-index-domain-row",
+							/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("details", {
+								className: "bc-index-section",
+								open: true,
+								children: [
+									/* @__PURE__ */ (0, react_jsx_runtime.jsx)("summary", { children: /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("h4", { children: ["笔记向量 ", /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+										className: "bc-index-note",
+										children: "vec_cache"
+									})] }) }),
+									/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+										className: "bc-index-row",
+										children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: "已向量 / 总笔记" }), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("strong", { children: [
+											num(health.vec.total),
+											" / ",
+											num(health.notes)
+										] })]
+									}),
+									/* @__PURE__ */ (0, react_jsx_runtime.jsx)(Coverage, { percent }),
+									/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+										className: "bc-index-row",
+										children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: "缺少向量" }), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("strong", {
+											className: health.vec.missing ? "bc-index-warn" : "",
+											children: [
+												num(health.vec.missing),
+												" 篇",
+												(health.vec.missing_sample ?? []).length > 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
+													className: "bc-index-sample",
+													title: (health.vec.missing_sample ?? []).join("\n"),
+													children: [
+														"（如 ",
+														health.vec.missing_sample[0],
+														"）"
+													]
+												})
+											]
+										})]
+									}),
+									(health.vec.empty ?? 0) > 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+										className: "bc-index-row",
+										children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: "空笔记（0 字节，不需向量）" }), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("strong", { children: [num(health.vec.empty), " 篇"] })]
+									}),
+									/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+										className: "bc-index-row",
+										children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: "最近 24h 更新" }), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("strong", { children: [num(health.vec.fresh_24h), " 篇"] })]
+									}),
+									/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+										className: "bc-index-row",
+										children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: "最后写入" }), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("strong", { children: health.vec.last_indexed_at ?? "—" })]
+									}),
+									/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+										className: "bc-index-row",
+										children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: "孤儿向量（笔记已删）" }), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("strong", { children: num(health.vec.orphans) })]
+									})
+								]
+							}),
+							/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("details", {
+								className: "bc-index-section",
+								open: true,
+								children: [
+									/* @__PURE__ */ (0, react_jsx_runtime.jsx)("summary", { children: /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("h4", { children: ["分块索引 ", /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+										className: "bc-index-note",
+										children: "chunk_index"
+									})] }) }),
+									/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+										className: "bc-index-row",
+										children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: "已分块笔记 / 总笔记" }), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("strong", { children: [
+											num(health.chunks.notes),
+											" / ",
+											num(health.notes)
+										] })]
+									}),
+									(health.chunks.empty ?? 0) > 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+										className: "bc-index-row",
+										children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: "空笔记（0 字节，不需分块）" }), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("strong", { children: [num(health.chunks.empty), " 篇"] })]
+									}),
+									/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+										className: "bc-index-row",
+										children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: "分块总数" }), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("strong", { children: num(health.chunks.rows) })]
+									}),
+									/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+										className: "bc-index-row",
+										children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: "最后索引" }), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("strong", { children: [health.chunks.last_indexed_at ?? "—", stale !== null && stale !== void 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
+											className: "bc-index-sample",
+											children: [
+												" · 最后内容变化 ",
+												stale,
+												" 天前"
+											]
+										})] })]
+									})
+								]
+							}),
+							/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("details", {
+								className: "bc-index-section",
+								children: [
+									/* @__PURE__ */ (0, react_jsx_runtime.jsx)("summary", { children: /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("h4", { children: ["按领域覆盖 ", /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+										className: "bc-index-note",
+										children: "向量 / 笔记"
+									})] }) }),
+									(health.by_domain ?? []).length === 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+										className: "bc-index-row",
+										children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: "暂无领域数据" }), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("strong", { children: "—" })]
+									}),
+									(health.by_domain ?? []).map((bucket) => {
+										const percent = bucket.total > 0 ? bucket.covered / bucket.total * 100 : 0;
+										return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+											className: "bc-index-domain-row",
+											children: [
+												/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+													className: "bc-index-domain-name",
+													title: bucket.name,
+													children: bucket.name
+												}),
+												/* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+													className: "bc-index-domain-bar",
+													children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", { style: { width: `${percent}%` } })
+												}),
+												/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
+													className: bucket.missing > 0 ? "bc-index-warn" : "",
+													children: [
+														bucket.covered,
+														" / ",
+														bucket.total
+													]
+												})
+											]
+										}, bucket.name);
+									})
+								]
+							}),
+							/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("details", {
+								className: "bc-index-section",
+								open: true,
+								children: [
+									/* @__PURE__ */ (0, react_jsx_runtime.jsx)("summary", { children: /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("h4", { children: ["管道心跳 ", /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+										className: "bc-index-note",
+										children: "cron 是否按时跑"
+									})] }) }),
+									(health.crons ?? []).length === 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+										className: "bc-index-row",
+										children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: "暂无心跳数据" }), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("strong", { children: "—" })]
+									}),
+									(health.crons ?? []).map((cron) => /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+										className: "bc-cron-row",
+										"data-status": cron.status,
 										children: [
 											/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-												className: "bc-index-domain-name",
-												title: bucket.name,
-												children: bucket.name
+												className: "bc-cron-dot",
+												"aria-hidden": "true"
 											}),
-											/* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
-												className: "bc-index-domain-bar",
-												children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", { style: { width: `${percent}%` } })
+											/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+												className: "bc-cron-name",
+												children: cron.name
+											}),
+											/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+												className: "bc-cron-age",
+												children: cron.age_hours === null ? "从未运行" : `${cron.age_hours} 小时前`
 											}),
 											/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
-												className: bucket.missing > 0 ? "bc-index-warn" : "",
+												className: "bc-cron-interval",
 												children: [
-													bucket.covered,
-													" / ",
-													bucket.total
+													"每 ",
+													cron.interval_h,
+													" 小时"
 												]
 											})
 										]
-									}, bucket.name);
-								})
-							] }),
-							/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("section", { children: [
-								/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("h4", { children: ["管道心跳 ", /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-									className: "bc-index-note",
-									children: "cron 是否按时跑"
-								})] }),
-								(health.crons ?? []).length === 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-									className: "bc-index-row",
-									children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: "暂无心跳数据" }), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("strong", { children: "—" })]
-								}),
-								(health.crons ?? []).map((cron) => /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-									className: "bc-cron-row",
-									"data-status": cron.status,
-									children: [
-										/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-											className: "bc-cron-dot",
-											"aria-hidden": "true"
-										}),
-										/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-											className: "bc-cron-name",
-											children: cron.name
-										}),
-										/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-											className: "bc-cron-age",
-											children: cron.age_hours === null ? "从未运行" : `${cron.age_hours} 小时前`
-										}),
-										/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
-											className: "bc-cron-interval",
-											children: [
-												"每 ",
-												cron.interval_h,
-												" 小时"
-											]
-										})
-									]
-								}, cron.name))
-							] }),
-							/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("section", { children: [
-								/* @__PURE__ */ (0, react_jsx_runtime.jsx)("h4", { children: "重试队列" }),
-								/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-									className: "bc-index-row",
-									children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: "embed_pending" }), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("strong", { children: [num(health.pending), " 篇"] })]
-								}),
-								/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-									className: "bc-index-row",
-									children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: "库大小" }), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("strong", { children: num(health.db_size_mb, " MB") })]
-								})
-							] }),
-							/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("section", { children: [
-								/* @__PURE__ */ (0, react_jsx_runtime.jsx)("h4", { children: "手动补嵌" }),
-								/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-									className: "bc-embed-actions",
-									children: [
-										/* @__PURE__ */ (0, react_jsx_runtime.jsxs)(Button, {
-											size: "sm",
-											variant: "ghost",
-											disabled: busy || running || (health.vec.missing ?? 0) === 0,
-											onClick: () => void run("vec:fill"),
-											children: [
-												"补向量缺失（",
-												num(health.vec.missing),
-												" 篇）"
-											]
-										}),
-										/* @__PURE__ */ (0, react_jsx_runtime.jsxs)(Button, {
-											size: "sm",
-											variant: "ghost",
-											disabled: busy || running,
-											onClick: () => void run("vec:rebuild"),
-											children: [
-												"全量重建向量（",
-												num(health.notes),
-												" 篇）"
-											]
-										}),
-										/* @__PURE__ */ (0, react_jsx_runtime.jsxs)(Button, {
-											size: "sm",
-											variant: "ghost",
-											disabled: busy || running,
-											onClick: () => void run("chunk:rebuild"),
-											children: [
-												"分块增量重建（",
-												num(health.notes),
-												" 篇）"
-											]
-										}),
-										/* @__PURE__ */ (0, react_jsx_runtime.jsx)(Button, {
-											size: "sm",
-											variant: "ghost",
-											disabled: busy || running,
-											title: "忽略内容哈希，逐篇重建全部分块（会重写数万分块行）；数十秒到数分钟，期间可取消",
-											onClick: () => void run("chunk:force"),
-											children: "分块全量重建（强制）"
-										}),
-										(health.chunks.missing ?? 0) > 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)(Button, {
-											size: "sm",
-											variant: "ghost",
-											disabled: busy || running,
-											onClick: () => void run("chunk:fill"),
-											children: [
-												"补分块缺失（",
-												num(health.chunks.missing),
-												" 篇）"
-											]
-										})
-									]
-								}),
-								job !== null && job.state !== "idle" && /* @__PURE__ */ (0, react_jsx_runtime.jsx)(JobProgress, {
-									job,
-									onCancel: () => void cancel()
-								})
-							] })
+									}, cron.name))
+								]
+							}),
+							/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("details", {
+								className: "bc-index-section",
+								children: [
+									/* @__PURE__ */ (0, react_jsx_runtime.jsx)("summary", { children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)("h4", { children: "重试队列" }) }),
+									/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+										className: "bc-index-row",
+										children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: "embed_pending" }), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("strong", { children: [num(health.pending), " 篇"] })]
+									}),
+									/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+										className: "bc-index-row",
+										children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: "库大小" }), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("strong", { children: num(health.db_size_mb, " MB") })]
+									})
+								]
+							}),
+							/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("details", {
+								className: "bc-index-section",
+								open: true,
+								children: [
+									/* @__PURE__ */ (0, react_jsx_runtime.jsx)("summary", { children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)("h4", { children: "手动补嵌" }) }),
+									/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+										className: "bc-embed-actions",
+										children: [
+											/* @__PURE__ */ (0, react_jsx_runtime.jsxs)(Button, {
+												size: "sm",
+												variant: "ghost",
+												disabled: busy || running || (health.vec.missing ?? 0) === 0,
+												onClick: () => void run("vec:fill"),
+												children: [
+													"补向量缺失（",
+													num(health.vec.missing),
+													" 篇）"
+												]
+											}),
+											/* @__PURE__ */ (0, react_jsx_runtime.jsxs)(Button, {
+												size: "sm",
+												variant: "ghost",
+												disabled: busy || running,
+												onClick: () => void run("vec:rebuild"),
+												children: [
+													"全量重建向量（",
+													num(health.notes),
+													" 篇）"
+												]
+											}),
+											/* @__PURE__ */ (0, react_jsx_runtime.jsxs)(Button, {
+												size: "sm",
+												variant: "ghost",
+												disabled: busy || running,
+												onClick: () => void run("chunk:rebuild"),
+												children: [
+													"分块增量重建（",
+													num(health.notes),
+													" 篇）"
+												]
+											}),
+											/* @__PURE__ */ (0, react_jsx_runtime.jsx)(Button, {
+												size: "sm",
+												variant: "ghost",
+												disabled: busy || running,
+												title: "忽略内容哈希，逐篇重建全部分块（会重写数万分块行）；数十秒到数分钟，期间可取消",
+												onClick: () => void run("chunk:force"),
+												children: "分块全量重建（强制）"
+											}),
+											(health.chunks.missing ?? 0) > 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)(Button, {
+												size: "sm",
+												variant: "ghost",
+												disabled: busy || running,
+												onClick: () => void run("chunk:fill"),
+												children: [
+													"补分块缺失（",
+													num(health.chunks.missing),
+													" 篇）"
+												]
+											})
+										]
+									}),
+									job !== null && job.state !== "idle" && /* @__PURE__ */ (0, react_jsx_runtime.jsx)(JobProgress, {
+										job,
+										onCancel: () => void cancel()
+									})
+								]
+							})
 						]
 					})
 				]
@@ -4367,6 +4389,58 @@ window.__ModuleLoader__.load({
 .bc-cron-interval {
   color: var(--dsw-alias-label-tertiary);
   font-variant-numeric: tabular-nums;
+}
+
+.bc-index-health {
+  max-height: min(64vh, 640px);
+  overflow-y: auto;
+  padding-right: 4px;
+  overscroll-behavior: contain;
+}
+.bc-index-section {
+  display: block;
+  margin: 0 0 4px;
+  padding: 0 0 8px;
+  border-bottom: 1px solid var(--dsw-alias-border-l1);
+}
+.bc-index-section:last-child {
+  border-bottom: 0;
+}
+.bc-index-section > summary {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 0;
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+}
+.bc-index-section > summary::-webkit-details-marker {
+  display: none;
+}
+.bc-index-section > summary::before {
+  content: '▸';
+  color: var(--dsw-alias-label-tertiary);
+  font-size: 10px;
+  transition: transform 0.12s ease;
+}
+.bc-index-section[open] > summary::before {
+  transform: rotate(90deg);
+}
+.bc-index-section > summary h4 {
+  margin: 0;
+}
+.bc-index-section > summary:hover h4 {
+  color: var(--dsw-alias-label-primary);
+}
+.bc-auto {
+  display: flex;
+  flex-direction: column;
+  max-height: min(62vh, 600px);
+}
+.bc-auto-list {
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .bc-coverage {

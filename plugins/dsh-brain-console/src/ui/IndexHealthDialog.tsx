@@ -166,8 +166,8 @@ export function IndexHealthDialog({ onClose }: IndexHealthDialogProps): JSX.Elem
       {health === null && error === null && <div className="bc-backup-empty">读取中…</div>}
       {health !== null && (
         <div className="bc-index-health">
-          <section>
-            <h4>笔记向量 <span className="bc-index-note">vec_cache</span></h4>
+          <details className="bc-index-section" open>
+            <summary><h4>笔记向量 <span className="bc-index-note">vec_cache</span></h4></summary>
             <div className="bc-index-row">
               <span>已向量 / 总笔记</span>
               <strong>{num(health.vec.total)} / {num(health.notes)}</strong>
@@ -202,10 +202,10 @@ export function IndexHealthDialog({ onClose }: IndexHealthDialogProps): JSX.Elem
               <span>孤儿向量（笔记已删）</span>
               <strong>{num(health.vec.orphans)}</strong>
             </div>
-          </section>
+          </details>
 
-          <section>
-            <h4>分块索引 <span className="bc-index-note">chunk_index</span></h4>
+          <details className="bc-index-section" open>
+            <summary><h4>分块索引 <span className="bc-index-note">chunk_index</span></h4></summary>
             <div className="bc-index-row">
               <span>已分块笔记 / 总笔记</span>
               <strong>{num(health.chunks.notes)} / {num(health.notes)}</strong>
@@ -229,10 +229,10 @@ export function IndexHealthDialog({ onClose }: IndexHealthDialogProps): JSX.Elem
                 )}
               </strong>
             </div>
-          </section>
+          </details>
 
-          <section>
-            <h4>按领域覆盖 <span className="bc-index-note">向量 / 笔记</span></h4>
+          <details className="bc-index-section">
+            <summary><h4>按领域覆盖 <span className="bc-index-note">向量 / 笔记</span></h4></summary>
             {(health.by_domain ?? []).length === 0 && (
               <div className="bc-index-row"><span>暂无领域数据</span><strong>—</strong></div>
             )}
@@ -248,10 +248,10 @@ export function IndexHealthDialog({ onClose }: IndexHealthDialogProps): JSX.Elem
                 </div>
               )
             })}
-          </section>
+          </details>
 
-          <section>
-            <h4>管道心跳 <span className="bc-index-note">cron 是否按时跑</span></h4>
+          <details className="bc-index-section" open>
+            <summary><h4>管道心跳 <span className="bc-index-note">cron 是否按时跑</span></h4></summary>
             {(health.crons ?? []).length === 0 && (
               <div className="bc-index-row"><span>暂无心跳数据</span><strong>—</strong></div>
             )}
@@ -265,10 +265,10 @@ export function IndexHealthDialog({ onClose }: IndexHealthDialogProps): JSX.Elem
                 <span className="bc-cron-interval">每 {cron.interval_h} 小时</span>
               </div>
             ))}
-          </section>
+          </details>
 
-          <section>
-            <h4>重试队列</h4>
+          <details className="bc-index-section">
+            <summary><h4>重试队列</h4></summary>
             <div className="bc-index-row">
               <span>embed_pending</span>
               <strong>{num(health.pending)} 篇</strong>
@@ -277,10 +277,10 @@ export function IndexHealthDialog({ onClose }: IndexHealthDialogProps): JSX.Elem
               <span>库大小</span>
               <strong>{num(health.db_size_mb, ' MB')}</strong>
             </div>
-          </section>
+          </details>
 
-          <section>
-            <h4>手动补嵌</h4>
+          <details className="bc-index-section" open>
+            <summary><h4>手动补嵌</h4></summary>
             <div className="bc-embed-actions">
               <Button size="sm" variant="ghost" disabled={busy || running || (health.vec.missing ?? 0) === 0}
                 onClick={() => void run('vec:fill')}>
@@ -307,7 +307,7 @@ export function IndexHealthDialog({ onClose }: IndexHealthDialogProps): JSX.Elem
               )}
             </div>
             {job !== null && job.state !== 'idle' && <JobProgress job={job} onCancel={() => void cancel()} />}
-          </section>
+          </details>
         </div>
       )}
     </Modal>

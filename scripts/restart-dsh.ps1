@@ -147,6 +147,8 @@ if (-not $url) {
   exit 1
 }
 $url | Out-File -FilePath $UrlFile -Encoding utf8
+# 同步 DSH home 的 token 文件：面板冒烟/脚本靠它自动发现地址（否则 token 轮换后仍读旧值）
+$url | Out-File -FilePath (Join-Path $Repo '.dsh-home\dsh_web_token.txt') -Encoding utf8 -NoNewline
 Write-Log ('ready: ' + $url)
 # 打开新地址（旧标签页的 token 已失效）
 Start-Process $url
