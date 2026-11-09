@@ -828,7 +828,7 @@ try {
     await page.locator('.ov-doctab-active .ov-doctab-close').click()
     await sleep(400)
     assert((await page.locator('.ov-doctab').count()) === 0, 'tab still present')
-    assert(await page.locator('.ov-main-column .ov-state').first().isVisible(), 'empty state missing')
+    assert(await page.locator('.ov-main-column .ov-vault-empty').first().isVisible(), 'empty state missing')
   })
 
   // ================= 分屏 =================
