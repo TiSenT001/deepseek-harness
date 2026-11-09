@@ -352,7 +352,14 @@ const STYLES = `
   white-space: nowrap;
   text-overflow: ellipsis;
   font-family: var(--ds-font-family-code, monospace);
-  opacity: 0.8;
+}
+.bc-auto-bundle-link {
+  color: var(--dsw-alias-label-secondary);
+  text-decoration: underline dotted;
+  text-underline-offset: 2px;
+}
+.bc-auto-bundle-link:hover {
+  color: var(--dsw-alias-label-primary);
 }
 
 .bc-trend-limit-row {

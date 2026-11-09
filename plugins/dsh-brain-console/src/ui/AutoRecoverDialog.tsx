@@ -5,7 +5,7 @@
  * 不做任何操作。每条记录带单元名、尝试序号、结果、退出码与诊断包路径。
  */
 import { useEffect, useState } from 'react'
-import { loadAutoRecover } from '../api.ts'
+import { diagnosticsFileUrl, loadAutoRecover } from '../api.ts'
 import { reasonOf } from './errors.ts'
 import { Button, Modal } from './primitives.ts'
 import type { AutoRecoverStatus } from './types.ts'
@@ -107,7 +107,15 @@ export function AutoRecoverDialog({ onClose }: AutoRecoverDialogProps): JSX.Elem
                   {event.error !== null && event.error !== undefined ? ` · ${event.error}` : ''}
                 </div>
                 {event.bundle !== null && event.bundle !== undefined && (
-                  <div className="bc-auto-bundle" title={event.bundle}>{event.bundle}</div>
+                  <div className="bc-auto-bundle" title={event.bundle}>
+                    <a
+                      className="bc-auto-bundle-link"
+                      href={diagnosticsFileUrl(event.bundle.split(/[\\/]/).pop() ?? event.bundle)}
+                      download
+                    >
+                      {event.bundle}
+                    </a>
+                  </div>
                 )}
               </li>
             ))}
