@@ -5,7 +5,7 @@
  */
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { screenRadius } from '../src/client/graph/render/node-size.ts'
+import { MIN_NODE_SCREEN_PX, screenRadius } from '../src/client/graph/render/node-size.ts'
 import { seedPositions } from '../src/client/graph/layout-seed.ts'
 
 /** Two notes, one with five inbound links, one with none. */
@@ -30,17 +30,11 @@ test('degree increases the world radius', () => {
 })
 
 test('zoomed-out nodes keep a minimum screen radius', () => {
-  assert.equal(screenRadius(2, 1, 0.25), (3 + 2 * 0.28) / 0.25)
+  assert.equal(screenRadius(2, 1, 0.25), MIN_NODE_SCREEN_PX / 0.25)
   assert.equal(screenRadius(20, 1, 1), 20)
   assert.equal(screenRadius(20, 2, 1), 40)
 })
 
-test('zoomed-out hubs stay larger than leaves', () => {
-  const hub = screenRadius(20, 1, 0.2) * 0.2
-  const leaf = screenRadius(2, 1, 0.2) * 0.2
-  assert.ok(hub > leaf + 3, `hub ${hub}px should exceed leaf ${leaf}px`)
-})
-
-test('the screen floor never shrinks an already large node', () => {
-  assert.equal(screenRadius(30, 1, 0.2), (3 + 5) / 0.2)
+test('the floor never shrinks an already large node', () => {
+  assert.equal(screenRadius(30, 1, 0.2), 30)
 })

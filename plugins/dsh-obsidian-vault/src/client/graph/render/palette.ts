@@ -20,8 +20,6 @@ export interface Palette {
   readonly ring: string
   readonly label: string
   readonly labelActive: string
-  /** Halo behind labels so they stay legible over dense edges. */
-  readonly labelHalo: string
 }
 
 /** Font used for node labels. */
@@ -58,6 +56,5 @@ export function readPalette(): Palette {
     ring: token('--dsw-alias-label-primary', '#e8e8ea'),
     label: token('--dsw-alias-label-secondary', '#b6b6bd'),
     labelActive: token('--dsw-alias-label-primary', '#e8e8ea'),
-    labelHalo: token('--dsw-alias-bg-base', '#0f0f11'),
   }
 }
