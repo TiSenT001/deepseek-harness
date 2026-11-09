@@ -267,13 +267,15 @@ try {
     const dialog = page.getByRole('dialog')
     if (!(await dialog.count())) throw new Error('对话框没打开')
     const text = await dialog.innerText()
-    const need = ['笔记向量', '分块索引', '手动补嵌']
+    const need = ['笔记向量', '分块索引', '手动补嵌', '管道心跳']
     const missing = need.filter((k) => !text.includes(k))
     const rows = await dialog.locator('.bc-index-row').count()
+    const crons = await dialog.locator('.bc-cron-row').count()
     await closeOverlay()
     if (missing.length) throw new Error(`缺 ${missing.join('/')}`)
     if (rows === 0) throw new Error('没有任何覆盖行')
-    return `${rows} 行覆盖`
+    if (crons === 0) throw new Error('没有管道心跳行')
+    return `${rows} 行覆盖 · ${crons} 条心跳`
   })
 
   await soft('趋势图含 24h 变化与告警线', async () => {

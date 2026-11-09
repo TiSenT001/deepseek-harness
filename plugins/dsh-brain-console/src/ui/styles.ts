@@ -1193,6 +1193,45 @@ const STYLES = `
   text-align: right;
 }
 
+.bc-cron-row {
+  display: grid;
+  grid-template-columns: 8px minmax(0, 1fr) auto auto;
+  gap: 8px;
+  align-items: center;
+  padding: 3px 0;
+  font-size: 12px;
+  color: var(--dsw-alias-label-secondary);
+}
+.bc-cron-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--dsw-alias-state-success-primary, #3fb950);
+}
+.bc-cron-row[data-status='warn'] .bc-cron-dot {
+  background: var(--dsw-alias-state-warning-primary, #e0b341);
+}
+.bc-cron-row[data-status='bad'] .bc-cron-dot {
+  background: var(--dsw-alias-state-error-primary, #e35d6a);
+}
+.bc-cron-row[data-status='unknown'] .bc-cron-dot {
+  background: var(--dsw-alias-label-tertiary, #8b8b94);
+}
+.bc-cron-name {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-family: var(--ds-font-family-code, monospace);
+}
+.bc-cron-age {
+  color: var(--dsw-alias-label-primary);
+  font-variant-numeric: tabular-nums;
+}
+.bc-cron-interval {
+  color: var(--dsw-alias-label-tertiary);
+  font-variant-numeric: tabular-nums;
+}
+
 .bc-coverage {
   height: 4px;
   margin: 4px 0 8px;
