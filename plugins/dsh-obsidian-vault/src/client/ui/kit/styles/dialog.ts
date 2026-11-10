@@ -316,4 +316,14 @@ textarea.ov-input { resize: vertical; }
   font-size: 12px;
   text-align: center;
 }
+/* New-note-from-template dialog */
+.ov-template-dialog { width: min(420px, 94vw); }
+.ov-template-field { display: flex; flex-direction: column; gap: 4px; margin-bottom: 10px; }
+.ov-template-label { color: var(--dsw-alias-label-tertiary, #8b8b94); font-size: 11px; }
+.ov-template-empty {
+  margin: 4px 0;
+  color: var(--dsw-alias-label-tertiary, #8b8b94);
+  font-size: 12px;
+  line-height: 1.6;
+}
 `

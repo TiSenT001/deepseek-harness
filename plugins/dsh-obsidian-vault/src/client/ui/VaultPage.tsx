@@ -5,7 +5,7 @@
  * @module dsh-obsidian-vault/client/ui/VaultPage
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { createNote } from '../api.ts'
+import { createNote, fetchNote, saveNote } from '../api.ts'
 import { createPurCanvas } from './newCanvas.ts'
 import { createT } from '../i18n.ts'
 import { fileTypeOf } from '../../filetypes.ts'
@@ -29,6 +29,8 @@ import { useVaultShortcuts } from './useVaultShortcuts.ts'
 import { useVaultTabs } from './useVaultTabs.ts'
 import { readHostViewMemory, readViewMemory, writeHostViewMemory, writeViewMemory, type ViewMemory, type WorkspaceLayout } from './viewMemory.ts'
 import { WorkspaceLayoutsDialog } from './WorkspaceLayoutsDialog.tsx'
+import { TemplatePickerDialog } from './TemplatePickerDialog.tsx'
+import { applyTemplate, templateNotes, templateTargetPath } from './templates.ts'
 import { type VaultEmptyAction } from './VaultEmptyState.tsx'
 import { VaultWorkspace } from './VaultWorkspace.tsx'
 import { css, STYLE } from './theme.ts'
@@ -70,6 +72,7 @@ export function VaultPage({ pickDirectory, hasPicker }: VaultPageProps = {}): JS
   /** Obsidian-style named layouts saved for this vault. */
   const [layouts, setLayouts] = useState<readonly WorkspaceLayout[]>(() => remembered.current?.layouts ?? [])
   const [layoutsOpen, setLayoutsOpen] = useState(false)
+  const [templatesOpen, setTemplatesOpen] = useState(false)
   // Reading and source are two views of the same Markdown file; attachments
   // and code files always render through the file view.
   const [sourceMode, setSourceMode] = useState(false)
@@ -211,6 +214,27 @@ export function VaultPage({ pickDirectory, hasPicker }: VaultPageProps = {}): JS
   const deleteLayout = useCallback((name: string) => {
     setLayouts(previous => previous.filter(item => item.name !== name))
   }, [])
+  /** Seeded notes under `模板/`, offered by the template dialog. */
+  const templates = useMemo(() => templateNotes(tree), [tree])
+  const createFromTemplate = useCallback((templatePath: string, title: string) => {
+    void (async () => {
+      try {
+        const target = templateTargetPath(title)
+        const source = await fetchNote(templatePath)
+        const body = applyTemplate(source.content, { title, date: new Date() })
+        if (!(await createNote(target))) {
+          setError(t('createFailed'))
+          return
+        }
+        await saveNote(target, body)
+        await reload()
+        openPath(target)
+        setTemplatesOpen(false)
+      } catch (cause) {
+        setError(cause instanceof Error ? cause.message : String(cause))
+      }
+    })()
+  }, [openPath, reload, setError, t])
 
   useVaultShortcuts({
     onToggleQuick: toggleQuick,
@@ -236,6 +260,7 @@ export function VaultPage({ pickDirectory, hasPicker }: VaultPageProps = {}): JS
     setActiveHeading(undefined)
     setSourceMode(false)
     setLayouts([])
+    setTemplatesOpen(false)
     clearScroll()
     void reload()
   }, [clearScroll, reload, resetTabs])
@@ -334,6 +359,7 @@ export function VaultPage({ pickDirectory, hasPicker }: VaultPageProps = {}): JS
 
   const layoutCommands = useMemo<readonly CommandEntry[]>(() => [
     { id: 'workspace.layouts', label: `${t('workspaces')}…`, run: () => setLayoutsOpen(true) },
+    { id: 'templates.new', label: `${t('newFromTemplate')}…`, run: () => setTemplatesOpen(true) },
   ], [t])
 
   const { menuGroups, commands, runCommand } = useVaultCommands({
@@ -453,6 +479,16 @@ export function VaultPage({ pickDirectory, hasPicker }: VaultPageProps = {}): JS
         variant={variant}
         onVariant={setVariant}
       />
+      {templatesOpen
+        ? (
+          <TemplatePickerDialog
+            t={t}
+            templates={templates}
+            onCreate={createFromTemplate}
+            onClose={() => setTemplatesOpen(false)}
+          />
+        )
+        : null}
       {layoutsOpen
         ? (
           <WorkspaceLayoutsDialog
