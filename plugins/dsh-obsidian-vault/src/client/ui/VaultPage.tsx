@@ -475,6 +475,7 @@ export function VaultPage({ pickDirectory, hasPicker }: VaultPageProps = {}): JS
           setRailOpen(false)
         }}
         onQuickCommand={runCommand}
+        onQuickReplaced={() => { void reload() }}
         onVaultSwitched={onVaultSwitched}
         variant={variant}
         onVariant={setVariant}
