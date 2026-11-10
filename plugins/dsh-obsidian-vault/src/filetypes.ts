@@ -6,7 +6,7 @@
  */
 
 /** View one vault path opens. */
-export type FileKind = 'markdown' | 'image' | 'pdf' | 'code' | 'binary'
+export type FileKind = 'markdown' | 'image' | 'pdf' | 'code' | 'canvas' | 'binary'
 
 /** Registry entry for one extension. */
 export interface FileTypeSpec {
@@ -120,6 +120,7 @@ export function fileTypeOf(path: string): FileTypeSpec {
   const image = IMAGE_TYPES[extension]
   if (image !== undefined) return { kind: 'image', mime: image, previewable: true }
   if (extension === 'pdf') return { kind: 'pdf', mime: 'application/pdf', previewable: true }
+  if (extension === 'canvas') return { kind: 'canvas', mime: 'text/plain; charset=utf-8', previewable: true }
   const language = TEXT_TYPES[extension]
   if (language !== undefined) {
     return { kind: 'code', language, mime: 'text/plain; charset=utf-8', previewable: true }

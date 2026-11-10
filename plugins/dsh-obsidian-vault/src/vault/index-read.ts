@@ -49,7 +49,7 @@ export async function fileOf(files: VaultFiles, path: string): Promise<FileDto |
     truncated: false,
     ...(spec.language === undefined ? {} : { language: spec.language }),
   }
-  if (spec.kind !== 'markdown' && spec.kind !== 'code') return base
+  if (spec.kind !== 'markdown' && spec.kind !== 'code' && spec.kind !== 'canvas') return base
   try {
     const prefix = await files.readPrefix(path, MAX_TEXT_BYTES)
     return { ...base, size: prefix.size, text: prefix.text, truncated: prefix.truncated }

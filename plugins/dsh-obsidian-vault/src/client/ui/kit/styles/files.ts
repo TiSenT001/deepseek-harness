@@ -28,6 +28,76 @@ export const FILE_STYLE = `/* Code view: one row per source line so the gutter s
   text-transform: uppercase;
 }
 .ov-code-meta { color: var(--dsw-alias-label-tertiary, #8b8b94); font-size: 11.5px; }
+/* Read-only JSON Canvas viewer */
+.ov-canvas-host { display: flex; flex: 1 1 auto; flex-direction: column; min-height: 0; min-width: 0; overflow: hidden; }
+.ov-canvas-file { display: flex; flex: 1 1 auto; flex-direction: column; min-height: 0; min-width: 0; overflow: hidden; }
+.ov-canvas-viewport {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+  background: var(--dsw-alias-bg-layer-1, #1d1d22);
+  cursor: grab;
+  touch-action: none;
+}
+.ov-canvas-viewport:active { cursor: grabbing; }
+.ov-canvas-world { position: absolute; top: 0; left: 0; transform-origin: 0 0; }
+.ov-canvas-edges { position: absolute; top: 0; left: 0; overflow: visible; pointer-events: none; }
+.ov-canvas-node {
+  position: absolute;
+  box-sizing: border-box;
+  overflow: hidden;
+  border: 1px solid var(--dsw-alias-border-l2, #3a3a42);
+  border-radius: 8px;
+  background: var(--dsw-alias-bg-layer-1, #1d1d22);
+  color: var(--dsw-alias-label-primary, #e8e8ea);
+  font: inherit;
+  text-align: left;
+}
+.ov-canvas-text-node { padding: 10px 12px; font-size: 13px; line-height: 1.55; overflow: auto; }
+.ov-canvas-text-node > *:first-child { margin-top: 0; }
+.ov-canvas-text-node > *:last-child { margin-bottom: 0; }
+.ov-canvas-group {
+  border-style: dashed;
+  background: color-mix(in srgb, var(--dsw-alias-bg-layer-2, #232329) 55%, transparent);
+  pointer-events: none;
+}
+.ov-canvas-group-label {
+  position: absolute;
+  top: 7px;
+  left: 11px;
+  color: var(--dsw-alias-label-tertiary, #8b8b94);
+  font-size: 11px;
+  letter-spacing: .02em;
+}
+.ov-canvas-file-node, .ov-canvas-link-node {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+  padding: 10px 12px;
+  cursor: pointer;
+  text-decoration: none;
+}
+.ov-canvas-file-node:hover, .ov-canvas-link-node:hover { border-color: var(--dsw-alias-brand-primary, #4d6bfe); }
+.ov-canvas-node-title { overflow: hidden; font-size: 13px; line-height: 1.4; text-overflow: ellipsis; white-space: nowrap; }
+.ov-canvas-node-sub { color: var(--dsw-alias-label-tertiary, #8b8b94); font-size: 11px; }
+.ov-canvas-link-node .ov-canvas-node-title { color: var(--dsw-alias-brand-primary, #7d94ff); }
+.ov-canvas-zoom { display: flex; align-items: center; gap: 3px; margin-left: auto; }
+.ov-canvas-zoom-value { min-width: 38px; color: var(--dsw-alias-label-tertiary, #8b8b94); font-size: 11px; text-align: center; }
+.ov-canvas-tool-button {
+  border: 0;
+  border-radius: 4px;
+  background: none;
+  color: var(--dsw-alias-label-secondary, #b6b6bd);
+  font: inherit;
+  font-size: 12px;
+  padding: 2px 7px;
+  cursor: pointer;
+}
+.ov-canvas-tool-button:hover { color: var(--dsw-alias-label-primary, #e8e8ea); background: var(--dsw-alias-bg-layer-2, #232329); }
+.ov-canvas-error { padding: 20px; color: var(--dsw-alias-state-error-primary, #f85149); font-size: 12px; }
+.ov-canvas-edge-label { fill: var(--dsw-alias-label-secondary, #b6b6bd); font-size: 11px; }
 .ov-code-actions { margin-left: auto; display: flex; align-items: center; gap: 6px; }
 .ov-code-body {
   flex: 1 1 auto;

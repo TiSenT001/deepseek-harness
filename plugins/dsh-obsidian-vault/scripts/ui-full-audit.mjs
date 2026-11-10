@@ -61,6 +61,16 @@ const FIXTURE = `${FIXTURE_DIR}/审核夹具.md`
 const LINKER = '审核链接者.md'
 const TAG_FIXTURE = `${FIXTURE_DIR}/审核标签.md`
 const TAG_BODY = ['---', 'tags: [ZZ审核标签]', '---', '', '# ZZ审核标签', '', '正文 #ZZ审核标签', ''].join('\n')
+const CANVAS_FIXTURE = `${FIXTURE_DIR}/审核画布.canvas`
+const CANVAS_BODY = JSON.stringify({
+  nodes: [
+    { id: 'g', type: 'group', label: '审核分组', x: -60, y: -40, width: 620, height: 340 },
+    { id: 'a', type: 'text', text: '# 画布标题\n\n文本节点。', x: 0, y: 0, width: 280, height: 120 },
+    { id: 'b', type: 'file', file: FIXTURE, x: 340, y: 0, width: 200, height: 100, color: '4' },
+    { id: 'c', type: 'link', url: 'https://example.com', x: 0, y: 180, width: 280, height: 70, color: '5' },
+  ],
+  edges: [{ id: 'e1', fromNode: 'a', toNode: 'b', fromSide: 'right', toSide: 'left', label: '关联' }],
+}, null, 2)
 const GHOST = '审核不存在目标.md'
 const RENAMED = '审核链接者改名.md'
 // Drag fixtures stay adjacent in sort order so both rows fit in one screenful.
@@ -125,6 +135,7 @@ writeFileSync(join(VAULT_ROOT, FIXTURE), fixtureBody)
 writeFileSync(join(VAULT_ROOT, LINKER), linkerBody)
 await api('create', { method: 'POST', body: JSON.stringify({ path: TAG_FIXTURE }) })
 writeFileSync(join(VAULT_ROOT, TAG_FIXTURE), TAG_BODY)
+writeFileSync(join(VAULT_ROOT, CANVAS_FIXTURE), CANVAS_BODY)
 // Attachments are not notes, so `create` refuses them; writing them to disk
 // before the boot refresh is the same path a real vault takes.
 writeFileSync(join(VAULT_ROOT, CODE_ATTACHMENT), CODE_BODY)
@@ -2742,6 +2753,20 @@ try {
     await explorerFilter.fill('')
     await sleep(300)
   })
+
+  await check('canvas.viewer', async () => {
+    await explorerFilter.fill('审核画布')
+    await sleep(700)
+    await tree.locator('.ov-file', { hasText: '审核画布' }).first().click()
+    await sleep(1500)
+    assert((await page.locator('.ov-canvas-node').count()) === 4, 'canvas nodes missing')
+    assert((await page.locator('.ov-canvas-group').count()) === 1, 'canvas group missing')
+    assert((await page.locator('.ov-canvas-edges path').count()) >= 1, 'canvas edge missing')
+    const body = (await page.locator('.ov-canvas-text-node').first().textContent()) ?? ''
+    assert(body.includes('画布标题'), `canvas text ${body.slice(0, 30)}`)
+    await explorerFilter.fill('')
+    await sleep(300)
+  })
 } finally {
   // ---------- cleanup ----------
   // Close the page before deleting fixtures: a live page polling the index would
@@ -2761,7 +2786,7 @@ try {
   }
   rmSync(AUDIT_VAULT_B, { recursive: true, force: true })
   rmSync(AUDIT_DSH_DIR, { recursive: true, force: true })
-  const removals = [GHOST, RENAMED, LINKER, `外设/审核链接者.md`, `${FIXTURE_DIR}/审核夹具.md`, `${FIXTURE_DIR}/审核相对链接.md`, TAG_FIXTURE, `${FIXTURE_DIR}/审核按钮新建.md`, `${FIXTURE_DIR}/审核目录内新建.md`, `${FIXTURE_DIR}/审核按钮新建文件夹`, FIXTURE_DIR, DRAG_FILE, DRAG_TARGET_DIR, DRAG_SOURCE_DIR, `${TEMPLATE_CREATED}.md`, DAILY_DIR, TEMPLATE_DIR]
+  const removals = [GHOST, RENAMED, LINKER, `外设/审核链接者.md`, `${FIXTURE_DIR}/审核夹具.md`, `${FIXTURE_DIR}/审核相对链接.md`, TAG_FIXTURE, CANVAS_FIXTURE, `${FIXTURE_DIR}/审核按钮新建.md`, `${FIXTURE_DIR}/审核目录内新建.md`, `${FIXTURE_DIR}/审核按钮新建文件夹`, FIXTURE_DIR, DRAG_FILE, DRAG_TARGET_DIR, DRAG_SOURCE_DIR, `${TEMPLATE_CREATED}.md`, DAILY_DIR, TEMPLATE_DIR]
   for (const target of removals) {
     await api('delete', { method: 'POST', body: JSON.stringify({ path: target }) }).catch(() => {})
   }
