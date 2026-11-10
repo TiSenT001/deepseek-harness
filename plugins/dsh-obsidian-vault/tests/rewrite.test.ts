@@ -148,3 +148,25 @@ test('appending references keeps one blank line and a trailing newline', () => {
   assert.equal(appendReferences('', ['![a](u)']), '![a](u)\n')
   assert.equal(appendReferences('body', []), 'body')
 })
+
+test('PDF, audio and video embeds become asset links with the authored size', () => {
+  const context = {
+    selfPath: 'Self.md',
+    resolve: (target: string) => ({ status: 'resolved' as const, path: target }),
+    openUrl,
+    newUrl: newUrlFor,
+    assetUrl: assetUrlFor,
+  }
+  assert.equal(
+    rewriteMarkdown('![[附件/方案.pdf]]', context),
+    '[方案.pdf](/obsidian/api/asset?path=%E9%99%84%E4%BB%B6%2F%E6%96%B9%E6%A1%88.pdf)',
+  )
+  assert.equal(
+    rewriteMarkdown('![[audio/纪要.mp3|300]]', context),
+    `[纪要.mp3 ${SIZE_MARK}300](/obsidian/api/asset?path=audio%2F%E7%BA%AA%E8%A6%81.mp3)`,
+  )
+  assert.equal(
+    rewriteMarkdown('![[video/演示.mp4|480x270]]', context),
+    `[演示.mp4 ${SIZE_MARK}480x270](/obsidian/api/asset?path=video%2F%E6%BC%94%E7%A4%BA.mp4)`,
+  )
+})

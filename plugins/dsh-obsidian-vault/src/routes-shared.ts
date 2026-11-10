@@ -36,8 +36,16 @@ export const CONTENT_TYPES: Readonly<Record<string, string>> = {
   pdf: 'application/pdf',
   mp4: 'video/mp4',
   webm: 'video/webm',
+  mov: 'video/quicktime',
+  ogv: 'video/ogg',
+  m4v: 'video/mp4',
   mp3: 'audio/mpeg',
   wav: 'audio/wav',
+  m4a: 'audio/mp4',
+  ogg: 'audio/ogg',
+  oga: 'audio/ogg',
+  flac: 'audio/flac',
+  aac: 'audio/aac',
 }
 
 /** 写「笔记打开」事件到 DSH_HOME/logs/note-open.jsonl（统一骨架，brain 侧采集）。 */

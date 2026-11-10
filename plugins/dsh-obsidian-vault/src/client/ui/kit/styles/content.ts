@@ -219,8 +219,44 @@ details.ov-callout[open] > summary::before { content: '▾'; }
   line-height: 1.4;
   overflow: hidden;
   text-align: center;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  vertical-align: middle;
+.ov-media-embed {
+  display: flex;
+  max-width: 100%;
+  margin: 14px auto;
+  padding: 8px;
+  flex-direction: column;
+  gap: 6px;
+  border: 1px solid var(--dsw-alias-border-l1, #2a2a30);
+  border-radius: 8px;
+  background: var(--dsw-alias-bg-layer-1, #1d1d22);
+}
+.ov-media-embed[data-media-kind="audio"] { padding: 10px 12px; }
+.ov-media-frame {
+  width: 100%;
+  height: min(70vh, 620px);
+  border: 0;
+  border-radius: 6px;
+  background: #fff;
+}
+.ov-media-video {
+  width: 100%;
+  max-height: 70vh;
+  border-radius: 6px;
+  background: #000;
+}
+.ov-media-audio { width: 100%; }
+.ov-media-caption {
+  display: flex;
+  margin: 0;
+  justify-content: flex-end;
+  font-size: 11px;
+}
+.ov-media-open {
+  color: var(--dsw-alias-label-tertiary, #8b8b94);
+  text-decoration: none;
+}
+.ov-media-open:hover {
+  color: var(--dsw-alias-label-primary, #e8e8ea);
+  text-decoration: underline;
 }
 `

@@ -5,6 +5,7 @@
  */
 import { API_BASE, type LinkStatus } from '../../protocol.ts'
 import { replaceWikiLinks, tagSpans } from '../../vault/syntax.ts'
+import { mediaKindOf, mediaNameOf } from './media.ts'
 
 /** Origin reserved for in-page navigation; never resolved by the browser. */
 export const SENTINEL = 'https://dsh-obsidian.invalid'
@@ -183,6 +184,9 @@ export function rewriteMarkdown(source: string, context: RewriteContext): string
     if (token.embed) {
       const path = resolution.status === 'resolved' ? resolution.path : undefined
       if (path !== undefined && IMAGE.test(path)) return image(context.assetUrl(path), token.alias)
+      if (path !== undefined && mediaKindOf(path) !== undefined) {
+        return mediaLink(path, token.alias, context.assetUrl(path))
+      }
       // A heading-scoped embed (`![[note#Heading]]`) uses the pre-sliced section.
       const section = path === undefined || anchor === undefined
         ? undefined
@@ -252,6 +256,18 @@ function image(url: string, alias: string | undefined): string {
     : `${SIZE_MARK}${size[1]!}${size[2] === undefined || size[2] === '0' ? '' : `x${size[2]}`}`
   const label = mark.length === 0 ? alt : alt.length === 0 ? mark : `${alt} ${mark}`
   return `![${label}](${url})`
+}
+
+/** Render one PDF/audio/video embed as a media link the reading view upgrades. */
+function mediaLink(path: string, alias: string | undefined, url: string): string {
+  const name = mediaNameOf(path)
+  const text = alias ?? name
+  const size = EMBED_SIZE.exec(text)
+  const base = escapeLabel((size === null ? text : text.slice(0, size.index).trim()) || name)
+  const mark = size === null
+    ? ''
+    : `${SIZE_MARK}${size[1]!}${size[2] === undefined || size[2] === '0' ? '' : `x${size[2]}`}`
+  return `[${base}${mark.length === 0 ? '' : ` ${mark}`}](${url})`
 }
 
 function escapeLabel(label: string): string {
