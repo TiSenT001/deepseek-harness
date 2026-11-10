@@ -11,6 +11,7 @@ import { createFolder, createNote, fetchFile, readObsidianConfig, saveNote } fro
 import type { Translate } from '../i18n.ts'
 import type { CommandEntry } from './commands.ts'
 import { DAILY_CONFIG, dailyTarget } from './daily-note.ts'
+import { parseTemplateFolder } from './templates.ts'
 
 /** Everything the daily and template commands need from the page. */
 export interface VaultNoteInput {
@@ -26,14 +27,6 @@ export interface VaultNoteInput {
 }
 
 const message = (cause: unknown): string => (cause instanceof Error ? cause.message : String(cause))
-
-/** The template folder configured in `templates.json`, when it names one. */
-function templateFolder(value: unknown): string | undefined {
-  const record = typeof value === 'object' && value !== null ? value as Record<string, unknown> : {}
-  const folder = record.folder
-  if (typeof folder !== 'string' || folder.trim().length === 0) return undefined
-  return folder.trim().replace(/^[\\/]+|[\\/]+$/g, '').replace(/\\/g, '/') || undefined
-}
 
 /** Vault-relative Markdown paths under one folder. */
 function filesUnder(nodes: readonly TreeNodeDto[], folder: string): string[] {
@@ -58,7 +51,7 @@ export function useVaultNotes(input: VaultNoteInput): readonly CommandEntry[] {
     let cancelled = false
     void readObsidianConfig('templates')
       .then((doc) => {
-        if (!cancelled) setTemplates(templateFolder(doc.value))
+        if (!cancelled) setTemplates(parseTemplateFolder(doc.value))
       })
       .catch(() => {
         // A vault without a readable templates config simply has no templates.

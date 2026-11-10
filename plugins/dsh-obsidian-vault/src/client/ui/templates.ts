@@ -22,17 +22,35 @@ export interface TemplateVars {
 }
 
 /**
- * Collect Markdown files under any `模板/` folder.
+ * Read the folder named by `.obsidian/templates.json`.
+ * @param value - parsed configuration, or unknown input.
+ * @returns a normalized folder, or undefined when the field is absent.
+ */
+export function parseTemplateFolder(value: unknown): string | undefined {
+  const record = typeof value === 'object' && value !== null ? value as Record<string, unknown> : {}
+  const folder = record['folder']
+  if (typeof folder !== 'string' || folder.trim().length === 0) return undefined
+  return folder.trim().replace(/^[\\/]+|[\\/]+$/g, '').replace(/\\/g, '/') || undefined
+}
+
+/**
+ * Collect Markdown files under a template folder (or any folder named like it).
  * @param nodes - tree level to walk; top level by default.
+ * @param folder - template folder from `templates.json`, `模板` by default.
  * @param inTemplates - whether an ancestor is the template folder.
  * @returns templates sorted by path.
  */
-export function templateNotes(nodes: readonly TreeNodeDto[], inTemplates = false): TemplateNote[] {
+export function templateNotes(
+  nodes: readonly TreeNodeDto[],
+  folder = TEMPLATE_FOLDER,
+  inTemplates = false,
+): TemplateNote[] {
   const found: TemplateNote[] = []
   for (const node of nodes) {
-    const inside = inTemplates || (node.kind === 'dir' && node.name === TEMPLATE_FOLDER)
+    const inside = inTemplates
+      || (node.kind === 'dir' && (node.name === folder || node.path === folder))
     if (node.kind === 'dir') {
-      found.push(...templateNotes(node.children ?? [], inside))
+      found.push(...templateNotes(node.children ?? [], folder, inside))
       continue
     }
     if (!inside || !/\.md$/i.test(node.path)) continue
