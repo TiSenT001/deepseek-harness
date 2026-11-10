@@ -236,7 +236,7 @@ export function QuickSwitcher({
             <>
               <div className={css.quickReplace}>
                 <input
-                  className={`${css.quickInput} ${css.quickReplaceInput}`.trim()}
+                  className={css.quickReplaceInput}
                   value={replacement}
                   placeholder={t('replaceWith')}
                   aria-label={t('replaceWith')}

@@ -3,7 +3,7 @@
  * create it with the template body already filled in.
  * @module dsh-obsidian-vault/client/ui/TemplatePickerDialog
  */
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { Translate } from '../i18n.ts'
 import type { TemplateNote } from './templates.ts'
 import { Icon } from './Icon.tsx'
@@ -26,6 +26,16 @@ export function TemplatePickerDialog({ t, templates, onCreate, onClose }: Templa
   const first = templates[0]
   const [templatePath, setTemplatePath] = useState(first?.path ?? '')
   const [title, setTitle] = useState(first?.name ?? '')
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent): void => {
+      if (event.key === 'Escape') {
+        event.preventDefault()
+        onClose()
+      }
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [onClose])
   const trimmed = title.trim()
 
   return (

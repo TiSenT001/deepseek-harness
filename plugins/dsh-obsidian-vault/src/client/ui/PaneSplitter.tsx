@@ -28,6 +28,7 @@ const STEP = 48
  */
 export function PaneSplitter({ direction, label, onDelta, onReset }: PaneSplitterProps): JSX.Element {
   const [dragging, setDragging] = useState(false)
+  const draggingRef = useRef(false)
   const last = useRef(0)
   const horizontal = direction === 'column'
 
@@ -58,20 +59,25 @@ export function PaneSplitter({ direction, label, onDelta, onReset }: PaneSplitte
         event.preventDefault()
         event.currentTarget.setPointerCapture(event.pointerId)
         last.current = horizontal ? event.clientY : event.clientX
+        draggingRef.current = true
         setDragging(true)
       }}
       onPointerMove={(event) => {
-        if (!dragging) return
+        if (!draggingRef.current) return
         const position = horizontal ? event.clientY : event.clientX
         onDelta(position - last.current)
         last.current = position
       }}
       onPointerUp={(event) => {
-        if (!dragging) return
+        if (!draggingRef.current) return
         event.currentTarget.releasePointerCapture(event.pointerId)
+        draggingRef.current = false
         setDragging(false)
       }}
-      onPointerCancel={() => setDragging(false)}
+      onPointerCancel={() => {
+        draggingRef.current = false
+        setDragging(false)
+      }}
       onDoubleClick={onReset}
       onKeyDown={(event) => {
         const growKey = horizontal ? 'ArrowDown' : 'ArrowRight'
