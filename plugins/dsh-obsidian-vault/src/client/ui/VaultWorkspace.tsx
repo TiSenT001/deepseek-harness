@@ -101,6 +101,7 @@ export interface VaultWorkspaceProps {
   /** Close both drawer panes; the narrow-layout scrim calls it. */
   readonly onClosePanes: () => void
   readonly onQuickCommand: OverlayProps['onQuickCommand']
+  readonly onQuickReplaced: NonNullable<OverlayProps['onQuickReplaced']>
   readonly onVaultSwitched: OverlayProps['onVaultSwitched']
   /** Active appearance variant shown in the settings dialog. */
   readonly variant: OverlayProps['variant']
@@ -119,7 +120,7 @@ export function VaultWorkspace(props: VaultWorkspaceProps): JSX.Element {
     onTagSearch, actions, collapseRef, paneHandlers, activeNote, activeBacklinks, activeUnlinked,
     sourceMode, error, onActiveHeading, onNewTab, reload, onReading, onSource, onShowNoteView,
     onOpenWithAnchor, onCreateNote, onOpenPath, activeHeading, onRail,
-    onHeading, onShiftHeading, onClosePanes, onQuickCommand, onVaultSwitched, variant, onVariant,
+    onHeading, onShiftHeading, onClosePanes, onQuickCommand, onQuickReplaced, onVaultSwitched, variant, onVariant,
     emptyActions, onEmptySearch, recentPaths, onOpenRecent,
   } = props
   const history = activeTab(tabs.tabs)?.history ?? { items: [], index: -1 }
@@ -290,6 +291,7 @@ export function VaultWorkspace(props: VaultWorkspaceProps): JSX.Element {
         {...(hasPicker === undefined ? {} : { hasPicker })}
         onQuickOpen={overlays.onQuickOpen}
         onQuickCommand={onQuickCommand}
+        onQuickReplaced={onQuickReplaced}
         onQuickClose={overlays.closeQuick}
         onMenuClose={overlays.closeMenu}
         onVaultSwitched={onVaultSwitched}

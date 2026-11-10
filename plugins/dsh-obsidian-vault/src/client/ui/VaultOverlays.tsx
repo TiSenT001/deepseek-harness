@@ -41,6 +41,7 @@ export interface VaultOverlaysProps {
   readonly hasPicker?: () => boolean
   readonly onQuickOpen: (path: string) => void
   readonly onQuickCommand: (id: string) => void
+  readonly onQuickReplaced?: (files: number, matches: number) => void
   readonly onQuickClose: () => void
   readonly onMenuClose: () => void
   readonly onVaultSwitched: () => void
@@ -56,7 +57,7 @@ export interface VaultOverlaysProps {
 export function VaultOverlays(props: VaultOverlaysProps): JSX.Element {
   const {
     t, quick, menu, vaultOpen, settingsOpen, variant, commands, pickDirectory, hasPicker,
-    onQuickOpen, onQuickCommand, onQuickClose, onMenuClose, onVaultSwitched, onVaultClose,
+    onQuickOpen, onQuickCommand, onQuickReplaced, onQuickClose, onMenuClose, onVaultSwitched, onVaultClose,
     onVariant, onSettingsClose,
   } = props
 
@@ -72,6 +73,7 @@ export function VaultOverlays(props: VaultOverlaysProps): JSX.Element {
             commands={commands}
             onOpen={onQuickOpen}
             onCommand={onQuickCommand}
+            onReplaced={onQuickReplaced}
             onClose={onQuickClose}
           />
         )}

@@ -14,6 +14,35 @@ export const WORKSPACE_PANEL_STYLE = `
   padding: 12px 14px;
 }
 .ov-quick-input:focus { outline: none; }
+.ov-quick-replace {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 10px 8px;
+}
+.ov-quick-replace-input { flex: 1 1 auto; min-width: 0; padding: 8px 2px; font-size: 13px; }
+.ov-quick-replace-button {
+  flex: 0 0 auto;
+  border: 1px solid var(--dsw-alias-border-l2, #3a3a42);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--dsw-alias-label-secondary, #b6b6bd);
+  font: inherit;
+  font-size: 12px;
+  padding: 5px 10px;
+  cursor: pointer;
+}
+.ov-quick-replace-button:hover:not(:disabled) {
+  color: var(--dsw-alias-label-primary, #e8e8ea);
+  border-color: var(--dsw-alias-border-l3, #4a4a52);
+}
+.ov-quick-replace-button:disabled { opacity: .45; cursor: default; }
+.ov-quick-replace-status {
+  padding: 0 12px 8px;
+  color: var(--dsw-alias-label-tertiary, #8b8b94);
+  font-size: 11px;
+  line-height: 1.5;
+}
 .ov-quick-list { overflow: auto; padding: 6px; }
 .ov-quick-item { display: flex; align-items: baseline; gap: 8px; }
 .ov-quick-kind { color: var(--dsw-alias-label-tertiary, #8b8b94); font-size: 11px; }

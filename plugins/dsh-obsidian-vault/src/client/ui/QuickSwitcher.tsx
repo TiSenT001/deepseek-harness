@@ -6,8 +6,9 @@
  */
 import { useEffect, useRef, useState } from 'react'
 import type { SearchHitDto } from '../../protocol.ts'
-import { fetchSearch } from '../api.ts'
+import { fetchNote, fetchSearch, saveNote } from '../api.ts'
 import { buildSearchQuery, DEFAULT_SEARCH_OPTIONS, orderSearchHits, parseSearchOptions, SEARCH_OPTIONS_KEY, serializeSearchOptions, type SearchOptions } from './searchPrefs.ts'
+import { buildReplacePattern, contentHitPaths, isReplaceableQuery, replaceMatches } from './searchReplace.ts'
 import { QuickSearchControls } from './QuickSearchControls.tsx'
 import type { Translate } from '../i18n.ts'
 import type { CommandEntry } from './commands.ts'
@@ -28,6 +29,8 @@ export interface QuickSwitcherProps {
   readonly onOpen: (path: string) => void
   /** Run one palette command by id; the page closes the palette itself. */
   readonly onCommand?: (id: string) => void
+  /** Called after a replace-all pass so the page can refresh its index. */
+  readonly onReplaced?: (files: number, matches: number) => void
   readonly onClose: () => void
 }
 
@@ -36,11 +39,16 @@ export interface QuickSwitcherProps {
  * @param props - initial mode and query, commands, navigation callbacks, and dismissal.
  */
 export function QuickSwitcher({
-  t, initialMode = 'files', initialQuery = '', commands = [], onOpen, onCommand, onClose,
+  t, initialMode = 'files', initialQuery = '', commands = [], onOpen, onCommand, onReplaced, onClose,
 }: QuickSwitcherProps): JSX.Element {
   const [mode, setMode] = useState<QuickMode>(initialMode)
   const [query, setQuery] = useState(initialQuery)
   const [hits, setHits] = useState<readonly SearchHitDto[]>([])
+  const [replacement, setReplacement] = useState('')
+  const [confirming, setConfirming] = useState(false)
+  const [replacing, setReplacing] = useState(false)
+  const [status, setStatus] = useState<string | undefined>()
+  const [refresh, setRefresh] = useState(0)
   const [active, setActive] = useState(0)
   const [options, setOptions] = useState<SearchOptions>(() => {
     try {
@@ -76,7 +84,7 @@ export function QuickSwitcher({
       cancelled = true
       clearTimeout(timer)
     }
-  }, [mode, query, options])
+  }, [mode, query, options, refresh])
 
   const visible = orderSearchHits(mode === 'files' ? hits.filter(hit => hit.kind !== 'content') : hits, options.sort)
   const needle = query.trim().toLowerCase()
@@ -132,6 +140,52 @@ export function QuickSwitcher({
     setActive(0)
   }
 
+  useEffect(() => {
+    setConfirming(false)
+    setStatus(undefined)
+  }, [query, replacement, options.matchCase, options.regex])
+
+  const replaceable = mode === 'search' && isReplaceableQuery(query) && buildReplacePattern(query, options) !== undefined
+  const contentPaths = contentHitPaths(hits)
+  const canReplace = replaceable && contentPaths.length > 0 && !replacing
+
+  const runReplace = async (): Promise<void> => {
+    if (!replaceable) {
+      setStatus(t('replaceUnsupported'))
+      return
+    }
+    if (!confirming) {
+      setConfirming(true)
+      setStatus(t('confirmReplaceScope').replace('{files}', String(contentPaths.length)))
+      return
+    }
+    const pattern = buildReplacePattern(query, options)
+    if (pattern === undefined) return
+    setReplacing(true)
+    let files = 0
+    let matches = 0
+    try {
+      for (const path of contentPaths) {
+        const note = await fetchNote(path)
+        const result = replaceMatches(note.content, pattern, replacement)
+        if (result.count === 0) continue
+        await saveNote(path, result.text)
+        files += 1
+        matches += result.count
+      }
+      setStatus(t('replacedSummary')
+        .replace('{files}', String(files))
+        .replace('{matches}', String(matches)))
+      onReplaced?.(files, matches)
+      setRefresh(value => value + 1)
+    } catch (cause) {
+      setStatus(t('replaceFailed').replace('{error}', cause instanceof Error ? cause.message : String(cause)))
+    } finally {
+      setReplacing(false)
+      setConfirming(false)
+    }
+  }
+
   return (
     <div className={css.quickLayer} role="presentation" onMouseDown={onClose}>
       <div className={css.quick} role="dialog" aria-label={t('quickSwitch')} onMouseDown={event => event.stopPropagation()}>
@@ -177,6 +231,36 @@ export function QuickSwitcher({
             }
           }}
         />
+        {mode === 'search'
+          ? (
+            <>
+              <div className={css.quickReplace}>
+                <input
+                  className={`${css.quickInput} ${css.quickReplaceInput}`.trim()}
+                  value={replacement}
+                  placeholder={t('replaceWith')}
+                  aria-label={t('replaceWith')}
+                  onChange={event => setReplacement(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter' && canReplace) {
+                      event.preventDefault()
+                      void runReplace()
+                    }
+                  }}
+                />
+                <button
+                  type="button"
+                  className={css.quickReplaceButton}
+                  disabled={!canReplace}
+                  onClick={() => { void runReplace() }}
+                >
+                  {confirming ? t('confirmReplace') : t('replaceAll')}
+                </button>
+              </div>
+              {status === undefined ? null : <div className={css.quickReplaceStatus}>{status}</div>}
+            </>
+          )
+          : null}
         <div className={css.quickList}>
           {shown === 0
             ? (
