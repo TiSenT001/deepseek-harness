@@ -40,6 +40,7 @@ dsh plugin --profile <profile> add /path/to/plugins/dsh-obsidian-vault
 | 同名笔记 | 取路径最短者；真歧义时标记并打开第一个候选 |
 | frontmatter `aliases` | 参与链接解析 |
 | `![[图片]]` | 走 `/obsidian/api/asset` 内联显示 |
+| `![[PDF/音频/视频]]` | `![[方案.pdf]]` 内嵌 PDF 阅读器，`![[录音.mp3]]` / `![[演示.mp4]]` 内嵌原生播放器；`\|300` / `\|480x270` 控制宽度，图注保留「打开原文件」 |
 | `![[笔记]]` | 以引用块转写（深度 1，避免循环） |
 | `#tag` 与 frontmatter `tags` | 正文标签可点击过滤；标签面板汇总 |
 | `==高亮==` | 渲染为 `<mark>`，代码块内不处理 |

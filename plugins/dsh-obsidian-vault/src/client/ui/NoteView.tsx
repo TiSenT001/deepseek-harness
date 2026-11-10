@@ -18,6 +18,7 @@ import { MarkdownDelegateProvider, MarkdownText, type MarkdownLabels } from '../
 import { HoverPreviewCard } from './HoverPreviewCard.tsx'
 import { useInlineBacklinks } from './useInlineBacklinks.ts'
 import { enhanceHighlights } from './note/enhanceHighlights.ts'
+import { enhanceMediaEmbeds } from './note/enhanceMedia.ts'
 import { NoteHeader } from './note/NoteHeader.tsx'
 import { NoteMeta } from './note/NoteMeta.tsx'
 import { highlightDocument } from './files/highlight.ts'
@@ -166,9 +167,10 @@ export function NoteView({
     if (bodyRef.current !== null) {
       annotateBlocks(bodyRef.current)
       annotateImages(bodyRef.current)
+      enhanceMediaEmbeds(bodyRef.current, { open: t('openOriginal') })
     }
     highlightDocument(bodyRef.current)
-  }, [rendered])
+  }, [rendered, t])
 
   useEffect(() => {
     const container = bodyRef.current

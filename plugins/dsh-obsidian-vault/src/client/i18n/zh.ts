@@ -26,6 +26,7 @@ export const ZH = {
   emptySearchPlaceholder: '搜索笔记，或按 Ctrl+O 快速切换',
   openNote: '打开笔记',
   recentlyOpened: '最近打开',
+  openOriginal: '打开原文件',
   searchAll: '全库搜索',
   refresh: '刷新索引',
   graph: '关系图',

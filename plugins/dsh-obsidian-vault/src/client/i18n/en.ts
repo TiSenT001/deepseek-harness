@@ -27,6 +27,7 @@ export const EN: Dict = {
   emptySearchPlaceholder: 'Search notes, or press Ctrl+O to switch',
   openNote: 'Open note',
   recentlyOpened: 'Recently opened',
+  openOriginal: 'Open original',
   searchAll: 'Search all notes',
   refresh: 'Reload index',
   graph: 'Graph',
