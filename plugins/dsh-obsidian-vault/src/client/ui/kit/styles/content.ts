@@ -219,6 +219,10 @@ details.ov-callout[open] > summary::before { content: '▾'; }
   line-height: 1.4;
   overflow: hidden;
   text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  vertical-align: middle;
+}
 .ov-media-embed {
   display: flex;
   max-width: 100%;

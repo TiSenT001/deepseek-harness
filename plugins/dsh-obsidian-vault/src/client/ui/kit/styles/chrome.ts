@@ -358,10 +358,13 @@ button.ov-plugin-info {
 }
 .ov-doctab-label { overflow: hidden; text-overflow: ellipsis; }
 .ov-doctab-close {
+  appearance: none;
+  -webkit-appearance: none;
   border: 0;
   background: none;
   color: inherit;
   opacity: .55;
+  font: inherit;
   font-size: 12px;
   line-height: 1;
   padding: 1px 3px;
@@ -369,34 +372,40 @@ button.ov-plugin-info {
   cursor: pointer;
 }
 .ov-doctab-close:hover { opacity: 1; background: var(--dsw-alias-bg-layer-3, #2b2b33); }
-.ov-doctab-new {
-  border: 0;
-  background: none;
-  color: var(--dsw-alias-label-tertiary, #8b8b94);
-  font-size: 15px;
-  padding: 0 10px;
-  cursor: pointer;
-}
-.ov-doctab-menu {
-  border: 0;
-  background: none;
-  color: var(--dsw-alias-label-tertiary, #8b8b94);
-  font-size: 13px;
-  padding: 0 7px;
-  cursor: pointer;
-}
-.ov-doctab-menu:hover { color: var(--dsw-alias-label-primary, #f9fafb); }
+/* Bare icon buttons beside the tabs: no native button chrome. */
+.ov-doctab-new,
+.ov-doctab-menu,
 .ov-doctab-overflow {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  align-self: center;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 5px;
   border: 0;
-  background: none;
+  border-radius: 5px;
+  appearance: none;
+  -webkit-appearance: none;
+  background: transparent;
   color: var(--dsw-alias-label-tertiary, #8b8b94);
-  font-size: 11px;
-  padding: 0 7px;
+  font: inherit;
+  font-size: 14px;
+  line-height: 1;
   cursor: pointer;
-  border-radius: var(--ov-radius-s);
 }
-.ov-doctab-overflow:hover { color: var(--dsw-alias-label-primary, #e8e8ea); background: var(--dsw-alias-bg-layer-2, #232329); }
-.ov-doctab-overflow[aria-expanded="true"] { color: var(--dsw-alias-brand-primary, #7d94ff); background: var(--dsw-alias-bg-layer-2, #232329); }
+.ov-doctab-new { font-size: 16px; font-weight: 300; }
+.ov-doctab-new:hover,
+.ov-doctab-menu:hover,
+.ov-doctab-overflow:hover {
+  color: var(--dsw-alias-label-primary, #e8e8ea);
+  background: var(--dsw-alias-bg-layer-2, #232329);
+}
+.ov-doctab-overflow[aria-expanded="true"] {
+  color: var(--dsw-alias-brand-primary, #7d94ff);
+  background: var(--dsw-alias-bg-layer-2, #232329);
+}
 
 /* Search surface. */
 .ov-search { display: flex; flex-direction: column; height: 100%; min-height: 0; }
