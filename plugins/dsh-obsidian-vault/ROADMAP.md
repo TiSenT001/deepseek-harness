@@ -1,3 +1,9 @@
+## 第一百一十七轮：模板目录配置与每日笔记验收（2026-11-10）
+
+- **模板目录对齐 Obsidian**：`从模板新建笔记…` 不再只认 `模板/`；优先读取 `.obsidian/templates.json` 的 `folder`，缺失或不可读时回退到 `模板/`，原有「每日模板」命令继续共用同一配置。
+- **每日笔记**：沿用 `daily-notes.json` 的 folder/format/template 配置，生成今日笔记并套用模板；本轮把模板选择器也纳入审核。
+- **审核**：新增 `templates.picker`（使用 `审核模板夹` 配置的模板创建到 `收件箱/`），与既有 `note.daily-note-command`、`note.template-command` 一起覆盖配置读取与创建路径；全量 **106/106**。
+- **验证**：`tsc` 0、753/753（新增模板目录解析/匹配测试）；真实配置目录 `审核模板夹` 下模板可被选择并生成笔记。
 ## 第一百一十六轮：原生 .canvas 只读兼容（2026-11-10）
 
 - **对标 Obsidian Canvas（只读）**：文件树打开 `.canvas` 即渲染 JSON Canvas：`text` 节点按 Markdown 显示，`file` 节点点击打开目标，`link` 节点打开外链，`group` 作为虚线分组；节点颜色 1–6、边标签、自动侧锚点与 Bézier 连线。

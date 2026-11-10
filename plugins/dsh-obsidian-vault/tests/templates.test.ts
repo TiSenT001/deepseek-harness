@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import type { TreeNodeDto } from '../src/protocol.ts'
-import { applyTemplate, templateNotes, templateTargetPath } from '../src/client/ui/templates.ts'
+import { applyTemplate, parseTemplateFolder, templateNotes, templateTargetPath } from '../src/client/ui/templates.ts'
 
 const tree: readonly TreeNodeDto[] = [
   { name: '收件箱', path: '收件箱', kind: 'dir', children: [
@@ -35,4 +35,17 @@ test('templateTargetPath keeps the note inside 收件箱 and strips .md', () => 
   assert.equal(templateTargetPath('我的笔记'), '收件箱/我的笔记.md')
   assert.equal(templateTargetPath('我的笔记.md'), '收件箱/我的笔记.md')
   assert.equal(templateTargetPath('A/B'), '收件箱/A-B.md')
+})
+
+test('template folder configuration is parsed from templates.json', () => {
+  assert.equal(parseTemplateFolder({ folder: '审核模板夹' }), '审核模板夹')
+  assert.equal(parseTemplateFolder({ folder: '\\\\模板\\\\' }), '模板')
+  assert.equal(parseTemplateFolder({}), undefined)
+  assert.equal(parseTemplateFolder(null), undefined)
+})
+
+test('templateNotes follows the configured folder', () => {
+  const nested = [{ name: '模板', path: '模板', kind: 'dir' as const, children: [{ name: '默认.md', path: '模板/默认.md', kind: 'file' as const }] }]
+  assert.deepEqual(templateNotes(nested, '模板').map(item => item.name), ['默认'])
+  assert.deepEqual(templateNotes(nested, '其他').map(item => item.name), [])
 })

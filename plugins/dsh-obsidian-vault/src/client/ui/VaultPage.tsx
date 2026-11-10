@@ -5,7 +5,7 @@
  * @module dsh-obsidian-vault/client/ui/VaultPage
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { createNote, fetchNote, saveNote } from '../api.ts'
+import { createNote, fetchNote, readObsidianConfig, saveNote } from '../api.ts'
 import { createPurCanvas } from './newCanvas.ts'
 import { createT } from '../i18n.ts'
 import { fileTypeOf } from '../../filetypes.ts'
@@ -31,7 +31,7 @@ import { readHostViewMemory, readViewMemory, writeHostViewMemory, writeViewMemor
 import { WorkspaceLayoutsDialog } from './WorkspaceLayoutsDialog.tsx'
 import { TemplatePickerDialog } from './TemplatePickerDialog.tsx'
 import { TagRenameDialog } from './TagRenameDialog.tsx'
-import { applyTemplate, templateNotes, templateTargetPath } from './templates.ts'
+import { applyTemplate, parseTemplateFolder, templateNotes, templateTargetPath } from './templates.ts'
 import { type VaultEmptyAction } from './VaultEmptyState.tsx'
 import { VaultWorkspace } from './VaultWorkspace.tsx'
 import { css, STYLE } from './theme.ts'
@@ -75,6 +75,8 @@ export function VaultPage({ pickDirectory, hasPicker }: VaultPageProps = {}): JS
   const [layoutsOpen, setLayoutsOpen] = useState(false)
   const [templatesOpen, setTemplatesOpen] = useState(false)
   const [tagDialogOpen, setTagDialogOpen] = useState(false)
+  /** Template folder from .obsidian/templates.json, or the 模板 convention. */
+  const [templateFolder, setTemplateFolder] = useState('模板')
   // Reading and source are two views of the same Markdown file; attachments
   // and code files always render through the file view.
   const [sourceMode, setSourceMode] = useState(false)
@@ -216,8 +218,21 @@ export function VaultPage({ pickDirectory, hasPicker }: VaultPageProps = {}): JS
   const deleteLayout = useCallback((name: string) => {
     setLayouts(previous => previous.filter(item => item.name !== name))
   }, [])
-  /** Seeded notes under `模板/`, offered by the template dialog. */
-  const templates = useMemo(() => templateNotes(tree), [tree])
+  useEffect(() => {
+    let cancelled = false
+    void readObsidianConfig('templates')
+      .then((doc) => {
+        if (!cancelled) setTemplateFolder(parseTemplateFolder(doc.value) ?? '模板')
+      })
+      .catch(() => {
+        // A vault without a readable templates config keeps the 模板 convention.
+        if (!cancelled) setTemplateFolder('模板')
+      })
+    return () => { cancelled = true }
+  }, [status?.root])
+
+  /** Seeded notes under the configured template folder. */
+  const templates = useMemo(() => templateNotes(tree, templateFolder), [tree, templateFolder])
   const createFromTemplate = useCallback((templatePath: string, title: string) => {
     void (async () => {
       try {

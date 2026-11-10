@@ -2721,6 +2721,21 @@ try {
     return { path }
   })
 
+  await check('templates.picker', async () => {
+    await runPalette('从模板新建笔记')
+    await sleep(500)
+    const dialog = page.locator('.ov-template-dialog')
+    assert(await dialog.isVisible(), 'template picker missing')
+    assert(((await dialog.textContent()) ?? '').includes('每日模板'), 'configured template folder not listed')
+    await dialog.locator('.ov-dialog-input').fill('模板选择审核')
+    await dialog.locator('.ov-dialog-button-primary').click()
+    await sleep(1800)
+    const path = '收件箱/模板选择审核.md'
+    const file = await api(`file?path=${encodeURIComponent(path)}`)
+    assert(file.text === TEMPLATE_BODY, `picker note text ${JSON.stringify(file.text)}`)
+    return { path }
+  })
+
   // ================= 书签 =================
   await check('rail.bookmarks-toggle', async () => {
     // The file context menu writes one entry into bookmarks.json; the rail
@@ -2786,7 +2801,7 @@ try {
   }
   rmSync(AUDIT_VAULT_B, { recursive: true, force: true })
   rmSync(AUDIT_DSH_DIR, { recursive: true, force: true })
-  const removals = [GHOST, RENAMED, LINKER, `外设/审核链接者.md`, `${FIXTURE_DIR}/审核夹具.md`, `${FIXTURE_DIR}/审核相对链接.md`, TAG_FIXTURE, CANVAS_FIXTURE, `${FIXTURE_DIR}/审核按钮新建.md`, `${FIXTURE_DIR}/审核目录内新建.md`, `${FIXTURE_DIR}/审核按钮新建文件夹`, FIXTURE_DIR, DRAG_FILE, DRAG_TARGET_DIR, DRAG_SOURCE_DIR, `${TEMPLATE_CREATED}.md`, DAILY_DIR, TEMPLATE_DIR]
+  const removals = [GHOST, RENAMED, LINKER, `外设/审核链接者.md`, `${FIXTURE_DIR}/审核夹具.md`, `${FIXTURE_DIR}/审核相对链接.md`, TAG_FIXTURE, CANVAS_FIXTURE, `${FIXTURE_DIR}/审核按钮新建.md`, `${FIXTURE_DIR}/审核目录内新建.md`, `${FIXTURE_DIR}/审核按钮新建文件夹`, FIXTURE_DIR, DRAG_FILE, DRAG_TARGET_DIR, DRAG_SOURCE_DIR, `${TEMPLATE_CREATED}.md`, '收件箱/模板选择审核.md', DAILY_DIR, TEMPLATE_DIR]
   for (const target of removals) {
     await api('delete', { method: 'POST', body: JSON.stringify({ path: target }) }).catch(() => {})
   }
