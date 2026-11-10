@@ -14,6 +14,7 @@ import type { MenuScene } from '../menu/registry.ts'
 import { css } from '../theme.ts'
 import { PurStudioPane } from '../../pur/integration.ts'
 import { AssetView } from './AssetView.tsx'
+import { CanvasView } from './CanvasView.tsx'
 import { CodeView, formatBytes } from './CodeView.tsx'
 import { SourceEditor } from '../editor/SourceEditor.tsx'
 
@@ -113,6 +114,18 @@ export function FileView({ t, path, onReading, onSaved, onOpenPath, onMenu }: Fi
           <span className={css.codeMeta}>{file.name} · {formatBytes(file.size)}</span>
         </div>
         <iframe className={css.fileFrame} src={assetUrl(file.path)} title={file.name} />
+      </div>
+    )
+  }
+  if (file.kind === 'canvas') {
+    return (
+      <div className={css.canvasHost} onContextMenu={contextMenu}>
+        <CanvasView
+          t={t}
+          path={file.path}
+          text={file.text ?? ''}
+          {...(onOpenPath === undefined ? {} : { onOpenPath })}
+        />
       </div>
     )
   }
