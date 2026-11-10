@@ -59,6 +59,8 @@ const VAULT_ROOT = String((await api('status')).root ?? '')
 const FIXTURE_DIR = '审核临时文件夹'
 const FIXTURE = `${FIXTURE_DIR}/审核夹具.md`
 const LINKER = '审核链接者.md'
+const TAG_FIXTURE = `${FIXTURE_DIR}/审核标签.md`
+const TAG_BODY = ['---', 'tags: [ZZ审核标签]', '---', '', '# ZZ审核标签', '', '正文 #ZZ审核标签', ''].join('\n')
 const GHOST = '审核不存在目标.md'
 const RENAMED = '审核链接者改名.md'
 // Drag fixtures stay adjacent in sort order so both rows fit in one screenful.
@@ -121,6 +123,8 @@ await api('create', { method: 'POST', body: JSON.stringify({ path: LINKER }) })
 // go to disk directly and are picked up by the refresh click after page load.
 writeFileSync(join(VAULT_ROOT, FIXTURE), fixtureBody)
 writeFileSync(join(VAULT_ROOT, LINKER), linkerBody)
+await api('create', { method: 'POST', body: JSON.stringify({ path: TAG_FIXTURE }) })
+writeFileSync(join(VAULT_ROOT, TAG_FIXTURE), TAG_BODY)
 // Attachments are not notes, so `create` refuses them; writing them to disk
 // before the boot refresh is the same path a real vault takes.
 writeFileSync(join(VAULT_ROOT, CODE_ATTACHMENT), CODE_BODY)
@@ -851,6 +855,26 @@ try {
     await sleep(300)
     await page.keyboard.press('Escape')
     await sleep(300)
+  })
+
+  await check('tags.rename', async () => {
+    await runPalette('重命名或合并标签')
+    await sleep(400)
+    const dialog = page.locator('.ov-tag-dialog')
+    assert(await dialog.isVisible(), 'tag dialog did not open')
+    const inputs = dialog.locator('.ov-dialog-input')
+    await inputs.nth(0).fill('#ZZ审核标签')
+    await inputs.nth(1).fill('#ZZ审核标签改名')
+    await dialog.getByText('预览', { exact: true }).click()
+    await sleep(1000)
+    const preview = await dialog.locator('.ov-tag-preview').textContent()
+    assert((preview ?? '').includes('1 个文件') && (preview ?? '').includes('2 处'), `tag preview: ${preview}`)
+    await dialog.getByText('重命名', { exact: true }).click()
+    await sleep(1200)
+    const text = readFileSync(join(VAULT_ROOT, TAG_FIXTURE), 'utf8')
+    assert(text.includes('#ZZ审核标签改名'), 'body tag was not renamed')
+    assert(text.includes('tags: [ZZ审核标签改名]'), 'frontmatter tag was not renamed')
+    assert(!text.includes('#ZZ审核标签 '), 'old tag remains')
   })
 
   // ================= 分屏 =================
@@ -2737,7 +2761,7 @@ try {
   }
   rmSync(AUDIT_VAULT_B, { recursive: true, force: true })
   rmSync(AUDIT_DSH_DIR, { recursive: true, force: true })
-  const removals = [GHOST, RENAMED, LINKER, `外设/审核链接者.md`, `${FIXTURE_DIR}/审核夹具.md`, `${FIXTURE_DIR}/审核相对链接.md`, `${FIXTURE_DIR}/审核按钮新建.md`, `${FIXTURE_DIR}/审核目录内新建.md`, `${FIXTURE_DIR}/审核按钮新建文件夹`, FIXTURE_DIR, DRAG_FILE, DRAG_TARGET_DIR, DRAG_SOURCE_DIR, `${TEMPLATE_CREATED}.md`, DAILY_DIR, TEMPLATE_DIR]
+  const removals = [GHOST, RENAMED, LINKER, `外设/审核链接者.md`, `${FIXTURE_DIR}/审核夹具.md`, `${FIXTURE_DIR}/审核相对链接.md`, TAG_FIXTURE, `${FIXTURE_DIR}/审核按钮新建.md`, `${FIXTURE_DIR}/审核目录内新建.md`, `${FIXTURE_DIR}/审核按钮新建文件夹`, FIXTURE_DIR, DRAG_FILE, DRAG_TARGET_DIR, DRAG_SOURCE_DIR, `${TEMPLATE_CREATED}.md`, DAILY_DIR, TEMPLATE_DIR]
   for (const target of removals) {
     await api('delete', { method: 'POST', body: JSON.stringify({ path: target }) }).catch(() => {})
   }

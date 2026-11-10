@@ -81,6 +81,48 @@ export async function fetchTags(): Promise<readonly TagCountDto[]> {
   return (await request<{ items: readonly TagCountDto[] }>('tags')).items
 }
 
+/** Result of a dry-run tag rename. */
+export interface TagRenamePreview {
+  readonly files: number
+  readonly matches: number
+  readonly changes: readonly { readonly path: string; readonly count: number }[]
+}
+
+/** Result of executing a tag rename. */
+export interface TagRenameResult {
+  readonly files: number
+  readonly matches: number
+  readonly failures: readonly { readonly path: string; readonly error: string }[]
+}
+
+/**
+ * Preview a tag rename across the vault.
+ * @param from - existing tag.
+ * @param to - replacement tag.
+ * @returns affected file/match counts.
+ */
+export async function previewTagRename(from: string, to: string): Promise<TagRenamePreview> {
+  return request<TagRenamePreview>('tags/rename', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ from, to, dryRun: true }),
+  })
+}
+
+/**
+ * Rename or merge a tag across the vault.
+ * @param from - existing tag.
+ * @param to - replacement tag.
+ * @returns how many files and tags changed, plus save failures.
+ */
+export async function renameTag(from: string, to: string): Promise<TagRenameResult> {
+  return request<TagRenameResult>('tags/rename', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ from, to }),
+  })
+}
+
 /** Search titles, aliases, tags, paths, and content. */
 export async function fetchSearch(query: string): Promise<readonly SearchHitDto[]> {
   return (await request<{ items: readonly SearchHitDto[] }>(`search?q=${encodeURIComponent(query)}`)).items

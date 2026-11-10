@@ -326,4 +326,20 @@ textarea.ov-input { resize: vertical; }
   font-size: 12px;
   line-height: 1.6;
 }
+/* Tag rename / merge dialog */
+.ov-tag-dialog { width: min(440px, 94vw); }
+.ov-tag-field { display: flex; flex-direction: column; gap: 4px; margin-bottom: 9px; }
+.ov-tag-label { color: var(--dsw-alias-label-tertiary, #8b8b94); font-size: 11px; }
+.ov-tag-hint {
+  margin: 2px 0 8px;
+  color: var(--dsw-alias-label-tertiary, #8b8b94);
+  font-size: 11px;
+  line-height: 1.5;
+}
+.ov-tag-preview {
+  margin: 0 0 8px;
+  color: var(--dsw-alias-label-secondary, #b6b6bd);
+  font-size: 12px;
+}
+.ov-tag-error { margin: 0 0 8px; color: var(--dsw-alias-state-error-primary, #f85149); font-size: 12px; }
 `

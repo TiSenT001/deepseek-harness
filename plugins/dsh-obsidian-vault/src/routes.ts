@@ -16,6 +16,7 @@ import { serveConfigRoute } from './config-endpoints.ts'
 import { servePluginRoute } from './plugin-endpoints.ts'
 import { VaultFiles } from './vault/files.ts'
 import { planAssetWrite } from './vault/asset-write.ts'
+import { rewriteTag, validTagName } from './vault/tag-rewrite.ts'
 import { renderPdf } from './pdf-export.ts'
 import { resolvePurImage } from './vault/pur-image.ts'
 import { PACKAGE_ROOT, PLUGIN_DATA_FOLDER, PUR_ASSETS_FOLDER, SETTINGS_FILE } from './package-root.ts'
@@ -168,6 +169,47 @@ async function dispatch(
     case 'tags':
       send(response, 200, { items: vault.tags() })
       return
+    case 'tags/rename': {
+      if (request.method !== 'POST') {
+        send(response, 405, { error: 'POST required' })
+        return
+      }
+      const body = await readJson(request)
+      const from = typeof body['from'] === 'string' ? validTagName(body['from']) : undefined
+      const to = typeof body['to'] === 'string' ? validTagName(body['to']) : undefined
+      if (from === undefined || to === undefined) {
+        send(response, 400, { error: 'valid from and to tags are required' })
+        return
+      }
+      const dryRun = body['dryRun'] === true
+      const pending: Array<{ path: string; source: string; count: number }> = []
+      let matches = 0
+      for (const path of vault.paths) {
+        const source = await vault.readSource(path)
+        if (source === undefined) continue
+        const rewrite = rewriteTag(source, from, to)
+        if (rewrite.count === 0) continue
+        pending.push({ path, source: rewrite.source, count: rewrite.count })
+        matches += rewrite.count
+      }
+      if (dryRun) {
+        send(response, 200, {
+          files: pending.length,
+          matches,
+          changes: pending.slice(0, 20).map(change => ({ path: change.path, count: change.count })),
+        })
+        return
+      }
+      const failures: Array<{ path: string; error: string }> = []
+      let files = 0
+      for (const change of pending) {
+        const result = await vault.saveNote(change.path, change.source)
+        if (result.ok) files += 1
+        else failures.push({ path: change.path, error: 'save rejected' })
+      }
+      send(response, 200, { files, matches, failures })
+      return
+    }
     case 'search': {
       const query = url.searchParams.get('q') ?? ''
       send(response, 200, { items: vault.search(query) })
