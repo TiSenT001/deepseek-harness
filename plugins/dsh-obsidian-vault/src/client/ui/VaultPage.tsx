@@ -30,6 +30,7 @@ import { useVaultTabs } from './useVaultTabs.ts'
 import { readHostViewMemory, readViewMemory, writeHostViewMemory, writeViewMemory, type ViewMemory, type WorkspaceLayout } from './viewMemory.ts'
 import { WorkspaceLayoutsDialog } from './WorkspaceLayoutsDialog.tsx'
 import { TemplatePickerDialog } from './TemplatePickerDialog.tsx'
+import { TagRenameDialog } from './TagRenameDialog.tsx'
 import { applyTemplate, templateNotes, templateTargetPath } from './templates.ts'
 import { type VaultEmptyAction } from './VaultEmptyState.tsx'
 import { VaultWorkspace } from './VaultWorkspace.tsx'
@@ -73,6 +74,7 @@ export function VaultPage({ pickDirectory, hasPicker }: VaultPageProps = {}): JS
   const [layouts, setLayouts] = useState<readonly WorkspaceLayout[]>(() => remembered.current?.layouts ?? [])
   const [layoutsOpen, setLayoutsOpen] = useState(false)
   const [templatesOpen, setTemplatesOpen] = useState(false)
+  const [tagDialogOpen, setTagDialogOpen] = useState(false)
   // Reading and source are two views of the same Markdown file; attachments
   // and code files always render through the file view.
   const [sourceMode, setSourceMode] = useState(false)
@@ -261,6 +263,7 @@ export function VaultPage({ pickDirectory, hasPicker }: VaultPageProps = {}): JS
     setSourceMode(false)
     setLayouts([])
     setTemplatesOpen(false)
+    setTagDialogOpen(false)
     clearScroll()
     void reload()
   }, [clearScroll, reload, resetTabs])
@@ -360,6 +363,7 @@ export function VaultPage({ pickDirectory, hasPicker }: VaultPageProps = {}): JS
   const layoutCommands = useMemo<readonly CommandEntry[]>(() => [
     { id: 'workspace.layouts', label: `${t('workspaces')}…`, run: () => setLayoutsOpen(true) },
     { id: 'templates.new', label: `${t('newFromTemplate')}…`, run: () => setTemplatesOpen(true) },
+    { id: 'tags.rename', label: `${t('renameTagTitle')}…`, run: () => setTagDialogOpen(true) },
   ], [t])
 
   const { menuGroups, commands, runCommand } = useVaultCommands({
@@ -487,6 +491,19 @@ export function VaultPage({ pickDirectory, hasPicker }: VaultPageProps = {}): JS
             templates={templates}
             onCreate={createFromTemplate}
             onClose={() => setTemplatesOpen(false)}
+          />
+        )
+        : null}
+      {tagDialogOpen
+        ? (
+          <TagRenameDialog
+            t={t}
+            tags={tags}
+            onRenamed={() => {
+              setTagDialogOpen(false)
+              void reload()
+            }}
+            onClose={() => setTagDialogOpen(false)}
           />
         )
         : null}

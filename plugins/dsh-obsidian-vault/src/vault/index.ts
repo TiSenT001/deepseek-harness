@@ -139,6 +139,20 @@ export class VaultIndex {
   }
 
   /**
+   * Read one note's raw file text, frontmatter included.
+   * @param path - vault-relative path.
+   * @returns the file text, or undefined when it cannot be read.
+   */
+  async readSource(path: string): Promise<string | undefined> {
+    if (this.store.rootTarget === undefined) return undefined
+    try {
+      return await this.store.readText(path)
+    } catch {
+      return undefined
+    }
+  }
+
+  /**
    * Read one note into its display form.
    * @param path - vault-relative path.
    * @returns the note, or undefined when it is not indexed.
