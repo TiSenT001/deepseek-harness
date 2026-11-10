@@ -2226,8 +2226,11 @@ try {
   await check('tabs.drag-reorder', async () => {
     const titles = async () => page.locator('.ov-doctab').evaluateAll(nodes => nodes.map(node => node.getAttribute('title') ?? ''))
     const addTab = async (query) => {
-      await page.locator('.ov-doctab-new').click()
+      // `+` creates a real empty tab now; fill it through the quick switcher.
+      await page.keyboard.press('Control+t')
       await sleep(400)
+      await page.keyboard.press('Control+o')
+      await sleep(300)
       await page.locator('.ov-quick-input').fill(query)
       await sleep(700)
       await page.keyboard.press('Enter')

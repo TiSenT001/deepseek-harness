@@ -20,7 +20,18 @@ export const WORKSPACE_PANEL_STYLE = `
   gap: 6px;
   padding: 0 10px 8px;
 }
-.ov-quick-replace-input { flex: 1 1 auto; min-width: 0; padding: 8px 2px; font-size: 13px; }
+.ov-quick-replace-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 8px 2px;
+  border: 0;
+  border-bottom: 1px solid var(--dsw-alias-border-l1, #2a2a30);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 13px;
+  outline: none;
+}
 .ov-quick-replace-button {
   flex: 0 0 auto;
   border: 1px solid var(--dsw-alias-border-l2, #3a3a42);

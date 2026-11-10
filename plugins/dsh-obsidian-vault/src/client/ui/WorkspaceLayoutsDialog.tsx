@@ -4,7 +4,7 @@
  * those layouts for the current vault.
  * @module dsh-obsidian-vault/client/ui/WorkspaceLayoutsDialog
  */
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import type { Translate } from '../i18n.ts'
 import type { WorkspaceLayout } from './viewMemory.ts'
 import { Icon } from './Icon.tsx'
@@ -32,6 +32,16 @@ export function WorkspaceLayoutsDialog(props: WorkspaceLayoutsDialogProps): JSX.
     () => [...layouts].sort((left, right) => right.savedAt - left.savedAt),
     [layouts],
   )
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent): void => {
+      if (event.key === 'Escape') {
+        event.preventDefault()
+        onClose()
+      }
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [onClose])
   const trimmed = name.trim()
   const save = (): void => {
     if (trimmed.length === 0) return
