@@ -86,6 +86,8 @@ window.__ModuleLoader__.load({
 		/** 备份对话框的回调做成模块级常量：引用稳定，对话框只在挂载时拉一次列表。 */
 		const loadBackups = () => jget("/actions/backups");
 		const pruneBackups = (keep) => postJson("/actions/prune-backups", { keep });
+		/** 清理代码里已不存在的僵尸心跳；返回删除的名字列表。 */
+		const pruneZombieHeartbeats = () => postJson("/crons/prune-zombies", {});
 		/** 趋势告警阈值。 */
 		const loadTrendThresholds = () => jget("/trend/thresholds");
 		/** 设置/清除某个指标的告警阈值（value 传 null 表示不画线）。 */
@@ -1463,6 +1465,7 @@ window.__ModuleLoader__.load({
 			const [job, setJob] = (0, react.useState)(null);
 			const [error, setError] = (0, react.useState)(null);
 			const [busy, setBusy] = (0, react.useState)(false);
+			const [armedPrune, setArmedPrune] = (0, react.useState)(false);
 			const timer = (0, react.useRef)(null);
 			const load = async () => {
 				try {
@@ -1512,6 +1515,18 @@ window.__ModuleLoader__.load({
 					if (result.status) setJob(result.status);
 					if (result.ok) poll();
 					else setError(result.error ?? "任务未启动");
+				} catch (e) {
+					setError(reasonOf(e));
+				} finally {
+					setBusy(false);
+				}
+			};
+			const pruneZombies = async () => {
+				setBusy(true);
+				try {
+					await pruneZombieHeartbeats();
+					setArmedPrune(false);
+					await load();
 				} catch (e) {
 					setError(reasonOf(e));
 				} finally {
@@ -1698,6 +1713,45 @@ window.__ModuleLoader__.load({
 										className: "bc-index-row",
 										children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: "暂无心跳数据" }), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("strong", { children: "—" })]
 									}),
+									((health.stale_crons ?? []).length > 0 || (health.zombie_crons ?? []).length > 0) && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+										className: "bc-cron-alert",
+										children: [
+											(health.stale_crons ?? []).length > 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
+												className: "bc-cron-alert-text bc-index-warn",
+												children: [health.stale_crons?.length, " 个定时任务超过 1.5 倍周期未运行"]
+											}),
+											(health.zombie_crons ?? []).length > 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
+												className: "bc-cron-alert-text",
+												children: [health.zombie_crons?.length, " 条失效心跳（代码里已无此任务）"]
+											}),
+											(health.zombie_crons ?? []).length > 0 && (armedPrune ? /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
+												className: "bc-cron-alert-actions",
+												children: [/* @__PURE__ */ (0, react_jsx_runtime.jsxs)(Button, {
+													size: "sm",
+													variant: "ghost",
+													disabled: busy,
+													onClick: () => void pruneZombies(),
+													children: [
+														"确认清理 ",
+														health.zombie_crons?.length,
+														" 条"
+													]
+												}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)(Button, {
+													size: "sm",
+													variant: "ghost",
+													disabled: busy,
+													onClick: () => setArmedPrune(false),
+													children: "取消"
+												})]
+											}) : /* @__PURE__ */ (0, react_jsx_runtime.jsx)(Button, {
+												size: "sm",
+												variant: "ghost",
+												disabled: busy,
+												onClick: () => setArmedPrune(true),
+												children: "清理失效心跳…"
+											}))
+										]
+									}),
 									(health.crons ?? []).map((cron) => /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
 										className: "bc-cron-row",
 										"data-status": cron.status,
@@ -1732,28 +1786,35 @@ window.__ModuleLoader__.load({
 											"）"
 										] }), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
 											className: "bc-cron-all-list",
-											children: [...health.crons_all ?? []].sort((left, right) => (right.age_hours ?? Number.POSITIVE_INFINITY) - (left.age_hours ?? Number.POSITIVE_INFINITY)).map((cron) => /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-												className: "bc-cron-row",
-												"data-status": cron.status,
-												children: [
-													/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-														className: "bc-cron-dot",
-														"aria-hidden": "true"
-													}),
-													/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-														className: "bc-cron-name",
-														children: cron.name
-													}),
-													/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-														className: "bc-cron-age",
-														children: cron.age_hours === null ? "从未运行" : `${cron.age_hours} 小时前`
-													}),
-													/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-														className: "bc-cron-interval",
-														children: cron.last_run_at ?? "—"
-													})
-												]
-											}, `all-${cron.name}`))
+											children: [...health.crons_all ?? []].sort((left, right) => (right.age_hours ?? Number.POSITIVE_INFINITY) - (left.age_hours ?? Number.POSITIVE_INFINITY)).map((cron) => {
+												const zombie = (health.zombie_crons ?? []).some((item) => item.name === cron.name);
+												return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+													className: "bc-cron-row",
+													"data-status": cron.status,
+													"data-zombie": zombie ? "true" : void 0,
+													children: [
+														/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+															className: "bc-cron-dot",
+															"aria-hidden": "true"
+														}),
+														/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
+															className: "bc-cron-name",
+															children: [cron.name, zombie && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+																className: "bc-cron-flag",
+																children: "已失效"
+															})]
+														}),
+														/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+															className: "bc-cron-age",
+															children: cron.age_hours === null ? "从未运行" : `${cron.age_hours} 小时前`
+														}),
+														/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+															className: "bc-cron-interval",
+															children: cron.last_run_at ?? "—"
+														})
+													]
+												}, `all-${cron.name}`);
+											})
 										})]
 									})
 								]
@@ -4417,6 +4478,39 @@ window.__ModuleLoader__.load({
   text-align: right;
 }
 
+.bc-cron-alert {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px;
+  margin: 4px 0 8px;
+  padding: 6px 8px;
+  border: 1px solid color-mix(in srgb, var(--dsw-alias-state-warning-primary, #e0b341) 35%, transparent);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--dsw-alias-state-warning-primary, #e0b341) 8%, transparent);
+  font-size: 11.5px;
+  color: var(--dsw-alias-label-secondary);
+}
+.bc-cron-alert-text {
+  color: var(--dsw-alias-label-primary);
+}
+.bc-cron-alert-actions {
+  display: inline-flex;
+  gap: 6px;
+  margin-left: auto;
+}
+.bc-cron-flag {
+  margin-left: 6px;
+  padding: 0 5px;
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 6px;
+  font-size: 10px;
+  color: var(--dsw-alias-label-tertiary);
+}
+.bc-cron-row[data-zombie='true'] {
+  opacity: 0.55;
+}
+
 .bc-cron-all {
   margin-top: 6px;
 }
@@ -4595,6 +4689,7 @@ window.__ModuleLoader__.load({
 			const [cacheOpen, setCacheOpen] = (0, react.useState)(false);
 			const [failedOpen, setFailedOpen] = (0, react.useState)(false);
 			const [indexOpen, setIndexOpen] = (0, react.useState)(false);
+			const [cronAlerts, setCronAlerts] = (0, react.useState)(null);
 			const [autoRecoverOpen, setAutoRecoverOpen] = (0, react.useState)(false);
 			const [trend, setTrend] = (0, react.useState)(null);
 			const [detailName, setDetailName] = (0, react.useState)(null);
@@ -4691,6 +4786,17 @@ window.__ModuleLoader__.load({
 				refreshHistory
 			]);
 			(0, react.useEffect)(() => {
+				(async () => {
+					try {
+						const health = await loadIndexHealth();
+						setCronAlerts({
+							stale: health.stale_crons?.length ?? 0,
+							zombies: health.zombie_crons?.length ?? 0
+						});
+					} catch {}
+				})();
+			}, [feed.updatedAt]);
+			(0, react.useEffect)(() => {
 				const onKeyDown = (event) => {
 					const target = event.target instanceof HTMLElement ? event.target : null;
 					const typing = target !== null && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable);
@@ -4760,6 +4866,34 @@ window.__ModuleLoader__.load({
 												}),
 												abnormalCount,
 												" 个异常"
+											]
+										}),
+										(cronAlerts?.stale ?? 0) > 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("button", {
+											type: "button",
+											className: "bc-header-alert",
+											title: "查看过期的定时任务",
+											onClick: () => setIndexOpen(true),
+											children: [
+												/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+													className: "bc-status-dot",
+													"aria-hidden": "true"
+												}),
+												cronAlerts?.stale,
+												" 个定时任务过期"
+											]
+										}),
+										(cronAlerts?.stale ?? 0) === 0 && (cronAlerts?.zombies ?? 0) > 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("button", {
+											type: "button",
+											className: "bc-header-alert",
+											title: "查看并清理失效心跳",
+											onClick: () => setIndexOpen(true),
+											children: [
+												/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+													className: "bc-status-dot",
+													"aria-hidden": "true"
+												}),
+												cronAlerts?.zombies,
+												" 条失效心跳"
 											]
 										}),
 										/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {

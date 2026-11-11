@@ -12,7 +12,7 @@
  */
 import { useEffect, useState } from 'react'
 import {
-  DIAGNOSTICS_URL, loadBackups, loadCaches, loadFailedEdges, postManager, pruneBackups, pruneCaches, restoreBackup,
+  DIAGNOSTICS_URL, loadBackups, loadCaches, loadFailedEdges, loadIndexHealth, postManager, pruneBackups, pruneCaches, restoreBackup,
 } from './api.ts'
 import { useConsoleActions } from './hooks/useConsoleActions.ts'
 import { useConsoleFeed } from './hooks/useConsoleFeed.ts'
@@ -61,6 +61,7 @@ export function ConsolePage(): JSX.Element {
   const [cacheOpen, setCacheOpen] = useState(false)
   const [failedOpen, setFailedOpen] = useState(false)
   const [indexOpen, setIndexOpen] = useState(false)
+  const [cronAlerts, setCronAlerts] = useState<{ stale: number; zombies: number } | null>(null)
   const [autoRecoverOpen, setAutoRecoverOpen] = useState(false)
   const [trend, setTrend] = useState<MetricKey | null>(null)
   const [detailName, setDetailName] = useState<string | null>(null)
@@ -172,6 +173,21 @@ export function ConsolePage(): JSX.Element {
     if (feed.overview !== null && history === null) void refreshHistory()
   }, [feed.overview, history, refreshHistory])
 
+  // 定时任务健康度：顶部只显示计数，详情在「索引与嵌入」里；管理器不可达时保留上一次读数
+  useEffect(() => {
+    void (async () => {
+      try {
+        const health = await loadIndexHealth()
+        setCronAlerts({
+          stale: health.stale_crons?.length ?? 0,
+          zombies: health.zombie_crons?.length ?? 0,
+        })
+      } catch {
+        // 管理器短暂不可用：不清空读数，下次刷新再试
+      }
+    })()
+  }, [feed.updatedAt])
+
   // 快捷键：r 刷新、/ 聚焦日志过滤、Esc 收起日志（有对话框时让对话框自己处理）
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent): void => {
@@ -229,6 +245,28 @@ export function ConsolePage(): JSX.Element {
               >
                 <span className="bc-status-dot" aria-hidden="true" />
                 {abnormalCount} 个异常
+              </button>
+            )}
+            {(cronAlerts?.stale ?? 0) > 0 && (
+              <button
+                type="button"
+                className="bc-header-alert"
+                title="查看过期的定时任务"
+                onClick={() => setIndexOpen(true)}
+              >
+                <span className="bc-status-dot" aria-hidden="true" />
+                {cronAlerts?.stale} 个定时任务过期
+              </button>
+            )}
+            {(cronAlerts?.stale ?? 0) === 0 && (cronAlerts?.zombies ?? 0) > 0 && (
+              <button
+                type="button"
+                className="bc-header-alert"
+                title="查看并清理失效心跳"
+                onClick={() => setIndexOpen(true)}
+              >
+                <span className="bc-status-dot" aria-hidden="true" />
+                {cronAlerts?.zombies} 条失效心跳
               </button>
             )}
             <div className="bc-header-actions">

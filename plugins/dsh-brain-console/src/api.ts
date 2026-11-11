@@ -54,6 +54,10 @@ export const loadBackups = (): Promise<BackupListing> => jget<BackupListing>('/a
 export const pruneBackups = (keep: number): Promise<PruneResult> =>
   postJson<PruneResult>('/actions/prune-backups', { keep })
 
+/** 清理代码里已不存在的僵尸心跳；返回删除的名字列表。 */
+export const pruneZombieHeartbeats = (): Promise<{ ok: boolean; removed: string[]; kept?: number; error?: string }> =>
+  postJson<{ ok: boolean; removed: string[]; kept?: number; error?: string }>('/crons/prune-zombies', {})
+
 /** 趋势告警阈值。 */
 export const loadTrendThresholds = (): Promise<TrendThresholds> => jget<TrendThresholds>('/trend/thresholds')
 
