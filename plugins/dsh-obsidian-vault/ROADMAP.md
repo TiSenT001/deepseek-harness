@@ -1,3 +1,9 @@
+## 第一百一十九轮：文件历史与恢复（2026-11-11）
+
+- **对标 Obsidian File recovery**：每次 `POST /note` 成功前把旧正文写入插件 `.data/history`（按库根+路径哈希隔离、每篇最多 20 份、内容相同不重复存）；命令面板新增「文件历史…」，列出时间/大小，选中即预览，恢复需二次确认且当前正文会先成为新快照。
+- **路由**：`history?path=` 列表、`history?path=&id=` 读取、`POST history` 恢复；恢复绕过 note-write 但会先快照当前正文，失败文件单独返回错误。
+- **验证**：`tsc` 0、757/757；新增 snapshot id 解析测试；真实笔记 `version one → version two → 恢复 version one` 浏览器全链路通过；审核新增 `history.dialog`。
+
 ## 第一百一十八轮：出链面板（2026-11-11）
 
 - **对标 Obsidian Outgoing links**：右栏新增「出链」页签，列出当前笔记指向的已解析目标与未解析链接；已解析点击打开，未解析点击创建；同一目标多次提及只保留一行，嵌入链接不计入。

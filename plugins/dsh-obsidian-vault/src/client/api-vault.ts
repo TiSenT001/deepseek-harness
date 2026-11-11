@@ -25,6 +25,45 @@ export function fetchNote(path: string): Promise<NoteDto> {
   return request<NoteDto>(`note?path=${encodeURIComponent(path)}`)
 }
 
+/** One local recovery snapshot. */
+export interface HistoryEntryDto {
+  readonly id: string
+  readonly savedAt: number
+  readonly size: number
+}
+
+/**
+ * List the recovery snapshots for one note.
+ * @param path - vault-relative note path.
+ */
+export async function fetchHistory(path: string): Promise<readonly HistoryEntryDto[]> {
+  return (await request<{ items: readonly HistoryEntryDto[] }>(`history?path=${encodeURIComponent(path)}`)).items
+}
+
+/**
+ * Read one recovery snapshot.
+ * @param path - vault-relative note path.
+ * @param id - snapshot id.
+ */
+export async function fetchHistorySnapshot(path: string, id: string): Promise<string> {
+  return (await request<{ content: string }>(`history?path=${encodeURIComponent(path)}&id=${encodeURIComponent(id)}`)).content
+}
+
+/**
+ * Restore one snapshot as the note's current body.
+ * @param path - vault-relative note path.
+ * @param id - snapshot id.
+ * @returns the fresh modification time.
+ */
+export async function restoreHistory(path: string, id: string): Promise<number> {
+  const body = await request<{ mtime: number }>('history', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ path, id }),
+  })
+  return body.mtime
+}
+
 /**
  * Read one vault file for the file viewer.
  * @param path - vault-relative path.

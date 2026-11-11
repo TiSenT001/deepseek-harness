@@ -39,6 +39,11 @@ export class VaultIndex {
     this.store = new VaultStore(fs, options)
   }
 
+  /** Absolute vault root currently indexed, for plugin-side stores. */
+  get absoluteRoot(): string {
+    return this.store.rootPath
+  }
+
   /**
    * Point the index at another vault directory. Parsed entries and every
    * derived index belong to the old root, so they are dropped before the next

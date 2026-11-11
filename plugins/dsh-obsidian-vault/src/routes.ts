@@ -12,6 +12,7 @@ import { readJson, send } from './http.ts'
 import { API_BASE } from './protocol.ts'
 import { serveBridgeRoute } from './bridge-endpoints.ts'
 import { serveNoteSave } from './note-write.ts'
+import { listHistory, readHistory, snapshotNote } from './history-store.ts'
 import { serveConfigRoute } from './config-endpoints.ts'
 import { servePluginRoute } from './plugin-endpoints.ts'
 import { VaultFiles } from './vault/files.ts'
@@ -147,6 +148,44 @@ async function dispatch(
       const note = await vault.note(path)
       if (note === undefined) send(response, 404, { error: 'note not found', path })
       else send(response, 200, note)
+      return
+    }
+    case 'history': {
+      const pathParam = url.searchParams.get('path') ?? ''
+      if (request.method === 'POST') {
+        const body = await readJson(request)
+        const path = typeof body['path'] === 'string' ? body['path'] : pathParam
+        if (path.length === 0) {
+          send(response, 400, { error: 'path is required' })
+          return
+        }
+        const id = typeof body['id'] === 'string' ? body['id'] : ''
+        const snapshot = await readHistory(vault.absoluteRoot, path, id)
+        if (snapshot === undefined) {
+          send(response, 404, { error: 'snapshot not found', path, id })
+          return
+        }
+        const current = await vault.readSource(path)
+        if (current !== undefined && current !== snapshot) {
+          void snapshotNote(vault.absoluteRoot, path, current).catch(() => undefined)
+        }
+        const result = await vault.saveNote(path, snapshot)
+        if (result.ok) send(response, 200, result)
+        else send(response, result.status, result)
+        return
+      }
+      if (pathParam.length === 0) {
+        send(response, 400, { error: 'path is required' })
+        return
+      }
+      const id = url.searchParams.get('id')
+      if (id !== null) {
+        const snapshot = await readHistory(vault.absoluteRoot, pathParam, id)
+        if (snapshot === undefined) send(response, 404, { error: 'snapshot not found', path: pathParam, id })
+        else send(response, 200, { content: snapshot })
+        return
+      }
+      send(response, 200, { items: await listHistory(vault.absoluteRoot, pathParam) })
       return
     }
     case 'file': {

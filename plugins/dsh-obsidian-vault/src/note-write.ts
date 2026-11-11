@@ -5,6 +5,7 @@
  * @module dsh-obsidian-vault/note-write
  */
 import type { IncomingMessage, ServerResponse } from 'node:http'
+import { snapshotNote } from './history-store.ts'
 import { readJson, send } from './http.ts'
 import type { VaultIndex } from './vault/index.ts'
 
@@ -28,7 +29,12 @@ export async function serveNoteSave(
   }
   const rawBase = body['baseMtime']
   const baseMtime = typeof rawBase === 'number' && Number.isFinite(rawBase) ? rawBase : undefined
+  const previous = await vault.readSource(path)
   const result = await vault.saveNote(path, content, baseMtime)
+  if (result.ok && previous !== undefined && previous !== content) {
+    // Fire-and-forget: recovery snapshots must not delay or fail the save.
+    void snapshotNote(vault.absoluteRoot, path, previous).catch(() => undefined)
+  }
   if (result.ok) send(response, 200, result)
   else send(response, result.status, result)
 }
