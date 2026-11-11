@@ -1248,6 +1248,28 @@ const STYLES = `
   opacity: 0.55;
 }
 
+.bc-cron-filter {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin: 6px 0 4px;
+}
+.bc-cron-filter-input {
+  flex: 1 1 120px;
+  min-width: 100px;
+  padding: 2px 8px;
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--dsw-alias-label-primary);
+  font-size: 12px;
+}
+.bc-cron-filter-count {
+  color: var(--dsw-alias-label-tertiary);
+  font-weight: 400;
+}
+
 .bc-cron-all {
   margin-top: 6px;
 }
