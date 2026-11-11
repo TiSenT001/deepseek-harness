@@ -36,29 +36,48 @@ function isJsonCanvas(path: string): boolean {
 
 /**
  * Foreign JSON Canvas files carry group membership only through geometry.
- * Attach top-level cards whose centre falls inside the smallest group, so
- * collapsing that group hides them like Obsidian does.
+ * Cards join the deepest group, then inner groups join the smallest enclosing
+ * group, so collapsing an outer group hides the whole subtree.
  * @param elements - top-level imported elements, mutated in place.
  */
 function absorbCanvasGroups(elements: PurElement[]): void {
   const groups = elements.filter((element): element is PurGroupElement => element.type === 'group')
   if (groups.length === 0) return
-  const ordered = [...groups].sort((left, right) => Math.abs(left.w * left.h) - Math.abs(right.w * right.h))
+  const area = (group: PurGroupElement): number => Math.abs(group.w * group.h)
+  const contains = (group: PurGroupElement, x: number, y: number): boolean =>
+    x >= group.x && x <= group.x + group.w && y >= group.y && y <= group.y + group.h
+  const byArea = [...groups].sort((left, right) => area(left) - area(right))
   const removed = new Set<PurElement>()
   for (const element of [...elements]) {
     if (element.type === 'group' || element.type === 'line') continue
     const centreX = element.x + (element.w ?? 0) / 2
     const centreY = element.y + (element.h ?? 0) / 2
-    const parent = ordered.find(group =>
-      centreX >= group.x && centreX <= group.x + group.w
-      && centreY >= group.y && centreY <= group.y + group.h)
+    const parent = byArea.find(group => contains(group, centreX, centreY))
     if (parent === undefined) continue
     element.x -= parent.x
     element.y -= parent.y
     parent.children.push(element)
     removed.add(element)
   }
-  if (removed.size > 0) elements.splice(0, elements.length, ...elements.filter(element => !removed.has(element)))
+  const nested = new Set<PurGroupElement>()
+  for (const group of byArea) {
+    const centreX = group.x + group.w / 2
+    const centreY = group.y + group.h / 2
+    const parent = byArea.find(candidate =>
+      candidate !== group
+      && !nested.has(candidate)
+      && !nested.has(group)
+      && area(candidate) > area(group)
+      && contains(candidate, centreX, centreY))
+    if (parent === undefined) continue
+    group.x -= parent.x
+    group.y -= parent.y
+    parent.children.push(group)
+    nested.add(group)
+  }
+  if (removed.size > 0 || nested.size > 0) {
+    elements.splice(0, elements.length, ...elements.filter(element => !removed.has(element) && !nested.has(element as PurGroupElement)))
+  }
 }
 
 /**
