@@ -14,7 +14,6 @@ import type { MenuScene } from '../menu/registry.ts'
 import { css } from '../theme.ts'
 import { PurStudioPane } from '../../pur/integration.ts'
 import { AssetView } from './AssetView.tsx'
-import { CanvasView } from './CanvasView.tsx'
 import { CodeView, formatBytes } from './CodeView.tsx'
 import { SourceEditor } from '../editor/SourceEditor.tsx'
 
@@ -61,7 +60,7 @@ function fileContextMenu(
  * @param props - the path and the language dictionary.
  */
 export function FileView({ t, path, onReading, onSaved, onOpenPath, onMenu }: FileViewProps): JSX.Element {
-  const isPur = /\.purstudio$/i.test(path)
+  const isPur = /\.(purstudio|canvas)$/i.test(path)
   const [state, setState] = useState<State>({ status: 'loading' })
   const [attempt, setAttempt] = useState(0)
 
@@ -117,18 +116,7 @@ export function FileView({ t, path, onReading, onSaved, onOpenPath, onMenu }: Fi
       </div>
     )
   }
-  if (file.kind === 'canvas') {
-    return (
-      <div className={css.canvasHost} onContextMenu={contextMenu}>
-        <CanvasView
-          t={t}
-          path={file.path}
-          text={file.text ?? ''}
-          {...(onOpenPath === undefined ? {} : { onOpenPath })}
-        />
-      </div>
-    )
-  }
+
   if (file.kind === 'binary') {
     return (
       <div className={css.fileView} onContextMenu={contextMenu}>

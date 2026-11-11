@@ -5,8 +5,8 @@
  * @module dsh-obsidian-vault/client/pur/loader
  */
 import { assetUrl, bridgeExists, bridgeInfo, bridgeReadText, bridgeReadTextVersion, bridgeWriteBinary, bridgeWriteText, createFolder, fetchNote, fetchTree, purAssetUrl } from '../api.ts'
-import { parseStudioDocument, serializeStudioDocument, splitBucketedKey } from '../../pur-kernel/index.ts'
-import type { PurImageLookup, PurStudioDocument } from '../../pur-kernel/index.ts'
+import { elementBounds, elementsToJsonCanvas, jsonCanvasToElements, parseStudioDocument, serializeStudioDocument, splitBucketedKey } from '../../pur-kernel/index.ts'
+import type { PurImageLookup, PurStudioDocument, PurViewState } from '../../pur-kernel/index.ts'
 import { DocumentCache } from './doc-cache.ts'
 import type { TreeNodeDto } from '../../protocol.ts'
 
@@ -29,10 +29,50 @@ export interface PurNoteSummary {
 /** Modification time each canvas had when this pane loaded or last saved it. */
 const studioVersions = new Map<string, number>()
 
+/** A native Obsidian canvas, edited through the same Pur engine. */
+function isJsonCanvas(path: string): boolean {
+  return /\.canvas$/i.test(path)
+}
+
 /**
- * Read a `.PurStudio` document; an empty or unparsable file loads as an empty
- * canvas rather than failing the view. A document that has not changed since it
- * was last parsed comes from the cache, so reopening a tab is instant.
+ * A viewport that centres imported canvas content; the pane can still refit.
+ * @param document - imported canvas document.
+ * @returns the initial view state.
+ */
+function canvasViewState(document: PurStudioDocument): PurViewState {
+  const bounds = elementBounds(document.elements)
+  if (bounds === undefined) return document.viewState
+  const width = Math.max(1, bounds.maxX - bounds.minX)
+  const height = Math.max(1, bounds.maxY - bounds.minY)
+  const scale = Math.min(1, 1000 / width, 680 / height)
+  return {
+    scale,
+    offsetX: 600 - ((bounds.minX + bounds.maxX) / 2) * scale,
+    offsetY: 420 - ((bounds.minY + bounds.maxY) / 2) * scale,
+  }
+}
+
+/**
+ * Read a JSON Canvas body into Pur elements.
+ * @param text - raw `.canvas` JSON.
+ * @returns the document, or undefined when the body is malformed.
+ */
+export function readJsonCanvasDocument(text: string): PurStudioDocument | undefined {
+  try {
+    const elements = jsonCanvasToElements(JSON.parse(text))
+    const document: PurStudioDocument = { elements, viewState: { offsetX: 0, offsetY: 0, scale: 1 } }
+    return { ...document, viewState: canvasViewState(document) }
+  } catch {
+    return undefined
+  }
+}
+
+
+/**
+ * Read a `.PurStudio` or native `.canvas` document; an empty or unparsable file
+ * loads as an empty canvas rather than failing the view. A document that has
+ * not changed since it was last parsed comes from the cache, so reopening a tab
+ * is instant.
  * @param path - vault-relative document path.
  * @returns the parsed document, or an empty one.
  */
@@ -57,10 +97,14 @@ export async function loadStudioDocument(path: string): Promise<PurStudioDocumen
   const empty: PurStudioDocument = { elements: [], viewState: { offsetX: 0, offsetY: 0, scale: 1 } }
   let document = empty
   if (text.trim() !== '') {
-    try {
-      document = parseStudioDocument(text)
-    } catch {
-      document = empty
+    if (isJsonCanvas(path)) {
+      document = readJsonCanvasDocument(text) ?? empty
+    } else {
+      try {
+        document = parseStudioDocument(text)
+      } catch {
+        document = empty
+      }
     }
   }
   // Only a document with a known version can be revalidated later.
@@ -85,7 +129,9 @@ export async function loadStudioDocument(path: string): Promise<PurStudioDocumen
  */
 export async function saveStudioDocument(path: string, document: PurStudioDocument, force = false): Promise<void> {
   const expected = force ? undefined : studioVersions.get(path)
-  const content = serializeStudioDocument(document)
+  const content = isJsonCanvas(path)
+    ? JSON.stringify(elementsToJsonCanvas(document.elements), null, 2)
+    : serializeStudioDocument(document)
   await bridgeWriteText(path, content, expected)
   // The pane now knows exactly what the file holds, so the cache is refreshed with
   // the version this write produced instead of being dropped: switching tabs would

@@ -79,7 +79,7 @@ dsh plugin --profile <profile> add /path/to/plugins/dsh-obsidian-vault
 | 窄屏 | ≤1080px 时笔记树与右栏变抽屉，顶栏「笔记树 / 大纲」切换，无横向滚动 |
 | 加载状态 | 笔记请求期间显示脉冲骨架；属性值点击即复制并提示「已复制」 |
 | 编辑器插图 | 源码模式 `Ctrl+V` 或拖入图片 → 三选一：`附件图片/` 普通附件、新建画布、加入已有画布；画布方式写入 `pur.studio` 引用 |
-| 原生 `.canvas`（只读） | 直接打开 Obsidian JSON Canvas：文本（Markdown）、文件、链接、分组节点，颜色、连线标签、缩放/平移/适应视图；只读，不编辑也不写回 |
+| 原生 `.canvas`（Pur 编辑） | 直接打开 Obsidian JSON Canvas：文本、文件、链接、分组节点与连线在 Pur 编辑器中渲染和编辑，保存回标准 JSON Canvas（`__pur` 侧车保留 Pur 专属属性）；缩放/平移/适应视图与 `.PurStudio` 一致 |
 | 打印 | 自有打印设置（纸张 A4/A3/A5/Letter/Legal、方向、页边距、字号、包含属性/标签/反链）+ 按实际纸张与边距分页的预览 + 选项逐项记忆与恢复默认 → 打印窗口等图片加载完再 `print()` |
 | 导出 PDF | 宿主用无头 Chromium 把同一份打印文档渲染成 `<笔记名>.pdf`，支持页脚页码与背景开关（可选 `playwright`；缺失时回退打印） |
 

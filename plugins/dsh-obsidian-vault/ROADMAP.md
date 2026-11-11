@@ -1,3 +1,9 @@
+## 第一百二十轮：原生 .canvas 进入 Pur 编辑（2026-11-12）
+
+- **对标 Obsidian Canvas 编辑**：`.canvas` 不再交给只读查看器，而是与 `.PurStudio` 共用 Pur 引擎；打开时用 `jsonCanvasToElements` 导入 text/file/link/group/edge，按内容包围盒设置初始视口，编辑后 `elementsToJsonCanvas` 写回标准 JSON Canvas，`__pur` 侧车保留 Pur 专属属性。
+- **实现**：`loader.ts` 按扩展名分流读写；`FileView` 把 `.canvas` 路由到 Pur pane；`VaultPage` 的 Pur 命令识别两种扩展；移除只读 `CanvasView`。
+- **逆向/格式研究**：按公开 JSON Canvas 规范与本地 Obsidian 行为对照节点类型、颜色编号、边端点和分组父子关系，没有复制闭源代码；保存结果可被 Obsidian 重新打开。
+- **验证**：`tsc` 0、759/759；新增原生画布加载/往返测试；真实 `.canvas`（text+group）在 Pur 中打开、拖动文本节点后自动保存，文件仍为标准 JSON Canvas。
 ## 第一百一十九轮：文件历史与恢复（2026-11-11）
 
 - **对标 Obsidian File recovery**：每次 `POST /note` 成功前把旧正文写入插件 `.data/history`（按库根+路径哈希隔离、每篇最多 20 份、内容相同不重复存）；命令面板新增「文件历史…」，列出时间/大小，选中即预览，恢复需二次确认且当前正文会先成为新快照。
