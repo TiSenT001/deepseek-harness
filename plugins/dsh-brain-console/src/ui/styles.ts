@@ -294,6 +294,82 @@ const STYLES = `
   font-size: 10.5px;
 }
 
+.bc-checkup-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(76px, 1fr));
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.bc-checkup-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px;
+  border: 1px solid var(--dsw-alias-border-l1);
+  border-radius: 8px;
+  background: var(--dsw-alias-bg-layer-1, rgba(128, 128, 128, 0.04));
+}
+.bc-checkup-cell > span {
+  font-size: 11px;
+  color: var(--dsw-alias-label-tertiary);
+}
+.bc-checkup-cell > strong {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--dsw-alias-label-primary);
+  font-variant-numeric: tabular-nums;
+}
+.bc-checkup-cell[data-tone='bad'] > strong {
+  color: var(--dsw-alias-state-error-primary, #e35d6a);
+}
+.bc-checkup-cell[data-tone='warn'] > strong {
+  color: var(--dsw-alias-state-warning-primary, #e0b341);
+}
+.bc-checkup-section {
+  margin: 8px 0;
+}
+.bc-checkup-section h4 {
+  margin: 0 0 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--dsw-alias-label-primary);
+}
+.bc-checkup-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.bc-checkup-tag {
+  padding: 1px 7px;
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 8px;
+  font-size: 11px;
+  font-family: var(--ds-font-family-code, monospace);
+  color: var(--dsw-alias-label-secondary);
+}
+.bc-checkup-tag[data-tone='bad'] {
+  border-color: color-mix(in srgb, var(--dsw-alias-state-error-primary, #e35d6a) 45%, transparent);
+  color: var(--dsw-alias-state-error-primary, #e35d6a);
+}
+.bc-checkup-tag[data-tone='warn'] {
+  border-color: color-mix(in srgb, var(--dsw-alias-state-warning-primary, #e0b341) 45%, transparent);
+  color: var(--dsw-alias-state-warning-primary, #e0b341);
+}
+.bc-checkup-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.bc-checkup-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 3px 0;
+  font-size: 12px;
+  color: var(--dsw-alias-label-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
 .bc-auto-summary {
   margin-bottom: 8px;
   font-size: 12px;

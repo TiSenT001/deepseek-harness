@@ -6,7 +6,7 @@
  */
 import type {
   BackupListing, BatchRestartResult, BatchStartResult, BatchStopResult, CacheListing, CachePruneResult,
-  AutoRecoverStatus, EmbedJobStatus, FailedEdgesListing, HistoryListing, IndexHealth, PruneResult, RestoreResult, TrendThresholds, Unit, UnitAction,
+  AutoRecoverStatus, CheckupResult, EmbedJobStatus, FailedEdgesListing, HistoryListing, IndexHealth, PruneResult, RestoreResult, TrendThresholds, Unit, UnitAction,
 } from './ui/types.ts'
 
 /** brain_manager 的 HTTP 地址。 */
@@ -53,6 +53,9 @@ export const loadUnits = (): Promise<{ units: Unit[] }> => jget<{ units: Unit[] 
 export const loadBackups = (): Promise<BackupListing> => jget<BackupListing>('/actions/backups')
 export const pruneBackups = (keep: number): Promise<PruneResult> =>
   postJson<PruneResult>('/actions/prune-backups', { keep })
+
+/** 系统体检：只读跑 tools/system_checkup.py（约 2 秒）。 */
+export const loadSystemCheckup = (): Promise<CheckupResult> => jget<CheckupResult>('/system/checkup')
 
 /** 清理代码里已不存在的僵尸心跳；返回删除的名字列表。 */
 export const pruneZombieHeartbeats = (): Promise<{ ok: boolean; removed: string[]; kept?: number; error?: string }> =>

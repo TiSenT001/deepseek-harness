@@ -86,6 +86,8 @@ window.__ModuleLoader__.load({
 		/** 备份对话框的回调做成模块级常量：引用稳定，对话框只在挂载时拉一次列表。 */
 		const loadBackups = () => jget("/actions/backups");
 		const pruneBackups = (keep) => postJson("/actions/prune-backups", { keep });
+		/** 系统体检：只读跑 tools/system_checkup.py（约 2 秒）。 */
+		const loadSystemCheckup = () => jget("/system/checkup");
 		/** 清理代码里已不存在的僵尸心跳；返回删除的名字列表。 */
 		const pruneZombieHeartbeats = () => postJson("/crons/prune-zombies", {});
 		/** 趋势告警阈值。 */
@@ -1388,6 +1390,161 @@ window.__ModuleLoader__.load({
 			});
 		}
 		//#endregion
+		//#region src/ui/SystemCheckupDialog.tsx
+		/**
+		* 系统体检：跑 `tools/system_checkup.py --json` 的四类只读检查。
+		*
+		* 空表 / 孤儿表 / 膨胀表来自 sqlite 统计与源码 grep，约 2 秒；结果只读展示，
+		* 不提供任何清理动作（DROP 表这类操作留给命令行）。
+		*/
+		/** 把毫秒格式化成一位小数的秒。 */
+		function seconds(ms) {
+			return ms === void 0 ? "—" : `${(ms / 1e3).toFixed(1)}s`;
+		}
+		/**
+		* 渲染系统体检对话框。
+		* @param props - 关闭回调
+		* @returns 对话框元素（挂载即跑一次，可重跑）
+		*/
+		function SystemCheckupDialog({ onClose }) {
+			const [result, setResult] = (0, react.useState)(null);
+			const [running, setRunning] = (0, react.useState)(false);
+			const [error, setError] = (0, react.useState)(null);
+			const run = async () => {
+				setRunning(true);
+				setError(null);
+				try {
+					setResult(await loadSystemCheckup());
+				} catch (e) {
+					setError(reasonOf(e));
+					setResult(null);
+				} finally {
+					setRunning(false);
+				}
+			};
+			(0, react.useEffect)(() => {
+				run();
+			}, []);
+			const report = result?.ok ? result.report : void 0;
+			const orphans = report?.orphan_tables ?? [];
+			const empty = report?.empty_unknown ?? [];
+			const bloated = report?.bloated_tables ?? [];
+			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)(Dialog, {
+				open: true,
+				onClose,
+				title: "系统体检",
+				closeLabel: "关闭",
+				description: "只读检查：空表 / 孤儿表 / 膨胀表；不会修改任何数据",
+				footer: /* @__PURE__ */ (0, react_jsx_runtime.jsxs)(react_jsx_runtime.Fragment, { children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)(Button, {
+					size: "sm",
+					variant: "ghost",
+					disabled: running,
+					onClick: () => void run(),
+					children: running ? "体检中…" : "重新体检"
+				}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)(Button, {
+					size: "sm",
+					variant: "ghost",
+					onClick: onClose,
+					children: "关闭"
+				})] }),
+				children: [
+					error !== null && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+						className: "bc-backup-error",
+						children: error
+					}),
+					result !== null && !result.ok && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+						className: "bc-backup-error",
+						children: result.error ?? "体检失败"
+					}),
+					running && result === null && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+						className: "bc-backup-empty",
+						children: "体检中…（约 2 秒）"
+					}),
+					report !== void 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+						className: "bc-checkup",
+						children: [
+							/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+								className: "bc-checkup-grid",
+								children: [
+									/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+										className: "bc-checkup-cell",
+										children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: "总表数" }), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("strong", { children: report.total_tables })]
+									}),
+									/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+										className: "bc-checkup-cell",
+										"data-tone": orphans.length > 0 ? "bad" : void 0,
+										children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: "孤儿表" }), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("strong", { children: orphans.length })]
+									}),
+									/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+										className: "bc-checkup-cell",
+										"data-tone": empty.length > 0 ? "warn" : void 0,
+										children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: "待核实空表" }), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("strong", { children: empty.length })]
+									}),
+									/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+										className: "bc-checkup-cell",
+										"data-tone": bloated.length > 0 ? "warn" : void 0,
+										children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: "膨胀表" }), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("strong", { children: bloated.length })]
+									}),
+									/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+										className: "bc-checkup-cell",
+										children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: "耗时" }), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("strong", { children: seconds(result?.elapsed_ms) })]
+									})
+								]
+							}),
+							orphans.length === 0 && empty.length === 0 && bloated.length === 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+								className: "bc-backup-done",
+								role: "status",
+								children: "没有发现需要处理的问题。"
+							}),
+							orphans.length > 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("section", {
+								className: "bc-checkup-section",
+								children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("h4", { children: "孤儿表（空 + 无写路径，可 DROP）" }), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+									className: "bc-checkup-tags",
+									children: orphans.map((table) => /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+										className: "bc-checkup-tag",
+										"data-tone": "bad",
+										children: table
+									}, table))
+								})]
+							}),
+							empty.length > 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("section", {
+								className: "bc-checkup-section",
+								children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("h4", { children: "待核实空表（空 + 有写路径，但不在事件驱动清单）" }), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+									className: "bc-checkup-tags",
+									children: empty.map((table) => /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+										className: "bc-checkup-tag",
+										"data-tone": "warn",
+										children: table
+									}, table))
+								})]
+							}),
+							bloated.length > 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("section", {
+								className: "bc-checkup-section",
+								children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("h4", { children: "膨胀表（行数超过 10 万）" }), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+									className: "bc-checkup-list",
+									children: bloated.map(([table, count]) => /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+										className: "bc-checkup-row",
+										children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+											className: "bc-cron-name",
+											children: table
+										}), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", { children: [typeof count === "number" ? count.toLocaleString("zh-CN") : String(count), " 行"] })]
+									}, String(table)))
+								})]
+							}),
+							/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+								className: "bc-index-sample",
+								children: [
+									"已知事件驱动空表 ",
+									report.known_event_driven,
+									" 个（列在 system_checkup.py 的白名单里，属正常）"
+								]
+							})
+						]
+					})
+				]
+			});
+		}
+		//#endregion
 		//#region src/ui/IndexHealthDialog.tsx
 		/**
 		* 索引与嵌入状态：回答「知识真的进脑子了吗」，并提供补嵌 / 重建入口。
@@ -2167,7 +2324,7 @@ window.__ModuleLoader__.load({
 		* @param props - 开机启动状态、忙碌标记与各动作
 		* @returns 菜单入口（含锚定菜单）
 		*/
-		function MoreMenu({ autostart, busy, onBackup, onPrune, onCaches, onIndex, onAutoRecover, onDiagnostics, onToggleAutostart, onShutdown }) {
+		function MoreMenu({ autostart, busy, onBackup, onPrune, onCaches, onIndex, onAutoRecover, onCheckup, onDiagnostics, onToggleAutostart, onShutdown }) {
 			const [open, setOpen] = (0, react.useState)(false);
 			const items = [
 				{
@@ -2200,6 +2357,11 @@ window.__ModuleLoader__.load({
 					disabled: busy !== null
 				},
 				{
+					id: "checkup",
+					label: "系统体检…",
+					disabled: busy !== null
+				},
+				{
 					id: "diagnostics",
 					label: "下载诊断包",
 					disabled: busy !== null
@@ -2228,6 +2390,7 @@ window.__ModuleLoader__.load({
 				else if (id === "caches") onCaches();
 				else if (id === "index") onIndex();
 				else if (id === "auto-recover") onAutoRecover();
+				else if (id === "checkup") onCheckup();
 				else if (id === "diagnostics") onDiagnostics();
 				else if (id === "autostart") onToggleAutostart();
 				else if (id === "shutdown") onShutdown();
@@ -3599,6 +3762,82 @@ window.__ModuleLoader__.load({
   font-size: 10.5px;
 }
 
+.bc-checkup-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(76px, 1fr));
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.bc-checkup-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px;
+  border: 1px solid var(--dsw-alias-border-l1);
+  border-radius: 8px;
+  background: var(--dsw-alias-bg-layer-1, rgba(128, 128, 128, 0.04));
+}
+.bc-checkup-cell > span {
+  font-size: 11px;
+  color: var(--dsw-alias-label-tertiary);
+}
+.bc-checkup-cell > strong {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--dsw-alias-label-primary);
+  font-variant-numeric: tabular-nums;
+}
+.bc-checkup-cell[data-tone='bad'] > strong {
+  color: var(--dsw-alias-state-error-primary, #e35d6a);
+}
+.bc-checkup-cell[data-tone='warn'] > strong {
+  color: var(--dsw-alias-state-warning-primary, #e0b341);
+}
+.bc-checkup-section {
+  margin: 8px 0;
+}
+.bc-checkup-section h4 {
+  margin: 0 0 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--dsw-alias-label-primary);
+}
+.bc-checkup-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.bc-checkup-tag {
+  padding: 1px 7px;
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 8px;
+  font-size: 11px;
+  font-family: var(--ds-font-family-code, monospace);
+  color: var(--dsw-alias-label-secondary);
+}
+.bc-checkup-tag[data-tone='bad'] {
+  border-color: color-mix(in srgb, var(--dsw-alias-state-error-primary, #e35d6a) 45%, transparent);
+  color: var(--dsw-alias-state-error-primary, #e35d6a);
+}
+.bc-checkup-tag[data-tone='warn'] {
+  border-color: color-mix(in srgb, var(--dsw-alias-state-warning-primary, #e0b341) 45%, transparent);
+  color: var(--dsw-alias-state-warning-primary, #e0b341);
+}
+.bc-checkup-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.bc-checkup-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 3px 0;
+  font-size: 12px;
+  color: var(--dsw-alias-label-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
 .bc-auto-summary {
   margin-bottom: 8px;
   font-size: 12px;
@@ -4755,6 +4994,7 @@ window.__ModuleLoader__.load({
 			const [indexOpen, setIndexOpen] = (0, react.useState)(false);
 			const [cronAlerts, setCronAlerts] = (0, react.useState)(null);
 			const [autoRecoverOpen, setAutoRecoverOpen] = (0, react.useState)(false);
+			const [checkupOpen, setCheckupOpen] = (0, react.useState)(false);
 			const [trend, setTrend] = (0, react.useState)(null);
 			const [detailName, setDetailName] = (0, react.useState)(null);
 			const [stopGroup, setStopGroup] = (0, react.useState)(null);
@@ -4981,6 +5221,7 @@ window.__ModuleLoader__.load({
 													onCaches: () => setCacheOpen(true),
 													onIndex: () => setIndexOpen(true),
 													onAutoRecover: () => setAutoRecoverOpen(true),
+													onCheckup: () => setCheckupOpen(true),
 													onDiagnostics: downloadDiagnostics,
 													onToggleAutostart: () => void toggleAutostart(),
 													onShutdown: () => setShutdownOpen(true)
@@ -5099,6 +5340,7 @@ window.__ModuleLoader__.load({
 					}),
 					indexOpen && /* @__PURE__ */ (0, react_jsx_runtime.jsx)(IndexHealthDialog, { onClose: () => setIndexOpen(false) }),
 					autoRecoverOpen && /* @__PURE__ */ (0, react_jsx_runtime.jsx)(AutoRecoverDialog, { onClose: () => setAutoRecoverOpen(false) }),
+					checkupOpen && /* @__PURE__ */ (0, react_jsx_runtime.jsx)(SystemCheckupDialog, { onClose: () => setCheckupOpen(false) }),
 					cacheOpen && /* @__PURE__ */ (0, react_jsx_runtime.jsx)(CacheDialog, {
 						load: loadCaches,
 						prune: pruneCaches,

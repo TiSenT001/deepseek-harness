@@ -77,6 +77,23 @@ export interface TrendThresholds {
   defaults: Record<string, number>
 }
 
+/** `/system/checkup` 的体检报告（脚本原始字段）。 */
+export interface CheckupReport {
+  empty_unknown: string[]
+  orphan_tables: string[]
+  bloated_tables: (string | number)[][]
+  known_event_driven: number
+  total_tables: number
+}
+
+/** `/system/checkup` 的返回。 */
+export interface CheckupResult {
+  ok: boolean
+  error?: string
+  report?: CheckupReport
+  elapsed_ms?: number
+}
+
 /** 自愈线程记录的一条恢复尝试。 */
 export interface AutoRecoverEvent {
   unit: string

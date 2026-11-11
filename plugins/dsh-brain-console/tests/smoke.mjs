@@ -335,6 +335,23 @@ try {
     return `${rows} 条记录 · ${bundleLinks} 个诊断包链接${empty ? '（空态）' : ''}`
   })
 
+  await soft('系统体检对话框能打开', async () => {
+    await page.locator('.bc-header').getByRole('button', { name: '更多操作' }).click()
+    await page.waitForTimeout(400)
+    await page.locator('[role="menu"]').getByText('系统体检…').click()
+    await page.waitForTimeout(300)
+    const dialog = page.getByRole('dialog')
+    if (!(await dialog.count())) throw new Error('对话框没打开')
+    // 体检脚本约 2 秒；等结果网格或错误块出现（最多 30 秒）
+    await page.waitForSelector('.bc-checkup-grid, .bc-backup-error', { timeout: 30000 }).catch(() => {})
+    const text = await dialog.innerText()
+    const hasGrid = await dialog.locator('.bc-checkup-grid').count()
+    const errorShown = text.includes('体检失败') || text.includes('超时')
+    await closeOverlay()
+    if (!hasGrid && !errorShown) throw new Error('既没有结果也不是明确错误')
+    return hasGrid ? text.split('\n').slice(0, 4).join(' / ') : '体检接口错误（已在对话框提示）'
+  })
+
   record('运行期间无 pageerror', pageErrors.length === 0, pageErrors.join(' | ').slice(0, 200))
 
   const shot = argOf('--shot')
