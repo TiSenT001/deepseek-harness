@@ -8,6 +8,7 @@ import type { Translate } from '../i18n.ts'
 import type { BookmarkEntry } from './bookmarks.ts'
 import { renderBacklinks } from './panels/Backlinks.tsx'
 import { renderBookmarks } from './panels/Bookmarks.tsx'
+import { renderOutgoing } from './panels/Outgoing.tsx'
 import { Outline } from './panels/Outline.tsx'
 import { railSurface, RAIL_SURFACES, type RailId } from './kit/registry.ts'
 import type { MenuScene } from './menu/registry.ts'
@@ -31,6 +32,8 @@ export interface RailProps {
   /** Promote or demote the heading on a 1-based body line. */
   readonly onShiftHeading: (line: number, delta: number) => void
   readonly onRemoveBookmark: (path: string) => void
+  /** Create an unresolved outgoing link. */
+  readonly onCreate?: (target: string) => void
   /** Ask the page to open the shared context menu for a rail tab. */
   readonly onMenu: (scene: MenuScene, x: number, y: number) => void
   /** Extra classes, used by the narrow-screen drawer state. */
@@ -41,7 +44,7 @@ const TABS: readonly Rail[] = RAIL_SURFACES.map(surface => surface.id)
 
 /** Rail surface label from the registry, falling back to the id. */
 function surfaceLabel(id: Rail): Parameters<Translate>[0] {
-  return railSurface(id)?.label ?? id
+  return railSurface(id)?.label ?? 'outline'
 }
 
 /**
@@ -50,7 +53,7 @@ function surfaceLabel(id: Rail): Parameters<Translate>[0] {
  */
 export function RailPanel({
   t, rail, note, backlinks, unlinked, activeHeading, bookmarks, onRail, onOpen, onHeading, onShiftHeading,
-  onRemoveBookmark, onMenu, className,
+  onRemoveBookmark, onCreate, onMenu, className,
 }: RailProps): JSX.Element {
   // Rows inherit the explorer's file menu: a backlink or a bookmark names a real
   // vault file, so 打开/新标签页/复制链接/关系图 all apply unchanged.
@@ -76,6 +79,9 @@ export function RailPanel({
             {tab === 'backlinks' && backlinks.length + unlinked.length > 0
               ? <span className={css.tabCount}>{backlinks.length + unlinked.length}</span>
               : null}
+            {tab === 'outgoing' && note !== undefined && note.links.length > 0
+              ? <span className={css.tabCount}>{note.links.length}</span>
+              : null}
           </button>
         ))}
       </nav>
@@ -84,6 +90,7 @@ export function RailPanel({
           ? <Outline t={t} note={note} activeHeading={activeHeading} onHeading={onHeading} onShift={onShiftHeading} />
           : null}
         {rail === 'backlinks' ? renderBacklinks(t, backlinks, unlinked, onOpen, rowMenu) : null}
+        {rail === 'outgoing' ? renderOutgoing(t, note, onOpen, onCreate) : null}
         {rail === 'bookmarks' ? renderBookmarks(t, bookmarks, onOpen, onRemoveBookmark, rowMenu) : null}
       </div>
     </aside>

@@ -9,7 +9,7 @@ import type { Translate } from '../../i18n.ts'
 type I18nKey = Parameters<Translate>[0]
 
 /** Rail panels the page can show. */
-export type RailId = 'outline' | 'backlinks' | 'bookmarks'
+export type RailId = 'outline' | 'backlinks' | 'outgoing' | 'bookmarks'
 
 /** A right-rail panel. */
 export interface RailSurface {
@@ -27,6 +27,7 @@ export interface ViewSurface {
 export const RAIL_SURFACES: readonly RailSurface[] = [
   { id: 'outline', label: 'outline' },
   { id: 'backlinks', label: 'backlinks' },
+  { id: 'outgoing', label: 'linksOut' },
   { id: 'bookmarks', label: 'bookmarks' },
 ]
 

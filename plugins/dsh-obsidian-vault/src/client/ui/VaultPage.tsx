@@ -50,7 +50,7 @@ export interface VaultPageProps {
  * @returns the rail when it is one of the panels.
  */
 function railOf(value: string | undefined): Rail {
-  return value === 'backlinks' || value === 'bookmarks' ? value : 'outline'
+  return value === 'backlinks' || value === 'bookmarks' || value === 'outgoing' ? value : 'outline'
 }
 
 /**

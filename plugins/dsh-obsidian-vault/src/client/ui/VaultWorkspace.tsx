@@ -246,6 +246,7 @@ export function VaultWorkspace(props: VaultWorkspaceProps): JSX.Element {
                 onHeading={onHeading}
                 onShiftHeading={onShiftHeading}
                 onRemoveBookmark={bookmarks.remove}
+                onCreate={onCreateNote}
                 onMenu={openMenu}
                 narrow={railNarrow}
                 open={railOpen}
