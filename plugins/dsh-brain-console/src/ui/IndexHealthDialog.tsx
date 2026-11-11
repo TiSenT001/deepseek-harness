@@ -79,6 +79,8 @@ export function IndexHealthDialog({ onClose }: IndexHealthDialogProps): JSX.Elem
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [armedPrune, setArmedPrune] = useState(false)
+  const [cronQuery, setCronQuery] = useState('')
+  const [cronBucket, setCronBucket] = useState<'all' | 'ok' | 'stale' | 'zombie'>('all')
   const timer = useRef<number | null>(null)
 
   const load = async (): Promise<void> => {
@@ -162,6 +164,19 @@ export function IndexHealthDialog({ onClose }: IndexHealthDialogProps): JSX.Elem
     }
   }
 
+  const allCrons = health?.crons_all ?? []
+  const zombieNames = new Set((health?.zombie_crons ?? []).map((cron) => cron.name))
+  const staleNames = new Set((health?.stale_crons ?? []).map((cron) => cron.name))
+  const cronFilterActive = cronQuery.trim() !== '' || cronBucket !== 'all'
+  const filteredCrons = allCrons
+    .filter((cron) => cronQuery.trim() === '' || cron.name.includes(cronQuery.trim()))
+    .filter((cron) => {
+      if (cronBucket === 'all') return true
+      if (cronBucket === 'zombie') return zombieNames.has(cron.name)
+      if (cronBucket === 'stale') return staleNames.has(cron.name)
+      return cron.status === 'ok'
+    })
+    .sort((left, right) => (right.age_hours ?? Number.POSITIVE_INFINITY) - (left.age_hours ?? Number.POSITIVE_INFINITY))
   const percent = health !== null && health.notes !== null && health.notes > 0 && health.vec.total !== null
     ? Math.min(100, (health.vec.total / health.notes) * 100)
     : null
@@ -310,14 +325,38 @@ export function IndexHealthDialog({ onClose }: IndexHealthDialogProps): JSX.Elem
                 <span className="bc-cron-interval">每 {cron.interval_h} 小时</span>
               </div>
             ))}
-            {(health.crons_all ?? []).length > 0 && (
-              <details className="bc-cron-all">
-                <summary>全部定时任务（{health.crons_all?.length ?? 0}）</summary>
+            {allCrons.length > 0 && (
+              <details className="bc-cron-all" open={cronFilterActive || undefined}>
+                <summary>
+                  全部定时任务（{allCrons.length}）
+                  {cronFilterActive && <span className="bc-cron-filter-count"> · 筛选 {filteredCrons.length}</span>}
+                </summary>
+                <div className="bc-cron-filter">
+                  <input
+                    className="bc-cron-filter-input"
+                    value={cronQuery}
+                    placeholder="筛选任务名"
+                    onChange={(event) => setCronQuery(event.target.value)}
+                  />
+                  {([
+                    ['all', '全部'],
+                    ['ok', '正常'],
+                    ['stale', '过期'],
+                    ['zombie', '失效'],
+                  ] as const).map(([bucket, label]) => (
+                    <Button
+                      key={bucket}
+                      size="sm"
+                      variant={cronBucket === bucket ? 'outline' : 'ghost'}
+                      onClick={() => setCronBucket(bucket)}
+                    >
+                      {label}
+                    </Button>
+                  ))}
+                </div>
                 <div className="bc-cron-all-list">
-                  {[...(health.crons_all ?? [])]
-                    .sort((left, right) => (right.age_hours ?? Number.POSITIVE_INFINITY) - (left.age_hours ?? Number.POSITIVE_INFINITY))
-                    .map((cron) => {
-                      const zombie = (health.zombie_crons ?? []).some((item) => item.name === cron.name)
+                  {filteredCrons.map((cron) => {
+                      const zombie = zombieNames.has(cron.name)
                       return (
                         <div
                           className="bc-cron-row"
@@ -337,6 +376,9 @@ export function IndexHealthDialog({ onClose }: IndexHealthDialogProps): JSX.Elem
                         </div>
                       )
                     })}
+                  {filteredCrons.length === 0 && (
+                    <div className="bc-index-row"><span>没有匹配的任务</span><strong>0</strong></div>
+                  )}
                 </div>
               </details>
             )}

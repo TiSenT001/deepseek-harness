@@ -272,6 +272,16 @@ try {
     const rows = await dialog.locator('.bc-index-row').count()
     const crons = await dialog.locator('.bc-cron-row').count()
     const allCrons = await dialog.locator('.bc-cron-all').count()
+    // 全量列表筛选：展开后输入 backup，确认行数收敛，再清空
+    await dialog.locator('.bc-cron-all > summary').click()
+    await page.waitForTimeout(400)
+    const filterInput = dialog.locator('.bc-cron-filter-input')
+    const allBefore = await dialog.locator('.bc-cron-all-list .bc-cron-row').count()
+    await filterInput.fill('backup')
+    await page.waitForTimeout(400)
+    const allAfter = await dialog.locator('.bc-cron-all-list .bc-cron-row').count()
+    await filterInput.fill('')
+    await page.waitForTimeout(300)
     // 窄屏不溢出：缩到 760x800 复测弹窗高度，随后恢复视口
     await page.setViewportSize({ width: 760, height: 800 })
     await page.waitForTimeout(500)
@@ -283,7 +293,10 @@ try {
     if (rows === 0) throw new Error('没有任何覆盖行')
     if (crons === 0) throw new Error('没有管道心跳行')
     if (!narrowBox || narrowBox.height > 780) throw new Error('窄屏下弹窗超出视口')
-    return `${rows} 行覆盖 · ${crons} 条心跳 · 全量列表 ${allCrons} · 窄屏高 ${Math.round(narrowBox.height)}px`
+    if (allBefore > 0 && (allAfter === 0 || allAfter >= allBefore)) {
+      throw new Error(`筛选未生效: ${allBefore} → ${allAfter}`)
+    }
+    return `${rows} 行覆盖 · ${crons} 条心跳 · 全量列表 ${allCrons} · 筛选 ${allBefore}→${allAfter} · 窄屏高 ${Math.round(narrowBox.height)}px`
   })
 
   await soft('趋势图含 24h 变化与告警线', async () => {

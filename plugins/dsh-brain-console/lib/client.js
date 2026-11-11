@@ -1466,6 +1466,8 @@ window.__ModuleLoader__.load({
 			const [error, setError] = (0, react.useState)(null);
 			const [busy, setBusy] = (0, react.useState)(false);
 			const [armedPrune, setArmedPrune] = (0, react.useState)(false);
+			const [cronQuery, setCronQuery] = (0, react.useState)("");
+			const [cronBucket, setCronBucket] = (0, react.useState)("all");
 			const timer = (0, react.useRef)(null);
 			const load = async () => {
 				try {
@@ -1540,6 +1542,16 @@ window.__ModuleLoader__.load({
 					setError(reasonOf(e));
 				}
 			};
+			const allCrons = health?.crons_all ?? [];
+			const zombieNames = new Set((health?.zombie_crons ?? []).map((cron) => cron.name));
+			const staleNames = new Set((health?.stale_crons ?? []).map((cron) => cron.name));
+			const cronFilterActive = cronQuery.trim() !== "" || cronBucket !== "all";
+			const filteredCrons = allCrons.filter((cron) => cronQuery.trim() === "" || cron.name.includes(cronQuery.trim())).filter((cron) => {
+				if (cronBucket === "all") return true;
+				if (cronBucket === "zombie") return zombieNames.has(cron.name);
+				if (cronBucket === "stale") return staleNames.has(cron.name);
+				return cron.status === "ok";
+			}).sort((left, right) => (right.age_hours ?? Number.POSITIVE_INFINITY) - (left.age_hours ?? Number.POSITIVE_INFINITY));
 			const percent = health !== null && health.notes !== null && health.notes > 0 && health.vec.total !== null ? Math.min(100, health.vec.total / health.notes * 100) : null;
 			const stale = health?.chunks.stale_days;
 			const running = job?.state === "running";
@@ -1778,44 +1790,74 @@ window.__ModuleLoader__.load({
 											})
 										]
 									}, cron.name)),
-									(health.crons_all ?? []).length > 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("details", {
+									allCrons.length > 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("details", {
 										className: "bc-cron-all",
-										children: [/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("summary", { children: [
-											"全部定时任务（",
-											health.crons_all?.length ?? 0,
-											"）"
-										] }), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
-											className: "bc-cron-all-list",
-											children: [...health.crons_all ?? []].sort((left, right) => (right.age_hours ?? Number.POSITIVE_INFINITY) - (left.age_hours ?? Number.POSITIVE_INFINITY)).map((cron) => {
-												const zombie = (health.zombie_crons ?? []).some((item) => item.name === cron.name);
-												return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-													className: "bc-cron-row",
-													"data-status": cron.status,
-													"data-zombie": zombie ? "true" : void 0,
-													children: [
-														/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-															className: "bc-cron-dot",
-															"aria-hidden": "true"
-														}),
-														/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
-															className: "bc-cron-name",
-															children: [cron.name, zombie && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-																className: "bc-cron-flag",
-																children: "已失效"
-															})]
-														}),
-														/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-															className: "bc-cron-age",
-															children: cron.age_hours === null ? "从未运行" : `${cron.age_hours} 小时前`
-														}),
-														/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-															className: "bc-cron-interval",
-															children: cron.last_run_at ?? "—"
-														})
-													]
-												}, `all-${cron.name}`);
+										open: cronFilterActive || void 0,
+										children: [
+											/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("summary", { children: [
+												"全部定时任务（",
+												allCrons.length,
+												"）",
+												cronFilterActive && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
+													className: "bc-cron-filter-count",
+													children: [" · 筛选 ", filteredCrons.length]
+												})
+											] }),
+											/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+												className: "bc-cron-filter",
+												children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("input", {
+													className: "bc-cron-filter-input",
+													value: cronQuery,
+													placeholder: "筛选任务名",
+													onChange: (event) => setCronQuery(event.target.value)
+												}), [
+													["all", "全部"],
+													["ok", "正常"],
+													["stale", "过期"],
+													["zombie", "失效"]
+												].map(([bucket, label]) => /* @__PURE__ */ (0, react_jsx_runtime.jsx)(Button, {
+													size: "sm",
+													variant: cronBucket === bucket ? "outline" : "ghost",
+													onClick: () => setCronBucket(bucket),
+													children: label
+												}, bucket))]
+											}),
+											/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+												className: "bc-cron-all-list",
+												children: [filteredCrons.map((cron) => {
+													const zombie = zombieNames.has(cron.name);
+													return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+														className: "bc-cron-row",
+														"data-status": cron.status,
+														"data-zombie": zombie ? "true" : void 0,
+														children: [
+															/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+																className: "bc-cron-dot",
+																"aria-hidden": "true"
+															}),
+															/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
+																className: "bc-cron-name",
+																children: [cron.name, zombie && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+																	className: "bc-cron-flag",
+																	children: "已失效"
+																})]
+															}),
+															/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+																className: "bc-cron-age",
+																children: cron.age_hours === null ? "从未运行" : `${cron.age_hours} 小时前`
+															}),
+															/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+																className: "bc-cron-interval",
+																children: cron.last_run_at ?? "—"
+															})
+														]
+													}, `all-${cron.name}`);
+												}), filteredCrons.length === 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+													className: "bc-index-row",
+													children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: "没有匹配的任务" }), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("strong", { children: "0" })]
+												})]
 											})
-										})]
+										]
 									})
 								]
 							}),
@@ -4509,6 +4551,28 @@ window.__ModuleLoader__.load({
 }
 .bc-cron-row[data-zombie='true'] {
   opacity: 0.55;
+}
+
+.bc-cron-filter {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin: 6px 0 4px;
+}
+.bc-cron-filter-input {
+  flex: 1 1 120px;
+  min-width: 100px;
+  padding: 2px 8px;
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--dsw-alias-label-primary);
+  font-size: 12px;
+}
+.bc-cron-filter-count {
+  color: var(--dsw-alias-label-tertiary);
+  font-weight: 400;
 }
 
 .bc-cron-all {
