@@ -1132,6 +1132,21 @@ const STYLES = `
   cursor: default;
 }
 
+/* 统一对话框容器：dialog 限高到视口可用区，内容区自己滚动，头/脚固定。 */
+.bc-dialog-capped {
+  max-height: 100%;
+}
+.bc-dialog-content {
+  min-height: 0;
+  max-height: 100%;
+}
+.bc-dialog-scroll {
+  max-height: min(68vh, 720px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-right: 2px;
+}
+
 .bc-index-health {
   display: flex;
   flex-direction: column;
@@ -1200,6 +1215,34 @@ const STYLES = `
   text-align: right;
 }
 
+.bc-cron-all {
+  margin-top: 6px;
+}
+.bc-cron-all > summary {
+  cursor: pointer;
+  list-style: none;
+  padding: 2px 0;
+  font-size: 11.5px;
+  color: var(--dsw-alias-label-tertiary);
+  user-select: none;
+}
+.bc-cron-all > summary::-webkit-details-marker {
+  display: none;
+}
+.bc-cron-all > summary::before {
+  content: '▸';
+  margin-right: 6px;
+  display: inline-block;
+  transition: transform 0.12s ease;
+}
+.bc-cron-all[open] > summary::before {
+  transform: rotate(90deg);
+}
+.bc-cron-all-list {
+  margin-top: 4px;
+  padding-left: 2px;
+}
+
 .bc-cron-row {
   display: grid;
   grid-template-columns: 8px minmax(0, 1fr) auto auto;
@@ -1240,10 +1283,9 @@ const STYLES = `
 }
 
 .bc-index-health {
-  max-height: min(64vh, 640px);
-  overflow-y: auto;
-  padding-right: 4px;
-  overscroll-behavior: contain;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 .bc-index-section {
   display: block;
@@ -1284,11 +1326,6 @@ const STYLES = `
 .bc-auto {
   display: flex;
   flex-direction: column;
-  max-height: min(62vh, 600px);
-}
-.bc-auto-list {
-  overflow-y: auto;
-  overscroll-behavior: contain;
 }
 
 .bc-coverage {

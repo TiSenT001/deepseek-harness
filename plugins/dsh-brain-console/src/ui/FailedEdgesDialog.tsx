@@ -7,7 +7,8 @@
 import { useEffect, useState } from 'react'
 import { ignoreFailedEdge } from '../api.ts'
 import { reasonOf } from './errors.ts'
-import { Button, Modal } from './primitives.ts'
+import { Button } from './primitives.ts'
+import { Dialog } from './Dialog.tsx'
 import type { FailedEdgesListing } from './types.ts'
 
 export interface FailedEdgesDialogProps {
@@ -99,7 +100,7 @@ export function FailedEdgesDialog({ load, onClose }: FailedEdgesDialogProps): JS
     : `failure_count > 0 的边 · 实时 ${listing.total ?? '—'} 条`
 
   return (
-    <Modal open onClose={onClose} title="失败边" closeLabel="关闭" description={description} footer={footer}>
+    <Dialog open onClose={onClose} title="失败边" closeLabel="关闭" description={description} footer={footer}>
       {error !== null && <div className="bc-backup-error">{error}</div>}
       {listing === null && error === null && <div className="bc-backup-empty">读取中…</div>}
       {listing !== null && listing.edges.length === 0 && <div className="bc-backup-empty">没有失败边</div>}
@@ -133,6 +134,6 @@ export function FailedEdgesDialog({ load, onClose }: FailedEdgesDialogProps): JS
       {listing !== null && listing.total !== null && listing.edges.length < listing.total && (
         <div className="bc-failed-more">只显示前 {listing.edges.length} 条，共 {listing.total} 条</div>
       )}
-    </Modal>
+    </Dialog>
   )
 }

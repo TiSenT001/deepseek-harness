@@ -1,7 +1,8 @@
 /**
  * 通用确认框：不可撤销的动作（清空日志等）先讲清后果再执行。
  */
-import { Button, Modal } from './primitives.ts'
+import { Button } from './primitives.ts'
+import { Dialog } from './Dialog.tsx'
 
 export interface ConfirmDialogProps {
   /** 对话框标题 */
@@ -37,8 +38,8 @@ export function ConfirmDialog({
     </>
   )
   return (
-    <Modal open onClose={busy ? () => {} : onCancel} title={title} closeLabel="关闭" description={description} footer={footer}>
+    <Dialog open onClose={busy ? () => {} : onCancel} title={title} closeLabel="关闭" description={description} footer={footer}>
       {note !== undefined && <div className="bc-stop-note">{note}</div>}
-    </Modal>
+    </Dialog>
   )
 }

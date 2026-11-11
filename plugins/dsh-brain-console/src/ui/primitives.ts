@@ -63,6 +63,10 @@ export interface SharedModalProps {
   description?: string
   children?: ReactNode
   footer?: ReactNode
+  /** 透传给共享 Modal 的 dialog 类名（用于统一限高）。 */
+  className?: string
+  /** 透传给共享 Modal 的内容容器类名。 */
+  contentClassName?: string
 }
 
 /** 菜单里的一行。 */

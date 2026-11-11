@@ -8,7 +8,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { loadTrendThresholds, saveTrendThreshold } from '../api.ts'
 import { reasonOf } from './errors.ts'
-import { Button, Modal } from './primitives.ts'
+import { Button } from './primitives.ts'
+import { Dialog } from './Dialog.tsx'
 import type { MetricSpec } from './metrics.ts'
 import { parseTs, shortDate } from './time.ts'
 import { smoothAreaPath, smoothPath } from './smooth.ts'
@@ -231,7 +232,7 @@ export function TrendDialog({ metric, points, onOpenFailed, onClose }: TrendDial
   )
 
   return (
-    <Modal
+    <Dialog
       open
       onClose={onClose}
       title={`${metric.label}趋势`}
@@ -358,6 +359,6 @@ export function TrendDialog({ metric, points, onOpenFailed, onClose }: TrendDial
           <div className="bc-trend-hint">滚轮缩放 · 拖拽平移 · 双击重置</div>
         )}
       </div>
-    </Modal>
+    </Dialog>
   )
 }
