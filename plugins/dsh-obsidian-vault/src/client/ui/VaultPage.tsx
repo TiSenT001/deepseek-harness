@@ -30,6 +30,7 @@ import { useVaultTabs } from './useVaultTabs.ts'
 import { readHostViewMemory, readViewMemory, writeHostViewMemory, writeViewMemory, type ViewMemory, type WorkspaceLayout } from './viewMemory.ts'
 import { WorkspaceLayoutsDialog } from './WorkspaceLayoutsDialog.tsx'
 import { TemplatePickerDialog } from './TemplatePickerDialog.tsx'
+import { HistoryDialog } from './HistoryDialog.tsx'
 import { TagRenameDialog } from './TagRenameDialog.tsx'
 import { applyTemplate, parseTemplateFolder, templateNotes, templateTargetPath } from './templates.ts'
 import { type VaultEmptyAction } from './VaultEmptyState.tsx'
@@ -74,6 +75,7 @@ export function VaultPage({ pickDirectory, hasPicker }: VaultPageProps = {}): JS
   const [layouts, setLayouts] = useState<readonly WorkspaceLayout[]>(() => remembered.current?.layouts ?? [])
   const [layoutsOpen, setLayoutsOpen] = useState(false)
   const [templatesOpen, setTemplatesOpen] = useState(false)
+  const [historyOpen, setHistoryOpen] = useState(false)
   const [tagDialogOpen, setTagDialogOpen] = useState(false)
   /** Template folder from .obsidian/templates.json, or the 模板 convention. */
   const [templateFolder, setTemplateFolder] = useState('模板')
@@ -379,7 +381,10 @@ export function VaultPage({ pickDirectory, hasPicker }: VaultPageProps = {}): JS
     { id: 'workspace.layouts', label: `${t('workspaces')}…`, run: () => setLayoutsOpen(true) },
     { id: 'templates.new', label: `${t('newFromTemplate')}…`, run: () => setTemplatesOpen(true) },
     { id: 'tags.rename', label: `${t('renameTagTitle')}…`, run: () => setTagDialogOpen(true) },
-  ], [t])
+    ...(isMarkdown && path !== undefined
+      ? [{ id: 'history.open', label: `${t('fileHistory')}…`, run: () => setHistoryOpen(true) }]
+      : []),
+  ], [isMarkdown, path, t])
 
   const { menuGroups, commands, runCommand } = useVaultCommands({
     askText: ask.askText,
@@ -519,6 +524,16 @@ export function VaultPage({ pickDirectory, hasPicker }: VaultPageProps = {}): JS
               void reload()
             }}
             onClose={() => setTagDialogOpen(false)}
+          />
+        )
+        : null}
+      {historyOpen && path !== undefined
+        ? (
+          <HistoryDialog
+            t={t}
+            path={path}
+            onRestored={() => { setHistoryOpen(false); void reload() }}
+            onClose={() => setHistoryOpen(false)}
           />
         )
         : null}

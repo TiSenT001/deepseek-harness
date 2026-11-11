@@ -1312,6 +1312,15 @@ try {
     assert(active?.includes('审核夹具'), `outgoing link opened ${active}`)
   })
 
+  await check('history.dialog', async () => {
+    await runPalette('文件历史')
+    await sleep(500)
+    const dialog = page.locator('.ov-history-dialog')
+    assert(await dialog.isVisible(), 'history dialog did not open')
+    await page.keyboard.press('Escape')
+    await sleep(300)
+  })
+
   await check('rail.backlinks-sort-select', async () => {
     const select = page.locator('.ov-rail select[aria-label="排序方式"]')
     assert((await select.count()) > 0, 'sort select missing')
