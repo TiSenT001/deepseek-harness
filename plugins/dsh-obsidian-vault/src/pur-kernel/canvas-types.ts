@@ -35,6 +35,8 @@ export interface PurCanvasNode {
   label?: string
   /** Hex colour, used by `group` nodes. */
   color?: string
+  /** Group children are hidden when true. */
+  collapsed?: boolean
   /** Pur-only properties, restored on import. */
   [PUR_META]?: Record<string, unknown>
 }

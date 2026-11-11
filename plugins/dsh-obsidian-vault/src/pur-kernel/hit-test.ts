@@ -73,7 +73,7 @@ export function elementAt(elements: readonly PurElement[], worldX: number, world
       const top = element.y + offsetY
       const inside = worldX >= left && worldX <= left + (element.w || 0) && worldY >= top && worldY <= top + (element.h || 0)
       if (!inside) continue
-      if (element.type === 'group' && !element.locked) {
+      if (element.type === 'group' && !element.locked && element.collapsed !== true) {
         const child = check(element.children, left, top)
         if (child !== null) return child
       }
@@ -100,7 +100,7 @@ export function pinAt(elements: readonly PurElement[], worldX: number, worldY: n
       const element = list[index]
       if (element === undefined) continue
       if (element.type === 'group') {
-        collect(element.children, offsetX + element.x, offsetY + element.y)
+        if (element.collapsed !== true) collect(element.children, offsetX + element.x, offsetY + element.y)
         continue
       }
       if (element.type === 'line') continue
@@ -147,7 +147,7 @@ export function lineEndpointAt(elements: readonly PurElement[], worldX: number, 
   const collect = (list: readonly PurElement[]): void => {
     for (const element of list) {
       if (element.type === 'line') lines.push(element)
-      if (element.type === 'group') collect(element.children)
+      if (element.type === 'group' && element.collapsed !== true) collect(element.children)
     }
   }
   collect(elements)

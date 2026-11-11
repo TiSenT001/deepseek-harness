@@ -69,7 +69,7 @@ const GRID_TARGET_PX = 50
 export function findElement(elements: readonly PurElement[], id: string): PurElementSite | null {
   for (const element of elements) {
     if (element.id === id) return { element, parentX: 0, parentY: 0 }
-    if (element.type === 'group') {
+    if (element.type === 'group' && element.collapsed !== true) {
       const found = findElement(element.children, id)
       if (found !== null) return { element: found.element, parentX: found.parentX + element.x, parentY: found.parentY + element.y }
     }

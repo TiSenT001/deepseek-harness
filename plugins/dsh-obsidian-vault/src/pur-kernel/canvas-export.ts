@@ -74,6 +74,7 @@ function nodeOf(element: PurNodeElement, x: number, y: number, extra: Record<str
         height: element.h || 0,
         label: element.content || '',
         ...(element.color === undefined ? {} : { color: element.color }),
+        ...(element.collapsed === true ? { collapsed: true } : {}),
         [PUR_META]: extra,
       }
     case 'image':

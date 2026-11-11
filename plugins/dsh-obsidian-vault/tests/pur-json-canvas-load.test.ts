@@ -1,4 +1,4 @@
-﻿import assert from 'node:assert/strict'
+import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { elementsToJsonCanvas } from '../src/pur-kernel/index.ts'
 import { readJsonCanvasDocument } from '../src/client/pur/loader.ts'
@@ -14,7 +14,10 @@ const canvas = {
 test('a native canvas loads into Pur elements and round-trips', () => {
   const document = readJsonCanvasDocument(JSON.stringify(canvas))
   assert.ok(document)
-  assert.equal(document.elements.length, 2)
+  assert.equal(document.elements.length, 1)
+  const group = document.elements[0]
+  assert.equal(group?.type, 'group')
+  assert.equal(group?.type === 'group' ? group.children.length : -1, 1)
   const exported = elementsToJsonCanvas(document.elements)
   assert.deepEqual(exported.nodes.map(node => node.id), ['g', 't'])
   assert.equal(exported.nodes.find(node => node.id === 't')?.text, 'hello')

@@ -37,7 +37,7 @@ export function placeElements(elements: readonly PurElement[]): PurPlacedElement
   const expand = (list: readonly PurElement[], offsetX: number, offsetY: number): void => {
     for (const element of list) {
       if (element.type === 'group') {
-        expand(element.children, offsetX + element.x, offsetY + element.y)
+        if (element.collapsed !== true) expand(element.children, offsetX + element.x, offsetY + element.y)
         continue
       }
       if (element.type === 'line') continue
