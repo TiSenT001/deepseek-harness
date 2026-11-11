@@ -1,3 +1,8 @@
+## 第一百二十三轮：Canvas 嵌套分组（2026-11-12）
+
+- **对标 Obsidian Canvas 嵌套分组**：原生 `.canvas` 加载时先让卡片归入最小（最深）分组，再把内层分组按中心归属挂到更大的外层分组；折叠外层会隐藏整棵子树，展开后逐层恢复。
+- **实现**：`loader.absorbCanvasGroups` 增加分组嵌套阶段，坐标转换为父组相对坐标；导出仍走 `elementsToJsonCanvas` 的递归节点与 `__pur.parentGroupId`，JSON Canvas 保持扁平节点可被 Obsidian 读取。
+- **验证**：`tsc` 0、764/764；新增三层几何嵌套、外层折叠、导出往返三条测试；真实 `.canvas`（外组折叠、内组、卡片）打开后只显示外层分组框，截图确认；fixture 已清理。
 ## 第一百二十二轮：Canvas 分组折叠与几何归属（2026-11-12）
 
 - **对标 Obsidian Canvas 分组**：分组节点新增 `collapsed`，在分组编辑器中可折叠；折叠后子元素不绘制、不参与命中/取景/引脚，分组右上角显示 ▸ 标记，展开后恢复。JSON Canvas 直接读写 `collapsed`，`.PurStudio` 也保留。
