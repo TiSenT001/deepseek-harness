@@ -1298,6 +1298,20 @@ try {
     assert(active?.includes('审核链接者'), `backlink opened ${active}`)
   })
 
+  await check('rail.outgoing-panel', async () => {
+    const tab = page.locator('.ov-rail .ov-tab', { hasText: '出链' })
+    assert((await tab.count()) > 0, 'outgoing tab missing')
+    await tab.click()
+    await sleep(500)
+    assert((await page.locator('.ov-rail .ov-section-title', { hasText: '已解析' }).count()) > 0, 'resolved group missing')
+    const row = page.locator('.ov-rail .ov-item', { hasText: '审核夹具' }).first()
+    assert((await row.count()) > 0, 'outgoing 审核夹具 row missing')
+    await row.click()
+    await sleep(800)
+    const active = await page.locator('.ov-doctab-active').textContent()
+    assert(active?.includes('审核夹具'), `outgoing link opened ${active}`)
+  })
+
   await check('rail.backlinks-sort-select', async () => {
     const select = page.locator('.ov-rail select[aria-label="排序方式"]')
     assert((await select.count()) > 0, 'sort select missing')

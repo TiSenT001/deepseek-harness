@@ -26,6 +26,8 @@ export interface RailColumnProps {
   /** Promote or demote the heading on a 1-based body line. */
   readonly onShiftHeading: (line: number, delta: number) => void
   readonly onRemoveBookmark: (path: string) => void
+  /** Create an unresolved outgoing link from the rail. */
+  readonly onCreate?: (target: string) => void
   readonly onMenu: (scene: MenuScene, x: number, y: number) => void
   /** True below the docked breakpoint, where the pane becomes a drawer. */
   readonly narrow: boolean
@@ -42,7 +44,7 @@ export interface RailColumnProps {
 export function RailColumn(props: RailColumnProps): JSX.Element {
   const {
     t, rail, note, backlinks, unlinked, activeHeading, bookmarks, onRail, onOpen, onHeading, onShiftHeading,
-    onRemoveBookmark, onMenu, narrow, open, width, onResize, onResetWidth,
+    onRemoveBookmark, onCreate, onMenu, narrow, open, width, onResize, onResetWidth,
   } = props
 
   return (
@@ -71,6 +73,7 @@ export function RailColumn(props: RailColumnProps): JSX.Element {
         onHeading={onHeading}
         onShiftHeading={onShiftHeading}
         onRemoveBookmark={onRemoveBookmark}
+        {...(onCreate === undefined ? {} : { onCreate })}
         onMenu={onMenu}
         className={narrow
           ? (open ? css.paneOpen : '')
