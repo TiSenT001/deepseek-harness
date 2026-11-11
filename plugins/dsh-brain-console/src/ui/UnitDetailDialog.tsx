@@ -3,7 +3,8 @@
  *
  * 只读；动作仍走卡片上的按钮和 ⋯ 菜单。
  */
-import { Button, Modal } from './primitives.ts'
+import { Button } from './primitives.ts'
+import { Dialog } from './Dialog.tsx'
 import { formatUptime } from './format.ts'
 import type { Unit } from './types.ts'
 
@@ -45,7 +46,7 @@ export function UnitDetailDialog({ unit, now, dependents, onClose }: UnitDetailD
   const footer = <Button size="sm" variant="ghost" onClick={onClose}>关闭</Button>
 
   return (
-    <Modal
+    <Dialog
       open
       onClose={onClose}
       title={unit.name}
@@ -63,6 +64,6 @@ export function UnitDetailDialog({ unit, now, dependents, onClose }: UnitDetailD
           </div>
         ))}
       </dl>
-    </Modal>
+    </Dialog>
   )
 }

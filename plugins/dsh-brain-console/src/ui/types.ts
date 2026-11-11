@@ -227,6 +227,13 @@ export interface IndexHealth {
     age_hours: number | null
     status: 'ok' | 'warn' | 'bad' | 'unknown'
   }[]
+  /** 全部定时任务的心跳（没有统一周期，按 24h/72h 粗判） */
+  crons_all?: {
+    name: string
+    last_run_at: string | null
+    age_hours: number | null
+    status: 'ok' | 'warn' | 'bad' | 'unknown'
+  }[]
   /** 按领域（domain 空则顶层目录）的向量覆盖 */
   by_domain?: {
     name: string

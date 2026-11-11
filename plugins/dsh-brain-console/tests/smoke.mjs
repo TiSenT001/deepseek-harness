@@ -271,11 +271,19 @@ try {
     const missing = need.filter((k) => !text.includes(k))
     const rows = await dialog.locator('.bc-index-row').count()
     const crons = await dialog.locator('.bc-cron-row').count()
+    const allCrons = await dialog.locator('.bc-cron-all').count()
+    // 窄屏不溢出：缩到 760x800 复测弹窗高度，随后恢复视口
+    await page.setViewportSize({ width: 760, height: 800 })
+    await page.waitForTimeout(500)
+    const narrowBox = await dialog.boundingBox()
+    await page.setViewportSize({ width: 1440, height: 900 })
+    await page.waitForTimeout(300)
     await closeOverlay()
     if (missing.length) throw new Error(`缺 ${missing.join('/')}`)
     if (rows === 0) throw new Error('没有任何覆盖行')
     if (crons === 0) throw new Error('没有管道心跳行')
-    return `${rows} 行覆盖 · ${crons} 条心跳`
+    if (!narrowBox || narrowBox.height > 780) throw new Error('窄屏下弹窗超出视口')
+    return `${rows} 行覆盖 · ${crons} 条心跳 · 全量列表 ${allCrons} · 窄屏高 ${Math.round(narrowBox.height)}px`
   })
 
   await soft('趋势图含 24h 变化与告警线', async () => {

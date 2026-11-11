@@ -11,7 +11,8 @@
 import { useCallback, useEffect, useState } from 'react'
 import { reasonOf } from './errors.ts'
 import { formatMegabytes } from './format.ts'
-import { Button, Modal } from './primitives.ts'
+import { Button } from './primitives.ts'
+import { Dialog } from './Dialog.tsx'
 import type { BackupListing, PruneResult, RestoreResult } from './types.ts'
 
 export interface BackupDialogProps {
@@ -127,7 +128,7 @@ export function BackupDialog({ load, prune, restore, onChanged, onClose }: Backu
   )
 
   return (
-    <Modal
+    <Dialog
       open
       onClose={busy ? () => {} : onClose}
       title="清理备份"
@@ -222,6 +223,6 @@ export function BackupDialog({ load, prune, restore, onChanged, onClose }: Backu
             : `已删除 ${result.removed.length} 个快照，释放 ${formatMegabytes(result.freed_mb)}`}
         </div>
       )}
-    </Modal>
+    </Dialog>
   )
 }

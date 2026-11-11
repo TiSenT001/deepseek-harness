@@ -601,6 +601,24 @@ window.__ModuleLoader__.load({
 		/** 垃圾桶图标：清空日志。 */
 		const IconTrash = primitives.IconTrashOutlineRegular;
 		//#endregion
+		//#region src/ui/Dialog.tsx
+		/**
+		* 渲染一个限高、内容可滚动的对话框。
+		* @param props - 与共享 Modal 相同的字段
+		* @returns 对话框元素
+		*/
+		function Dialog({ children, ...rest }) {
+			return /* @__PURE__ */ (0, react_jsx_runtime.jsx)(Modal, {
+				...rest,
+				className: "bc-dialog-capped",
+				contentClassName: "bc-dialog-content",
+				children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+					className: "bc-dialog-scroll",
+					children
+				})
+			});
+		}
+		//#endregion
 		//#region src/ui/BackupDialog.tsx
 		/**
 		* 备份清理对话框：**先列出、再确认**，不做静默删除。
@@ -701,7 +719,7 @@ window.__ModuleLoader__.load({
 				onClick: () => void confirm(),
 				children: busy ? "清理中…" : doomed.length === 0 ? "没有可删的" : `删除 ${doomed.length} 个 · 释放 ${formatMegabytes(doomedMb)}`
 			})] });
-			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)(Modal, {
+			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)(Dialog, {
 				open: true,
 				onClose: busy ? () => {} : onClose,
 				title: "清理备份",
@@ -907,7 +925,7 @@ window.__ModuleLoader__.load({
 				onClick: () => void confirm(),
 				children: busy ? "清理中…" : chosen.length === 0 ? "未选择" : `清理 ${chosen.length} 项 · 释放 ${formatMegabytes(chosenMb)}`
 			})] });
-			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)(Modal, {
+			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)(Dialog, {
 				open: true,
 				onClose: busy ? () => {} : onClose,
 				title: "清理缓存",
@@ -1028,7 +1046,7 @@ window.__ModuleLoader__.load({
 		* @returns 对话框元素（挂载即打开）
 		*/
 		function ConfirmDialog({ title, description, note, confirmLabel, busyLabel = "处理中…", busy, onCancel, onConfirm }) {
-			return /* @__PURE__ */ (0, react_jsx_runtime.jsx)(Modal, {
+			return /* @__PURE__ */ (0, react_jsx_runtime.jsx)(Dialog, {
 				open: true,
 				onClose: busy ? () => {} : onCancel,
 				title,
@@ -1133,7 +1151,7 @@ window.__ModuleLoader__.load({
 				onClick: onClose,
 				children: "关闭"
 			})] });
-			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)(Modal, {
+			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)(Dialog, {
 				open: true,
 				onClose,
 				title: "失败边",
@@ -1256,7 +1274,7 @@ window.__ModuleLoader__.load({
 					window.setTimeout(() => setCopied(false), 1500);
 				} catch {}
 			};
-			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)(Modal, {
+			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)(Dialog, {
 				open: true,
 				onClose,
 				title: "自动恢复记录",
@@ -1510,7 +1528,7 @@ window.__ModuleLoader__.load({
 			const percent = health !== null && health.notes !== null && health.notes > 0 && health.vec.total !== null ? Math.min(100, health.vec.total / health.notes * 100) : null;
 			const stale = health?.chunks.stale_days;
 			const running = job?.state === "running";
-			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)(Modal, {
+			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)(Dialog, {
 				open: true,
 				onClose,
 				title: "索引与嵌入",
@@ -1705,7 +1723,39 @@ window.__ModuleLoader__.load({
 												]
 											})
 										]
-									}, cron.name))
+									}, cron.name)),
+									(health.crons_all ?? []).length > 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("details", {
+										className: "bc-cron-all",
+										children: [/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("summary", { children: [
+											"全部定时任务（",
+											health.crons_all?.length ?? 0,
+											"）"
+										] }), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+											className: "bc-cron-all-list",
+											children: [...health.crons_all ?? []].sort((left, right) => (right.age_hours ?? Number.POSITIVE_INFINITY) - (left.age_hours ?? Number.POSITIVE_INFINITY)).map((cron) => /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+												className: "bc-cron-row",
+												"data-status": cron.status,
+												children: [
+													/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+														className: "bc-cron-dot",
+														"aria-hidden": "true"
+													}),
+													/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+														className: "bc-cron-name",
+														children: cron.name
+													}),
+													/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+														className: "bc-cron-age",
+														children: cron.age_hours === null ? "从未运行" : `${cron.age_hours} 小时前`
+													}),
+													/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+														className: "bc-cron-interval",
+														children: cron.last_run_at ?? "—"
+													})
+												]
+											}, `all-${cron.name}`))
+										})]
+									})
 								]
 							}),
 							/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("details", {
@@ -1807,7 +1857,7 @@ window.__ModuleLoader__.load({
 		* @returns 对话框元素（挂载即打开）
 		*/
 		function GroupActionDialog({ title, description, names, note, confirmLabel, busyLabel, busy, onCancel, onConfirm }) {
-			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)(Modal, {
+			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)(Dialog, {
 				open: true,
 				onClose: busy ? () => {} : onCancel,
 				title,
@@ -2562,7 +2612,7 @@ window.__ModuleLoader__.load({
 					children: "关闭"
 				})
 			] });
-			return /* @__PURE__ */ (0, react_jsx_runtime.jsx)(Modal, {
+			return /* @__PURE__ */ (0, react_jsx_runtime.jsx)(Dialog, {
 				open: true,
 				onClose,
 				title: `${metric.label}趋势`,
@@ -2825,7 +2875,7 @@ window.__ModuleLoader__.load({
 				onClick: onClose,
 				children: "关闭"
 			});
-			return /* @__PURE__ */ (0, react_jsx_runtime.jsx)(Modal, {
+			return /* @__PURE__ */ (0, react_jsx_runtime.jsx)(Dialog, {
 				open: true,
 				onClose,
 				title: unit.name,
@@ -4284,6 +4334,21 @@ window.__ModuleLoader__.load({
   cursor: default;
 }
 
+/* 统一对话框容器：dialog 限高到视口可用区，内容区自己滚动，头/脚固定。 */
+.bc-dialog-capped {
+  max-height: 100%;
+}
+.bc-dialog-content {
+  min-height: 0;
+  max-height: 100%;
+}
+.bc-dialog-scroll {
+  max-height: min(68vh, 720px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-right: 2px;
+}
+
 .bc-index-health {
   display: flex;
   flex-direction: column;
@@ -4352,6 +4417,34 @@ window.__ModuleLoader__.load({
   text-align: right;
 }
 
+.bc-cron-all {
+  margin-top: 6px;
+}
+.bc-cron-all > summary {
+  cursor: pointer;
+  list-style: none;
+  padding: 2px 0;
+  font-size: 11.5px;
+  color: var(--dsw-alias-label-tertiary);
+  user-select: none;
+}
+.bc-cron-all > summary::-webkit-details-marker {
+  display: none;
+}
+.bc-cron-all > summary::before {
+  content: '▸';
+  margin-right: 6px;
+  display: inline-block;
+  transition: transform 0.12s ease;
+}
+.bc-cron-all[open] > summary::before {
+  transform: rotate(90deg);
+}
+.bc-cron-all-list {
+  margin-top: 4px;
+  padding-left: 2px;
+}
+
 .bc-cron-row {
   display: grid;
   grid-template-columns: 8px minmax(0, 1fr) auto auto;
@@ -4392,10 +4485,9 @@ window.__ModuleLoader__.load({
 }
 
 .bc-index-health {
-  max-height: min(64vh, 640px);
-  overflow-y: auto;
-  padding-right: 4px;
-  overscroll-behavior: contain;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 .bc-index-section {
   display: block;
@@ -4436,11 +4528,6 @@ window.__ModuleLoader__.load({
 .bc-auto {
   display: flex;
   flex-direction: column;
-  max-height: min(62vh, 600px);
-}
-.bc-auto-list {
-  overflow-y: auto;
-  overscroll-behavior: contain;
 }
 
 .bc-coverage {

@@ -12,7 +12,8 @@
 import { useCallback, useEffect, useState } from 'react'
 import { reasonOf } from './errors.ts'
 import { formatMegabytes } from './format.ts'
-import { Button, IconShield, Modal } from './primitives.ts'
+import { Button, IconShield } from './primitives.ts'
+import { Dialog } from './Dialog.tsx'
 import type { CacheItem, CacheListing, CachePruneResult } from './types.ts'
 
 export interface CacheDialogProps {
@@ -113,7 +114,7 @@ export function CacheDialog({ load, prune, onClose }: CacheDialogProps): JSX.Ele
   )
 
   return (
-    <Modal
+    <Dialog
       open
       onClose={busy ? () => {} : onClose}
       title="清理缓存"
@@ -185,6 +186,6 @@ export function CacheDialog({ load, prune, onClose }: CacheDialogProps): JSX.Ele
           )}
         </div>
       )}
-    </Modal>
+    </Dialog>
   )
 }

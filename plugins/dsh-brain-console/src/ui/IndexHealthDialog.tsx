@@ -7,7 +7,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { cancelEmbed, loadEmbedStatus, loadIndexHealth, startEmbed } from '../api.ts'
 import { reasonOf } from './errors.ts'
-import { Button, Modal } from './primitives.ts'
+import { Button } from './primitives.ts'
+import { Dialog } from './Dialog.tsx'
 import type { EmbedJobStatus, IndexHealth } from './types.ts'
 
 export interface IndexHealthDialogProps {
@@ -154,7 +155,7 @@ export function IndexHealthDialog({ onClose }: IndexHealthDialogProps): JSX.Elem
   const running = job?.state === 'running'
 
   return (
-    <Modal open onClose={onClose} title="索引与嵌入" closeLabel="关闭"
+    <Dialog open onClose={onClose} title="索引与嵌入" closeLabel="关闭"
       description="只读状态 + 手动补嵌；任务在管理器后台跑，关掉面板也会继续"
       footer={(
         <>
@@ -265,6 +266,25 @@ export function IndexHealthDialog({ onClose }: IndexHealthDialogProps): JSX.Elem
                 <span className="bc-cron-interval">每 {cron.interval_h} 小时</span>
               </div>
             ))}
+            {(health.crons_all ?? []).length > 0 && (
+              <details className="bc-cron-all">
+                <summary>全部定时任务（{health.crons_all?.length ?? 0}）</summary>
+                <div className="bc-cron-all-list">
+                  {[...(health.crons_all ?? [])]
+                    .sort((left, right) => (right.age_hours ?? Number.POSITIVE_INFINITY) - (left.age_hours ?? Number.POSITIVE_INFINITY))
+                    .map((cron) => (
+                      <div className="bc-cron-row" key={`all-${cron.name}`} data-status={cron.status}>
+                        <span className="bc-cron-dot" aria-hidden="true" />
+                        <span className="bc-cron-name">{cron.name}</span>
+                        <span className="bc-cron-age">
+                          {cron.age_hours === null ? '从未运行' : `${cron.age_hours} 小时前`}
+                        </span>
+                        <span className="bc-cron-interval">{cron.last_run_at ?? '—'}</span>
+                      </div>
+                    ))}
+                </div>
+              </details>
+            )}
           </details>
 
           <details className="bc-index-section">
@@ -310,6 +330,6 @@ export function IndexHealthDialog({ onClose }: IndexHealthDialogProps): JSX.Elem
           </details>
         </div>
       )}
-    </Modal>
+    </Dialog>
   )
 }

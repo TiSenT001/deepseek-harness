@@ -7,7 +7,8 @@
 import { useEffect, useState } from 'react'
 import { diagnosticsFileUrl, loadAutoRecover } from '../api.ts'
 import { reasonOf } from './errors.ts'
-import { Button, Modal } from './primitives.ts'
+import { Button } from './primitives.ts'
+import { Dialog } from './Dialog.tsx'
 import type { AutoRecoverStatus } from './types.ts'
 
 export interface AutoRecoverDialogProps {
@@ -62,7 +63,7 @@ export function AutoRecoverDialog({ onClose }: AutoRecoverDialogProps): JSX.Elem
   }
 
   return (
-    <Modal
+    <Dialog
       open
       onClose={onClose}
       title="自动恢复记录"
@@ -122,6 +123,6 @@ export function AutoRecoverDialog({ onClose }: AutoRecoverDialogProps): JSX.Elem
           </ul>
         </div>
       )}
-    </Modal>
+    </Dialog>
   )
 }

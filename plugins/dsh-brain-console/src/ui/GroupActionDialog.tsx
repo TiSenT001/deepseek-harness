@@ -2,7 +2,8 @@
  * 分组动作确认框：批量停止 / 批量重启共用。
  * 先把会被影响的单元列清楚、说清后果，确认后才下发。
  */
-import { Button, Modal } from './primitives.ts'
+import { Button } from './primitives.ts'
+import { Dialog } from './Dialog.tsx'
 
 export interface GroupActionDialogProps {
   /** 对话框标题，例如「停止「核心服务」」 */
@@ -40,7 +41,7 @@ export function GroupActionDialog({
     </>
   )
   return (
-    <Modal
+    <Dialog
       open
       onClose={busy ? () => {} : onCancel}
       title={title}
@@ -54,6 +55,6 @@ export function GroupActionDialog({
         ))}
       </ul>
       <div className="bc-stop-note">{note}</div>
-    </Modal>
+    </Dialog>
   )
 }
