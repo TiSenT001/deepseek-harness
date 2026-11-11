@@ -69,37 +69,6 @@ export function readJsonCanvasDocument(text: string): PurStudioDocument | undefi
 
 
 /**
- * Card preview for a note-link: the note body, prefixed by its title when the
- * note has no heading. Bounded so a canvas sidecar never swallows the note.
- * @param summary - hydrated note.
- * @returns the text a note-link card caches.
- */
-export function notePreview(summary: PurNoteSummary): string {
-  const body = summary.content.trim()
-  const heading = body.startsWith('#') ? '' : `# ${summary.title}\n\n`
-  const text = `${heading}${body}`
-  return text.length > 1600 ? `${text.slice(0, 1599)}…` : text
-}
-
-
-/**
- * Fill canvas note cards with their target note body, the way Obsidian renders
- * file nodes as note previews. Missing or non-Markdown targets keep the title.
- * @param document - imported canvas.
- * @returns the document with note previews where they resolved.
- */
-async function hydrateCanvasNotes(document: PurStudioDocument): Promise<PurStudioDocument> {
-  const elements = await Promise.all(document.elements.map(async (element) => {
-    if (element.type !== 'note-link') return element
-    const target = element.link.split('#')[0] ?? element.link
-    if (!/\.md$/i.test(target) || target.length === 0) return element
-    const summary = await fetchNoteSummary(target).catch(() => null)
-    return summary === null ? element : { ...element, content: notePreview(summary) }
-  }))
-  return { ...document, elements }
-}
-
-/**
  * Read a `.PurStudio` or native `.canvas` document; an empty or unparsable file
  * loads as an empty canvas rather than failing the view. A document that has
  * not changed since it was last parsed comes from the cache, so reopening a tab
@@ -129,7 +98,7 @@ export async function loadStudioDocument(path: string): Promise<PurStudioDocumen
   let document = empty
   if (text.trim() !== '') {
     if (isJsonCanvas(path)) {
-      document = await hydrateCanvasNotes(readJsonCanvasDocument(text) ?? empty)
+      document = readJsonCanvasDocument(text) ?? empty
     } else {
       try {
         document = parseStudioDocument(text)

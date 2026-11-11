@@ -150,8 +150,8 @@ export function drawNoteLinkCard(ctx: PurCanvasContext, scene: PurScene, element
   ctx.save()
   ctx.fillStyle = element.cardColor || 'rgba(72, 54, 153, 0.95)'
   fillRoundedCard(ctx, 0, 0, screenW, screenH, CARD_RADIUS * scale)
-  // The card shows the note title and a clipped body excerpt, like Obsidian's
-  // file nodes; the full note still lives in the editor.
+  // The card is a label, not a reader: it keeps the note's title and leaves the body
+  // to the editor, so a long note can never spill past the card edge.
   ctx.beginPath()
   roundedRectPath(ctx, 0, 0, screenW, screenH, CARD_RADIUS * scale)
   ctx.clip()
@@ -159,42 +159,16 @@ export function drawNoteLinkCard(ctx: PurCanvasContext, scene: PurScene, element
   const titleSize = 14 * scale
   ctx.font = `600 ${titleSize}px -apple-system, "Segoe UI", sans-serif`
   const lineHeight = titleSize * 1.3
-  const contentLines = (element.content || '').split('\n')
-  const firstIndex = contentLines.findIndex(line => line.trim() !== '')
-  const title = ((firstIndex === -1 ? '' : contentLines[firstIndex]!.trim()).replace(/^#+\s*/, '')) || scene.labels.noteLinkFallback
+  // A stale card may still carry the whole note; its first line minus any markdown
+  // heading marker is the title the user expects to see.
+  const firstLine = (element.content || '').split('\n').map((line) => line.trim()).find((line) => line !== '')
+  const title = (firstLine ?? '').replace(/^#+\s*/, '') || scene.labels.noteLinkFallback
   let y = titleSize + 10
   const bottom = screenH - 10
   for (const line of wrappedLines(ctx, title, screenW - 24)) {
     if (y > bottom) break
     ctx.fillText(line, 12, y)
     y += lineHeight
-  }
-  if (firstIndex !== -1 && y < bottom) {
-    const body = contentLines.slice(firstIndex + 1).join('\n').trim()
-    if (body.length > 0) {
-      const bodySize = 11 * scale
-      const bodyLine = bodySize * 1.45
-      ctx.font = `${bodySize}px -apple-system, "Segoe UI", sans-serif`
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.74)'
-      y += bodySize * 0.7
-      let clipped = false
-      for (const raw of body.split('\n')) {
-        const text = raw.replace(/^#{1,6}\s+/, '').replace(/^\s*[-*+]\s+/, '• ').trim()
-        if (text.length === 0) {
-          y += bodyLine * 0.55
-          continue
-        }
-        for (const line of wrappedLines(ctx, text, screenW - 24)) {
-          if (y + bodyLine > bottom) {
-            clipped = true
-            break
-          }
-          y += bodyLine
-          ctx.fillText(line, 12, y)
-        }
-        if (clipped) break
-      }
-    }
   }
   ctx.restore()
   drawNoteLinkPins(ctx, element, screenW, screenH, scale)

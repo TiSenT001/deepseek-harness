@@ -6,7 +6,7 @@
  * @module dsh-obsidian-vault/client/pur/refresh-links
  */
 import type { PurController, PurElement } from '../../pur-kernel/index.ts'
-import { notePreview, resolveNoteLink } from './loader.ts'
+import { resolveNoteLink } from './loader.ts'
 
 /** Outcome of one refresh pass. */
 export interface NoteLinkRefresh {
@@ -56,10 +56,10 @@ export async function refreshNoteLinks(controller: PurController): Promise<NoteL
       unresolved += 1
       continue
     }
-    // The card renders a bounded note preview, clipped by the renderer.
-    const preview = notePreview(summary)
-    if (preview === card.content) continue
-    controller.updateElement(card.id, { content: preview })
+    // The card shows a title only; storing the whole body is what made it overflow.
+    const title = summary.title.trim() === '' ? card.content : summary.title.trim()
+    if (title === card.content) continue
+    controller.updateElement(card.id, { content: title })
     updated += 1
   }
   return { updated, unresolved }
