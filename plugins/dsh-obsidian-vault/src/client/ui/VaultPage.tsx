@@ -417,7 +417,7 @@ export function VaultPage({ pickDirectory, hasPicker }: VaultPageProps = {}): JS
     splitPane,
     closePane,
     paneCount: panes.length,
-    purPath: path !== undefined && /\.purstudio$/i.test(path) ? path : undefined,
+    purPath: path !== undefined && /\.(purstudio|canvas)$/i.test(path) ? path : undefined,
     pageCommands: layoutCommands,
   })
 
