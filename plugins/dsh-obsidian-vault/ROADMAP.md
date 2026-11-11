@@ -1,3 +1,8 @@
+## 第一百二十一轮：Canvas 文件节点内嵌笔记预览（2026-11-12）
+
+- **对标 Obsidian Canvas 卡片**：`.canvas` 的文件节点若指向 Markdown 笔记，卡片现在显示目标笔记的标题与正文摘要（列表转 •），超出卡片高度自动截断；不再只有标题。图片文件节点仍走图片渲染。
+- **实现**：加载时 `hydrateCanvasNotes` 用 `fetchNoteSummary` 读取链接笔记并写入 `notePreview`（无 H1 时补标题、上限 1600 字符）；`refreshNoteLinks` 改为刷新完整预览而不是只写标题；`drawNoteLinkCard` 增加正文绘制与裁剪。
+- **验证**：`tsc` 0、762/762；新增 notePreview 三条测试；真实 `.canvas` 文件节点打开后卡片显示「内嵌笔记标题」+ 两段正文 + 列表项，截图确认；fixture 已清理。
 ## 第一百二十轮：原生 .canvas 进入 Pur 编辑（2026-11-12）
 
 - **对标 Obsidian Canvas 编辑**：`.canvas` 不再交给只读查看器，而是与 `.PurStudio` 共用 Pur 引擎；打开时用 `jsonCanvasToElements` 导入 text/file/link/group/edge，按内容包围盒设置初始视口，编辑后 `elementsToJsonCanvas` 写回标准 JSON Canvas，`__pur` 侧车保留 Pur 专属属性。
