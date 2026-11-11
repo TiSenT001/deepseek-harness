@@ -43,7 +43,7 @@ export function elementBounds(elements: readonly PurElement[]): WorldBounds | un
         if (x + w > maxX) maxX = x + w
         if (y + h > maxY) maxY = y + h
       }
-      if (element.type === 'group') visit(element.children, x, y)
+      if (element.type === 'group' && element.collapsed !== true) visit(element.children, x, y)
     }
   }
   visit(elements, 0, 0)
@@ -82,7 +82,7 @@ export function selectedBounds(elements: readonly PurElement[], selectedIds: Rea
         if (x + w > maxX) maxX = x + w
         if (y + h > maxY) maxY = y + h
       }
-      if (element.type === 'group') visit(element.children, x, y, selected)
+      if (element.type === 'group' && element.collapsed !== true) visit(element.children, x, y, selected)
     }
   }
   visit(elements, 0, 0, false)

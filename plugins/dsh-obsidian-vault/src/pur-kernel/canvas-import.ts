@@ -129,6 +129,7 @@ function groupFromNode(node: Record<string, unknown>): PurGroupElement {
     rotation: 0,
     opacity: 1,
     children: [],
+    ...(node['collapsed'] === true ? { collapsed: true } : {}),
   }
   return mergeExtras(base, withoutParent(purMetaOf(node)))
 }

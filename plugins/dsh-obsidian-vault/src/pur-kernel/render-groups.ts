@@ -30,7 +30,7 @@ export function drawGroupFrames(ctx: PurCanvasContext, scene: PurScene): void {
 function drawFrames(ctx: PurCanvasContext, scene: PurScene, elements: readonly PurElement[], offsetX: number, offsetY: number): void {
   for (const element of elements) {
     if (element.type !== 'group') continue
-    drawFrames(ctx, scene, element.children, offsetX + element.x, offsetY + element.y)
+    if (element.collapsed !== true) drawFrames(ctx, scene, element.children, offsetX + element.x, offsetY + element.y)
     drawFrame(ctx, scene, element, offsetX, offsetY)
   }
 }
@@ -59,6 +59,11 @@ function drawFrame(ctx: PurCanvasContext, scene: PurScene, group: PurGroupElemen
   ctx.stroke()
   ctx.setLineDash([])
   if (group.content) drawFrameTitle(ctx, group, group.content, scale, x, y)
+  if (group.collapsed === true) {
+    ctx.fillStyle = '#cfd5de'
+    ctx.font = `${Math.max(8, 12 * scale)}px -apple-system, sans-serif`
+    ctx.fillText('▸', x + w - 16, y + 18)
+  }
   ctx.restore()
   if (group.locked && (scene.lockPulseIds?.has(group.id) ?? false)) drawLockBadge(ctx, x + w, y)
   const selected = scene.selectedIds?.has(group.id) ?? false

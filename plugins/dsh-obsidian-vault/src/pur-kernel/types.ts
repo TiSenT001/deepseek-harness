@@ -149,6 +149,8 @@ export interface PurGroupElement extends PurElementBase {
   link?: string
   /** Owned elements; their `x`/`y` are group-relative. */
   children: PurElement[]
+  /** Hide the children and draw only the frame, like a collapsed Obsidian group. */
+  collapsed?: boolean
 }
 
 /** A connection between two elements, optionally between two pins. */

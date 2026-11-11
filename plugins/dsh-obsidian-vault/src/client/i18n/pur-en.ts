@@ -301,6 +301,7 @@ export const PUR_EN: Record<keyof typeof PUR_ZH, string> = {
   'pur.lineStyleRect': 'Rect',
   'pur.lineArrow': 'Arrow',
   'pur.groupNamePlaceholder': 'Group name',
+  'pur.collapseGroup': 'Collapse group',
   'pur.inputsTitle': 'Input Pins',
   'pur.outputsTitle': 'Output Pins',
   'pur.deleteNode': 'Delete Node',

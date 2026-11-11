@@ -1,3 +1,9 @@
+## 第一百二十二轮：Canvas 分组折叠与几何归属（2026-11-12）
+
+- **对标 Obsidian Canvas 分组**：分组节点新增 `collapsed`，在分组编辑器中可折叠；折叠后子元素不绘制、不参与命中/取景/引脚，分组右上角显示 ▸ 标记，展开后恢复。JSON Canvas 直接读写 `collapsed`，`.PurStudio` 也保留。
+- **几何归属**：Obsidian 的 `.canvas` 不写 `parentGroupId`，分组归属靠坐标包含。原生 canvas 加载时把中心落在最小分组内的顶层卡片吸收为子元素（显式 `__pur.parentGroupId` 优先），这样折叠才能真正隐藏 Obsidian 文件里的卡片。
+- **实现**：`types.ts`/`canvas-types.ts` 扩展字段；`canvas-import`/`canvas-export` 读写；`loader.absorbCanvasGroups`；`render-elements`/`render-groups`/`hit-test`/`geometry`/`view-bounds` 跳过折叠子元素；分组编辑器增加折叠复选框。
+- **验证**：`tsc` 0、761/761；新增折叠导入/命中/布局测试；真实 `.canvas`（分组 + 内部文本，`collapsed: true`）打开后只显示分组框与 ▸，文本隐藏，截图确认。
 ## 第一百二十轮：原生 .canvas 进入 Pur 编辑（2026-11-12）
 
 - **对标 Obsidian Canvas 编辑**：`.canvas` 不再交给只读查看器，而是与 `.PurStudio` 共用 Pur 引擎；打开时用 `jsonCanvasToElements` 导入 text/file/link/group/edge，按内容包围盒设置初始视口，编辑后 `elementsToJsonCanvas` 写回标准 JSON Canvas，`__pur` 侧车保留 Pur 专属属性。

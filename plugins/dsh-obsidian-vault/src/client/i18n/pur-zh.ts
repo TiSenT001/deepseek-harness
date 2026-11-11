@@ -303,6 +303,7 @@ export const PUR_ZH = {
   'pur.lineStyleRect': '折线',
   'pur.lineArrow': '箭头',
   'pur.groupNamePlaceholder': '群组名称',
+  'pur.collapseGroup': '折叠分组',
   'pur.inputsTitle': '输入引脚',
   'pur.outputsTitle': '输出引脚',
   'pur.deleteNode': '删除节点',

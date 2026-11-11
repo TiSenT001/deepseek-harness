@@ -278,9 +278,10 @@ export function PurGroupEditor(props: PurEditorProps): JSX.Element | null {
   const [name, setName] = useState(element?.content ?? '')
   const [color, setColor] = useState(element?.color ?? '#e0e0e0')
   const [border, setBorder] = useState(element?.borderColor ?? '#969ab4')
+  const [collapsed, setCollapsed] = useState(element?.collapsed === true)
   if (element === null) return null
   const commit = (): void => {
-    props.run(props.controller.updateElement(props.id, { content: name.trim(), color, borderColor: border }))
+    props.run(props.controller.updateElement(props.id, { content: name.trim(), color, borderColor: border, collapsed }))
     props.onClose()
   }
   return (
@@ -289,6 +290,10 @@ export function PurGroupEditor(props: PurEditorProps): JSX.Element | null {
         <Field label={props.t('pur.groupNamePlaceholder')}>
           <input className={css.input} value={name} placeholder={props.t('pur.groupNamePlaceholder')} onChange={(event) => setName(event.target.value)} />
         </Field>
+        <label className={css.purRow}>
+          <input type="checkbox" checked={collapsed} onChange={(event) => setCollapsed(event.target.checked)} />
+          <span>{props.t('pur.collapseGroup')}</span>
+        </label>
       </Section>
       <Section title={props.t('pur.sectionStyle')} columns={2}>
         <Field label={props.t('pur.textColor')}>

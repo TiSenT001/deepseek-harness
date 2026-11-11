@@ -6,7 +6,7 @@
  */
 import { assetUrl, bridgeExists, bridgeInfo, bridgeReadText, bridgeReadTextVersion, bridgeWriteBinary, bridgeWriteText, createFolder, fetchNote, fetchTree, purAssetUrl } from '../api.ts'
 import { elementBounds, elementsToJsonCanvas, jsonCanvasToElements, parseStudioDocument, serializeStudioDocument, splitBucketedKey } from '../../pur-kernel/index.ts'
-import type { PurImageLookup, PurStudioDocument, PurViewState } from '../../pur-kernel/index.ts'
+import type { PurElement, PurGroupElement, PurImageLookup, PurStudioDocument, PurViewState } from '../../pur-kernel/index.ts'
 import { DocumentCache } from './doc-cache.ts'
 import type { TreeNodeDto } from '../../protocol.ts'
 
@@ -35,6 +35,33 @@ function isJsonCanvas(path: string): boolean {
 }
 
 /**
+ * Foreign JSON Canvas files carry group membership only through geometry.
+ * Attach top-level cards whose centre falls inside the smallest group, so
+ * collapsing that group hides them like Obsidian does.
+ * @param elements - top-level imported elements, mutated in place.
+ */
+function absorbCanvasGroups(elements: PurElement[]): void {
+  const groups = elements.filter((element): element is PurGroupElement => element.type === 'group')
+  if (groups.length === 0) return
+  const ordered = [...groups].sort((left, right) => Math.abs(left.w * left.h) - Math.abs(right.w * right.h))
+  const removed = new Set<PurElement>()
+  for (const element of [...elements]) {
+    if (element.type === 'group' || element.type === 'line') continue
+    const centreX = element.x + (element.w ?? 0) / 2
+    const centreY = element.y + (element.h ?? 0) / 2
+    const parent = ordered.find(group =>
+      centreX >= group.x && centreX <= group.x + group.w
+      && centreY >= group.y && centreY <= group.y + group.h)
+    if (parent === undefined) continue
+    element.x -= parent.x
+    element.y -= parent.y
+    parent.children.push(element)
+    removed.add(element)
+  }
+  if (removed.size > 0) elements.splice(0, elements.length, ...elements.filter(element => !removed.has(element)))
+}
+
+/**
  * A viewport that centres imported canvas content; the pane can still refit.
  * @param document - imported canvas document.
  * @returns the initial view state.
@@ -60,6 +87,7 @@ function canvasViewState(document: PurStudioDocument): PurViewState {
 export function readJsonCanvasDocument(text: string): PurStudioDocument | undefined {
   try {
     const elements = jsonCanvasToElements(JSON.parse(text))
+    absorbCanvasGroups(elements)
     const document: PurStudioDocument = { elements, viewState: { offsetX: 0, offsetY: 0, scale: 1 } }
     return { ...document, viewState: canvasViewState(document) }
   } catch {

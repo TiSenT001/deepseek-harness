@@ -52,6 +52,8 @@ export interface PurElementPatch {
   style?: PurLineStyle
   /** Arrowhead toggle, for lines. */
   arrow?: boolean
+  /** Hide children, for groups. */
+  collapsed?: boolean
 }
 
 /**
@@ -104,6 +106,7 @@ export function updateElementProps(tools: PurControllerTools, elementId: string,
       if (patch.fontSize !== undefined) element.fontSize = patch.fontSize
       if (patch.fontFamily !== undefined) element.fontFamily = patch.fontFamily
       if (patch.link !== undefined) element.link = patch.link
+      if (patch.collapsed !== undefined) element.collapsed = patch.collapsed
       break
     case 'line':
       if (patch.content !== undefined) element.content = patch.content
