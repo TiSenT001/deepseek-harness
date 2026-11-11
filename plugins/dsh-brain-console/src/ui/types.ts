@@ -227,6 +227,20 @@ export interface IndexHealth {
     age_hours: number | null
     status: 'ok' | 'warn' | 'bad' | 'unknown'
   }[]
+  /** 代码里存在但超过 1.5 倍周期未运行 */
+  stale_crons?: {
+    name: string
+    last_run_at: string | null
+    age_hours: number | null
+    status: 'ok' | 'warn' | 'bad' | 'unknown'
+  }[]
+  /** 心跳表里有、但当前代码里已不存在的任务（僵尸行） */
+  zombie_crons?: {
+    name: string
+    last_run_at: string | null
+    age_hours: number | null
+    status: 'ok' | 'warn' | 'bad' | 'unknown'
+  }[]
   /** 全部定时任务的心跳（没有统一周期，按 24h/72h 粗判） */
   crons_all?: {
     name: string

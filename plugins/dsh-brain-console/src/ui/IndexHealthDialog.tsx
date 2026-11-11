@@ -5,7 +5,7 @@
  * 运行期间每秒轮询一次进度（完成数 / 总数 / 当前笔记 / 失败 / ETA）。
  */
 import { useEffect, useRef, useState } from 'react'
-import { cancelEmbed, loadEmbedStatus, loadIndexHealth, startEmbed } from '../api.ts'
+import { cancelEmbed, loadEmbedStatus, loadIndexHealth, pruneZombieHeartbeats, startEmbed } from '../api.ts'
 import { reasonOf } from './errors.ts'
 import { Button } from './primitives.ts'
 import { Dialog } from './Dialog.tsx'
@@ -78,6 +78,7 @@ export function IndexHealthDialog({ onClose }: IndexHealthDialogProps): JSX.Elem
   const [job, setJob] = useState<EmbedJobStatus | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const [armedPrune, setArmedPrune] = useState(false)
   const timer = useRef<number | null>(null)
 
   const load = async (): Promise<void> => {
@@ -133,6 +134,19 @@ export function IndexHealthDialog({ onClose }: IndexHealthDialogProps): JSX.Elem
       if (result.status) setJob(result.status)
       if (result.ok) poll()
       else setError(result.error ?? '任务未启动')
+    } catch (e) {
+      setError(reasonOf(e))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const pruneZombies = async (): Promise<void> => {
+    setBusy(true)
+    try {
+      await pruneZombieHeartbeats()
+      setArmedPrune(false)
+      await load()
     } catch (e) {
       setError(reasonOf(e))
     } finally {
@@ -256,6 +270,36 @@ export function IndexHealthDialog({ onClose }: IndexHealthDialogProps): JSX.Elem
             {(health.crons ?? []).length === 0 && (
               <div className="bc-index-row"><span>暂无心跳数据</span><strong>—</strong></div>
             )}
+            {((health.stale_crons ?? []).length > 0 || (health.zombie_crons ?? []).length > 0) && (
+              <div className="bc-cron-alert">
+                {(health.stale_crons ?? []).length > 0 && (
+                  <span className="bc-cron-alert-text bc-index-warn">
+                    {health.stale_crons?.length} 个定时任务超过 1.5 倍周期未运行
+                  </span>
+                )}
+                {(health.zombie_crons ?? []).length > 0 && (
+                  <span className="bc-cron-alert-text">
+                    {health.zombie_crons?.length} 条失效心跳（代码里已无此任务）
+                  </span>
+                )}
+                {(health.zombie_crons ?? []).length > 0 && (
+                  armedPrune ? (
+                    <span className="bc-cron-alert-actions">
+                      <Button size="sm" variant="ghost" disabled={busy} onClick={() => void pruneZombies()}>
+                        确认清理 {health.zombie_crons?.length} 条
+                      </Button>
+                      <Button size="sm" variant="ghost" disabled={busy} onClick={() => setArmedPrune(false)}>
+                        取消
+                      </Button>
+                    </span>
+                  ) : (
+                    <Button size="sm" variant="ghost" disabled={busy} onClick={() => setArmedPrune(true)}>
+                      清理失效心跳…
+                    </Button>
+                  )
+                )}
+              </div>
+            )}
             {(health.crons ?? []).map((cron) => (
               <div className="bc-cron-row" key={cron.name} data-status={cron.status}>
                 <span className="bc-cron-dot" aria-hidden="true" />
@@ -272,16 +316,27 @@ export function IndexHealthDialog({ onClose }: IndexHealthDialogProps): JSX.Elem
                 <div className="bc-cron-all-list">
                   {[...(health.crons_all ?? [])]
                     .sort((left, right) => (right.age_hours ?? Number.POSITIVE_INFINITY) - (left.age_hours ?? Number.POSITIVE_INFINITY))
-                    .map((cron) => (
-                      <div className="bc-cron-row" key={`all-${cron.name}`} data-status={cron.status}>
-                        <span className="bc-cron-dot" aria-hidden="true" />
-                        <span className="bc-cron-name">{cron.name}</span>
-                        <span className="bc-cron-age">
-                          {cron.age_hours === null ? '从未运行' : `${cron.age_hours} 小时前`}
-                        </span>
-                        <span className="bc-cron-interval">{cron.last_run_at ?? '—'}</span>
-                      </div>
-                    ))}
+                    .map((cron) => {
+                      const zombie = (health.zombie_crons ?? []).some((item) => item.name === cron.name)
+                      return (
+                        <div
+                          className="bc-cron-row"
+                          key={`all-${cron.name}`}
+                          data-status={cron.status}
+                          data-zombie={zombie ? 'true' : undefined}
+                        >
+                          <span className="bc-cron-dot" aria-hidden="true" />
+                          <span className="bc-cron-name">
+                            {cron.name}
+                            {zombie && <span className="bc-cron-flag">已失效</span>}
+                          </span>
+                          <span className="bc-cron-age">
+                            {cron.age_hours === null ? '从未运行' : `${cron.age_hours} 小时前`}
+                          </span>
+                          <span className="bc-cron-interval">{cron.last_run_at ?? '—'}</span>
+                        </div>
+                      )
+                    })}
                 </div>
               </details>
             )}

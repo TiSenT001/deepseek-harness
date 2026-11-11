@@ -1215,6 +1215,39 @@ const STYLES = `
   text-align: right;
 }
 
+.bc-cron-alert {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px;
+  margin: 4px 0 8px;
+  padding: 6px 8px;
+  border: 1px solid color-mix(in srgb, var(--dsw-alias-state-warning-primary, #e0b341) 35%, transparent);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--dsw-alias-state-warning-primary, #e0b341) 8%, transparent);
+  font-size: 11.5px;
+  color: var(--dsw-alias-label-secondary);
+}
+.bc-cron-alert-text {
+  color: var(--dsw-alias-label-primary);
+}
+.bc-cron-alert-actions {
+  display: inline-flex;
+  gap: 6px;
+  margin-left: auto;
+}
+.bc-cron-flag {
+  margin-left: 6px;
+  padding: 0 5px;
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 6px;
+  font-size: 10px;
+  color: var(--dsw-alias-label-tertiary);
+}
+.bc-cron-row[data-zombie='true'] {
+  opacity: 0.55;
+}
+
 .bc-cron-all {
   margin-top: 6px;
 }
