@@ -36,6 +36,8 @@ export const OBSIDIAN_GRAPH = {
   collideStrength: 0.5,
   /** Worker tick timer: 1000 / 60 ms. */
   tickMs: 1000 / 60,
+  /** Calibration divisor for the cubed repel slider (see obsidianCharge). */
+  chargeDivisor: 100,
 } as const
 
 /**
@@ -96,4 +98,24 @@ export function obsidianArrowAlpha(linkAlpha: number, zoom: number): number {
  */
 export function obsidianArrowScale(linkWidth: number, zoom: number): number {
   return (2 * Math.sqrt(linkWidth)) / zoom
+}
+/**
+ * Obsidian's slider-to-force warp (`MJ(e, 0.01)`): graph.json stores slider
+ * positions, while the worker receives the warped force.
+ * @param position - slider position 0…1.
+ * @returns forceX/forceY or forceLink strength.
+ */
+export function obsidianSliderForce(position: number): number {
+  return (Math.pow(0.01, 1 - position) - 0.01) / 0.99
+}
+
+/**
+ * Repulsion charge for the graph. Obsidian cubes the slider before sending it
+ * to the worker; the divisor keeps the resulting layout inside a readable
+ * camera range for this d3 implementation (the WASM worker's scale differs).
+ * @param slider - repel slider value 0…20.
+ * @returns positive charge magnitude.
+ */
+export function obsidianCharge(slider: number): number {
+  return (slider * slider * slider) / OBSIDIAN_GRAPH.chargeDivisor
 }

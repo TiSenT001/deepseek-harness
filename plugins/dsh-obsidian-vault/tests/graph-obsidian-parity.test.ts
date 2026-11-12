@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import {
-  OBSIDIAN_GRAPH, obsidianArrowAlpha, obsidianArrowScale, obsidianLabelAlpha, obsidianLinkBias, obsidianLinkStrength, obsidianNodeRadius,
+  OBSIDIAN_GRAPH, obsidianArrowAlpha, obsidianArrowScale, obsidianCharge, obsidianLabelAlpha, obsidianLinkBias, obsidianLinkStrength, obsidianNodeRadius, obsidianSliderForce,
 } from '../src/client/graph/obsidian-graph.ts'
 
 test('node radius follows the extracted Obsidian getSize formula', () => {
@@ -43,4 +43,11 @@ test('arrow alpha fades out below zoom 0.3 and keeps the edge alpha', () => {
 test('arrow scale follows 2 * sqrt(line size) / zoom', () => {
   assert.equal(obsidianArrowScale(1, 1), 2)
   assert.equal(obsidianArrowScale(2, 2), Math.sqrt(2))
+})
+test('slider positions convert through Obsidian MJ and calibrated charge', () => {
+  assert.ok(Math.abs(obsidianSliderForce(0.518713248970312) - 0.1) < 1e-12)
+  assert.ok(Math.abs(obsidianSliderForce(0.05) - 0.0026154081999410854) < 1e-12)
+  assert.equal(obsidianSliderForce(1), 1)
+  assert.equal(obsidianCharge(10), 10)
+  assert.equal(obsidianCharge(20), 80)
 })

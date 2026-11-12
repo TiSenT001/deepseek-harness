@@ -10,7 +10,7 @@
 import { collideForce, repelForce, repelForceNaive } from './quadtree.ts'
 import { jiggle } from './layout-seed.ts'
 import { ALPHA_DECAY, ALPHA_MIN, ANIMATE_ALPHA, DEFAULT_FORCES, REHEAT_ALPHA, VELOCITY_DECAY } from './layout-types.ts'
-import { OBSIDIAN_GRAPH, obsidianLinkBias, obsidianLinkStrength } from './obsidian-graph.ts'
+import { OBSIDIAN_GRAPH, obsidianCharge, obsidianLinkBias, obsidianLinkStrength, obsidianSliderForce } from './obsidian-graph.ts'
 import type { GraphEdgeInput, LayoutForces, SimNode } from './layout-types.ts'
 
 export * from './layout-types.ts'
@@ -48,6 +48,8 @@ export class Simulation {
   private readonly links: Link[]
   private readonly byPath: Map<string, SimNode>
   private forces: LayoutForces
+  private centerStrength = 0
+  private chargeStrength = 0
 
   /**
    * @param nodes - pre-seeded live nodes (from {@link seedPositions}); owned.
@@ -109,10 +111,10 @@ export class Simulation {
     const nodes = this.nodes
     const forces = this.forces
 
-    if (forces.center !== 0) {
+    if (this.centerStrength !== 0) {
       for (const node of nodes) {
-        node.vx -= node.x * forces.center * alpha
-        node.vy -= node.y * forces.center * alpha
+        node.vx -= node.x * this.centerStrength * alpha
+        node.vy -= node.y * this.centerStrength * alpha
       }
     }
     for (let index = 0; index < this.links.length; index += 1) {
@@ -132,10 +134,9 @@ export class Simulation {
       source.vx += x * (1 - link.bias)
       source.vy += y * (1 - link.bias)
     }
-    const repel = -forces.repel
-    if (repel !== 0) {
-      if (nodes.length > QUADTREE_THRESHOLD) repelForce(nodes, alpha, repel)
-      else repelForceNaive(nodes, alpha, repel)
+    if (this.chargeStrength !== 0) {
+      if (nodes.length > QUADTREE_THRESHOLD) repelForce(nodes, alpha, this.chargeStrength)
+      else repelForceNaive(nodes, alpha, this.chargeStrength)
     }
     collideForce(nodes, COLLIDE_RADIUS, COLLIDE_STRENGTH)
 
@@ -197,8 +198,11 @@ export class Simulation {
   }
 
   private applyForces(): void {
+    this.centerStrength = this.forces.center === 0 ? 0 : obsidianSliderForce(this.forces.center)
+    this.chargeStrength = this.forces.repel === 0 ? 0 : -obsidianCharge(this.forces.repel)
+    const linkForce = this.forces.link === 0 ? 0 : obsidianSliderForce(this.forces.link)
     for (const link of this.links) {
-      link.strength = link.baseStrength * this.forces.link
+      link.strength = link.baseStrength * linkForce
       link.distance = this.forces.linkDistance
     }
   }

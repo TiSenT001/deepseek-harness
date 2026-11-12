@@ -61,7 +61,7 @@ export const DEFAULT_GRAPH_SETTINGS: GraphSettings = {
     showArrow: false,
   },
   forces: {
-    center: 0.1,
+    center: 0.518713248970312,
     repel: 10,
     link: 1,
     linkDistance: 250,
