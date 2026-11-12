@@ -1,4 +1,4 @@
-/**
+﻿/**
  * d3-force semantics for the link graph, matching Obsidian's sim.js: nodes
  * carry velocity and optional pin positions, `alpha` is the energy that decays
  * over ~300 ticks, and every data/force/drag change reheats instead of
@@ -21,6 +21,8 @@ const QUADTREE_THRESHOLD = 300
 /** Collide disc radius and per-tick resolution strength (Obsidian sim.js). */
 const COLLIDE_RADIUS = OBSIDIAN_GRAPH.collideRadius
 const COLLIDE_STRENGTH = OBSIDIAN_GRAPH.collideStrength
+/** Per-tick speed cap that keeps large charges from exploding the layout. */
+const MAX_SPEED = 40
 
 interface Link {
   readonly source: SimNode
@@ -139,6 +141,13 @@ export class Simulation {
       else repelForceNaive(nodes, alpha, this.chargeStrength)
     }
     collideForce(nodes, COLLIDE_RADIUS, COLLIDE_STRENGTH)
+    for (const node of nodes) {
+      const speed = Math.hypot(node.vx, node.vy)
+      if (speed > MAX_SPEED) {
+        node.vx = (node.vx / speed) * MAX_SPEED
+        node.vy = (node.vy / speed) * MAX_SPEED
+      }
+    }
 
     for (const node of nodes) {
       if (node.fx === null) {
@@ -207,3 +216,4 @@ export class Simulation {
     }
   }
 }
+
