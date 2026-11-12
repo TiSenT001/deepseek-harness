@@ -102,6 +102,15 @@ export const GRAPH_STYLE = `/* Graph filter controls. */
   color: var(--dsw-alias-label-tertiary, #8b8b94);
 }
 .ov-graph-field { display: flex; flex-direction: column; gap: 4px; padding: 3px 0; }
+.ov-graph-number-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 72px;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+}
+.ov-graph-number-row > span { color: var(--dsw-alias-label-secondary, #b6b6bd); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ov-graph-number-row .ov-graph-text { text-align: right; }
 .ov-graph-text {
   padding: 4px 8px;
   border-radius: 4px;

@@ -175,6 +175,7 @@ export const css = {
   graphPanelSection: 'ov-graph-panel-section',
   graphPanelTitle: 'ov-graph-panel-title',
   graphField: 'ov-graph-field',
+  graphNumberRow: 'ov-graph-number-row',
   graphText: 'ov-graph-text',
   groupRow: 'ov-group-row',
   groupColor: 'ov-group-color',
