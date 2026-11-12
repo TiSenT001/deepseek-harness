@@ -203,7 +203,7 @@ src/vault/watch.ts   目录监听 + 去抖
 ```sh
 node --test tests/*.test.ts     # 34 个单元/集成用例（Node 类型剥离，无需构建）
 tsc -p tsconfig.json --noEmit   # 类型检查
-tsdown --config tsdown.config.ts # 构建 lib/index.js 与 lib/client.js
+tsdown --config tsdown.config.ts # 构建 host/client/worker/mermaid/pur chunk
 ```
 
 UI 手动检查（Playwright，指向任意运行中的实例）：

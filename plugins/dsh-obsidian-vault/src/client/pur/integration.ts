@@ -4,7 +4,7 @@
  * canvas and must not be reached from `client/ui`.
  * @module dsh-obsidian-vault/client/pur/integration
  */
-export { PurStudioPane, type PurStudioPaneProps } from './PurStudioPane.tsx'
+export type { PurStudioPaneProps } from './PurStudioPane.tsx'
 export {
   createPurPaneHandlers,
   getPurPaneHandlers,
