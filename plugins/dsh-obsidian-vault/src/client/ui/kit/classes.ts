@@ -291,6 +291,7 @@ export const css = {
   mergePreviewHead: 'ov-merge-preview-head',
   mergePreview: 'ov-merge-preview',
   mergeStatus: 'ov-merge-status',
+  splitList: 'ov-split-list',
   historyLayout: 'ov-history-layout',
   historyList: 'ov-history-list',
   historyRow: 'ov-history-row',
