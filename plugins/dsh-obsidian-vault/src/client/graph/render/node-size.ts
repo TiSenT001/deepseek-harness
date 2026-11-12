@@ -6,9 +6,9 @@
  */
 
 /** Screen radius for the least-connected node, at nodeScale 1. */
-export const MIN_NODE_SCREEN_PX = 3
+export const MIN_NODE_SCREEN_PX = 1.5
 /** Screen radius for the most-connected node, at nodeScale 1. */
-export const MAX_NODE_SCREEN_PX = 8
+export const MAX_NODE_SCREEN_PX = 4
 /** `obsidianNodeRadius` clamps degree radius into this world range. */
 const MIN_WORLD_RADIUS = 8
 const MAX_WORLD_RADIUS = 30
