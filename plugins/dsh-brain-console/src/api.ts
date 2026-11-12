@@ -6,7 +6,7 @@
  */
 import type {
   BackupListing, BatchRestartResult, BatchStartResult, BatchStopResult, CacheListing, CachePruneResult,
-  AutoRecoverStatus, CheckupResult, EmbedJobStatus, TableInfo, TableUsage, FailedEdgesListing, HistoryListing, IndexHealth, PruneResult, RestoreResult, TrendThresholds, Unit, UnitAction,
+  AutoRecoverStatus, CheckupResult, EmbedJobStatus, StorageSummary, TableInfo, TableUsage, FailedEdgesListing, HistoryListing, IndexHealth, PruneResult, RestoreResult, TrendThresholds, Unit, UnitAction,
 } from './ui/types.ts'
 
 /** brain_manager 的 HTTP 地址。 */
@@ -76,6 +76,9 @@ export const pruneAutoRecoverBundles = (): Promise<{ ok: boolean; kept: number; 
 /** 移除指向已删除诊断包的旧自动恢复事件。 */
 export const pruneAutoRecoverEvents = (): Promise<{ ok: boolean; removed: number; kept: number; error?: string }> =>
   postJson<{ ok: boolean; removed: number; kept: number; error?: string }>('/auto-recover/prune-events', {})
+
+/** 只读统计 .brain 的目录/数据库占用。 */
+export const loadStorageSummary = (): Promise<StorageSummary> => jget<StorageSummary>('/storage/summary')
 
 /** 清理代码里已不存在的僵尸心跳；返回删除的名字列表。 */
 export const pruneZombieHeartbeats = (): Promise<{ ok: boolean; removed: string[]; kept?: number; error?: string }> =>

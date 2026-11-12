@@ -416,6 +416,21 @@ try {
     return hasGrid ? text.split('\n').slice(0, 4).join(' / ') + extra : '体检接口错误（已在对话框提示）'
   })
 
+  await soft('存储概览对话框能打开', async () => {
+    await page.locator('.bc-header').getByRole('button', { name: '更多操作' }).click()
+    await page.waitForTimeout(400)
+    await page.locator('[role="menu"]').getByText('存储概览…').click()
+    await page.waitForTimeout(1200)
+    const dialog = page.getByRole('dialog')
+    if (!(await dialog.count())) throw new Error('对话框没打开')
+    await page.waitForSelector('.bc-storage-row, .bc-backup-empty, .bc-backup-error', { timeout: 15000 }).catch(() => {})
+    const rows = await dialog.locator('.bc-storage-row').count()
+    const text = await dialog.innerText()
+    await closeOverlay()
+    if (rows === 0 && !text.includes('没有可统计')) throw new Error('既没有存储项也不是空态')
+    return `${rows} 项${text.includes('合计占用') ? ' · 有合计' : ''}`
+  })
+
   record('运行期间无 pageerror', pageErrors.length === 0, pageErrors.join(' | ').slice(0, 200))
 
   const shot = argOf('--shot')

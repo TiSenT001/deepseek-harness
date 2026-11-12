@@ -148,6 +148,26 @@ export interface TableUsage {
   matches?: UsageMatch[]
 }
 
+/** 存储概览的一项。 */
+export interface StorageItem {
+  key: string
+  label: string
+  path: string
+  bytes: number
+  files: number
+  modified_at: string | null
+}
+
+/** `/storage/summary` 的返回。 */
+export interface StorageSummary {
+  ok: boolean
+  error?: string
+  generated_at: string
+  total_bytes: number
+  items: StorageItem[]
+  disk: { total_bytes: number | null; free_bytes: number | null }
+}
+
 /** 自愈线程记录的一条恢复尝试。 */
 export interface AutoRecoverEvent {
   unit: string

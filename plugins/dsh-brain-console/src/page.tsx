@@ -26,6 +26,7 @@ import { reasonOf } from './ui/errors.ts'
 import { FailedEdgesDialog } from './ui/FailedEdgesDialog.tsx'
 import { AutoRecoverDialog } from './ui/AutoRecoverDialog.tsx'
 import { SystemCheckupDialog } from './ui/SystemCheckupDialog.tsx'
+import { StorageDialog } from './ui/StorageDialog.tsx'
 import { IndexHealthDialog } from './ui/IndexHealthDialog.tsx'
 import { GroupActionDialog } from './ui/GroupActionDialog.tsx'
 import { IconButton } from './ui/IconButton.tsx'
@@ -65,6 +66,7 @@ export function ConsolePage(): JSX.Element {
   const [cronAlerts, setCronAlerts] = useState<{ stale: number; zombies: number } | null>(null)
   const [autoRecoverOpen, setAutoRecoverOpen] = useState(false)
   const [checkupOpen, setCheckupOpen] = useState(false)
+  const [storageOpen, setStorageOpen] = useState(false)
   const [trend, setTrend] = useState<MetricKey | null>(null)
   const [detailName, setDetailName] = useState<string | null>(null)
   const [stopGroup, setStopGroup] = useState<{ group: string; names: string[] } | null>(null)
@@ -283,6 +285,7 @@ export function ConsolePage(): JSX.Element {
     onIndex={() => setIndexOpen(true)}
     onAutoRecover={() => setAutoRecoverOpen(true)}
     onCheckup={() => setCheckupOpen(true)}
+    onStorage={() => setStorageOpen(true)}
     onDiagnostics={downloadDiagnostics}
                 onToggleAutostart={() => void toggleAutostart()}
                 onShutdown={() => setShutdownOpen(true)}
@@ -390,6 +393,7 @@ export function ConsolePage(): JSX.Element {
       {indexOpen && <IndexHealthDialog onClose={() => setIndexOpen(false)} />}
   {autoRecoverOpen && <AutoRecoverDialog onClose={() => setAutoRecoverOpen(false)} />}
   {checkupOpen && <SystemCheckupDialog onClose={() => setCheckupOpen(false)} />}
+  {storageOpen && <StorageDialog onClose={() => setStorageOpen(false)} />}
 
       {cacheOpen && (
         <CacheDialog
