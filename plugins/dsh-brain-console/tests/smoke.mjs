@@ -434,6 +434,22 @@ try {
       if ((await dialog.getByRole('button', { name: '清空历史' }).count()) === 0) {
         throw new Error('缺少清空历史按钮')
       }
+      if (historyRows > 0 && (await dialog.getByText('按天聚合').count()) === 0) {
+        throw new Error('历史列表没有按天聚合提示')
+      }
+      // 导出 CSV：应触发浏览器下载，文件名带 brain-checkup 前缀
+      const exportBtn = dialog.getByRole('button', { name: '导出 CSV' })
+      if ((await exportBtn.count()) === 0) throw new Error('缺少导出 CSV 按钮')
+      const [download] = await Promise.all([
+        page.waitForEvent('download', { timeout: 10000 }).catch(() => null),
+        exportBtn.first().click(),
+      ])
+      if (download === null) throw new Error('导出 CSV 没有触发下载')
+      const csvName = download.suggestedFilename()
+      if (!csvName.startsWith('brain-checkup-') || !csvName.endsWith('.csv')) {
+        throw new Error(`CSV 文件名异常: ${csvName}`)
+      }
+      extra += ` · CSV ${csvName}`
       const copyBtn = dialog.getByRole('button', { name: /复制摘要|已复制/ })
       if ((await copyBtn.count()) === 0) throw new Error('缺少复制摘要按钮')
       await copyBtn.click()

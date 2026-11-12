@@ -197,14 +197,24 @@ export function SystemCheckupDialog({ onClose }: SystemCheckupDialogProps): JSX.
   const bloated = report?.bloated_tables ?? []
   const previous = result?.previous ?? null
   const history = result?.history ?? []
+  // 按天聚合：每天取最后一次，趋势看日序列更稳
+  const dailyHistory = (() => {
+    const byDay = new Map<string, CheckupSummary>()
+    for (const item of history) {
+      const day = item.at.slice(0, 10)
+      const existing = byDay.get(day)
+      if (existing === undefined || item.at > existing.at) byDay.set(day, item)
+    }
+    return [...byDay.values()].sort((left, right) => left.at.localeCompare(right.at))
+  })()
   const trendRows: { label: string; values: number[]; current: number | null }[] = [
     {
       label: '总表',
-      values: history.map((item) => item.total_tables).filter((value): value is number => value !== null),
+      values: dailyHistory.map((item) => item.total_tables).filter((value): value is number => value !== null),
       current: report?.total_tables ?? null,
     },
-    { label: '待核实空表', values: history.map((item) => item.empty), current: empty.length },
-    { label: '膨胀表', values: history.map((item) => item.bloated), current: bloated.length },
+    { label: '待核实空表', values: dailyHistory.map((item) => item.empty), current: empty.length },
+    { label: '膨胀表', values: dailyHistory.map((item) => item.bloated), current: bloated.length },
   ]
 
   const buildSummary = (): string => {
@@ -234,6 +244,26 @@ export function SystemCheckupDialog({ onClose }: SystemCheckupDialogProps): JSX.
     } finally {
       setClearing(false)
     }
+  }
+
+  const exportCsv = (): void => {
+    const header = 'at,total_tables,orphan,empty,bloated'
+    const rows = history.map((item) => [
+      item.at,
+      item.total_tables ?? '',
+      item.orphan,
+      item.empty,
+      item.bloated,
+    ].join(','))
+    const blob = new Blob([`${header}\n${rows.join('\n')}\n`], { type: 'text/csv;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const anchorEl = document.createElement('a')
+    anchorEl.href = url
+    anchorEl.download = `brain-checkup-${new Date().toISOString().slice(0, 10)}.csv`
+    document.body.appendChild(anchorEl)
+    anchorEl.click()
+    anchorEl.remove()
+    URL.revokeObjectURL(url)
   }
 
   const copySummary = async (): Promise<void> => {
@@ -384,8 +414,11 @@ export function SystemCheckupDialog({ onClose }: SystemCheckupDialogProps): JSX.
 
           {history.length > 0 && (
             <details className="bc-checkup-history">
-              <summary>历史体检（{history.length}）</summary>
+              <summary>历史体检（{history.length} 条 / {dailyHistory.length} 天）</summary>
               <div className="bc-checkup-history-actions">
+                <Button size="sm" variant="ghost" disabled={history.length === 0} onClick={() => exportCsv()}>
+                  导出 CSV
+                </Button>
                 {armedClear ? (
                   <>
                     <Button size="sm" variant="ghost" disabled={clearing} onClick={() => void clearHistory()}>
@@ -401,7 +434,7 @@ export function SystemCheckupDialog({ onClose }: SystemCheckupDialogProps): JSX.
                   </Button>
                 )}
               </div>
-              {history.length >= 2 && (
+              {dailyHistory.length >= 2 && (
                 <div className="bc-checkup-trend">
                   {trendRows.map((row) => {
                     const min = row.values.length > 0 ? Math.min(...row.values) : null
@@ -418,7 +451,10 @@ export function SystemCheckupDialog({ onClose }: SystemCheckupDialogProps): JSX.
                 </div>
               )}
               <div className="bc-checkup-history-list">
-                {[...history].reverse().map((item) => <HistoryRow key={item.at} item={item} />)}
+                {[...dailyHistory].reverse().map((item) => <HistoryRow key={`day-${item.at}`} item={item} />)}
+              </div>
+              <div className="bc-index-note">
+                {history.length} 条记录按天聚合为 {dailyHistory.length} 天（列表与趋势都显示每天最后一次）
               </div>
             </details>
           )}

@@ -1935,20 +1935,29 @@ window.__ModuleLoader__.load({
 			const bloated = report?.bloated_tables ?? [];
 			const previous = result?.previous ?? null;
 			const history = result?.history ?? [];
+			const dailyHistory = (() => {
+				const byDay = /* @__PURE__ */ new Map();
+				for (const item of history) {
+					const day = item.at.slice(0, 10);
+					const existing = byDay.get(day);
+					if (existing === void 0 || item.at > existing.at) byDay.set(day, item);
+				}
+				return [...byDay.values()].sort((left, right) => left.at.localeCompare(right.at));
+			})();
 			const trendRows = [
 				{
 					label: "总表",
-					values: history.map((item) => item.total_tables).filter((value) => value !== null),
+					values: dailyHistory.map((item) => item.total_tables).filter((value) => value !== null),
 					current: report?.total_tables ?? null
 				},
 				{
 					label: "待核实空表",
-					values: history.map((item) => item.empty),
+					values: dailyHistory.map((item) => item.empty),
 					current: empty.length
 				},
 				{
 					label: "膨胀表",
-					values: history.map((item) => item.bloated),
+					values: dailyHistory.map((item) => item.bloated),
 					current: bloated.length
 				}
 			];
@@ -1974,6 +1983,25 @@ window.__ModuleLoader__.load({
 				} finally {
 					setClearing(false);
 				}
+			};
+			const exportCsv = () => {
+				const header = "at,total_tables,orphan,empty,bloated";
+				const rows = history.map((item) => [
+					item.at,
+					item.total_tables ?? "",
+					item.orphan,
+					item.empty,
+					item.bloated
+				].join(","));
+				const blob = new Blob([`${header}\n${rows.join("\n")}\n`], { type: "text/csv;charset=utf-8" });
+				const url = URL.createObjectURL(blob);
+				const anchorEl = document.createElement("a");
+				anchorEl.href = url;
+				anchorEl.download = `brain-checkup-${(/* @__PURE__ */ new Date()).toISOString().slice(0, 10)}.csv`;
+				document.body.appendChild(anchorEl);
+				anchorEl.click();
+				anchorEl.remove();
+				URL.revokeObjectURL(url);
 			};
 			const copySummary = async () => {
 				try {
@@ -2188,11 +2216,19 @@ window.__ModuleLoader__.load({
 									/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("summary", { children: [
 										"历史体检（",
 										history.length,
-										"）"
+										" 条 / ",
+										dailyHistory.length,
+										" 天）"
 									] }),
-									/* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+									/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
 										className: "bc-checkup-history-actions",
-										children: armedClear ? /* @__PURE__ */ (0, react_jsx_runtime.jsxs)(react_jsx_runtime.Fragment, { children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)(Button, {
+										children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)(Button, {
+											size: "sm",
+											variant: "ghost",
+											disabled: history.length === 0,
+											onClick: () => exportCsv(),
+											children: "导出 CSV"
+										}), armedClear ? /* @__PURE__ */ (0, react_jsx_runtime.jsxs)(react_jsx_runtime.Fragment, { children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)(Button, {
 											size: "sm",
 											variant: "ghost",
 											disabled: clearing,
@@ -2210,9 +2246,9 @@ window.__ModuleLoader__.load({
 											disabled: clearing,
 											onClick: () => setArmedClear(true),
 											children: "清空历史"
-										})
+										})]
 									}),
-									history.length >= 2 && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+									dailyHistory.length >= 2 && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
 										className: "bc-checkup-trend",
 										children: trendRows.map((row) => {
 											const min = row.values.length > 0 ? Math.min(...row.values) : null;
@@ -2237,7 +2273,16 @@ window.__ModuleLoader__.load({
 									}),
 									/* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
 										className: "bc-checkup-history-list",
-										children: [...history].reverse().map((item) => /* @__PURE__ */ (0, react_jsx_runtime.jsx)(HistoryRow, { item }, item.at))
+										children: [...dailyHistory].reverse().map((item) => /* @__PURE__ */ (0, react_jsx_runtime.jsx)(HistoryRow, { item }, `day-${item.at}`))
+									}),
+									/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+										className: "bc-index-note",
+										children: [
+											history.length,
+											" 条记录按天聚合为 ",
+											dailyHistory.length,
+											" 天（列表与趋势都显示每天最后一次）"
+										]
 									})
 								]
 							})
