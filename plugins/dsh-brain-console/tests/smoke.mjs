@@ -265,6 +265,27 @@ try {
     return '已打开'
   })
 
+  await soft('依赖关系拓扑能打开', async () => {
+    await page.locator('.bc-header').getByRole('button', { name: '更多操作' }).click()
+    await page.waitForTimeout(400)
+    await page.locator('[role="menu"]').getByText('依赖关系…').click()
+    await page.waitForTimeout(800)
+    const dialog = page.getByRole('dialog')
+    if (!(await dialog.count())) throw new Error('对话框没打开')
+    const nodes = await dialog.locator('.bc-dep-node').count()
+    const edges = await dialog.locator('.bc-dep-edge').count()
+    if (nodes === 0) throw new Error('依赖图没有节点')
+    await dialog.locator('.bc-dep-node').first().click()
+    await page.waitForTimeout(700)
+    const detail = await page.locator('.bc-detail-list').count()
+    await page.keyboard.press('Escape')
+    await page.waitForTimeout(400)
+    await page.keyboard.press('Escape')
+    await page.waitForTimeout(300)
+    if (detail === 0) throw new Error('点击节点没有打开单元详情')
+    return `${nodes} 个节点 · ${edges} 条依赖 · 点节点打开详情`
+  })
+
   await soft('单元 ⋯ 菜单能打开', async () => {
     const btn = page.locator('article.bc-card').first().getByRole('button', { name: '单元更多操作' })
     if (!(await btn.count())) throw new Error('卡片上没有单元菜单按钮')
@@ -469,7 +490,7 @@ try {
     const settings = page.locator('.bc-settings')
     const inputs = settings.locator('.bc-settings-input')
     const count = await inputs.count()
-    if (count !== 4) throw new Error(`设置输入框 ${count}，应为 4`)
+    if (count !== 6) throw new Error(`设置输入框 ${count}，应为 6`)
     const dockToggle = await settings.getByRole('button', { name: /已开启|已关闭/ }).count()
     if (dockToggle === 0) throw new Error('日志展开开关缺失')
     const gear = await page.locator('.bc-header').getByRole('button', { name: '设置' }).count()
@@ -486,6 +507,9 @@ try {
     await settings.getByRole('button', { name: '保存趋势阈值' }).click()
     await page.waitForTimeout(1200)
     const trendNotice = await page.locator('.bc-settings-notice').innerText().catch(() => '')
+    await settings.getByRole('button', { name: '保存定时任务阈值' }).click()
+    await page.waitForTimeout(1200)
+    const cronNotice = await page.locator('.bc-settings-notice').innerText().catch(() => '')
     // 刷新间隔：切 10 秒 → 校验 localStorage → 切回 5 秒
     await settings.getByRole('button', { name: '10 秒' }).click()
     await page.waitForTimeout(300)
@@ -527,6 +551,7 @@ try {
     const back = await page.locator('.bc-header').count()
     if (!diskNotice.includes('已保存')) throw new Error(`磁盘阈值保存提示: ${diskNotice}`)
     if (!trendNotice.includes('已保存')) throw new Error(`趋势阈值保存提示: ${trendNotice}`)
+    if (!cronNotice.includes('已保存')) throw new Error(`定时任务阈值保存提示: ${cronNotice}`)
     if (back === 0) throw new Error('返回后面板不存在')
     if (storedTen === null || !storedTen.includes('10')) throw new Error(`刷新间隔未持久化: ${storedTen}`)
     if (storedFive === null || !storedFive.includes('5')) throw new Error(`刷新间隔恢复失败: ${storedFive}`)
@@ -534,7 +559,7 @@ try {
     if (logPrefs === null || !logPrefs.includes('"logLines":300') || !logPrefs.includes('"logLevel":"error"')) {
       throw new Error(`日志偏好未持久化: ${logPrefs}`)
     }
-    return `${count} 个输入 · 齿轮入口 · 路径组 ${pathGroup}${derived > 0 ? '（已派生）' : '（旧宿主提示）'} · 保存提示「${diskNotice.trim()} / ${trendNotice.trim()}」· 间隔切 10s→5s · 日志 300/错误 · 分组移动 ${orderMoved} · 返回正常`
+    return `${count} 个输入 · 齿轮入口 · 路径组 ${pathGroup}${derived > 0 ? '（已派生）' : '（旧宿主提示）'} · 保存提示「${diskNotice.trim()} / ${cronNotice.trim()} / ${trendNotice.trim()}」· 间隔切 10s→5s · 日志 300/错误 · 分组移动 ${orderMoved} · 返回正常`
   })
 
   await soft('首页分组可折叠且记忆', async () => {

@@ -31,6 +31,8 @@ export interface MoreMenuProps {
   onCheckup: () => void
   /** 打开「存储概览」对话框 */
   onStorage: () => void
+  /** 打开「依赖关系」对话框 */
+  onDependencies: () => void
   /** 下载诊断包 zip */
   onDiagnostics: () => void
   onToggleAutostart: () => void
@@ -44,7 +46,7 @@ export interface MoreMenuProps {
  * @returns 菜单入口（含锚定菜单）
  */
 export function MoreMenu({
-  autostart, busy, onBackup, onPrune, onCaches, onIndex, onAutoRecover, onCheckup, onStorage, onDiagnostics, onToggleAutostart, onShutdown,
+  autostart, busy, onBackup, onPrune, onCaches, onIndex, onAutoRecover, onCheckup, onStorage, onDependencies, onDiagnostics, onToggleAutostart, onShutdown,
 }: MoreMenuProps): JSX.Element {
   const [open, setOpen] = useState(false)
   const items: SharedMenuEntry[] = [
@@ -56,6 +58,7 @@ export function MoreMenu({
     { id: 'auto-recover', label: '自动恢复记录…', disabled: busy !== null },
     { id: 'checkup', label: '系统体检…', disabled: busy !== null },
     { id: 'storage', label: '存储概览…', disabled: busy !== null },
+    { id: 'dependencies', label: '依赖关系…', disabled: busy !== null },
     { id: 'diagnostics', label: '下载诊断包', disabled: busy !== null },
   ]
   if (autostart !== null && autostart.supported) {
@@ -78,6 +81,7 @@ export function MoreMenu({
     else if (id === 'auto-recover') onAutoRecover()
     else if (id === 'checkup') onCheckup()
     else if (id === 'storage') onStorage()
+    else if (id === 'dependencies') onDependencies()
     else if (id === 'diagnostics') onDiagnostics()
     else if (id === 'autostart') onToggleAutostart()
     else if (id === 'shutdown') onShutdown()
