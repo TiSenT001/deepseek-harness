@@ -88,6 +88,8 @@ window.__ModuleLoader__.load({
 		const pruneBackups = (keep) => postJson("/actions/prune-backups", { keep });
 		/** 系统体检：只读跑 tools/system_checkup.py（约 2 秒）。 */
 		const loadSystemCheckup = () => jget("/system/checkup");
+		/** 只读查看单张表的列结构与行数（名字经后端 sqlite_master 校验）。 */
+		const loadTableInfo = (name) => jget(`/system/table?name=${encodeURIComponent(name)}`);
 		/** 清理代码里已不存在的僵尸心跳；返回删除的名字列表。 */
 		const pruneZombieHeartbeats = () => postJson("/crons/prune-zombies", {});
 		/** 趋势告警阈值。 */
@@ -1395,11 +1397,83 @@ window.__ModuleLoader__.load({
 		* 系统体检：跑 `tools/system_checkup.py --json` 的四类只读检查。
 		*
 		* 空表 / 孤儿表 / 膨胀表来自 sqlite 统计与源码 grep，约 2 秒；结果只读展示，
-		* 不提供任何清理动作（DROP 表这类操作留给命令行）。
+		* 不提供任何清理动作（DROP 表这类操作留给命令行）。每次体检会留一行摘要，
+		* 本对话框展示「较上次」对比与最近几次历史；膨胀表可下钻看列结构与行数。
 		*/
 		/** 把毫秒格式化成一位小数的秒。 */
 		function seconds(ms) {
 			return ms === void 0 ? "—" : `${(ms / 1e3).toFixed(1)}s`;
+		}
+		/** 数字变化：上涨用 +，下降用 −，不变返回空。 */
+		function diff(before, after) {
+			if (before === null || before === void 0 || after === null || after === void 0) return "";
+			const delta = after - before;
+			if (delta === 0) return "";
+			return delta > 0 ? `（+${delta}）` : `（${delta}）`;
+		}
+		/** 一条历史记录的摘要行。 */
+		function HistoryRow({ item }) {
+			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+				className: "bc-checkup-history-row",
+				children: [
+					/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+						className: "bc-checkup-history-at",
+						children: item.at
+					}),
+					/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", { children: ["总表 ", item.total_tables ?? "—"] }),
+					/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", { children: ["孤儿 ", item.orphan] }),
+					/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", { children: ["空表 ", item.empty] }),
+					/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", { children: ["膨胀 ", item.bloated] })
+				]
+			});
+		}
+		/** 一个可展开的膨胀表行：点开列结构。 */
+		function BloatRow({ name, count, info, open, busy, onToggle }) {
+			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+				className: "bc-checkup-bloat",
+				children: [/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("button", {
+					type: "button",
+					className: "bc-checkup-row bc-checkup-row-btn",
+					"aria-expanded": open,
+					onClick: onToggle,
+					children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+						className: "bc-cron-name",
+						children: name
+					}), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", { children: [typeof count === "number" ? count.toLocaleString("zh-CN") : String(count), " 行"] })]
+				}), open && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+					className: "bc-checkup-columns",
+					children: [
+						busy && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+							className: "bc-index-note",
+							children: "读取列结构…"
+						}),
+						!busy && info?.ok === false && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+							className: "bc-backup-error",
+							children: info.error ?? "读取失败"
+						}),
+						!busy && info?.ok === true && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)(react_jsx_runtime.Fragment, { children: [/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
+							className: "bc-index-note",
+							children: [
+								"共 ",
+								info.columns?.length ?? 0,
+								" 列 · ",
+								info.rows?.toLocaleString("zh-CN"),
+								" 行"
+							]
+						}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+							className: "bc-checkup-tags",
+							children: (info.columns ?? []).map((column) => /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
+								className: "bc-checkup-tag",
+								title: `${column.type || "ANY"}${column.notnull ? " NOT NULL" : ""}${column.pk ? " PRIMARY KEY" : ""}`,
+								children: [column.name, /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
+									className: "bc-checkup-tag-type",
+									children: [column.type || "—", column.pk ? " · pk" : ""]
+								})]
+							}, column.name))
+						})] })
+					]
+				})]
+			});
 		}
 		/**
 		* 渲染系统体检对话框。
@@ -1410,6 +1484,9 @@ window.__ModuleLoader__.load({
 			const [result, setResult] = (0, react.useState)(null);
 			const [running, setRunning] = (0, react.useState)(false);
 			const [error, setError] = (0, react.useState)(null);
+			const [tables, setTables] = (0, react.useState)({});
+			const [openTable, setOpenTable] = (0, react.useState)(null);
+			const [tableBusy, setTableBusy] = (0, react.useState)(null);
 			const run = async () => {
 				setRunning(true);
 				setError(null);
@@ -1425,10 +1502,38 @@ window.__ModuleLoader__.load({
 			(0, react.useEffect)(() => {
 				run();
 			}, []);
+			const toggleTable = async (name) => {
+				if (openTable === name) {
+					setOpenTable(null);
+					return;
+				}
+				setOpenTable(name);
+				if (tables[name] !== void 0) return;
+				setTableBusy(name);
+				try {
+					const info = await loadTableInfo(name);
+					setTables((prev) => ({
+						...prev,
+						[name]: info
+					}));
+				} catch (e) {
+					setTables((prev) => ({
+						...prev,
+						[name]: {
+							ok: false,
+							error: reasonOf(e)
+						}
+					}));
+				} finally {
+					setTableBusy(null);
+				}
+			};
 			const report = result?.ok ? result.report : void 0;
 			const orphans = report?.orphan_tables ?? [];
 			const empty = report?.empty_unknown ?? [];
 			const bloated = report?.bloated_tables ?? [];
+			const previous = result?.previous ?? null;
+			const history = result?.history ?? [];
 			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)(Dialog, {
 				open: true,
 				onClose,
@@ -1491,6 +1596,36 @@ window.__ModuleLoader__.load({
 									})
 								]
 							}),
+							previous !== null && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+								className: "bc-checkup-delta",
+								children: [
+									"较上次（",
+									previous.at,
+									"）：总表 ",
+									previous.total_tables ?? "—",
+									" → ",
+									report.total_tables,
+									diff(previous.total_tables, report.total_tables),
+									" · ",
+									"孤儿 ",
+									previous.orphan,
+									" → ",
+									orphans.length,
+									diff(previous.orphan, orphans.length),
+									" · ",
+									"空表 ",
+									previous.empty,
+									" → ",
+									empty.length,
+									diff(previous.empty, empty.length),
+									" · ",
+									"膨胀 ",
+									previous.bloated,
+									" → ",
+									bloated.length,
+									diff(previous.bloated, bloated.length)
+								]
+							}),
 							orphans.length === 0 && empty.length === 0 && bloated.length === 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
 								className: "bc-backup-done",
 								role: "status",
@@ -1520,14 +1655,15 @@ window.__ModuleLoader__.load({
 							}),
 							bloated.length > 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("section", {
 								className: "bc-checkup-section",
-								children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("h4", { children: "膨胀表（行数超过 10 万）" }), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+								children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("h4", { children: "膨胀表（行数超过 10 万，点开看列结构）" }), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
 									className: "bc-checkup-list",
-									children: bloated.map(([table, count]) => /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-										className: "bc-checkup-row",
-										children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-											className: "bc-cron-name",
-											children: table
-										}), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", { children: [typeof count === "number" ? count.toLocaleString("zh-CN") : String(count), " 行"] })]
+									children: bloated.map(([table, count]) => /* @__PURE__ */ (0, react_jsx_runtime.jsx)(BloatRow, {
+										name: String(table),
+										count: count ?? "—",
+										info: tables[String(table)],
+										open: openTable === String(table),
+										busy: tableBusy === String(table),
+										onToggle: () => void toggleTable(String(table))
 									}, String(table)))
 								})]
 							}),
@@ -1538,6 +1674,17 @@ window.__ModuleLoader__.load({
 									report.known_event_driven,
 									" 个（列在 system_checkup.py 的白名单里，属正常）"
 								]
+							}),
+							history.length > 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("details", {
+								className: "bc-checkup-history",
+								children: [/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("summary", { children: [
+									"历史体检（",
+									history.length,
+									"）"
+								] }), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+									className: "bc-checkup-history-list",
+									children: [...history].reverse().map((item) => /* @__PURE__ */ (0, react_jsx_runtime.jsx)(HistoryRow, { item }, item.at))
+								})]
 							})
 						]
 					})
@@ -3863,6 +4010,85 @@ window.__ModuleLoader__.load({
   border-radius: 8px;
   color: var(--dsw-alias-label-tertiary);
   font-size: 10.5px;
+}
+
+.bc-checkup-delta {
+  margin: 2px 0 8px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  background: var(--dsw-alias-bg-layer-1, rgba(128, 128, 128, 0.05));
+  font-size: 11.5px;
+  line-height: 1.6;
+  color: var(--dsw-alias-label-secondary);
+}
+.bc-checkup-bloat {
+  border-bottom: 1px solid var(--dsw-alias-border-l1);
+}
+.bc-checkup-bloat:last-child {
+  border-bottom: 0;
+}
+.bc-checkup-row-btn {
+  width: 100%;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  color: inherit;
+  text-align: left;
+}
+.bc-checkup-row-btn:hover {
+  background: var(--dsw-alias-interactive-bg-hover);
+}
+.bc-checkup-columns {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 4px 0 8px;
+}
+.bc-checkup-tag-type {
+  margin-left: 5px;
+  color: var(--dsw-alias-label-tertiary);
+  font-family: var(--ds-font-family-code, monospace);
+}
+.bc-checkup-history {
+  margin-top: 10px;
+}
+.bc-checkup-history > summary {
+  cursor: pointer;
+  list-style: none;
+  font-size: 11.5px;
+  color: var(--dsw-alias-label-tertiary);
+  user-select: none;
+}
+.bc-checkup-history > summary::-webkit-details-marker {
+  display: none;
+}
+.bc-checkup-history > summary::before {
+  content: '▸';
+  margin-right: 6px;
+  display: inline-block;
+  transition: transform 0.12s ease;
+}
+.bc-checkup-history[open] > summary::before {
+  transform: rotate(90deg);
+}
+.bc-checkup-history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 4px;
+}
+.bc-checkup-history-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 2px 0;
+  font-size: 11px;
+  color: var(--dsw-alias-label-secondary);
+  font-variant-numeric: tabular-nums;
+}
+.bc-checkup-history-at {
+  min-width: 118px;
+  color: var(--dsw-alias-label-tertiary);
 }
 
 .bc-checkup-grid {

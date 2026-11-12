@@ -86,12 +86,41 @@ export interface CheckupReport {
   total_tables: number
 }
 
+/** 一次体检的摘要（历史对比用）。 */
+export interface CheckupSummary {
+  at: string
+  total_tables: number | null
+  orphan: number
+  empty: number
+  bloated: number
+}
+
 /** `/system/checkup` 的返回。 */
 export interface CheckupResult {
   ok: boolean
   error?: string
   report?: CheckupReport
   elapsed_ms?: number
+  at?: string
+  previous?: CheckupSummary | null
+  history?: CheckupSummary[]
+}
+
+/** 一列的表结构。 */
+export interface TableColumn {
+  name: string
+  type: string
+  notnull: boolean
+  pk: boolean
+}
+
+/** `/system/table?name=` 的返回。 */
+export interface TableInfo {
+  ok: boolean
+  error?: string
+  name?: string
+  rows?: number
+  columns?: TableColumn[]
 }
 
 /** 自愈线程记录的一条恢复尝试。 */

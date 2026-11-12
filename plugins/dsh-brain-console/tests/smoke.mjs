@@ -359,9 +359,22 @@ try {
     const text = await dialog.innerText()
     const hasGrid = await dialog.locator('.bc-checkup-grid').count()
     const errorShown = text.includes('体检失败') || text.includes('超时')
+    let extra = ''
+    if (hasGrid) {
+      const history = await dialog.locator('.bc-checkup-history').count()
+      const rows = await dialog.locator('.bc-checkup-row-btn').count()
+      extra = ` · 历史 ${history} · 膨胀表 ${rows}`
+      if (rows > 0) {
+        await dialog.locator('.bc-checkup-row-btn').first().click()
+        await page.waitForTimeout(800)
+        const columns = await dialog.locator('.bc-checkup-columns').count()
+        if (columns === 0) throw new Error('膨胀表点开后没有列结构')
+        extra += ' · 列结构可见'
+      }
+    }
     await closeOverlay()
     if (!hasGrid && !errorShown) throw new Error('既没有结果也不是明确错误')
-    return hasGrid ? text.split('\n').slice(0, 4).join(' / ') : '体检接口错误（已在对话框提示）'
+    return hasGrid ? text.split('\n').slice(0, 4).join(' / ') + extra : '体检接口错误（已在对话框提示）'
   })
 
   record('运行期间无 pageerror', pageErrors.length === 0, pageErrors.join(' | ').slice(0, 200))
