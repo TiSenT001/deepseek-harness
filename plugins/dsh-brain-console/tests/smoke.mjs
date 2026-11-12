@@ -196,8 +196,19 @@ try {
     await page.waitForTimeout(1200)
     const dock = await page.locator('.bc-dock').count()
     if (!dock) throw new Error('日志控制台没出现')
+    // 级别过滤：切到「错误」，应落在当前过滤按钮上并写入偏好
+    const errorLevel = page.locator('.bc-dock-level', { hasText: '错误' }).first()
+    await errorLevel.click()
+    await page.waitForTimeout(300)
+    const active = await errorLevel.getAttribute('data-active')
+    const stored = await page.evaluate(() => window.localStorage.getItem('brain.console.prefs.v1'))
+    // 恢复「全部」，避免影响后续使用
+    await page.locator('.bc-dock-level', { hasText: '全部' }).first().click()
+    await page.waitForTimeout(200)
     await page.getByRole('button', { name: '收起日志' }).click().catch(() => {})
-    return '已展开'
+    if (active === null) throw new Error('级别过滤按钮没有激活')
+    if (stored === null || !stored.includes('"logLevel":"error"')) throw new Error(`级别未持久化: ${stored}`)
+    return '已展开 · 错误级别过滤生效'
   })
 
   await soft('失败边明细对话框能打开', async () => {
@@ -453,6 +464,34 @@ try {
     await page.waitForTimeout(300)
     const storedFive = await page.evaluate(() => window.localStorage.getItem('brain.console.prefs.v1'))
     const uiNotice = await page.locator('.bc-settings-notice').innerText().catch(() => '')
+    // 日志默认行数/级别
+    await page.getByRole('button', { name: '300 行' }).click()
+    await page.getByRole('button', { name: '错误' }).click()
+    await page.waitForTimeout(300)
+    const logPrefs = await page.evaluate(() => window.localStorage.getItem('brain.console.prefs.v1'))
+    await page.getByRole('button', { name: '120 行' }).click()
+    await page.getByRole('button', { name: '全部' }).click()
+    // 分组顺序：第一组下移再移回
+    const orderRows = page.locator('.bc-settings-order-row')
+    const orderCount = await orderRows.count()
+    let orderMoved = false
+    if (orderCount >= 2) {
+      const firstName = (await orderRows.first().locator('.bc-settings-order-name').innerText()).trim()
+      await orderRows.first().getByRole('button', { name: /下移/ }).click()
+      await page.waitForTimeout(200)
+      const storedOrder = await page.evaluate(() => window.localStorage.getItem('brain.console.prefs.v1'))
+      orderMoved = storedOrder !== null && storedOrder.includes('"groupOrder"') && !storedOrder.includes('"groupOrder":[]')
+      await orderRows.first().getByRole('button', { name: /下移/ }).click()
+      await page.waitForTimeout(200)
+      const restored = await page.evaluate(() => window.localStorage.getItem('brain.console.prefs.v1'))
+      const restoredOrder = JSON.parse(restored).groupOrder
+      let guard = 0
+      while (restoredOrder[0] !== firstName && guard < orderCount) {
+        await orderRows.first().getByRole('button', { name: /下移/ }).click()
+        await page.waitForTimeout(100)
+        guard += 1
+      }
+    }
     await page.getByRole('button', { name: '返回面板' }).click()
     await page.waitForTimeout(800)
     const back = await page.locator('.bc-header').count()
@@ -462,7 +501,27 @@ try {
     if (storedTen === null || !storedTen.includes('10')) throw new Error(`刷新间隔未持久化: ${storedTen}`)
     if (storedFive === null || !storedFive.includes('5')) throw new Error(`刷新间隔恢复失败: ${storedFive}`)
     if (!uiNotice.includes('刷新间隔')) throw new Error(`界面组提示: ${uiNotice}`)
-    return `${count} 个输入 · 保存提示「${diskNotice.trim()} / ${trendNotice.trim()}」· 间隔切 10s→5s · 返回正常`
+    if (logPrefs === null || !logPrefs.includes('"logLines":300') || !logPrefs.includes('"logLevel":"error"')) {
+      throw new Error(`日志偏好未持久化: ${logPrefs}`)
+    }
+    return `${count} 个输入 · 保存提示「${diskNotice.trim()} / ${trendNotice.trim()}」· 间隔切 10s→5s · 日志 300/错误 · 分组移动 ${orderMoved} · 返回正常`
+  })
+
+  await soft('首页分组可折叠且记忆', async () => {
+    const section = page.locator('.bc-section').first()
+    const toggle = section.locator('.bc-section-collapse').first()
+    if ((await toggle.count()) === 0) throw new Error('分组没有折叠按钮')
+    await toggle.click()
+    await page.waitForTimeout(300)
+    const collapsedGrids = await section.locator('.bc-grid').count()
+    const stored = await page.evaluate(() => window.localStorage.getItem('brain.console.prefs.v1'))
+    await toggle.click()
+    await page.waitForTimeout(300)
+    const expandedGrids = await section.locator('.bc-grid').count()
+    if (collapsedGrids !== 0) throw new Error('折叠后仍渲染成员网格')
+    if (stored === null || stored.includes('"collapsedGroups":[]')) throw new Error('折叠状态未持久化')
+    if (expandedGrids === 0) throw new Error('再次点击没展开')
+    return '折叠隐藏网格 · 状态已持久化 · 再点展开'
   })
 
   await soft('磁盘低余量时顶部出现告警', async () => {

@@ -5,11 +5,9 @@
  */
 import { useCallback, useEffect, useState } from 'react'
 import { jget, postManager } from '../api.ts'
+import { LOG_LINE_OPTIONS, loadPrefs, savePrefs, subscribePrefs } from '../prefs.ts'
 import { reasonOf } from '../ui/errors.ts'
 import { formatClock } from '../ui/format.ts'
-
-/** 日志一次读取的行数档位（点「N 行」循环）。 */
-export const LOG_LINE_OPTIONS = [120, 300, 1000] as const
 
 /** 日志面板打开时的静默刷新间隔（毫秒）。 */
 const LOG_POLL_MS = 4000
@@ -47,7 +45,7 @@ export interface LogDock {
  */
 export function useLogDock(): LogDock {
   const [log, setLog] = useState<LogState | null>(null)
-  const [lines, setLines] = useState<number>(LOG_LINE_OPTIONS[0])
+  const [lines, setLines] = useState<number>(() => loadPrefs().logLines)
   const [paused, setPaused] = useState(false)
   const [clearing, setClearing] = useState(false)
 
@@ -73,6 +71,7 @@ export function useLogDock(): LogDock {
 
   // 面板开着时静默跟随：4 秒一次，不打断用户向上翻看；暂停时完全停
   const logName = log?.name ?? null
+  void LOG_LINE_OPTIONS
   useEffect(() => {
     if (logName === null || paused) return
     const timer = setInterval(() => { void readLog(logName, true) }, LOG_POLL_MS)
@@ -88,9 +87,12 @@ export function useLogDock(): LogDock {
     void readLog(name)
   }, [log, readLog])
 
+  useEffect(() => subscribePrefs((prefs) => setLines(prefs.logLines)), [])
+
   const cycleLines = (): void => {
     const current = LOG_LINE_OPTIONS.indexOf(lines as (typeof LOG_LINE_OPTIONS)[number])
     const next = LOG_LINE_OPTIONS[(current + 1) % LOG_LINE_OPTIONS.length] ?? LOG_LINE_OPTIONS[0]
+    savePrefs({ logLines: next })
     setLines(next)
     if (log !== null) void readLog(log.name, true, next)
   }

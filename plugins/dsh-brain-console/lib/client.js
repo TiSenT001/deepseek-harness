@@ -320,10 +320,29 @@ window.__ModuleLoader__.load({
 			30,
 			60
 		];
+		/** 可选的日志行数。 */
+		const LOG_LINE_OPTIONS = [
+			120,
+			300,
+			1e3
+		];
+		/** 日志级别过滤选项。 */
+		const LOG_LEVELS = [
+			["all", "全部"],
+			["warn", "警告"],
+			["error", "错误"]
+		];
 		/** 默认偏好。 */
-		const DEFAULT_PREFS = { refreshSeconds: 5 };
+		const DEFAULT_PREFS = {
+			refreshSeconds: 5,
+			logLines: 120,
+			logLevel: "all",
+			groupOrder: [],
+			collapsedGroups: []
+		};
 		const STORAGE_KEY = "brain.console.prefs.v1";
 		const listeners = /* @__PURE__ */ new Set();
+		const isStringArray = (value) => Array.isArray(value) && value.every((item) => typeof item === "string");
 		/**
 		* 读取偏好；损坏或非法值回退默认值。
 		* @returns 当前偏好
@@ -332,8 +351,17 @@ window.__ModuleLoader__.load({
 			try {
 				const raw = window.localStorage.getItem(STORAGE_KEY);
 				if (raw !== null) {
-					const seconds = JSON.parse(raw).refreshSeconds;
-					if (typeof seconds === "number" && REFRESH_OPTIONS.includes(seconds)) return { refreshSeconds: seconds };
+					const parsed = JSON.parse(raw);
+					const prefs = { ...DEFAULT_PREFS };
+					const seconds = parsed.refreshSeconds;
+					if (typeof seconds === "number" && REFRESH_OPTIONS.includes(seconds)) prefs.refreshSeconds = seconds;
+					const lines = parsed.logLines;
+					if (typeof lines === "number" && LOG_LINE_OPTIONS.includes(lines)) prefs.logLines = lines;
+					const level = parsed.logLevel;
+					if (level === "all" || level === "warn" || level === "error") prefs.logLevel = level;
+					if (isStringArray(parsed.groupOrder)) prefs.groupOrder = parsed.groupOrder;
+					if (isStringArray(parsed.collapsedGroups)) prefs.collapsedGroups = parsed.collapsedGroups;
+					return prefs;
 				}
 			} catch {}
 			return { ...DEFAULT_PREFS };
@@ -548,12 +576,6 @@ window.__ModuleLoader__.load({
 		*
 		* 刷新只更新「还开着的那个单元」——轮询回来时面板可能已经关了或换了单元。
 		*/
-		/** 日志一次读取的行数档位（点「N 行」循环）。 */
-		const LOG_LINE_OPTIONS = [
-			120,
-			300,
-			1e3
-		];
 		/** 日志面板打开时的静默刷新间隔（毫秒）。 */
 		const LOG_POLL_MS = 4e3;
 		/**
@@ -562,7 +584,7 @@ window.__ModuleLoader__.load({
 		*/
 		function useLogDock() {
 			const [log, setLog] = (0, react.useState)(null);
-			const [lines, setLines] = (0, react.useState)(LOG_LINE_OPTIONS[0]);
+			const [lines, setLines] = (0, react.useState)(() => loadPrefs().logLines);
 			const [paused, setPaused] = (0, react.useState)(false);
 			const [clearing, setClearing] = (0, react.useState)(false);
 			const readLog = (0, react.useCallback)(async (name, silent = false, readLines = lines) => {
@@ -613,8 +635,10 @@ window.__ModuleLoader__.load({
 				setPaused(false);
 				readLog(name);
 			}, [log, readLog]);
+			(0, react.useEffect)(() => subscribePrefs((prefs) => setLines(prefs.logLines)), []);
 			const cycleLines = () => {
 				const next = LOG_LINE_OPTIONS[(LOG_LINE_OPTIONS.indexOf(lines) + 1) % LOG_LINE_OPTIONS.length] ?? LOG_LINE_OPTIONS[0];
+				savePrefs({ logLines: next });
 				setLines(next);
 				if (log !== null) readLog(log.name, true, next);
 			};
@@ -2336,6 +2360,9 @@ window.__ModuleLoader__.load({
 			const [error, setError] = (0, react.useState)(null);
 			const [notice, setNotice] = (0, react.useState)(null);
 			const [refreshSeconds, setRefreshSeconds] = (0, react.useState)(() => loadPrefs().refreshSeconds);
+			const [logLines, setLogLines] = (0, react.useState)(() => loadPrefs().logLines);
+			const [logLevel, setLogLevel] = (0, react.useState)(() => loadPrefs().logLevel);
+			const [groupOrder, setGroupOrder] = (0, react.useState)([]);
 			(0, react.useEffect)(() => {
 				(async () => {
 					try {
@@ -2350,6 +2377,16 @@ window.__ModuleLoader__.load({
 					} catch (e) {
 						setError(reasonOf(e));
 					}
+				})();
+			}, []);
+			(0, react.useEffect)(() => {
+				(async () => {
+					try {
+						const answer = await jget("/units");
+						const names = Array.from(new Set(answer.units.map((unit) => unit.group)));
+						const preferred = loadPrefs().groupOrder;
+						setGroupOrder([...preferred.filter((name) => names.includes(name)), ...names.filter((name) => !preferred.includes(name))]);
+					} catch {}
 				})();
 			}, []);
 			const saveDisk = async () => {
@@ -2488,6 +2525,91 @@ window.__ModuleLoader__.load({
 									},
 									children: [seconds, " 秒"]
 								}, seconds))
+							})
+						]
+					}),
+					/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("section", {
+						className: "bc-settings-group",
+						children: [
+							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("h3", { children: "日志" }),
+							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", { children: "日志 dock 的默认行数与级别过滤；打开日志时生效。" }),
+							/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+								className: "bc-settings-row",
+								children: [LOG_LINE_OPTIONS.map((lines) => /* @__PURE__ */ (0, react_jsx_runtime.jsxs)(Button, {
+									size: "sm",
+									variant: logLines === lines ? "outline" : "ghost",
+									onClick: () => {
+										setLogLines(savePrefs({ logLines: lines }).logLines);
+										setNotice(`日志行数已改为 ${lines}`);
+									},
+									children: [lines, " 行"]
+								}, lines)), LOG_LEVELS.map(([key, label]) => /* @__PURE__ */ (0, react_jsx_runtime.jsx)(Button, {
+									size: "sm",
+									variant: logLevel === key ? "outline" : "ghost",
+									onClick: () => {
+										setLogLevel(savePrefs({ logLevel: key }).logLevel);
+										setNotice(`日志级别已改为 ${label}`);
+									},
+									children: label
+								}, key))]
+							})
+						]
+					}),
+					/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("section", {
+						className: "bc-settings-group",
+						children: [
+							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("h3", { children: "分组顺序" }),
+							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", { children: "调整首页服务分组的先后；顺序保存在本机浏览器。" }),
+							/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+								className: "bc-settings-order",
+								children: [groupOrder.length === 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+									className: "bc-index-note",
+									children: "还没有分组数据（管理器不可用？）"
+								}), groupOrder.map((name, index) => /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+									className: "bc-settings-order-row",
+									children: [
+										/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+											className: "bc-settings-order-name",
+											children: name
+										}),
+										/* @__PURE__ */ (0, react_jsx_runtime.jsx)(Button, {
+											size: "sm",
+											variant: "ghost",
+											"aria-label": `上移 ${name}`,
+											disabled: index === 0,
+											onClick: () => {
+												const next = [...groupOrder];
+												const current = next[index];
+												const other = next[index - 1];
+												if (current !== void 0 && other !== void 0) {
+													next[index - 1] = current;
+													next[index] = other;
+												}
+												setGroupOrder(savePrefs({ groupOrder: next }).groupOrder);
+												setNotice("分组顺序已保存");
+											},
+											children: "↑"
+										}),
+										/* @__PURE__ */ (0, react_jsx_runtime.jsx)(Button, {
+											size: "sm",
+											variant: "ghost",
+											"aria-label": `下移 ${name}`,
+											disabled: index === groupOrder.length - 1,
+											onClick: () => {
+												const next = [...groupOrder];
+												const current = next[index];
+												const other = next[index + 1];
+												if (current !== void 0 && other !== void 0) {
+													next[index + 1] = current;
+													next[index] = other;
+												}
+												setGroupOrder(savePrefs({ groupOrder: next }).groupOrder);
+												setNotice("分组顺序已保存");
+											},
+											children: "↓"
+										})
+									]
+								}, name))]
 							})
 						]
 					}),
@@ -3288,15 +3410,29 @@ window.__ModuleLoader__.load({
 			const body = (0, react.useRef)(null);
 			const follow = (0, react.useRef)(true);
 			const [filter, setFilter] = (0, react.useState)("");
+			const [level, setLevel] = (0, react.useState)(loadPrefs().logLevel);
+			(0, react.useEffect)(() => subscribePrefs((prefs) => setLevel(prefs.logLevel)), []);
 			const [copied, setCopied] = (0, react.useState)(false);
 			const allLines = (0, react.useMemo)(() => text.split("\n"), [text]);
 			const shownLines = (0, react.useMemo)(() => {
 				const needle = filter.trim().toLowerCase();
-				if (needle === "") return allLines;
-				return allLines.filter((line) => line.toLowerCase().includes(needle));
-			}, [allLines, filter]);
+				const errorPattern = /error|错误|traceback|exception|critical|fatal|failed|失败/i;
+				const warnPattern = /warn|警告/i;
+				return allLines.filter((line) => {
+					if (level !== "all") {
+						const isError = errorPattern.test(line);
+						if (level === "error" && !isError) return false;
+						if (level === "warn" && !isError && !warnPattern.test(line)) return false;
+					}
+					return needle === "" || line.toLowerCase().includes(needle);
+				});
+			}, [
+				allLines,
+				filter,
+				level
+			]);
 			const shown = shownLines.join("\n");
-			const filtering = filter.trim() !== "";
+			const filtering = filter.trim() !== "" || level !== "all";
 			(0, react.useLayoutEffect)(() => {
 				follow.current = true;
 				setFilter("");
@@ -3351,6 +3487,21 @@ window.__ModuleLoader__.load({
 							onKeyDown: (event) => {
 								if (event.key === "Escape") setFilter("");
 							}
+						}),
+						/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+							className: "bc-dock-levels",
+							role: "group",
+							"aria-label": "日志级别",
+							children: LOG_LEVELS.map(([key, label]) => /* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
+								type: "button",
+								className: "bc-dock-level",
+								"data-active": level === key || void 0,
+								onClick: () => {
+									savePrefs({ logLevel: key });
+									setLevel(key);
+								},
+								children: label
+							}, key))
 						}),
 						filtering && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
 							className: "bc-dock-match",
@@ -4327,7 +4478,7 @@ window.__ModuleLoader__.load({
 		* @param props - 分组、成员与回调
 		* @returns 分组元素
 		*/
-		function UnitSection({ group, members, now, busy, logName, dependents, onLog, onAction, onStartAll, onStopAll, onRestartAll, onToggleEnabled, onAdopt, onDetail }) {
+		function UnitSection({ group, members, now, busy, logName, dependents, onLog, onAction, onStartAll, onStopAll, onRestartAll, onToggleEnabled, onAdopt, onDetail, collapsed, onToggleCollapse }) {
 			const running = members.filter((unit) => unit.running).length;
 			const stopped = members.length - running;
 			const abnormal = members.filter((unit) => unit.state !== "运行中" && unit.state !== "已停止").length;
@@ -4341,6 +4492,17 @@ window.__ModuleLoader__.load({
 				children: [/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
 					className: "bc-section-head",
 					children: [
+						/* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
+							type: "button",
+							className: "bc-section-collapse",
+							"aria-label": collapsed ? "展开分组" : "折叠分组",
+							"aria-expanded": !collapsed,
+							onClick: () => onToggleCollapse(group),
+							children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+								"data-collapsed": collapsed || void 0,
+								children: "▾"
+							})
+						}),
 						/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
 							className: "bc-section-name",
 							children: group
@@ -4389,7 +4551,7 @@ window.__ModuleLoader__.load({
 						}),
 						/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { className: "bc-rule" })
 					]
-				}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+				}), !collapsed && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
 					className: "bc-grid",
 					children: ordered.map((unit) => /* @__PURE__ */ (0, react_jsx_runtime.jsx)(ServiceCard, {
 						unit,
@@ -4991,6 +5153,64 @@ window.__ModuleLoader__.load({
   background: color-mix(in srgb, var(--dsw-alias-state-success-primary, #3fb950) 12%, transparent);
   color: var(--dsw-alias-state-success-primary, #3fb950);
   font-size: 12px;
+}
+
+.bc-section-collapse {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--dsw-alias-label-tertiary);
+  cursor: pointer;
+  font-size: 11px;
+}
+.bc-section-collapse:hover {
+  background: var(--dsw-alias-interactive-bg-hover);
+  color: var(--dsw-alias-label-primary);
+}
+.bc-section-collapse > span {
+  display: inline-block;
+  transition: transform 0.12s ease;
+}
+.bc-section-collapse > span[data-collapsed] {
+  transform: rotate(-90deg);
+}
+.bc-dock-levels {
+  display: inline-flex;
+  gap: 2px;
+}
+.bc-dock-level {
+  padding: 1px 7px;
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--dsw-alias-label-tertiary);
+  font-size: 11px;
+  cursor: pointer;
+}
+.bc-dock-level[data-active] {
+  border-color: var(--dsw-alias-label-secondary);
+  color: var(--dsw-alias-label-primary);
+}
+.bc-settings-order {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.bc-settings-order-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+}
+.bc-settings-order-name {
+  flex: 1;
+  color: var(--dsw-alias-label-primary);
 }
 
 .bc-storage {
@@ -6378,6 +6598,7 @@ window.__ModuleLoader__.load({
 			const [diskTotal, setDiskTotal] = (0, react.useState)(null);
 			const [diskThresholds, setDiskThresholds] = (0, react.useState)(null);
 			const [settingsOpen, setSettingsOpen] = (0, react.useState)(false);
+			const [uiPrefs, setUiPrefs] = (0, react.useState)(() => loadPrefs());
 			const [trend, setTrend] = (0, react.useState)(null);
 			const [detailName, setDetailName] = (0, react.useState)(null);
 			const [stopGroup, setStopGroup] = (0, react.useState)(null);
@@ -6458,7 +6679,11 @@ window.__ModuleLoader__.load({
 					block: "center"
 				});
 			};
-			const groups = Array.from(new Set(feed.units.map((unit) => unit.group)));
+			const rawGroups = Array.from(new Set(feed.units.map((unit) => unit.group)));
+			const groups = [...uiPrefs.groupOrder.filter((name) => rawGroups.includes(name)), ...rawGroups.filter((name) => !uiPrefs.groupOrder.includes(name))];
+			const toggleGroupCollapsed = (group) => {
+				savePrefs({ collapsedGroups: uiPrefs.collapsedGroups.includes(group) ? uiPrefs.collapsedGroups.filter((name) => name !== group) : [...uiPrefs.collapsedGroups, group] });
+			};
 			const autostartOn = feed.autostart?.supported === true && feed.autostart.enabled;
 			const dependentsByUnit = {};
 			for (const unit of feed.units) for (const dependency of unit.depends ?? []) dependentsByUnit[dependency] = [...dependentsByUnit[dependency] ?? [], unit.name];
@@ -6473,6 +6698,7 @@ window.__ModuleLoader__.load({
 				history,
 				refreshHistory
 			]);
+			(0, react.useEffect)(() => subscribePrefs(setUiPrefs), []);
 			(0, react.useEffect)(() => {
 				(async () => {
 					try {
@@ -6731,7 +6957,9 @@ window.__ModuleLoader__.load({
 									}),
 									onToggleEnabled: (name, enabled) => void actions.setUnitEnabled(name, enabled),
 									onAdopt: (name) => void actions.adoptUnit(name),
-									onDetail: (name) => setDetailName(name)
+									onDetail: (name) => setDetailName(name),
+									collapsed: uiPrefs.collapsedGroups.includes(group),
+									onToggleCollapse: toggleGroupCollapsed
 								}, group))
 							] })]
 						})

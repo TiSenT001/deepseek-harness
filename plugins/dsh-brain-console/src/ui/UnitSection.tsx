@@ -31,6 +31,10 @@ export interface UnitSectionProps {
   onAdopt: (name: string) => void
   /** 打开单个单元的详情 */
   onDetail: (name: string) => void
+  /** 分组是否折叠 */
+  collapsed: boolean
+  /** 折叠/展开该分组 */
+  onToggleCollapse: (group: string) => void
 }
 
 /**
@@ -41,6 +45,7 @@ export interface UnitSectionProps {
 export function UnitSection({
   group, members, now, busy, logName, dependents, onLog, onAction,
   onStartAll, onStopAll, onRestartAll, onToggleEnabled, onAdopt, onDetail,
+  collapsed, onToggleCollapse,
 }: UnitSectionProps): JSX.Element {
   const running = members.filter((unit) => unit.running).length
   const stopped = members.length - running
@@ -54,6 +59,15 @@ export function UnitSection({
   return (
     <section className="bc-section">
       <div className="bc-section-head">
+        <button
+          type="button"
+          className="bc-section-collapse"
+          aria-label={collapsed ? '展开分组' : '折叠分组'}
+          aria-expanded={!collapsed}
+          onClick={() => onToggleCollapse(group)}
+        >
+          <span data-collapsed={collapsed || undefined}>▾</span>
+        </button>
         <span className="bc-section-name">{group}</span>
         <span className="bc-section-count">{running} / {members.length} 运行</span>
         {stopped > 0 && (
@@ -92,6 +106,7 @@ export function UnitSection({
         )}
         <span className="bc-rule" />
       </div>
+      {!collapsed && (
       <div className="bc-grid">
         {ordered.map((unit) => (
           <ServiceCard
@@ -110,6 +125,7 @@ export function UnitSection({
           />
         ))}
       </div>
+      )}
     </section>
   )
 }
