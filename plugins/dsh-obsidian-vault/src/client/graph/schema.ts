@@ -77,10 +77,10 @@ export const GRAPH_SCHEMA: readonly GraphSection[] = [
     id: 'forces',
     title: 'forces',
     controls: [
-      { kind: 'range', path: 'forces.center', label: 'centerForce', min: 0.01, max: 0.5, step: 0.01, curveMid: (0.1 - 0.01) / 0.49 },
+      { kind: 'range', path: 'forces.center', label: 'centerForce', min: 0.01, max: 1, step: 0.01, curveMid: (0.1 - 0.01) / 0.99 },
       { kind: 'range', path: 'forces.repel', label: 'repelForce', min: 1, max: 20, step: 0.5, curveMid: (10 - 1) / 19 },
-      { kind: 'range', path: 'forces.link', label: 'linkForce', min: 0.1, max: 2, step: 0.1, curveMid: (1 - 0.1) / 1.9 },
-      { kind: 'range', path: 'forces.linkDistance', label: 'linkDistance', min: 50, max: 400, step: 10, curveMid: (250 - 50) / 350 },
+      { kind: 'range', path: 'forces.link', label: 'linkForce', min: 0.1, max: 1, step: 0.01, curveMid: (1 - 0.1) / 0.9 },
+      { kind: 'range', path: 'forces.linkDistance', label: 'linkDistance', min: 30, max: 500, step: 10, curveMid: (250 - 30) / 470 },
     ],
   },
 ]
