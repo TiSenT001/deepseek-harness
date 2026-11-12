@@ -81,9 +81,11 @@ export function useLogDock(): LogDock {
   const toggleLog = useCallback((name: string): void => {
     if (log !== null && log.name === name) {
       setLog(null)
+      savePrefs({ logDockOpen: false })
       return
     }
     setPaused(false)
+    savePrefs({ lastLogUnit: name, logDockOpen: true })
     void readLog(name)
   }, [log, readLog])
 
@@ -97,7 +99,10 @@ export function useLogDock(): LogDock {
     if (log !== null) void readLog(log.name, true, next)
   }
 
-  const closeLog = (): void => setLog(null)
+  const closeLog = (): void => {
+    setLog(null)
+    savePrefs({ logDockOpen: false })
+  }
 
   const clearLogNow = useCallback(async (): Promise<void> => {
     if (log === null) return

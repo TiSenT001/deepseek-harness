@@ -383,7 +383,9 @@ window.__ModuleLoader__.load({
 			logLines: 120,
 			logLevel: "all",
 			groupOrder: [],
-			collapsedGroups: []
+			collapsedGroups: [],
+			lastLogUnit: "",
+			logDockOpen: false
 		};
 		const STORAGE_KEY = "brain.console.prefs.v1";
 		const listeners = /* @__PURE__ */ new Set();
@@ -406,6 +408,8 @@ window.__ModuleLoader__.load({
 					if (level === "all" || level === "warn" || level === "error") prefs.logLevel = level;
 					if (isStringArray(parsed.groupOrder)) prefs.groupOrder = parsed.groupOrder;
 					if (isStringArray(parsed.collapsedGroups)) prefs.collapsedGroups = parsed.collapsedGroups;
+					if (typeof parsed.lastLogUnit === "string") prefs.lastLogUnit = parsed.lastLogUnit;
+					if (typeof parsed.logDockOpen === "boolean") prefs.logDockOpen = parsed.logDockOpen;
 					return prefs;
 				}
 			} catch {}
@@ -675,9 +679,14 @@ window.__ModuleLoader__.load({
 			const toggleLog = (0, react.useCallback)((name) => {
 				if (log !== null && log.name === name) {
 					setLog(null);
+					savePrefs({ logDockOpen: false });
 					return;
 				}
 				setPaused(false);
+				savePrefs({
+					lastLogUnit: name,
+					logDockOpen: true
+				});
 				readLog(name);
 			}, [log, readLog]);
 			(0, react.useEffect)(() => subscribePrefs((prefs) => setLines(prefs.logLines)), []);
@@ -687,7 +696,10 @@ window.__ModuleLoader__.load({
 				setLines(next);
 				if (log !== null) readLog(log.name, true, next);
 			};
-			const closeLog = () => setLog(null);
+			const closeLog = () => {
+				setLog(null);
+				savePrefs({ logDockOpen: false });
+			};
 			return {
 				log,
 				logName,
@@ -1789,28 +1801,36 @@ window.__ModuleLoader__.load({
 							}),
 							((info.indexes ?? []).length > 0 || (info.triggers ?? []).length > 0) && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
 								className: "bc-checkup-index",
-								children: [/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
-									className: "bc-index-note",
-									children: [
-										"索引 ",
-										info.indexes?.length ?? 0,
-										" 个",
-										(info.triggers ?? []).length > 0 ? ` · 触发器 ${info.triggers?.length}` : ""
-									]
-								}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
-									className: "bc-checkup-tags",
-									children: (info.indexes ?? []).map((index) => /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
-										className: "bc-checkup-tag",
+								children: [
+									/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
+										className: "bc-index-note",
 										children: [
-											index.name,
-											index.unique ? " · unique" : "",
-											/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-												className: "bc-checkup-tag-type",
-												children: index.columns.join(", ")
-											})
+											"索引 ",
+											info.indexes?.length ?? 0,
+											" 个",
+											(info.triggers ?? []).length > 0 ? ` · 触发器 ${info.triggers?.length}` : ""
 										]
-									}, index.name))
-								})]
+									}),
+									(info.indexes ?? []).length === 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+										className: "bc-checkup-tag",
+										"data-tone": "warn",
+										children: "无索引，可考虑补"
+									}),
+									/* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+										className: "bc-checkup-tags",
+										children: (info.indexes ?? []).map((index) => /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
+											className: "bc-checkup-tag",
+											children: [
+												index.name,
+												index.unique ? " · unique" : "",
+												/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+													className: "bc-checkup-tag-type",
+													children: index.columns.join(", ")
+												})
+											]
+										}, index.name))
+									})
+								]
 							})
 						] })
 					]
@@ -2407,6 +2427,8 @@ window.__ModuleLoader__.load({
 			const [refreshSeconds, setRefreshSeconds] = (0, react.useState)(() => loadPrefs().refreshSeconds);
 			const [logLines, setLogLines] = (0, react.useState)(() => loadPrefs().logLines);
 			const [logLevel, setLogLevel] = (0, react.useState)(() => loadPrefs().logLevel);
+			const [lastLogUnit, setLastLogUnit] = (0, react.useState)(() => loadPrefs().lastLogUnit);
+			const [logDockOpen, setLogDockOpen] = (0, react.useState)(() => loadPrefs().logDockOpen);
 			const [groupOrder, setGroupOrder] = (0, react.useState)([]);
 			const [panelConfig, setPanelConfig] = (0, react.useState)(null);
 			const [configError, setConfigError] = (0, react.useState)(null);
@@ -2429,6 +2451,10 @@ window.__ModuleLoader__.load({
 					}
 				})();
 			}, []);
+			(0, react.useEffect)(() => subscribePrefs((prefs) => {
+				setLastLogUnit(prefs.lastLogUnit);
+				setLogDockOpen(prefs.logDockOpen);
+			}), []);
 			(0, react.useEffect)(() => {
 				(async () => {
 					try {
@@ -2722,6 +2748,19 @@ window.__ModuleLoader__.load({
 									},
 									children: label
 								}, key))]
+							}),
+							/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+								className: "bc-settings-row",
+								children: [/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", { children: ["启动时展开上次日志：", lastLogUnit !== "" ? lastLogUnit : "（还没有记录）"] }), /* @__PURE__ */ (0, react_jsx_runtime.jsx)(Button, {
+									size: "sm",
+									variant: logDockOpen ? "outline" : "ghost",
+									onClick: () => {
+										const next = savePrefs({ logDockOpen: !logDockOpen });
+										setLogDockOpen(next.logDockOpen);
+										setNotice(next.logDockOpen ? "启动时会自动展开上次日志" : "启动时不再自动展开日志");
+									},
+									children: logDockOpen ? "已开启" : "已关闭"
+								})]
 							})
 						]
 					}),
@@ -6928,6 +6967,19 @@ window.__ModuleLoader__.load({
 				refreshHistory
 			]);
 			(0, react.useEffect)(() => subscribePrefs(setUiPrefs), []);
+			(0, react.useEffect)(() => {
+				if (!feed.loaded || !uiPrefs.logDockOpen || uiPrefs.lastLogUnit === "") return;
+				if (logDock.logName !== null) return;
+				if (!feed.units.some((unit) => unit.name === uiPrefs.lastLogUnit)) return;
+				logDock.readLog(uiPrefs.lastLogUnit);
+			}, [
+				feed.loaded,
+				feed.units,
+				uiPrefs.logDockOpen,
+				uiPrefs.lastLogUnit,
+				logDock.logName,
+				logDock.readLog
+			]);
 			(0, react.useEffect)(() => {
 				(async () => {
 					try {

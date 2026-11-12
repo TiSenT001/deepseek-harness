@@ -100,6 +100,9 @@ function BloatRow({ name, count, info, open, busy, onToggle }: {
                     索引 {info.indexes?.length ?? 0} 个
                     {(info.triggers ?? []).length > 0 ? ` · 触发器 ${info.triggers?.length}` : ''}
                   </span>
+                  {(info.indexes ?? []).length === 0 && (
+                    <span className="bc-checkup-tag" data-tone="warn">无索引，可考虑补</span>
+                  )}
                   <div className="bc-checkup-tags">
                     {(info.indexes ?? []).map((index) => (
                       <span key={index.name} className="bc-checkup-tag">

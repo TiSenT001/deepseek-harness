@@ -205,10 +205,16 @@ try {
     // 恢复「全部」，避免影响后续使用
     await page.locator('.bc-dock-level', { hasText: '全部' }).first().click()
     await page.waitForTimeout(200)
-    await page.getByRole('button', { name: '收起日志' }).click().catch(() => {})
+    await page.locator('.bc-dock').getByRole('button', { name: '收起日志' }).click()
+    await page.waitForTimeout(300)
+    const closed = await page.evaluate(() => window.localStorage.getItem('brain.console.prefs.v1'))
     if (active === null) throw new Error('级别过滤按钮没有激活')
     if (stored === null || !stored.includes('"logLevel":"error"')) throw new Error(`级别未持久化: ${stored}`)
-    return '已展开 · 错误级别过滤生效'
+    if (stored === null || !stored.includes('"logDockOpen":true') || !stored.includes('"lastLogUnit"')) {
+      throw new Error(`日志展开状态未记录: ${stored}`)
+    }
+    if (closed === null || !closed.includes('"logDockOpen":false')) throw new Error(`收起日志未记录: ${closed}`)
+    return '已展开 · 错误级别过滤生效 · 展开/收起状态已记忆'
   })
 
   await soft('宿主下发管理器地址配置', async () => {
@@ -460,9 +466,12 @@ try {
   await soft('设置页面能打开并保存阈值', async () => {
     await page.locator('.bc-header').getByRole('button', { name: '设置' }).click()
     await page.waitForSelector('.bc-settings', { timeout: 10000 })
-    const inputs = page.locator('.bc-settings-input')
+    const settings = page.locator('.bc-settings')
+    const inputs = settings.locator('.bc-settings-input')
     const count = await inputs.count()
     if (count !== 4) throw new Error(`设置输入框 ${count}，应为 4`)
+    const dockToggle = await settings.getByRole('button', { name: /已开启|已关闭/ }).count()
+    if (dockToggle === 0) throw new Error('日志展开开关缺失')
     const gear = await page.locator('.bc-header').getByRole('button', { name: '设置' }).count()
     if (gear === 0) throw new Error('顶部缺少设置齿轮按钮')
     const pathGroup = await page.locator('.bc-settings-group', { hasText: '路径' }).count()
@@ -471,29 +480,29 @@ try {
     const oldHostNote = await page.getByText('宿主路径配置暂不可用').count()
     if (derived === 0 && oldHostNote === 0) throw new Error('路径组既没有派生信息也没有旧宿主提示')
     // 原样保存，避免改变真实阈值
-    await page.getByRole('button', { name: '保存磁盘阈值' }).click()
+    await settings.getByRole('button', { name: '保存磁盘阈值' }).click()
     await page.waitForTimeout(1200)
     const diskNotice = await page.locator('.bc-settings-notice').innerText().catch(() => '')
-    await page.getByRole('button', { name: '保存趋势阈值' }).click()
+    await settings.getByRole('button', { name: '保存趋势阈值' }).click()
     await page.waitForTimeout(1200)
     const trendNotice = await page.locator('.bc-settings-notice').innerText().catch(() => '')
     // 刷新间隔：切 10 秒 → 校验 localStorage → 切回 5 秒
-    await page.getByRole('button', { name: '10 秒' }).click()
+    await settings.getByRole('button', { name: '10 秒' }).click()
     await page.waitForTimeout(300)
     const storedTen = await page.evaluate(() => window.localStorage.getItem('brain.console.prefs.v1'))
-    await page.getByRole('button', { name: '5 秒' }).click()
+    await settings.getByRole('button', { name: '5 秒' }).click()
     await page.waitForTimeout(300)
     const storedFive = await page.evaluate(() => window.localStorage.getItem('brain.console.prefs.v1'))
     const uiNotice = await page.locator('.bc-settings-notice').innerText().catch(() => '')
     // 日志默认行数/级别
-    await page.getByRole('button', { name: '300 行' }).click()
-    await page.getByRole('button', { name: '错误' }).click()
+    await settings.getByRole('button', { name: '300 行' }).click()
+    await settings.getByRole('button', { name: '错误' }).click()
     await page.waitForTimeout(300)
     const logPrefs = await page.evaluate(() => window.localStorage.getItem('brain.console.prefs.v1'))
-    await page.getByRole('button', { name: '120 行' }).click()
-    await page.getByRole('button', { name: '全部' }).click()
+    await settings.getByRole('button', { name: '120 行' }).click()
+    await settings.getByRole('button', { name: '全部' }).click()
     // 分组顺序：第一组下移再移回
-    const orderRows = page.locator('.bc-settings-order-row')
+    const orderRows = settings.locator('.bc-settings-order-row')
     const orderCount = await orderRows.count()
     let orderMoved = false
     if (orderCount >= 2) {
@@ -513,7 +522,7 @@ try {
         guard += 1
       }
     }
-    await page.getByRole('button', { name: '返回面板' }).click()
+    await settings.getByRole('button', { name: '返回面板' }).click()
     await page.waitForTimeout(800)
     const back = await page.locator('.bc-header').count()
     if (!diskNotice.includes('已保存')) throw new Error(`磁盘阈值保存提示: ${diskNotice}`)
