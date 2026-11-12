@@ -30,6 +30,7 @@ import { SystemCheckupDialog } from './ui/SystemCheckupDialog.tsx'
 import { StorageDialog } from './ui/StorageDialog.tsx'
 import { DependencyDialog } from './ui/DependencyDialog.tsx'
 import { SettingsPage } from './ui/SettingsPage.tsx'
+import { downloadUrl } from './ui/download.ts'
 import { SettingsIcon } from './ui/SettingsIcon.tsx'
 import { IndexHealthDialog } from './ui/IndexHealthDialog.tsx'
 import { GroupActionDialog } from './ui/GroupActionDialog.tsx'
@@ -87,10 +88,7 @@ export function ConsolePage(): JSX.Element {
 
   // 诊断包：19998 的响应带 Content-Disposition，锚点点击即下载，不需要页面内预览
   const downloadDiagnostics = (): void => {
-    const anchor = document.createElement('a')
-    anchor.href = diagnosticsBundleUrl()
-    anchor.rel = 'noopener'
-    anchor.click()
+    downloadUrl(diagnosticsBundleUrl(), 'brain-diagnostics.zip')
   }
 
   // 开机启动开关（写 HKCU Run；管理器下次登录自启并按上次状态恢复服务）
