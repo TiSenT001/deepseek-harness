@@ -13,7 +13,7 @@ import {
 } from '../api.ts'
 import { reasonOf } from './errors.ts'
 import { Button } from './primitives.ts'
-import { LOG_LEVELS, LOG_LINE_OPTIONS, loadPrefs, REFRESH_OPTIONS, savePrefs } from '../prefs.ts'
+import { LOG_LEVELS, LOG_LINE_OPTIONS, loadPrefs, REFRESH_OPTIONS, savePrefs, subscribePrefs } from '../prefs.ts'
 import type { StorageThresholds } from './types.ts'
 
 export interface SettingsPageProps {
@@ -40,6 +40,8 @@ export function SettingsPage({ onBack, onDiskThresholdsChanged }: SettingsPagePr
   const [refreshSeconds, setRefreshSeconds] = useState(() => loadPrefs().refreshSeconds)
   const [logLines, setLogLines] = useState(() => loadPrefs().logLines)
   const [logLevel, setLogLevel] = useState(() => loadPrefs().logLevel)
+  const [lastLogUnit, setLastLogUnit] = useState(() => loadPrefs().lastLogUnit)
+  const [logDockOpen, setLogDockOpen] = useState(() => loadPrefs().logDockOpen)
   const [groupOrder, setGroupOrder] = useState<string[]>([])
   const [panelConfig, setPanelConfig] = useState<PanelConfigView | null>(null)
   const [configError, setConfigError] = useState<string | null>(null)
@@ -63,6 +65,11 @@ export function SettingsPage({ onBack, onDiskThresholdsChanged }: SettingsPagePr
       }
     })()
   }, [])
+
+  useEffect(() => subscribePrefs((prefs) => {
+    setLastLogUnit(prefs.lastLogUnit)
+    setLogDockOpen(prefs.logDockOpen)
+  }), [])
 
   // 宿主路径/地址配置：旧版宿主没有该路由时给出提示，不阻塞其余设置
   useEffect(() => {
@@ -333,6 +340,21 @@ export function SettingsPage({ onBack, onDiskThresholdsChanged }: SettingsPagePr
               {label}
             </Button>
           ))}
+        </div>
+
+        <div className="bc-settings-row">
+          <span>启动时展开上次日志：{lastLogUnit !== '' ? lastLogUnit : '（还没有记录）'}</span>
+          <Button
+            size="sm"
+            variant={logDockOpen ? 'outline' : 'ghost'}
+            onClick={() => {
+              const next = savePrefs({ logDockOpen: !logDockOpen })
+              setLogDockOpen(next.logDockOpen)
+              setNotice(next.logDockOpen ? '启动时会自动展开上次日志' : '启动时不再自动展开日志')
+            }}
+          >
+            {logDockOpen ? '已开启' : '已关闭'}
+          </Button>
         </div>
       </section>
 

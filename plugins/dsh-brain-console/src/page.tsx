@@ -203,6 +203,14 @@ export function ConsolePage(): JSX.Element {
 
   useEffect(() => subscribePrefs(setUiPrefs), [])
 
+  // 恢复上次日志：仅在开关打开、单元仍存在、当前没有打开日志时执行一次
+  useEffect(() => {
+    if (!feed.loaded || !uiPrefs.logDockOpen || uiPrefs.lastLogUnit === '') return
+    if (logDock.logName !== null) return
+    if (!feed.units.some((unit) => unit.name === uiPrefs.lastLogUnit)) return
+    logDock.readLog(uiPrefs.lastLogUnit)
+  }, [feed.loaded, feed.units, uiPrefs.logDockOpen, uiPrefs.lastLogUnit, logDock.logName, logDock.readLog])
+
   // 定时任务健康度：顶部只显示计数，详情在「索引与嵌入」里；管理器不可达时保留上一次读数
   useEffect(() => {
     void (async () => {

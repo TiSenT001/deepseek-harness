@@ -17,6 +17,10 @@ export interface ConsolePrefs {
   groupOrder: string[]
   /** 已折叠的分组名。 */
   collapsedGroups: string[]
+  /** 最后查看过日志的单元名；空表示没有。 */
+  lastLogUnit: string
+  /** 启动时是否自动展开上次的日志。 */
+  logDockOpen: boolean
 }
 
 /** 可选的刷新间隔（秒）。 */
@@ -39,6 +43,8 @@ export const DEFAULT_PREFS: ConsolePrefs = {
   logLevel: 'all',
   groupOrder: [],
   collapsedGroups: [],
+  lastLogUnit: '',
+  logDockOpen: false,
 }
 
 const STORAGE_KEY = 'brain.console.prefs.v1'
@@ -69,6 +75,8 @@ export function loadPrefs(): ConsolePrefs {
       if (level === 'all' || level === 'warn' || level === 'error') prefs.logLevel = level
       if (isStringArray(parsed.groupOrder)) prefs.groupOrder = parsed.groupOrder
       if (isStringArray(parsed.collapsedGroups)) prefs.collapsedGroups = parsed.collapsedGroups
+      if (typeof parsed.lastLogUnit === 'string') prefs.lastLogUnit = parsed.lastLogUnit
+      if (typeof parsed.logDockOpen === 'boolean') prefs.logDockOpen = parsed.logDockOpen
       return prefs
     }
   } catch {
