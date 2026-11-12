@@ -370,6 +370,18 @@ try {
         const columns = await dialog.locator('.bc-checkup-columns').count()
         if (columns === 0) throw new Error('膨胀表点开后没有列结构')
         extra += ' · 列结构可见'
+        const indexes = await dialog.locator('.bc-checkup-index').count()
+        extra += ` · 索引区 ${indexes}`
+        const emptyChips = dialog.locator('.bc-checkup-tag-btn')
+        if ((await emptyChips.count()) > 0) {
+          await emptyChips.first().click()
+          await page.waitForTimeout(1500)
+          if ((await dialog.locator('.bc-checkup-usage').count()) === 0) {
+            throw new Error('空表点开后没有引用面板')
+          }
+          const refs = await dialog.locator('.bc-checkup-usage-row').count()
+          extra += ` · 源码引用 ${refs}`
+        }
       }
     }
     await closeOverlay()

@@ -6,11 +6,11 @@
  * 本对话框展示「较上次」对比与最近几次历史；膨胀表可下钻看列结构与行数。
  */
 import { useEffect, useState } from 'react'
-import { loadSystemCheckup, loadTableInfo } from '../api.ts'
+import { loadSystemCheckup, loadTableInfo, loadTableUsage } from '../api.ts'
 import { reasonOf } from './errors.ts'
 import { Button } from './primitives.ts'
 import { Dialog } from './Dialog.tsx'
-import type { CheckupResult, CheckupSummary, TableInfo } from './types.ts'
+import type { CheckupResult, CheckupSummary, TableInfo, TableUsage } from './types.ts'
 
 export interface SystemCheckupDialogProps {
   /** 关闭对话框。 */
@@ -73,6 +73,22 @@ function BloatRow({ name, count, info, open, busy, onToggle }: {
                   </span>
                 ))}
               </div>
+              {((info.indexes ?? []).length > 0 || (info.triggers ?? []).length > 0) && (
+                <div className="bc-checkup-index">
+                  <span className="bc-index-note">
+                    索引 {info.indexes?.length ?? 0} 个
+                    {(info.triggers ?? []).length > 0 ? ` · 触发器 ${info.triggers?.length}` : ''}
+                  </span>
+                  <div className="bc-checkup-tags">
+                    {(info.indexes ?? []).map((index) => (
+                      <span key={index.name} className="bc-checkup-tag">
+                        {index.name}{index.unique ? ' · unique' : ''}
+                        <span className="bc-checkup-tag-type">{index.columns.join(', ')}</span>
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
             </>
           )}
         </div>
@@ -93,6 +109,9 @@ export function SystemCheckupDialog({ onClose }: SystemCheckupDialogProps): JSX.
   const [tables, setTables] = useState<Record<string, TableInfo>>({})
   const [openTable, setOpenTable] = useState<string | null>(null)
   const [tableBusy, setTableBusy] = useState<string | null>(null)
+  const [usage, setUsage] = useState<Record<string, TableUsage>>({})
+  const [openUsage, setOpenUsage] = useState<string | null>(null)
+  const [usageBusy, setUsageBusy] = useState<string | null>(null)
 
   const run = async (): Promise<void> => {
     setRunning(true)
@@ -124,6 +143,24 @@ export function SystemCheckupDialog({ onClose }: SystemCheckupDialogProps): JSX.
       setTables((prev) => ({ ...prev, [name]: { ok: false, error: reasonOf(e) } }))
     } finally {
       setTableBusy(null)
+    }
+  }
+
+  const toggleUsage = async (name: string): Promise<void> => {
+    if (openUsage === name) {
+      setOpenUsage(null)
+      return
+    }
+    setOpenUsage(name)
+    if (usage[name] !== undefined) return
+    setUsageBusy(name)
+    try {
+      const info = await loadTableUsage(name)
+      setUsage((prev) => ({ ...prev, [name]: info }))
+    } catch (e) {
+      setUsage((prev) => ({ ...prev, [name]: { ok: false, error: reasonOf(e) } }))
+    } finally {
+      setUsageBusy(null)
     }
   }
 
@@ -202,10 +239,45 @@ export function SystemCheckupDialog({ onClose }: SystemCheckupDialogProps): JSX.
 
           {empty.length > 0 && (
             <section className="bc-checkup-section">
-              <h4>待核实空表（空 + 有写路径，但不在事件驱动清单）</h4>
+              <h4>待核实空表（空 + 有写路径，点击看源码引用）</h4>
               <div className="bc-checkup-tags">
-                {empty.map((table) => <span key={table} className="bc-checkup-tag" data-tone="warn">{table}</span>)}
+                {empty.map((table) => (
+                  <button
+                    key={table}
+                    type="button"
+                    className="bc-checkup-tag bc-checkup-tag-btn"
+                    data-tone="warn"
+                    aria-expanded={openUsage === table}
+                    onClick={() => void toggleUsage(table)}
+                  >
+                    {table}
+                  </button>
+                ))}
               </div>
+              {openUsage !== null && empty.includes(openUsage) && (
+                <div className="bc-checkup-usage">
+                  {usageBusy === openUsage && <span className="bc-index-note">扫描源码引用…</span>}
+                  {usageBusy !== openUsage && usage[openUsage]?.ok === false && (
+                    <span className="bc-backup-error">{usage[openUsage]?.error ?? '扫描失败'}</span>
+                  )}
+                  {usageBusy !== openUsage && usage[openUsage]?.ok === true && (
+                    <>
+                      <span className="bc-index-note">
+                        {openUsage} · 扫描 {usage[openUsage]?.scanned} 个文件 · {(usage[openUsage]?.matches ?? []).length} 处引用
+                      </span>
+                      {(usage[openUsage]?.matches ?? []).length === 0 && (
+                        <span className="bc-index-note">没有找到引用</span>
+                      )}
+                      {(usage[openUsage]?.matches ?? []).map((match) => (
+                        <div className="bc-checkup-usage-row" key={`${match.file}:${match.line}`}>
+                          <span className="bc-checkup-use-file">{match.file}:{match.line}</span>
+                          <code>{match.text}</code>
+                        </div>
+                      ))}
+                    </>
+                  )}
+                </div>
+              )}
             </section>
           )}
 

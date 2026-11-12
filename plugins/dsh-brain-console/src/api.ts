@@ -6,7 +6,7 @@
  */
 import type {
   BackupListing, BatchRestartResult, BatchStartResult, BatchStopResult, CacheListing, CachePruneResult,
-  AutoRecoverStatus, CheckupResult, EmbedJobStatus, TableInfo, FailedEdgesListing, HistoryListing, IndexHealth, PruneResult, RestoreResult, TrendThresholds, Unit, UnitAction,
+  AutoRecoverStatus, CheckupResult, EmbedJobStatus, TableInfo, TableUsage, FailedEdgesListing, HistoryListing, IndexHealth, PruneResult, RestoreResult, TrendThresholds, Unit, UnitAction,
 } from './ui/types.ts'
 
 /** brain_manager 的 HTTP 地址。 */
@@ -60,6 +60,10 @@ export const loadSystemCheckup = (): Promise<CheckupResult> => jget<CheckupResul
 /** 只读查看单张表的列结构与行数（名字经后端 sqlite_master 校验）。 */
 export const loadTableInfo = (name: string): Promise<TableInfo> =>
   jget<TableInfo>(`/system/table?name=${encodeURIComponent(name)}`)
+
+/** 只读扫描源码里引用某张表的位置（最多 30 处）。 */
+export const loadTableUsage = (name: string): Promise<TableUsage> =>
+  jget<TableUsage>(`/system/table/usage?name=${encodeURIComponent(name)}`)
 
 /** 清理代码里已不存在的僵尸心跳；返回删除的名字列表。 */
 export const pruneZombieHeartbeats = (): Promise<{ ok: boolean; removed: string[]; kept?: number; error?: string }> =>

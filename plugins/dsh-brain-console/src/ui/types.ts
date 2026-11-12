@@ -114,6 +114,13 @@ export interface TableColumn {
   pk: boolean
 }
 
+/** 表的一个索引。 */
+export interface TableIndex {
+  name: string
+  unique: boolean
+  columns: string[]
+}
+
 /** `/system/table?name=` 的返回。 */
 export interface TableInfo {
   ok: boolean
@@ -121,6 +128,24 @@ export interface TableInfo {
   name?: string
   rows?: number
   columns?: TableColumn[]
+  indexes?: TableIndex[]
+  triggers?: string[]
+}
+
+/** 源码里引用一张表的位置。 */
+export interface UsageMatch {
+  file: string
+  line: number
+  text: string
+}
+
+/** `/system/table/usage?name=` 的返回。 */
+export interface TableUsage {
+  ok: boolean
+  error?: string
+  name?: string
+  scanned?: number
+  matches?: UsageMatch[]
 }
 
 /** 自愈线程记录的一条恢复尝试。 */

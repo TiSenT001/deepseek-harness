@@ -90,6 +90,8 @@ window.__ModuleLoader__.load({
 		const loadSystemCheckup = () => jget("/system/checkup");
 		/** 只读查看单张表的列结构与行数（名字经后端 sqlite_master 校验）。 */
 		const loadTableInfo = (name) => jget(`/system/table?name=${encodeURIComponent(name)}`);
+		/** 只读扫描源码里引用某张表的位置（最多 30 处）。 */
+		const loadTableUsage = (name) => jget(`/system/table/usage?name=${encodeURIComponent(name)}`);
 		/** 清理代码里已不存在的僵尸心跳；返回删除的名字列表。 */
 		const pruneZombieHeartbeats = () => postJson("/crons/prune-zombies", {});
 		/** 趋势告警阈值。 */
@@ -1451,26 +1453,54 @@ window.__ModuleLoader__.load({
 							className: "bc-backup-error",
 							children: info.error ?? "读取失败"
 						}),
-						!busy && info?.ok === true && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)(react_jsx_runtime.Fragment, { children: [/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
-							className: "bc-index-note",
-							children: [
-								"共 ",
-								info.columns?.length ?? 0,
-								" 列 · ",
-								info.rows?.toLocaleString("zh-CN"),
-								" 行"
-							]
-						}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
-							className: "bc-checkup-tags",
-							children: (info.columns ?? []).map((column) => /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
-								className: "bc-checkup-tag",
-								title: `${column.type || "ANY"}${column.notnull ? " NOT NULL" : ""}${column.pk ? " PRIMARY KEY" : ""}`,
-								children: [column.name, /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
-									className: "bc-checkup-tag-type",
-									children: [column.type || "—", column.pk ? " · pk" : ""]
+						!busy && info?.ok === true && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)(react_jsx_runtime.Fragment, { children: [
+							/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
+								className: "bc-index-note",
+								children: [
+									"共 ",
+									info.columns?.length ?? 0,
+									" 列 · ",
+									info.rows?.toLocaleString("zh-CN"),
+									" 行"
+								]
+							}),
+							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+								className: "bc-checkup-tags",
+								children: (info.columns ?? []).map((column) => /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
+									className: "bc-checkup-tag",
+									title: `${column.type || "ANY"}${column.notnull ? " NOT NULL" : ""}${column.pk ? " PRIMARY KEY" : ""}`,
+									children: [column.name, /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
+										className: "bc-checkup-tag-type",
+										children: [column.type || "—", column.pk ? " · pk" : ""]
+									})]
+								}, column.name))
+							}),
+							((info.indexes ?? []).length > 0 || (info.triggers ?? []).length > 0) && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+								className: "bc-checkup-index",
+								children: [/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
+									className: "bc-index-note",
+									children: [
+										"索引 ",
+										info.indexes?.length ?? 0,
+										" 个",
+										(info.triggers ?? []).length > 0 ? ` · 触发器 ${info.triggers?.length}` : ""
+									]
+								}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+									className: "bc-checkup-tags",
+									children: (info.indexes ?? []).map((index) => /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
+										className: "bc-checkup-tag",
+										children: [
+											index.name,
+											index.unique ? " · unique" : "",
+											/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+												className: "bc-checkup-tag-type",
+												children: index.columns.join(", ")
+											})
+										]
+									}, index.name))
 								})]
-							}, column.name))
-						})] })
+							})
+						] })
 					]
 				})]
 			});
@@ -1487,6 +1517,9 @@ window.__ModuleLoader__.load({
 			const [tables, setTables] = (0, react.useState)({});
 			const [openTable, setOpenTable] = (0, react.useState)(null);
 			const [tableBusy, setTableBusy] = (0, react.useState)(null);
+			const [usage, setUsage] = (0, react.useState)({});
+			const [openUsage, setOpenUsage] = (0, react.useState)(null);
+			const [usageBusy, setUsageBusy] = (0, react.useState)(null);
 			const run = async () => {
 				setRunning(true);
 				setError(null);
@@ -1526,6 +1559,32 @@ window.__ModuleLoader__.load({
 					}));
 				} finally {
 					setTableBusy(null);
+				}
+			};
+			const toggleUsage = async (name) => {
+				if (openUsage === name) {
+					setOpenUsage(null);
+					return;
+				}
+				setOpenUsage(name);
+				if (usage[name] !== void 0) return;
+				setUsageBusy(name);
+				try {
+					const info = await loadTableUsage(name);
+					setUsage((prev) => ({
+						...prev,
+						[name]: info
+					}));
+				} catch (e) {
+					setUsage((prev) => ({
+						...prev,
+						[name]: {
+							ok: false,
+							error: reasonOf(e)
+						}
+					}));
+				} finally {
+					setUsageBusy(null);
 				}
 			};
 			const report = result?.ok ? result.report : void 0;
@@ -1644,14 +1703,61 @@ window.__ModuleLoader__.load({
 							}),
 							empty.length > 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("section", {
 								className: "bc-checkup-section",
-								children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("h4", { children: "待核实空表（空 + 有写路径，但不在事件驱动清单）" }), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
-									className: "bc-checkup-tags",
-									children: empty.map((table) => /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-										className: "bc-checkup-tag",
-										"data-tone": "warn",
-										children: table
-									}, table))
-								})]
+								children: [
+									/* @__PURE__ */ (0, react_jsx_runtime.jsx)("h4", { children: "待核实空表（空 + 有写路径，点击看源码引用）" }),
+									/* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+										className: "bc-checkup-tags",
+										children: empty.map((table) => /* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
+											type: "button",
+											className: "bc-checkup-tag bc-checkup-tag-btn",
+											"data-tone": "warn",
+											"aria-expanded": openUsage === table,
+											onClick: () => void toggleUsage(table),
+											children: table
+										}, table))
+									}),
+									openUsage !== null && empty.includes(openUsage) && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+										className: "bc-checkup-usage",
+										children: [
+											usageBusy === openUsage && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+												className: "bc-index-note",
+												children: "扫描源码引用…"
+											}),
+											usageBusy !== openUsage && usage[openUsage]?.ok === false && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+												className: "bc-backup-error",
+												children: usage[openUsage]?.error ?? "扫描失败"
+											}),
+											usageBusy !== openUsage && usage[openUsage]?.ok === true && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)(react_jsx_runtime.Fragment, { children: [
+												/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
+													className: "bc-index-note",
+													children: [
+														openUsage,
+														" · 扫描 ",
+														usage[openUsage]?.scanned,
+														" 个文件 · ",
+														(usage[openUsage]?.matches ?? []).length,
+														" 处引用"
+													]
+												}),
+												(usage[openUsage]?.matches ?? []).length === 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+													className: "bc-index-note",
+													children: "没有找到引用"
+												}),
+												(usage[openUsage]?.matches ?? []).map((match) => /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+													className: "bc-checkup-usage-row",
+													children: [/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
+														className: "bc-checkup-use-file",
+														children: [
+															match.file,
+															":",
+															match.line
+														]
+													}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("code", { children: match.text })]
+												}, `${match.file}:${match.line}`))
+											] })
+										]
+									})
+								]
 							}),
 							bloated.length > 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("section", {
 								className: "bc-checkup-section",
@@ -4010,6 +4116,47 @@ window.__ModuleLoader__.load({
   border-radius: 8px;
   color: var(--dsw-alias-label-tertiary);
   font-size: 10.5px;
+}
+
+.bc-checkup-tag-btn {
+  cursor: pointer;
+  font: inherit;
+  background: transparent;
+}
+.bc-checkup-tag-btn:hover {
+  background: var(--dsw-alias-interactive-bg-hover);
+}
+.bc-checkup-index {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 4px;
+}
+.bc-checkup-usage {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 8px;
+  padding: 6px 8px;
+  border: 1px solid var(--dsw-alias-border-l1);
+  border-radius: 8px;
+  background: var(--dsw-alias-bg-layer-1, rgba(128, 128, 128, 0.04));
+}
+.bc-checkup-usage-row {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  font-size: 11px;
+}
+.bc-checkup-use-file {
+  color: var(--dsw-alias-label-tertiary);
+  font-family: var(--ds-font-family-code, monospace);
+}
+.bc-checkup-usage-row code {
+  color: var(--dsw-alias-label-secondary);
+  font-family: var(--ds-font-family-code, monospace);
+  white-space: pre-wrap;
+  word-break: break-all;
 }
 
 .bc-checkup-delta {
