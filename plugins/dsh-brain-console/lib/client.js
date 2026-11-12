@@ -1394,6 +1394,115 @@ window.__ModuleLoader__.load({
 			});
 		}
 		//#endregion
+		//#region src/ui/smooth.ts
+		/** 统一保留一位小数，减小 path 体积。 */
+		function fmt(value) {
+			return value.toFixed(1);
+		}
+		/**
+		* 生成平滑折线的 SVG path。
+		* @param points - 按 x 升序的采样点（至少 1 个）
+		* @returns `M … C …` 形式的 path；点不足时退化成直线段
+		*/
+		function smoothPath(points) {
+			const count = points.length;
+			if (count === 0) return "";
+			const first = points[0];
+			if (count === 1) return `M ${fmt(first.x)} ${fmt(first.y)}`;
+			const second = points[1];
+			if (count === 2) return `M ${fmt(first.x)} ${fmt(first.y)} L ${fmt(second.x)} ${fmt(second.y)}`;
+			const dx = [];
+			const slope = [];
+			for (let index = 0; index < count - 1; index += 1) {
+				const left = points[index];
+				const right = points[index + 1];
+				const width = right.x - left.x;
+				dx.push(width);
+				slope.push(width === 0 ? 0 : (right.y - left.y) / width);
+			}
+			const tangent = new Array(count).fill(0);
+			tangent[0] = slope[0] ?? 0;
+			tangent[count - 1] = slope[count - 2] ?? 0;
+			for (let index = 1; index < count - 1; index += 1) {
+				const previous = slope[index - 1] ?? 0;
+				const next = slope[index] ?? 0;
+				if (previous * next <= 0) {
+					tangent[index] = 0;
+					continue;
+				}
+				const w1 = 2 * (dx[index] ?? 0) + (dx[index - 1] ?? 0);
+				const w2 = (dx[index] ?? 0) + 2 * (dx[index - 1] ?? 0);
+				tangent[index] = (w1 + w2) / (w1 / previous + w2 / next);
+			}
+			let path = `M ${fmt(first.x)} ${fmt(first.y)}`;
+			for (let index = 0; index < count - 1; index += 1) {
+				const left = points[index];
+				const right = points[index + 1];
+				const width = dx[index] ?? 0;
+				const c1x = left.x + width / 3;
+				const c1y = left.y + (tangent[index] ?? 0) * width / 3;
+				const c2x = right.x - width / 3;
+				const c2y = right.y - (tangent[index + 1] ?? 0) * width / 3;
+				path += ` C ${fmt(c1x)} ${fmt(c1y)}, ${fmt(c2x)} ${fmt(c2y)}, ${fmt(right.x)} ${fmt(right.y)}`;
+			}
+			return path;
+		}
+		/**
+		* 面积填充路径：平滑曲线 + 回落到基线闭合。
+		* @param points - 采样点（按 x 升序）
+		* @param baseline - 基线 y（通常图表底部）
+		* @returns 闭合的 SVG path
+		*/
+		function smoothAreaPath(points, baseline) {
+			if (points.length === 0) return "";
+			const first = points[0];
+			const last = points[points.length - 1];
+			return `${smoothPath(points)} L ${fmt(last.x)} ${fmt(baseline)} L ${fmt(first.x)} ${fmt(baseline)} Z`;
+		}
+		//#endregion
+		//#region src/ui/Sparkline.tsx
+		/**
+		* 迷你趋势线：指标卡里那根 20px 高的曲线（单调三次贝塞尔平滑）。
+		*
+		* 只在至少两个有效采样点时渲染（一个点画不出趋势）；
+		* 用 viewBox + width="100%" 自适应卡片宽度。
+		*/
+		const VIEW_WIDTH = 100;
+		/**
+		* 渲染一条迷你折线。
+		* @param props - 数值序列与尺寸
+		* @returns SVG 元素；点数不足时返回 null
+		*/
+		function Sparkline({ values, height = 20, className }) {
+			if (values.length < 2) return null;
+			const padding = 2;
+			const min = Math.min(...values);
+			const span = Math.max(...values) - min || 1;
+			const step = VIEW_WIDTH / (values.length - 1);
+			const path = smoothPath(values.map((value, index) => ({
+				x: index * step,
+				y: height - padding - (value - min) / span * (height - padding * 2)
+			})));
+			return /* @__PURE__ */ (0, react_jsx_runtime.jsx)("svg", {
+				className: className === void 0 ? "bc-spark" : `bc-spark ${className}`,
+				viewBox: `0 0 ${VIEW_WIDTH} ${height}`,
+				width: "100%",
+				height,
+				preserveAspectRatio: "none",
+				role: "img",
+				"aria-label": "趋势",
+				children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)("path", {
+					d: path,
+					fill: "none",
+					stroke: "currentColor",
+					strokeWidth: "1.5",
+					strokeLinejoin: "round",
+					strokeLinecap: "round",
+					vectorEffect: "non-scaling-stroke"
+				})
+			});
+		}
+		//#endregion
 		//#region src/ui/SystemCheckupDialog.tsx
 		/**
 		* 系统体检：跑 `tools/system_checkup.py --json` 的四类只读检查。
@@ -1412,6 +1521,23 @@ window.__ModuleLoader__.load({
 			const delta = after - before;
 			if (delta === 0) return "";
 			return delta > 0 ? `（+${delta}）` : `（${delta}）`;
+		}
+		/** 复制文本；navigator.clipboard 无权限时退回 textarea + execCommand。 */
+		async function copyText(value) {
+			try {
+				await navigator.clipboard.writeText(value);
+				return;
+			} catch {}
+			const area = document.createElement("textarea");
+			area.value = value;
+			area.setAttribute("readonly", "");
+			area.style.position = "fixed";
+			area.style.opacity = "0";
+			document.body.appendChild(area);
+			area.select();
+			const ok = document.execCommand("copy");
+			document.body.removeChild(area);
+			if (!ok) throw new Error("浏览器拒绝了复制");
 		}
 		/** 一条历史记录的摘要行。 */
 		function HistoryRow({ item }) {
@@ -1520,6 +1646,7 @@ window.__ModuleLoader__.load({
 			const [usage, setUsage] = (0, react.useState)({});
 			const [openUsage, setOpenUsage] = (0, react.useState)(null);
 			const [usageBusy, setUsageBusy] = (0, react.useState)(null);
+			const [copied, setCopied] = (0, react.useState)(false);
 			const run = async () => {
 				setRunning(true);
 				setError(null);
@@ -1593,24 +1720,71 @@ window.__ModuleLoader__.load({
 			const bloated = report?.bloated_tables ?? [];
 			const previous = result?.previous ?? null;
 			const history = result?.history ?? [];
+			const trendRows = [
+				{
+					label: "总表",
+					values: history.map((item) => item.total_tables).filter((value) => value !== null),
+					current: report?.total_tables ?? null
+				},
+				{
+					label: "待核实空表",
+					values: history.map((item) => item.empty),
+					current: empty.length
+				},
+				{
+					label: "膨胀表",
+					values: history.map((item) => item.bloated),
+					current: bloated.length
+				}
+			];
+			const buildSummary = () => {
+				const lines = [`## 系统体检 ${result?.at ?? ""}`.trim(), ""];
+				lines.push(`- 总表：${report?.total_tables ?? "—"}`);
+				lines.push(`- 孤儿表：${orphans.length}`);
+				lines.push(`- 待核实空表：${empty.length}${empty.length > 0 ? `（${empty.join("、")}）` : ""}`);
+				const bloatText = bloated.map(([table, count]) => `${table} ${typeof count === "number" ? count.toLocaleString("zh-CN") : String(count)} 行`).join("、");
+				lines.push(`- 膨胀表：${bloated.length}${bloatText === "" ? "" : `（${bloatText}）`}`);
+				lines.push(`- 耗时：${seconds(result?.elapsed_ms)}`);
+				if (previous !== null) lines.push(`- 较上次（${previous.at}）：总表 ${previous.total_tables ?? "—"} · 空表 ${previous.empty} · 膨胀 ${previous.bloated}`);
+				return lines.join("\n");
+			};
+			const copySummary = async () => {
+				try {
+					await copyText(buildSummary());
+					setCopied(true);
+					window.setTimeout(() => setCopied(false), 1600);
+				} catch (e) {
+					setError(`复制失败：${reasonOf(e)}`);
+				}
+			};
 			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)(Dialog, {
 				open: true,
 				onClose,
 				title: "系统体检",
 				closeLabel: "关闭",
 				description: "只读检查：空表 / 孤儿表 / 膨胀表；不会修改任何数据",
-				footer: /* @__PURE__ */ (0, react_jsx_runtime.jsxs)(react_jsx_runtime.Fragment, { children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)(Button, {
-					size: "sm",
-					variant: "ghost",
-					disabled: running,
-					onClick: () => void run(),
-					children: running ? "体检中…" : "重新体检"
-				}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)(Button, {
-					size: "sm",
-					variant: "ghost",
-					onClick: onClose,
-					children: "关闭"
-				})] }),
+				footer: /* @__PURE__ */ (0, react_jsx_runtime.jsxs)(react_jsx_runtime.Fragment, { children: [
+					/* @__PURE__ */ (0, react_jsx_runtime.jsx)(Button, {
+						size: "sm",
+						variant: "ghost",
+						disabled: running,
+						onClick: () => void copySummary(),
+						children: copied ? "已复制" : "复制摘要"
+					}),
+					/* @__PURE__ */ (0, react_jsx_runtime.jsx)(Button, {
+						size: "sm",
+						variant: "ghost",
+						disabled: running,
+						onClick: () => void run(),
+						children: running ? "体检中…" : "重新体检"
+					}),
+					/* @__PURE__ */ (0, react_jsx_runtime.jsx)(Button, {
+						size: "sm",
+						variant: "ghost",
+						onClick: onClose,
+						children: "关闭"
+					})
+				] }),
 				children: [
 					error !== null && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
 						className: "bc-backup-error",
@@ -1783,14 +1957,32 @@ window.__ModuleLoader__.load({
 							}),
 							history.length > 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("details", {
 								className: "bc-checkup-history",
-								children: [/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("summary", { children: [
-									"历史体检（",
-									history.length,
-									"）"
-								] }), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
-									className: "bc-checkup-history-list",
-									children: [...history].reverse().map((item) => /* @__PURE__ */ (0, react_jsx_runtime.jsx)(HistoryRow, { item }, item.at))
-								})]
+								children: [
+									/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("summary", { children: [
+										"历史体检（",
+										history.length,
+										"）"
+									] }),
+									history.length >= 2 && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+										className: "bc-checkup-trend",
+										children: trendRows.map((row) => /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+											className: "bc-checkup-trend-row",
+											children: [
+												/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: row.label }),
+												/* @__PURE__ */ (0, react_jsx_runtime.jsx)(Sparkline, {
+													values: row.values,
+													height: 18,
+													className: "bc-checkup-spark"
+												}),
+												/* @__PURE__ */ (0, react_jsx_runtime.jsx)("strong", { children: row.current ?? "—" })
+											]
+										}, row.label))
+									}),
+									/* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+										className: "bc-checkup-history-list",
+										children: [...history].reverse().map((item) => /* @__PURE__ */ (0, react_jsx_runtime.jsx)(HistoryRow, { item }, item.at))
+									})
+								]
 							})
 						]
 					})
@@ -2770,115 +2962,6 @@ window.__ModuleLoader__.load({
 				align: "end",
 				side: "bottom",
 				portal: true
-			});
-		}
-		//#endregion
-		//#region src/ui/smooth.ts
-		/** 统一保留一位小数，减小 path 体积。 */
-		function fmt(value) {
-			return value.toFixed(1);
-		}
-		/**
-		* 生成平滑折线的 SVG path。
-		* @param points - 按 x 升序的采样点（至少 1 个）
-		* @returns `M … C …` 形式的 path；点不足时退化成直线段
-		*/
-		function smoothPath(points) {
-			const count = points.length;
-			if (count === 0) return "";
-			const first = points[0];
-			if (count === 1) return `M ${fmt(first.x)} ${fmt(first.y)}`;
-			const second = points[1];
-			if (count === 2) return `M ${fmt(first.x)} ${fmt(first.y)} L ${fmt(second.x)} ${fmt(second.y)}`;
-			const dx = [];
-			const slope = [];
-			for (let index = 0; index < count - 1; index += 1) {
-				const left = points[index];
-				const right = points[index + 1];
-				const width = right.x - left.x;
-				dx.push(width);
-				slope.push(width === 0 ? 0 : (right.y - left.y) / width);
-			}
-			const tangent = new Array(count).fill(0);
-			tangent[0] = slope[0] ?? 0;
-			tangent[count - 1] = slope[count - 2] ?? 0;
-			for (let index = 1; index < count - 1; index += 1) {
-				const previous = slope[index - 1] ?? 0;
-				const next = slope[index] ?? 0;
-				if (previous * next <= 0) {
-					tangent[index] = 0;
-					continue;
-				}
-				const w1 = 2 * (dx[index] ?? 0) + (dx[index - 1] ?? 0);
-				const w2 = (dx[index] ?? 0) + 2 * (dx[index - 1] ?? 0);
-				tangent[index] = (w1 + w2) / (w1 / previous + w2 / next);
-			}
-			let path = `M ${fmt(first.x)} ${fmt(first.y)}`;
-			for (let index = 0; index < count - 1; index += 1) {
-				const left = points[index];
-				const right = points[index + 1];
-				const width = dx[index] ?? 0;
-				const c1x = left.x + width / 3;
-				const c1y = left.y + (tangent[index] ?? 0) * width / 3;
-				const c2x = right.x - width / 3;
-				const c2y = right.y - (tangent[index + 1] ?? 0) * width / 3;
-				path += ` C ${fmt(c1x)} ${fmt(c1y)}, ${fmt(c2x)} ${fmt(c2y)}, ${fmt(right.x)} ${fmt(right.y)}`;
-			}
-			return path;
-		}
-		/**
-		* 面积填充路径：平滑曲线 + 回落到基线闭合。
-		* @param points - 采样点（按 x 升序）
-		* @param baseline - 基线 y（通常图表底部）
-		* @returns 闭合的 SVG path
-		*/
-		function smoothAreaPath(points, baseline) {
-			if (points.length === 0) return "";
-			const first = points[0];
-			const last = points[points.length - 1];
-			return `${smoothPath(points)} L ${fmt(last.x)} ${fmt(baseline)} L ${fmt(first.x)} ${fmt(baseline)} Z`;
-		}
-		//#endregion
-		//#region src/ui/Sparkline.tsx
-		/**
-		* 迷你趋势线：指标卡里那根 20px 高的曲线（单调三次贝塞尔平滑）。
-		*
-		* 只在至少两个有效采样点时渲染（一个点画不出趋势）；
-		* 用 viewBox + width="100%" 自适应卡片宽度。
-		*/
-		const VIEW_WIDTH = 100;
-		/**
-		* 渲染一条迷你折线。
-		* @param props - 数值序列与尺寸
-		* @returns SVG 元素；点数不足时返回 null
-		*/
-		function Sparkline({ values, height = 20, className }) {
-			if (values.length < 2) return null;
-			const padding = 2;
-			const min = Math.min(...values);
-			const span = Math.max(...values) - min || 1;
-			const step = VIEW_WIDTH / (values.length - 1);
-			const path = smoothPath(values.map((value, index) => ({
-				x: index * step,
-				y: height - padding - (value - min) / span * (height - padding * 2)
-			})));
-			return /* @__PURE__ */ (0, react_jsx_runtime.jsx)("svg", {
-				className: className === void 0 ? "bc-spark" : `bc-spark ${className}`,
-				viewBox: `0 0 ${VIEW_WIDTH} ${height}`,
-				width: "100%",
-				height,
-				preserveAspectRatio: "none",
-				role: "img",
-				"aria-label": "趋势",
-				children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)("path", {
-					d: path,
-					fill: "none",
-					stroke: "currentColor",
-					strokeWidth: "1.5",
-					strokeLinejoin: "round",
-					strokeLinecap: "round",
-					vectorEffect: "non-scaling-stroke"
-				})
 			});
 		}
 		//#endregion
@@ -4196,6 +4279,34 @@ window.__ModuleLoader__.load({
   color: var(--dsw-alias-label-tertiary);
   font-family: var(--ds-font-family-code, monospace);
 }
+.bc-checkup-trend {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 8px 0 4px;
+  padding: 6px 8px;
+  border: 1px solid var(--dsw-alias-border-l1);
+  border-radius: 8px;
+  background: var(--dsw-alias-bg-layer-1, rgba(128, 128, 128, 0.04));
+}
+.bc-checkup-trend-row {
+  display: grid;
+  grid-template-columns: 72px 1fr 36px;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  color: var(--dsw-alias-label-secondary);
+}
+.bc-checkup-trend-row > strong {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  color: var(--dsw-alias-label-primary);
+}
+.bc-checkup-spark {
+  color: var(--dsw-alias-label-tertiary);
+  height: 18px;
+}
+
 .bc-checkup-history {
   margin-top: 10px;
 }
