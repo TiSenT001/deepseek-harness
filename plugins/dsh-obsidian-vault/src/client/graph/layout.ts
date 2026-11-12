@@ -21,8 +21,8 @@ const QUADTREE_THRESHOLD = 300
 /** Collide disc radius and per-tick resolution strength (Obsidian sim.js). */
 const COLLIDE_RADIUS = OBSIDIAN_GRAPH.collideRadius
 const COLLIDE_STRENGTH = OBSIDIAN_GRAPH.collideStrength
-/** Per-tick speed cap that keeps large charges from exploding the layout. */
-const MAX_SPEED = 40
+/** Base per-tick speed cap at the maximum charge (20³). */
+const MAX_SPEED = 60
 
 interface Link {
   readonly source: SimNode
@@ -141,11 +141,12 @@ export class Simulation {
       else repelForceNaive(nodes, alpha, this.chargeStrength)
     }
     collideForce(nodes, COLLIDE_RADIUS, COLLIDE_STRENGTH)
+    const speedCap = MAX_SPEED * Math.pow(Math.max(1, this.forces.repel) / 20, 0.2)
     for (const node of nodes) {
       const speed = Math.hypot(node.vx, node.vy)
-      if (speed > MAX_SPEED) {
-        node.vx = (node.vx / speed) * MAX_SPEED
-        node.vy = (node.vy / speed) * MAX_SPEED
+      if (speed > speedCap) {
+        node.vx = (node.vx / speed) * speedCap
+        node.vy = (node.vy / speed) * speedCap
       }
     }
 
@@ -216,4 +217,13 @@ export class Simulation {
     }
   }
 }
+
+
+
+
+
+
+
+
+
 
