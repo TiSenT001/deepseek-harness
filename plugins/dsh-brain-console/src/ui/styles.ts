@@ -79,6 +79,12 @@ const STYLES = `
 .bc-count[data-autostart='on'] .bc-count-dot {
   box-shadow: 0 0 0 1px var(--dsw-alias-bg-layer-1), 0 0 0 2.5px var(--dsw-alias-state-success-primary);
 }
+.bc-header-alert[data-tone='warn'] {
+  border-color: color-mix(in srgb, var(--dsw-alias-state-warning-primary, #e0b341) 45%, transparent);
+  background: color-mix(in srgb, var(--dsw-alias-state-warning-primary, #e0b341) 10%, transparent);
+  color: var(--dsw-alias-state-warning-primary, #e0b341);
+}
+
 .bc-header-actions {
   display: flex;
   align-items: center;

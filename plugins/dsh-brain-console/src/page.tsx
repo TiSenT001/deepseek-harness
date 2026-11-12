@@ -12,7 +12,7 @@
  */
 import { useEffect, useState } from 'react'
 import {
-  DIAGNOSTICS_URL, loadBackups, loadCaches, loadFailedEdges, loadIndexHealth, postManager, pruneBackups, pruneCaches, restoreBackup,
+  DIAGNOSTICS_URL, loadBackups, loadCaches, loadFailedEdges, loadIndexHealth, loadStorageSummary, postManager, pruneBackups, pruneCaches, restoreBackup,
 } from './api.ts'
 import { useConsoleActions } from './hooks/useConsoleActions.ts'
 import { useConsoleFeed } from './hooks/useConsoleFeed.ts'
@@ -67,6 +67,7 @@ export function ConsolePage(): JSX.Element {
   const [autoRecoverOpen, setAutoRecoverOpen] = useState(false)
   const [checkupOpen, setCheckupOpen] = useState(false)
   const [storageOpen, setStorageOpen] = useState(false)
+  const [diskFree, setDiskFree] = useState<number | null>(null)
   const [trend, setTrend] = useState<MetricKey | null>(null)
   const [detailName, setDetailName] = useState<string | null>(null)
   const [stopGroup, setStopGroup] = useState<{ group: string; names: string[] } | null>(null)
@@ -192,6 +193,18 @@ export function ConsolePage(): JSX.Element {
     })()
   }, [feed.updatedAt])
 
+  // 磁盘余量：低于 10GB 时顶部给告警；读取失败时保留上一次读数
+  useEffect(() => {
+    void (async () => {
+      try {
+        const summary = await loadStorageSummary()
+        setDiskFree(summary.disk?.free_bytes ?? null)
+      } catch {
+        // 管理器短暂不可用：保留读数，下次刷新再试
+      }
+    })()
+  }, [feed.updatedAt])
+
   // 快捷键：r 刷新、/ 聚焦日志过滤、Esc 收起日志（有对话框时让对话框自己处理）
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent): void => {
@@ -271,6 +284,18 @@ export function ConsolePage(): JSX.Element {
               >
                 <span className="bc-status-dot" aria-hidden="true" />
                 {cronAlerts?.zombies} 条失效心跳
+              </button>
+            )}
+            {diskFree !== null && diskFree < 10 * 1024 ** 3 && (
+              <button
+                type="button"
+                className="bc-header-alert"
+                data-tone="warn"
+                title="打开存储概览"
+                onClick={() => setStorageOpen(true)}
+              >
+                <span className="bc-status-dot" aria-hidden="true" />
+                磁盘可用 {(diskFree / 1024 ** 3).toFixed(1)} GB
               </button>
             )}
             <div className="bc-header-actions">
