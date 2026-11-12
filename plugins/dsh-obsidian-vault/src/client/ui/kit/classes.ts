@@ -189,6 +189,7 @@ export const css = {
   kitSliderThumb: 'ov-kit-slider-thumb',
   kitSliderTip: 'ov-kit-slider-tip',
   kitSliderValue: 'ov-kit-slider-value',
+  kitSliderInput: 'ov-kit-slider-input',
   selectRoot: 'ov-select',
   selectTrigger: 'ov-select-trigger',
   selectLabel: 'ov-select-label',

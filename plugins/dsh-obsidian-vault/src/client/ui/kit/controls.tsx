@@ -4,7 +4,7 @@
  * theme-token driven, so any panel can use them.
  * @module dsh-obsidian-vault/client/ui/kit/controls
  */
-import { useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent } from 'react'
+import { useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent } from 'react'
 import { css } from './classes.ts'
 
 /** Props for {@link Toggle}. */
@@ -50,6 +50,8 @@ export interface SliderProps {
   /** Slider position 0…1 → value; defaults to linear. Inverse of toPosition. */
   readonly fromPosition?: (position: number) => number
   readonly format?: (value: number) => string
+  /** Replace the read-only value with a number input that commits on blur/Enter. */
+  readonly editable?: boolean
 }
 
 /**
@@ -72,6 +74,19 @@ export function Slider(props: SliderProps): JSX.Element {
   }
 
   const position = Math.min(1, Math.max(0, toPosition(value)))
+  const [draft, setDraft] = useState<string | null>(null)
+
+  useEffect(() => {
+    setDraft(null)
+  }, [value])
+
+  const commitDraft = (): void => {
+    if (draft === null) return
+    const parsed = Number(draft)
+    setDraft(null)
+    if (!Number.isFinite(parsed)) return
+    onChange(Math.min(max, Math.max(min, parsed)))
+  }
 
   const valueAt = (clientX: number): number => {
     const track = trackRef.current
@@ -112,7 +127,7 @@ export function Slider(props: SliderProps): JSX.Element {
   }
 
   return (
-    <div className={css.kitSlider} data-dragging={dragging}>
+    <div className={css.kitSlider} data-dragging={dragging} data-editable={props.editable === true}>
       <span className={css.kitSliderLabel}>{label}</span>
       <div
         ref={trackRef}
@@ -135,7 +150,32 @@ export function Slider(props: SliderProps): JSX.Element {
           ? <div className={css.kitSliderTip} style={{ left: `${position * 100}%` }}>{format(value)}</div>
           : null}
       </div>
-      <span className={css.kitSliderValue}>{format(value)}</span>
+      {props.editable === true
+        ? (
+          <input
+            type="number"
+            className={css.kitSliderInput}
+            aria-label={label}
+            min={min}
+            max={max}
+            step={step}
+            value={draft ?? format(value)}
+            onChange={(event) => setDraft(event.target.value)}
+            onBlur={commitDraft}
+            onFocus={(event) => event.currentTarget.select()}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter') {
+                event.preventDefault()
+                commitDraft()
+                event.currentTarget.blur()
+              } else if (event.key === 'Escape') {
+                setDraft(null)
+                event.currentTarget.blur()
+              }
+            }}
+          />
+        )
+        : <span className={css.kitSliderValue}>{format(value)}</span>}
     </div>
   )
 }

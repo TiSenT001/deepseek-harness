@@ -85,4 +85,26 @@ export const CONTROLS_STYLE = `/* Kit toggle: hidden checkbox drives a sliding s
   white-space: nowrap;
 }
 .ov-kit-slider-value { text-align: right; color: var(--dsw-alias-label-tertiary, #8b8b94); }
+.ov-kit-slider[data-editable="true"] { grid-template-columns: minmax(0, 1fr) 76px 52px; }
+.ov-kit-slider-input {
+  width: 52px;
+  min-width: 0;
+  padding: 2px 4px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--dsw-alias-label-tertiary, #8b8b94);
+  font: inherit;
+  text-align: right;
+  appearance: textfield;
+}
+.ov-kit-slider-input:hover { border-color: var(--dsw-alias-border-l2, #3a3a42); }
+.ov-kit-slider-input:focus {
+  outline: none;
+  border-color: var(--dsw-alias-brand-primary, #4d6bfe);
+  background: var(--dsw-alias-bg-layer-2, #232329);
+  color: var(--dsw-alias-label-primary, #e8e8ea);
+}
+.ov-kit-slider-input::-webkit-inner-spin-button,
+.ov-kit-slider-input::-webkit-outer-spin-button { appearance: none; margin: 0; }
 `

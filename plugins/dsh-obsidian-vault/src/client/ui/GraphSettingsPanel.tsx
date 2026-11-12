@@ -3,8 +3,8 @@
  * writes one dotted path back into the settings object.
  * @module dsh-obsidian-vault/client/ui/GraphSettingsPanel
  */
-import { useMemo } from 'react'
-import type { GraphSettings } from '../graph/settings'
+import { useMemo, useState } from 'react'
+import { DEFAULT_GRAPH_SETTINGS, type GraphSettings } from '../graph/settings'
 import {
   curveFor,
   GRAPH_SCHEMA,
@@ -35,11 +35,30 @@ const GROUP_COLORS = ['#4d6bfe', '#3fb950', '#d29922', '#f85149', '#a371f7', '#3
  * @param props - current settings and change callbacks.
  */
 export function GraphSettingsPanel({ t, settings, onChange, onClose }: GraphSettingsPanelProps): JSX.Element {
+  const [collapsed, setCollapsed] = useState(false)
   return (
     <div className={css.graphPanel} role="dialog" aria-label={t('graphSettings')}>
       <div className={css.graphPanelHead}>
         <strong>{t('graphSettings')}</strong>
         <span className={css.grow} />
+        <button
+          type="button"
+          className={css.iconButton}
+          title={t('resetDefaults')}
+          aria-label={t('resetDefaults')}
+          onClick={() => onChange(DEFAULT_GRAPH_SETTINGS)}
+        >
+          ↺
+        </button>
+        <button
+          type="button"
+          className={css.iconButton}
+          title={collapsed ? t('expand') : t('collapse')}
+          aria-label={collapsed ? t('expand') : t('collapse')}
+          onClick={() => setCollapsed(current => !current)}
+        >
+          {collapsed ? '+' : '−'}
+        </button>
         <button
           type="button"
           className={css.iconButton}
@@ -50,6 +69,7 @@ export function GraphSettingsPanel({ t, settings, onChange, onClose }: GraphSett
           <Icon name="close" />
         </button>
       </div>
+      {collapsed ? null : (
       <div className={css.graphPanelBody}>
         {GRAPH_SCHEMA.map(section => (
           <section key={section.id} className={css.graphPanelSection}>
@@ -114,6 +134,7 @@ export function GraphSettingsPanel({ t, settings, onChange, onClose }: GraphSett
           </section>
         ))}
       </div>
+      )}
     </div>
   )
 }
@@ -211,6 +232,7 @@ function RangeControl({ control, value, label, onChange }: {
       label={label}
       onChange={onChange}
       format={round}
+      editable
       {...(mapping ?? {})}
     />
   )
