@@ -16,6 +16,13 @@ export type GraphControl =
     readonly options: readonly { readonly value: string; readonly label: keyof Dict }[]
   }
   | {
+    readonly kind: 'number'
+    readonly path: string
+    readonly label: keyof Dict
+    readonly min?: number
+    readonly step?: number
+  }
+  | {
     readonly kind: 'range'
     readonly path: string
     readonly label: keyof Dict
@@ -71,7 +78,7 @@ export const GRAPH_SCHEMA: readonly GraphSection[] = [
       { kind: 'range', path: 'display.textFade', label: 'textFade', min: 0, max: 0.9, step: 0.1 },
       { kind: 'range', path: 'display.nodeScale', label: 'nodeSize', min: 0.5, max: 2, step: 0.1 },
       { kind: 'range', path: 'display.linkWidth', label: 'linkWidth', min: 0.5, max: 4, step: 0.5 },
-      { kind: 'range', path: 'display.linkOpacity', label: 'linkOpacity', min: 0, max: 1, step: 0.05 },
+      { kind: 'number', path: 'display.linkOpacity', label: 'linkOpacity', min: 0, step: 0.05 },
     ],
   },
   {

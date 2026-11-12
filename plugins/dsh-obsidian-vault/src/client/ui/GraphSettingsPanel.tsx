@@ -3,7 +3,7 @@
  * writes one dotted path back into the settings object.
  * @module dsh-obsidian-vault/client/ui/GraphSettingsPanel
  */
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { DEFAULT_GRAPH_SETTINGS, type GraphSettings } from '../graph/settings'
 import {
   curveFor,
@@ -182,6 +182,17 @@ function renderControl(
     )
   }
   if (control.kind === 'select') return renderSelect(control, settings, onChange, t)
+  if (control.kind === 'number') {
+    return (
+      <NumberControl
+        key={control.path}
+        control={control}
+        value={typeof value === 'number' ? value : 0}
+        label={label}
+        onChange={(next) => onChange(writePath(settings, control.path, next))}
+      />
+    )
+  }
   if (control.kind === 'range') {
     const current = typeof value === 'number' ? value : control.min
     return (
@@ -202,6 +213,51 @@ function renderControl(
         value={typeof value === 'string' ? value : ''}
         placeholder={control.placeholder}
         onChange={(event) => onChange(writePath(settings, control.path, event.target.value))}
+      />
+    </label>
+  )
+}
+
+/** One free-form number row: a lower bound, no upper bound. */
+function NumberControl({ control, value, label, onChange }: {
+  readonly control: Extract<GraphControl, { readonly kind: 'number' }>
+  readonly value: number
+  readonly label: string
+  readonly onChange: (value: number) => void
+}): JSX.Element {
+  const [draft, setDraft] = useState(String(value))
+  useEffect(() => {
+    setDraft(String(value))
+  }, [value])
+  const commit = (): void => {
+    const parsed = Number(draft)
+    if (!Number.isFinite(parsed)) {
+      setDraft(String(value))
+      return
+    }
+    onChange(Math.max(control.min ?? Number.NEGATIVE_INFINITY, parsed))
+  }
+  return (
+    <label className={css.graphField}>
+      <span>{label}</span>
+      <input
+        type="number"
+        className={css.graphText}
+        min={control.min}
+        step={control.step}
+        value={draft}
+        onChange={(event) => setDraft(event.target.value)}
+        onBlur={commit}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter') {
+            event.preventDefault()
+            commit()
+            event.currentTarget.blur()
+          } else if (event.key === 'Escape') {
+            setDraft(String(value))
+            event.currentTarget.blur()
+          }
+        }}
       />
     </label>
   )
