@@ -1,3 +1,8 @@
+## 第一百三十一轮：关系图连线与箭头颜色对齐（2026-11-12）
+
+- **提取值**：Obsidian 渲染器的基础连线 alpha 为 `0.2`，hover 关联边为 `1`；箭头颜色取文本色而非边色。插件此前基础 alpha 为 `0.65`、箭头用边色。
+- **集中**：`OBSIDIAN_GRAPH.linkAlpha/linkHighlightAlpha` 进入 `obsidian-graph.ts`；`scene` 的普通/hover/箭头目标 alpha 全部引用常量；`palette.arrow` 使用 label-secondary 令牌。
+- **验证**：`tsc` 0、779/779；全库 400 节点图截图仍可读，连线较之前更接近 Obsidian 的弱化效果。
 ## 第一百三十轮：关系图箭头复刻（2026-11-12）
 
 - **设置**：`GraphSettings.display.showArrow` 新增，默认 false；`graph.json` 的 `showArrow` 读写，设置面板增加「显示箭头」开关。此前 graph.json 能读能写但没有渲染。

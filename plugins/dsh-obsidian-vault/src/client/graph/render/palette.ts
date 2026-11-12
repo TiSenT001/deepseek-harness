@@ -16,6 +16,8 @@ export interface Palette {
   readonly nodeTag: string
   /** Attachment nodes. */
   readonly nodeAttachment: string
+  /** Arrowhead fill. */
+  readonly arrow: string
   /** Ring stroke around the hovered node. */
   readonly ring: string
   readonly label: string
@@ -53,6 +55,7 @@ export function readPalette(): Palette {
     nodeActive: token('--dsw-alias-brand-primary', '#4d6bfe'),
     nodeTag: token('--dsw-alias-state-success-primary', '#3fb950'),
     nodeAttachment: token('--dsw-alias-state-warning-primary', '#d29922'),
+    arrow: token('--dsw-alias-label-secondary', '#b6b6bd'),
     ring: token('--dsw-alias-label-primary', '#e8e8ea'),
     label: token('--dsw-alias-label-secondary', '#b6b6bd'),
     labelActive: token('--dsw-alias-label-primary', '#e8e8ea'),
