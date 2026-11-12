@@ -70,6 +70,8 @@ export function useGraphCamera({ positionsRef, loopRef, settledRef }: GraphCamer
   const panTargetRef = useRef<{ x: number; y: number } | null>(null)
   /** While true the camera continuously frames the whole graph. */
   const fitRef = useRef(false)
+  /** Never zoom out past the last full-graph fit; below it the dots merge. */
+  const zoomFloorRef = useRef(ZOOM_MIN)
   /** Node the camera centres on while fitting; null centres the bounding box. */
   const focusRef = useRef<string | null>(null)
   const [zoom, setZoom] = useState(1)
@@ -103,7 +105,8 @@ export function useGraphCamera({ positionsRef, loopRef, settledRef }: GraphCamer
   }, [])
 
   const zoomAt = useCallback((factor: number, clientX: number, clientY: number) => {
-    const next = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, zoomTargetRef.current * factor))
+    const floor = Math.max(ZOOM_MIN, zoomFloorRef.current)
+    const next = Math.min(ZOOM_MAX, Math.max(floor, zoomTargetRef.current * factor))
     zoomTargetRef.current = next
     zoomRef.current = next
     setZoom(next)
@@ -184,6 +187,7 @@ export function useGraphCamera({ positionsRef, loopRef, settledRef }: GraphCamer
             (rect.height - padding * 2) / Math.max(1, maxY - minY),
           )
           const target = Math.max(ZOOM_MIN, Math.min(1, fitZoom))
+          zoomFloorRef.current = Math.max(ZOOM_MIN, target * 0.9)
           // Follow the growing bounding box without the damping lag; node radii
           // stay screen-constant, so this reads as the camera backing out.
           if (Math.abs(zoomRef.current - target) > 1e-6) {
@@ -261,7 +265,7 @@ export function useGraphCamera({ positionsRef, loopRef, settledRef }: GraphCamer
       }
       if (event.key === '-') {
         cancelFollow()
-        zoomTargetRef.current = Math.max(ZOOM_MIN, zoomTargetRef.current / 1.1)
+        zoomTargetRef.current = Math.max(Math.max(ZOOM_MIN, zoomFloorRef.current), zoomTargetRef.current / 1.1)
         event.preventDefault()
         return
       }
