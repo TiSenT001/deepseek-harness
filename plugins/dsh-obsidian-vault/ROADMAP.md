@@ -1,3 +1,9 @@
+## 第一百二十七轮：Mermaid 阅读渲染（2026-11-12）
+
+- **对标 Obsidian Mermaid**：阅读视图识别 `mermaid` 代码块，懒加载 Mermaid 后渲染为 SVG；按源码缓存 SVG，主题使用 dark，`securityLevel: strict`；渲染失败或空源码时保留原文并显示「Mermaid 渲染失败」。
+- **适配现有代码块**：宿主 MarkdownText 的 `md-code-block` 不把语言挂在 `code` 上，改为读 banner 的 infostring「mermaid」，同时保留 `language-mermaid` 类兜底。
+- **代价**：Mermaid 全量进入 client bundle，`lib/client.js` 从约 1.15 MB 增至 8.25 MB；这是离线渲染的取舍，后续可改为按需独立资源。
+- **验证**：`tsc` 0、773/773；真实笔记 `flowchart LR` 在阅读视图生成 1 个 `.ov-mermaid`、1 个 SVG，截图确认；图表后正文不受影响。
 ## 第一百二十六轮：笔记命令入口与 UI 审核（2026-11-12）
 
 - **可发现性**：Markdown 笔记的编辑器右键菜单新增「文件历史」「合并笔记」「拆分笔记」三项，与命令面板入口并存；README 增加「使用速查」，写明 `Ctrl+P` 默认搜笔记、需输入 `>` 或按 Tab 切到命令模式。

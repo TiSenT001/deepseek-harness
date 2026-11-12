@@ -263,4 +263,27 @@ details.ov-callout[open] > summary::before { content: '▾'; }
   color: var(--dsw-alias-label-primary, #e8e8ea);
   text-decoration: underline;
 }
-`
+
+.ov-mermaid {
+  display: flex;
+  justify-content: center;
+  margin: 12px 0;
+  padding: 12px;
+  overflow: auto;
+  border: 1px solid var(--dsw-alias-border-l1, #2a2a30);
+  border-radius: 8px;
+  background: var(--dsw-alias-bg-layer-1, #1b1b1f);
+}
+
+.ov-mermaid svg {
+  max-width: 100%;
+  height: auto;
+}
+
+.ov-mermaid-failed {
+  display: block;
+  color: var(--dsw-alias-label-tertiary, #8b8b94);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  white-space: pre-wrap;
+}`
