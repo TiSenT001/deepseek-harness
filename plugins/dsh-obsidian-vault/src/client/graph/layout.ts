@@ -10,6 +10,7 @@
 import { collideForce, repelForce, repelForceNaive } from './quadtree.ts'
 import { jiggle } from './layout-seed.ts'
 import { ALPHA_DECAY, ALPHA_MIN, ANIMATE_ALPHA, DEFAULT_FORCES, REHEAT_ALPHA, VELOCITY_DECAY } from './layout-types.ts'
+import { OBSIDIAN_GRAPH, obsidianLinkBias, obsidianLinkStrength } from './obsidian-graph.ts'
 import type { GraphEdgeInput, LayoutForces, SimNode } from './layout-types.ts'
 
 export * from './layout-types.ts'
@@ -18,8 +19,8 @@ export * from './layout-seed.ts'
 /** Above this many nodes, repulsion switches to Barnes-Hut. */
 const QUADTREE_THRESHOLD = 300
 /** Collide disc radius and per-tick resolution strength (Obsidian sim.js). */
-const COLLIDE_RADIUS = 60
-const COLLIDE_STRENGTH = 0.5
+const COLLIDE_RADIUS = OBSIDIAN_GRAPH.collideRadius
+const COLLIDE_STRENGTH = OBSIDIAN_GRAPH.collideStrength
 
 interface Link {
   readonly source: SimNode
@@ -72,8 +73,8 @@ export class Simulation {
       this.links.push({
         source,
         target,
-        bias: sourceDegree / (sourceDegree + targetDegree),
-        baseStrength: 1 / Math.min(sourceDegree, targetDegree),
+        bias: obsidianLinkBias(sourceDegree, targetDegree),
+        baseStrength: obsidianLinkStrength(sourceDegree, targetDegree),
         strength: 0,
         distance: forces.linkDistance,
       })

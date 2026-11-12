@@ -4,6 +4,7 @@
  * simulation read.
  * @module dsh-obsidian-vault/client/graph/layout-types
  */
+import { OBSIDIAN_GRAPH } from './obsidian-graph.ts'
 
 /** One node as the Host reports it. */
 export interface GraphNodeInput {
@@ -74,8 +75,8 @@ export function tickIntervalMs(nodeCount: number): number {
   return 1000 / 15
 }
 /** Per-tick approach toward the target energy: cools in ~300 ticks (d3). */
-export const ALPHA_DECAY = 1 - Math.pow(ALPHA_MIN, 1 / 300)
+export const ALPHA_DECAY = OBSIDIAN_GRAPH.alphaDecay
 /** Velocity retention per tick (d3/Obsidian velocityDecay). */
-export const VELOCITY_DECAY = 0.6
+export const VELOCITY_DECAY = OBSIDIAN_GRAPH.velocityDecay
 /** Energy injected by a force change or a drag (Obsidian posts alpha: .3). */
 export const REHEAT_ALPHA = 0.3
