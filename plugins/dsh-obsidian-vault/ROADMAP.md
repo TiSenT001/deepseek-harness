@@ -1,3 +1,9 @@
+## 第一百五十五轮：Pūr 懒加载与插件包验证（2026-11-13）
+
+- **实测**：浏览器点「打开 Pur Studio」只触发一次 `client.pur.js?rev=...` 请求，无页面错误，画布正常渲染（状态栏「已选中 0 个元素，缩放 100%」）。
+- **拆分收益**：主 `client.js` 约 820 KB（原 1.25 MB），Pūr chunk 约 546 KB，仅在打开画布时加载。
+- **打包**：tarball 22 个文件、2.23 MB，包含 `client.js` / `client.pur.js` / `mermaid.js` / `pur-obsidian.js` / `worker.js`；release-check 通过（仅 private 发布提示）。
+- **未发布**：npm 仍未发布。
 ## 第一百五十四轮：Pur Studio 客户端按需 chunk（2026-11-13）
 
 - **拆分**：Pur Studio 从主 `client.js` 移到 `lib/client.pur.js`（约 533 KB），只在打开 `.PurStudio` / `.canvas` 时通过 module loader 的 `require.async` 加载。
