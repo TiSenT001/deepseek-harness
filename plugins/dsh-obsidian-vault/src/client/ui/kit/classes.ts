@@ -135,6 +135,7 @@ export const css = {
   docBacklinkTitle: 'ov-doc-backlink-title',
   docBacklinkContext: 'ov-doc-backlink-context',
   noteImageFailed: 'ov-note-image-failed',
+  mermaid: 'ov-mermaid',
   noteImagePlaceholder: 'ov-note-image-placeholder',
   search: 'ov-search',
   searchBar: 'ov-search-bar',

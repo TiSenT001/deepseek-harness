@@ -19,6 +19,7 @@ import { HoverPreviewCard } from './HoverPreviewCard.tsx'
 import { useInlineBacklinks } from './useInlineBacklinks.ts'
 import { enhanceHighlights } from './note/enhanceHighlights.ts'
 import { enhanceMediaEmbeds } from './note/enhanceMedia.ts'
+import { enhanceMermaid } from './note/enhanceMermaid.ts'
 import { NoteHeader } from './note/NoteHeader.tsx'
 import { NoteMeta } from './note/NoteMeta.tsx'
 import { highlightDocument } from './files/highlight.ts'
@@ -168,6 +169,7 @@ export function NoteView({
       annotateBlocks(bodyRef.current)
       annotateImages(bodyRef.current)
       enhanceMediaEmbeds(bodyRef.current, { open: t('openOriginal') })
+      enhanceMermaid(bodyRef.current, t('mermaidFailed'))
     }
     highlightDocument(bodyRef.current)
   }, [rendered, t])

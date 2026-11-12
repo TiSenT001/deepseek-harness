@@ -110,6 +110,7 @@ export const ZH = {
   splitFailed: '拆分失败',
   splitExists: '目标笔记已存在',
   loadingNote: '正在读取笔记…',
+  mermaidFailed: 'Mermaid 渲染失败',
   loadingHistory: '加载中…',
   historyEmpty: '还没有可恢复的版本；保存一次笔记后这里会出现旧内容。',
   historyRestore: '恢复此版本',

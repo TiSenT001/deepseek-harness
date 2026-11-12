@@ -111,6 +111,7 @@ export const EN: Dict = {
   splitFailed: 'Split failed',
   splitExists: 'Target note already exists',
   loadingNote: 'Reading note…',
+  mermaidFailed: 'Mermaid rendering failed',
   loadingHistory: 'Loading…',
   historyEmpty: 'No recoverable versions yet; save the note once and the previous body appears here.',
   historyRestore: 'Restore this version',
