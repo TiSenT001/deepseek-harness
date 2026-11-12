@@ -238,7 +238,7 @@ function NumberControl({ control, value, label, onChange }: {
     onChange(Math.max(control.min ?? Number.NEGATIVE_INFINITY, parsed))
   }
   return (
-    <label className={css.graphField}>
+    <div className={css.graphNumberRow}>
       <span>{label}</span>
       <input
         type="number"
@@ -259,7 +259,7 @@ function NumberControl({ control, value, label, onChange }: {
           }
         }}
       />
-    </label>
+    </div>
   )
 }
 
