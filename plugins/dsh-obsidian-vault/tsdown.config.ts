@@ -78,4 +78,16 @@ const obsidianBundle: UserConfig = {
 }
 
 
-export default [hostBundle, clientBundle, workerBundle, obsidianBundle]
+const mermaidBundle: UserConfig = {
+  entry: { mermaid: 'src/client/mermaid-render.ts' },
+  outDir: 'lib',
+  format: 'iife',
+  platform: 'browser',
+  dts: false,
+  sourcemap: false,
+  minify: true,
+  deps: { alwaysBundle: () => true },
+  outputOptions: { entryFileNames: 'mermaid.js' },
+}
+
+export default [hostBundle, clientBundle, workerBundle, obsidianBundle, mermaidBundle]

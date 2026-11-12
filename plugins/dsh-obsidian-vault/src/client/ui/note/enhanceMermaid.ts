@@ -1,17 +1,23 @@
 /**
- * Render ```mermaid fences in the reading view. Mermaid is imported lazily on
- * the first diagram so notes without diagrams do not pay for the bundle.
+ * Render ```mermaid fences in the reading view. The Mermaid library is a
+ * separate script served by the host and loaded only when a note has a diagram.
  * @module dsh-obsidian-vault/client/ui/note/enhanceMermaid
  */
+import { API_BASE } from '../../../protocol.ts'
 
-/** Mermaid module shape used by the renderer. */
-type MermaidApi = {
-  initialize(config: Record<string, unknown>): void
-  render(id: string, text: string): Promise<{ svg: string }>
+/** Renderer the standalone Mermaid bundle installs on `window`. */
+interface MermaidRenderer {
+  render(id: string, text: string): Promise<{ readonly svg: string }>
 }
 
-/** Loaded Mermaid instance, or the import in flight. */
-let loading: Promise<MermaidApi | null> | null = null
+declare global {
+  interface Window {
+    __OV_MERMAID__?: MermaidRenderer
+  }
+}
+
+/** Loaded renderer, or the script load in flight. */
+let loading: Promise<MermaidRenderer | null> | null = null
 
 /** Rendered SVG markup keyed by fence source. */
 const rendered = new Map<string, string>()
@@ -29,16 +35,19 @@ export function isMermaidFence(code: HTMLElement): boolean {
 }
 
 /**
- * Import and initialise Mermaid once.
- * @returns the API, or null when the optional dependency failed to load.
+ * Load the standalone Mermaid script once.
+ * @returns the renderer, or null when the script failed to load.
  */
-async function mermaidApi(): Promise<MermaidApi | null> {
+async function mermaidApi(): Promise<MermaidRenderer | null> {
   if (loading === null) {
-    loading = import('mermaid').then((module) => {
-      const api = (module as unknown as { default?: MermaidApi }).default ?? module as unknown as MermaidApi
-      api.initialize({ startOnLoad: false, securityLevel: 'strict', theme: 'dark' })
-      return api
-    }).catch(() => null)
+    loading = new Promise((resolve) => {
+      const script = document.createElement('script')
+      script.src = `${API_BASE}/mermaid.js`
+      script.async = true
+      script.onload = () => resolve(window.__OV_MERMAID__ ?? null)
+      script.onerror = () => resolve(null)
+      document.head.append(script)
+    })
   }
   return loading
 }
