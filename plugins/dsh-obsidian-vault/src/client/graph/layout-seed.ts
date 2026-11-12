@@ -86,6 +86,9 @@ export function seedPositions(
     if (centers.length === 1 && node.depth === 0) return place(0, 0)
     const ring = centers.length === 1 ? k * (0.6 + node.depth * 0.8) : k
     const angle = index * 2.399963229728653
-    return place(Math.cos(angle) * ring, Math.sin(angle) * ring)
+    // Fill a disc instead of the perimeter: a first paint on a ring reads as a
+    // loading artifact and makes every node look equally far from the centre.
+    const disc = ring * Math.sqrt((index + 0.5) / Math.max(1, nodes.length))
+    return place(Math.cos(angle) * disc, Math.sin(angle) * disc)
   })
 }

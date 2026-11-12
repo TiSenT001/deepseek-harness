@@ -169,6 +169,7 @@ export function GraphView(props: GraphViewProps): JSX.Element {
   plan={layout.planRef}
           nodeInfo={layout.nodeInfoRef}
           settings={data.settingsRef}
+          settled={layout.settledRef}
           hasCenter={scope !== undefined}
           loop={layout.loopRef}
           onHover={noopHover}
