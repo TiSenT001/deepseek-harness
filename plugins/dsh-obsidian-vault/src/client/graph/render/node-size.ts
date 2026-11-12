@@ -1,7 +1,7 @@
 /**
- * Node radius on screen: the degree-derived world radius scales with zoom, so
- * zooming in enlarges dots and zooming out shrinks them. A small screen floor
- * keeps leaves visible at the full-vault fit.
+ * Node radius on screen: the pre-Obsidian degree radius in world units, with a
+ * 2px screen floor so leaves remain visible at the full-vault fit. Above the
+ * floor the canvas zoom makes dots grow and shrink normally.
  * @module dsh-obsidian-vault/graph/render/node-size
  */
 
