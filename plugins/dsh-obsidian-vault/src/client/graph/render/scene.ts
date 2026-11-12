@@ -119,6 +119,9 @@ export function drawScene(scene: SceneInput): SceneStats {
 
   // --- edges ---
   const baseEdgeWidth = Math.max(0.35, settings.display.linkWidth / zoom)
+  // Default 0.2 matches Obsidian's base link alpha; the slider can go solid.
+  const linkOpacity = settings.display.linkOpacity
+  const linkHighlightOpacity = Math.min(1, linkOpacity * 5)
   const activeEdgeWidth = baseEdgeWidth * 1.6
   const edgeAlphas = new Map<string, number>()
   if (batched) {
@@ -128,7 +131,7 @@ export function drawScene(scene: SceneInput): SceneStats {
     const levels = reveal < 1 ? [0.25, 0.5, 0.75, 1] : [1]
     const drawPass = (alpha: number, color: string, lineWidth: number, onlyNeighbours: boolean): void => {
       for (const level of levels) {
-        const passAlpha = alpha * level
+        const passAlpha = Math.min(1, alpha * level * (linkOpacity / OBSIDIAN_GRAPH.linkAlpha))
         if (passAlpha <= 0.01) continue
         ctx.strokeStyle = color
         ctx.globalAlpha = passAlpha
@@ -163,7 +166,7 @@ export function drawScene(scene: SceneInput): SceneStats {
       if (from === undefined || to === undefined) continue
       if (edgeOffscreen(from, to)) continue
       const isNeighbour = hovering && neighbours.has(edge.source) && neighbours.has(edge.target)
-      const target = hovering ? (isNeighbour ? OBSIDIAN_GRAPH.linkHighlightAlpha : OBSIDIAN_GRAPH.linkAlpha) : OBSIDIAN_GRAPH.linkAlpha
+      const target = hovering ? (isNeighbour ? linkHighlightOpacity : linkOpacity) : linkOpacity
       const alpha = stage.edge(edgeKey(edge.source, edge.target), target) * entrance
       if (alpha <= 0.01) continue
       stats.drawnEdges += 1
@@ -189,7 +192,7 @@ export function drawScene(scene: SceneInput): SceneStats {
       if (from === undefined || to === undefined || edgeOffscreen(from, to)) continue
       const isNeighbour = hovering && neighbours.has(edge.source) && neighbours.has(edge.target)
       const key = edgeKey(edge.source, edge.target)
-      const targetAlpha = hovering ? (isNeighbour ? OBSIDIAN_GRAPH.linkHighlightAlpha : OBSIDIAN_GRAPH.linkAlpha) : OBSIDIAN_GRAPH.linkAlpha
+      const targetAlpha = hovering ? (isNeighbour ? linkHighlightOpacity : linkOpacity) : linkOpacity
       const base = edgeAlphas.get(key) ?? stage.edge(key, targetAlpha) * entrance
       const alpha = obsidianArrowAlpha(base, zoom)
       if (alpha <= 0.01) continue

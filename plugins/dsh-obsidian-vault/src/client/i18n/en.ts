@@ -173,6 +173,7 @@ export const EN: Dict = {
   textFade: 'Text fade threshold',
   nodeSize: 'Node size',
   linkWidth: 'Link thickness',
+  linkOpacity: 'Link opacity',
   forces: 'Forces',
   centerForce: 'Center force',
   repelForce: 'Repel force',
