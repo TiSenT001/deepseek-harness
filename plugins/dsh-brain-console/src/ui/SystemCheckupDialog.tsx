@@ -7,6 +7,7 @@
  */
 import { useEffect, useState } from 'react'
 import { loadSystemCheckup, loadTableInfo, loadTableUsage } from '../api.ts'
+import { Sparkline } from './Sparkline.tsx'
 import { reasonOf } from './errors.ts'
 import { Button } from './primitives.ts'
 import { Dialog } from './Dialog.tsx'
@@ -28,6 +29,26 @@ function diff(before: number | null | undefined, after: number | null | undefine
   const delta = after - before
   if (delta === 0) return ''
   return delta > 0 ? `（+${delta}）` : `（${delta}）`
+}
+
+/** 复制文本；navigator.clipboard 无权限时退回 textarea + execCommand。 */
+async function copyText(value: string): Promise<void> {
+  try {
+    await navigator.clipboard.writeText(value)
+    return
+  } catch {
+    // 无剪贴板权限时走兼容路径
+  }
+  const area = document.createElement('textarea')
+  area.value = value
+  area.setAttribute('readonly', '')
+  area.style.position = 'fixed'
+  area.style.opacity = '0'
+  document.body.appendChild(area)
+  area.select()
+  const ok = document.execCommand('copy')
+  document.body.removeChild(area)
+  if (!ok) throw new Error('浏览器拒绝了复制')
 }
 
 /** 一条历史记录的摘要行。 */
@@ -112,6 +133,7 @@ export function SystemCheckupDialog({ onClose }: SystemCheckupDialogProps): JSX.
   const [usage, setUsage] = useState<Record<string, TableUsage>>({})
   const [openUsage, setOpenUsage] = useState<string | null>(null)
   const [usageBusy, setUsageBusy] = useState<string | null>(null)
+  const [copied, setCopied] = useState(false)
 
   const run = async (): Promise<void> => {
     setRunning(true)
@@ -170,6 +192,41 @@ export function SystemCheckupDialog({ onClose }: SystemCheckupDialogProps): JSX.
   const bloated = report?.bloated_tables ?? []
   const previous = result?.previous ?? null
   const history = result?.history ?? []
+  const trendRows: { label: string; values: number[]; current: number | null }[] = [
+    {
+      label: '总表',
+      values: history.map((item) => item.total_tables).filter((value): value is number => value !== null),
+      current: report?.total_tables ?? null,
+    },
+    { label: '待核实空表', values: history.map((item) => item.empty), current: empty.length },
+    { label: '膨胀表', values: history.map((item) => item.bloated), current: bloated.length },
+  ]
+
+  const buildSummary = (): string => {
+    const lines = [`## 系统体检 ${result?.at ?? ''}`.trim(), '']
+    lines.push(`- 总表：${report?.total_tables ?? '—'}`)
+    lines.push(`- 孤儿表：${orphans.length}`)
+    lines.push(`- 待核实空表：${empty.length}${empty.length > 0 ? `（${empty.join('、')}）` : ''}`)
+    const bloatText = bloated
+      .map(([table, count]) => `${table} ${typeof count === 'number' ? count.toLocaleString('zh-CN') : String(count)} 行`)
+      .join('、')
+    lines.push(`- 膨胀表：${bloated.length}${bloatText === '' ? '' : `（${bloatText}）`}`)
+    lines.push(`- 耗时：${seconds(result?.elapsed_ms)}`)
+    if (previous !== null) {
+      lines.push(`- 较上次（${previous.at}）：总表 ${previous.total_tables ?? '—'} · 空表 ${previous.empty} · 膨胀 ${previous.bloated}`)
+    }
+    return lines.join('\n')
+  }
+
+  const copySummary = async (): Promise<void> => {
+    try {
+      await copyText(buildSummary())
+      setCopied(true)
+      window.setTimeout(() => setCopied(false), 1600)
+    } catch (e) {
+      setError(`复制失败：${reasonOf(e)}`)
+    }
+  }
 
   return (
     <Dialog
@@ -180,6 +237,9 @@ export function SystemCheckupDialog({ onClose }: SystemCheckupDialogProps): JSX.
       description="只读检查：空表 / 孤儿表 / 膨胀表；不会修改任何数据"
       footer={(
         <>
+          <Button size="sm" variant="ghost" disabled={running} onClick={() => void copySummary()}>
+            {copied ? '已复制' : '复制摘要'}
+          </Button>
           <Button size="sm" variant="ghost" disabled={running} onClick={() => void run()}>
             {running ? '体检中…' : '重新体检'}
           </Button>
@@ -307,6 +367,17 @@ export function SystemCheckupDialog({ onClose }: SystemCheckupDialogProps): JSX.
           {history.length > 0 && (
             <details className="bc-checkup-history">
               <summary>历史体检（{history.length}）</summary>
+              {history.length >= 2 && (
+                <div className="bc-checkup-trend">
+                  {trendRows.map((row) => (
+                    <div className="bc-checkup-trend-row" key={row.label}>
+                      <span>{row.label}</span>
+                      <Sparkline values={row.values} height={18} className="bc-checkup-spark" />
+                      <strong>{row.current ?? '—'}</strong>
+                    </div>
+                  ))}
+                </div>
+              )}
               <div className="bc-checkup-history-list">
                 {[...history].reverse().map((item) => <HistoryRow key={item.at} item={item} />)}
               </div>

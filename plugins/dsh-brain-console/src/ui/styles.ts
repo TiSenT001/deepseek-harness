@@ -372,6 +372,34 @@ const STYLES = `
   color: var(--dsw-alias-label-tertiary);
   font-family: var(--ds-font-family-code, monospace);
 }
+.bc-checkup-trend {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 8px 0 4px;
+  padding: 6px 8px;
+  border: 1px solid var(--dsw-alias-border-l1);
+  border-radius: 8px;
+  background: var(--dsw-alias-bg-layer-1, rgba(128, 128, 128, 0.04));
+}
+.bc-checkup-trend-row {
+  display: grid;
+  grid-template-columns: 72px 1fr 36px;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  color: var(--dsw-alias-label-secondary);
+}
+.bc-checkup-trend-row > strong {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  color: var(--dsw-alias-label-primary);
+}
+.bc-checkup-spark {
+  color: var(--dsw-alias-label-tertiary);
+  height: 18px;
+}
+
 .bc-checkup-history {
   margin-top: 10px;
 }

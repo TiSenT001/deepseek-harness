@@ -364,6 +364,18 @@ try {
       const history = await dialog.locator('.bc-checkup-history').count()
       const rows = await dialog.locator('.bc-checkup-row-btn').count()
       extra = ` · 历史 ${history} · 膨胀表 ${rows}`
+      const historyRows = await dialog.locator('.bc-checkup-history-row').count()
+      const trends = await dialog.locator('.bc-checkup-trend-row').count()
+      if (historyRows >= 2 && trends !== 3) throw new Error(`趋势行 ${trends}，应为 3`)
+      const copyBtn = dialog.getByRole('button', { name: /复制摘要|已复制/ })
+      if ((await copyBtn.count()) === 0) throw new Error('缺少复制摘要按钮')
+      await copyBtn.click()
+      await page.waitForTimeout(1000)
+      const copyLabel = await copyBtn.innerText().catch(() => '')
+      const copyOk = copyLabel.trim() === '已复制'
+      const shownError = (await dialog.locator('.bc-backup-error').count()) > 0
+      if (!copyOk && !shownError) throw new Error('复制摘要没有反馈')
+      extra += ` · 趋势 ${trends} · 复制 ${copyLabel.trim() || '?'}`
       if (rows > 0) {
         await dialog.locator('.bc-checkup-row-btn').first().click()
         await page.waitForTimeout(800)
