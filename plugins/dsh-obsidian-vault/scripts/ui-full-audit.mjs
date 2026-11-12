@@ -533,6 +533,16 @@ try {
     await sleep(700)
   }
 
+  // Commands live behind the palette's > mode; typing a bare label searches notes.
+  async function runCommand(label) {
+    await page.keyboard.press('Control+p')
+    await sleep(350)
+    await page.locator('.ov-quick-input').fill('>' + label)
+    await sleep(400)
+    await page.keyboard.press('Enter')
+    await sleep(700)
+  }
+
   // Bridge checks must run against vault B (a throwaway temp dir): --only runs
   // skip the earlier vault switch, so hop over and back when vault A is active.
   let bridgePreviousRoot
@@ -1312,8 +1322,21 @@ try {
     assert(active?.includes('审核夹具'), `outgoing link opened ${active}`)
   })
 
+  await openViaFilter('审核夹具')
+
+  await check('note.context-menu', async () => {
+    await page.locator('.ov-document').first().dispatchEvent('contextmenu', { clientX: 800, clientY: 300 })
+    await sleep(400)
+    const labels = await page.locator('.ov-menu-label').allTextContents()
+    for (const label of ['文件历史', '合并笔记', '拆分笔记']) {
+      assert(labels.includes(label), `${label} missing from note menu`)
+    }
+    await page.keyboard.press('Escape')
+    await sleep(250)
+  })
+
   await check('history.dialog', async () => {
-    await runPalette('文件历史')
+    await runCommand('文件历史')
     await sleep(500)
     const dialog = page.locator('.ov-history-dialog')
     assert(await dialog.isVisible(), 'history dialog did not open')
@@ -1321,6 +1344,21 @@ try {
     await sleep(300)
   })
 
+  await check('note.merge-dialog', async () => {
+    await runCommand('合并笔记')
+    await sleep(500)
+    assert(await page.locator('.ov-merge-dialog').isVisible(), 'merge dialog did not open')
+    await page.keyboard.press('Escape')
+    await sleep(300)
+  })
+
+  await check('note.split-dialog', async () => {
+    await runCommand('拆分笔记')
+    await sleep(500)
+    assert(await page.locator('.ov-split-dialog').isVisible(), 'split dialog did not open')
+    await page.keyboard.press('Escape')
+    await sleep(300)
+  })
   await check('rail.backlinks-sort-select', async () => {
     const select = page.locator('.ov-rail select[aria-label="排序方式"]')
     assert((await select.count()) > 0, 'sort select missing')

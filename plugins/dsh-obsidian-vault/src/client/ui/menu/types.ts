@@ -56,4 +56,10 @@ export interface MenuActions {
   readonly filterTag: (tag: string) => void
   /** Add or remove one file's bookmark in `bookmarks.json`. */
   readonly toggleBookmark: (path: string) => void
+  /** Open the current note's version history. */
+  readonly openHistory: () => void
+  /** Open the merge-notes dialog for the current note. */
+  readonly openMerge: () => void
+  /** Open the split-note dialog for the current note. */
+  readonly openSplit: () => void
 }

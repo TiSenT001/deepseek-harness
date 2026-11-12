@@ -84,7 +84,7 @@ export function SplitNoteDialog({ t, path, notes, onClose, onSplit }: SplitNoteD
       }}
     >
       <div
-        className={`${css.dialog} ${css.mergeDialog}`}
+        className={`${css.dialog} ${css.mergeDialog} ${css.splitDialog}`}
         role="dialog"
         aria-modal="true"
         aria-label={t('splitNotes')}

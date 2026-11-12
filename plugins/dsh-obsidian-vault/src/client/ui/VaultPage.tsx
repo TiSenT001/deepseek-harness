@@ -369,6 +369,9 @@ export function VaultPage({ pickDirectory, hasPicker }: VaultPageProps = {}): JS
     addEmptyTab,
     collapseRef,
     toggleBookmark: bookmarks.toggle,
+    openHistory: () => setHistoryOpen(true),
+    openMerge: () => setMergeOpen(true),
+    openSplit: () => setSplitOpen(true),
     askText: ask.askText,
     askConfirm: ask.askConfirm,
   })
