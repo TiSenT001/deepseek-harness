@@ -119,8 +119,8 @@ export function drawScene(scene: SceneInput): SceneStats {
 
   // --- edges ---
   const baseEdgeWidth = Math.max(0.35, settings.display.linkWidth / zoom)
-  // Default 0.2 matches Obsidian's base link alpha; the slider can go solid.
-  const linkOpacity = settings.display.linkOpacity
+  // The setting has no upper bound; canvas alpha saturates at 1.
+  const linkOpacity = Math.min(1, Math.max(0, settings.display.linkOpacity))
   const linkHighlightOpacity = Math.min(1, linkOpacity * 5)
   const activeEdgeWidth = baseEdgeWidth * 1.6
   const edgeAlphas = new Map<string, number>()
