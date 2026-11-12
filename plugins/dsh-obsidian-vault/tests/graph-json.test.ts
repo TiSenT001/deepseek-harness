@@ -56,7 +56,7 @@ test('maps Obsidian display and force keys', () => {
     linkDistance: 400,
   })
   assert.deepEqual(patch.display, { animate: true, textFade: -1.2, nodeScale: 0.7, linkWidth: 1.8, showArrow: true })
-  assert.equal(patch.forces?.center, 0.1)
+  assert.equal(patch.forces?.center, 0.518713248970312)
   assert.equal(patch.forces?.repel, 18)
   assert.equal(patch.forces?.link, 0.6)
   assert.equal(patch.forces?.linkDistance, 400)

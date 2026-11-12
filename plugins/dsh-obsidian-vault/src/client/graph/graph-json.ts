@@ -7,13 +7,6 @@
  */
 import type { GraphGroup, GraphSettings, GraphSettingsPatch } from './settings.ts'
 
-/**
- * graph.json stores Obsidian's `centerStrength`, whose neutral value is
- * 0.518713248970312, while the layout uses d3's `forceCenter` strength (0.1 at
- * the same neutral point). The ratio keeps a default round trip stable.
- */
-const CENTER_PER_UNIT = 5.18713248970312
-
 /** A settings section while it is being filled; {@link GraphSettings} is readonly. */
 type MutableSection<K extends 'filters' | 'display' | 'forces'> = {
   -readonly [P in keyof GraphSettings[K]]?: GraphSettings[K][P]
@@ -58,7 +51,7 @@ export function settingsPatchFromGraphJson(document: unknown): GraphSettingsPatc
 
   const forces: MutableSection<'forces'> = {}
   const centerStrength = numberOf(json['centerStrength'])
-  if (centerStrength !== undefined) forces.center = centerStrength / CENTER_PER_UNIT
+  if (centerStrength !== undefined) forces.center = centerStrength
   const repelStrength = numberOf(json['repelStrength'])
   if (repelStrength !== undefined) forces.repel = repelStrength
   const linkStrength = numberOf(json['linkStrength'])
@@ -97,7 +90,7 @@ export function graphJsonPatch(settings: GraphSettings): Record<string, unknown>
     lineSizeMultiplier: settings.display.linkWidth,
     showArrow: settings.display.showArrow,
     dshColorBy: settings.display.colorBy,
-    centerStrength: settings.forces.center * CENTER_PER_UNIT,
+    centerStrength: settings.forces.center,
     repelStrength: settings.forces.repel,
     linkStrength: settings.forces.link,
     linkDistance: settings.forces.linkDistance,
