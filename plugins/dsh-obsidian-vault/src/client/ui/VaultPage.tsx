@@ -31,6 +31,8 @@ import { readHostViewMemory, readViewMemory, writeHostViewMemory, writeViewMemor
 import { WorkspaceLayoutsDialog } from './WorkspaceLayoutsDialog.tsx'
 import { TemplatePickerDialog } from './TemplatePickerDialog.tsx'
 import { HistoryDialog } from './HistoryDialog.tsx'
+import { MergeNotesDialog } from './MergeNotesDialog.tsx'
+import { markdownPaths } from './note-merge.ts'
 import { TagRenameDialog } from './TagRenameDialog.tsx'
 import { applyTemplate, parseTemplateFolder, templateNotes, templateTargetPath } from './templates.ts'
 import { type VaultEmptyAction } from './VaultEmptyState.tsx'
@@ -76,6 +78,7 @@ export function VaultPage({ pickDirectory, hasPicker }: VaultPageProps = {}): JS
   const [layoutsOpen, setLayoutsOpen] = useState(false)
   const [templatesOpen, setTemplatesOpen] = useState(false)
   const [historyOpen, setHistoryOpen] = useState(false)
+  const [mergeOpen, setMergeOpen] = useState(false)
   const [tagDialogOpen, setTagDialogOpen] = useState(false)
   /** Template folder from .obsidian/templates.json, or the 模板 convention. */
   const [templateFolder, setTemplateFolder] = useState('模板')
@@ -382,7 +385,10 @@ export function VaultPage({ pickDirectory, hasPicker }: VaultPageProps = {}): JS
     { id: 'templates.new', label: `${t('newFromTemplate')}…`, run: () => setTemplatesOpen(true) },
     { id: 'tags.rename', label: `${t('renameTagTitle')}…`, run: () => setTagDialogOpen(true) },
     ...(isMarkdown && path !== undefined
-      ? [{ id: 'history.open', label: `${t('fileHistory')}…`, run: () => setHistoryOpen(true) }]
+      ? [
+          { id: 'history.open', label: `${t('fileHistory')}…`, run: () => setHistoryOpen(true) },
+          { id: 'note.merge', label: `${t('mergeNotes')}…`, run: () => setMergeOpen(true) },
+        ]
       : []),
   ], [isMarkdown, path, t])
 
@@ -534,6 +540,17 @@ export function VaultPage({ pickDirectory, hasPicker }: VaultPageProps = {}): JS
             path={path}
             onRestored={() => { setHistoryOpen(false); void reload() }}
             onClose={() => setHistoryOpen(false)}
+          />
+        )
+        : null}
+      {mergeOpen && path !== undefined
+        ? (
+          <MergeNotesDialog
+            t={t}
+            path={path}
+            notes={markdownPaths(tree, path)}
+            onMerged={() => { setMergeOpen(false); void reload() }}
+            onClose={() => setMergeOpen(false)}
           />
         )
         : null}
