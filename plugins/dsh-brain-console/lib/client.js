@@ -4248,6 +4248,12 @@ window.__ModuleLoader__.load({
 .bc-count[data-autostart='on'] .bc-count-dot {
   box-shadow: 0 0 0 1px var(--dsw-alias-bg-layer-1), 0 0 0 2.5px var(--dsw-alias-state-success-primary);
 }
+.bc-header-alert[data-tone='warn'] {
+  border-color: color-mix(in srgb, var(--dsw-alias-state-warning-primary, #e0b341) 45%, transparent);
+  background: color-mix(in srgb, var(--dsw-alias-state-warning-primary, #e0b341) 10%, transparent);
+  color: var(--dsw-alias-state-warning-primary, #e0b341);
+}
+
 .bc-header-actions {
   display: flex;
   align-items: center;
@@ -6003,6 +6009,7 @@ window.__ModuleLoader__.load({
 			const [autoRecoverOpen, setAutoRecoverOpen] = (0, react.useState)(false);
 			const [checkupOpen, setCheckupOpen] = (0, react.useState)(false);
 			const [storageOpen, setStorageOpen] = (0, react.useState)(false);
+			const [diskFree, setDiskFree] = (0, react.useState)(null);
 			const [trend, setTrend] = (0, react.useState)(null);
 			const [detailName, setDetailName] = (0, react.useState)(null);
 			const [stopGroup, setStopGroup] = (0, react.useState)(null);
@@ -6109,6 +6116,13 @@ window.__ModuleLoader__.load({
 				})();
 			}, [feed.updatedAt]);
 			(0, react.useEffect)(() => {
+				(async () => {
+					try {
+						setDiskFree((await loadStorageSummary()).disk?.free_bytes ?? null);
+					} catch {}
+				})();
+			}, [feed.updatedAt]);
+			(0, react.useEffect)(() => {
 				const onKeyDown = (event) => {
 					const target = event.target instanceof HTMLElement ? event.target : null;
 					const typing = target !== null && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable);
@@ -6206,6 +6220,22 @@ window.__ModuleLoader__.load({
 												}),
 												cronAlerts?.zombies,
 												" 条失效心跳"
+											]
+										}),
+										diskFree !== null && diskFree < 10 * 1024 ** 3 && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("button", {
+											type: "button",
+											className: "bc-header-alert",
+											"data-tone": "warn",
+											title: "打开存储概览",
+											onClick: () => setStorageOpen(true),
+											children: [
+												/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+													className: "bc-status-dot",
+													"aria-hidden": "true"
+												}),
+												"磁盘可用 ",
+												(diskFree / 1024 ** 3).toFixed(1),
+												" GB"
 											]
 										}),
 										/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {

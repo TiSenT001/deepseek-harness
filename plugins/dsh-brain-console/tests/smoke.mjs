@@ -431,6 +431,39 @@ try {
     return `${rows} 项${text.includes('合计占用') ? ' · 有合计' : ''}`
   })
 
+  await soft('磁盘低余量时顶部出现告警', async () => {
+    const low = {
+      ok: true,
+      generated_at: '2026-01-01 00:00:00',
+      total_bytes: 0,
+      items: [],
+      disk: { total_bytes: 653 * 1024 ** 3, free_bytes: 2 * 1024 ** 3 },
+    }
+    await page.route('**/storage/summary*', (route) => route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(low),
+    }))
+    // 顶部刷新会更新 feed.updatedAt，触发重新拉取存储概览
+    await page.locator('.bc-header').getByRole('button', { name: '刷新' }).first().click()
+    await page.waitForTimeout(2500)
+    const chip = page.locator('.bc-header-alert', { hasText: '磁盘可用' })
+    const appeared = await chip.count()
+    let opened = 0
+    if (appeared > 0) {
+      await chip.first().click()
+      await page.waitForTimeout(600)
+      opened = await page.getByRole('dialog').count()
+      await closeOverlay()
+    }
+    await page.unroute('**/storage/summary*')
+    await page.locator('.bc-header').getByRole('button', { name: '刷新' }).first().click()
+    await page.waitForTimeout(1500)
+    if (appeared === 0) throw new Error('低余量 mock 没触发顶部告警')
+    if (opened === 0) throw new Error('点击磁盘告警没有打开存储概览')
+    return `告警显示 · 打开对话框 ${opened}`
+  })
+
   record('运行期间无 pageerror', pageErrors.length === 0, pageErrors.join(' | ').slice(0, 200))
 
   const shot = argOf('--shot')
