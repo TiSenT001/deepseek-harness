@@ -529,6 +529,12 @@ const STYLES = `
   font-variant-numeric: tabular-nums;
 }
 
+.bc-auto-bundle-missing {
+  font-size: 11px;
+  color: var(--dsw-alias-label-tertiary);
+  text-decoration: line-through;
+}
+
 .bc-auto-summary {
   margin-bottom: 8px;
   font-size: 12px;

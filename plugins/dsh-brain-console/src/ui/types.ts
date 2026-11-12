@@ -157,6 +157,8 @@ export interface AutoRecoverEvent {
   exit_code: number | null
   error: string | null
   bundle?: string | null
+  /** 诊断包文件是否还在（旧事件指向已删文件） */
+  bundle_exists?: boolean
 }
 
 /** `/auto-recover` 的返回。 */

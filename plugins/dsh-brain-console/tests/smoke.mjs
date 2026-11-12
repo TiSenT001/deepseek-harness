@@ -341,10 +341,13 @@ try {
     const empty = text.includes('没有恢复记录')
     const bundleNodes = await dialog.locator('.bc-auto-bundle').count()
     const bundleLinks = await dialog.locator('.bc-auto-bundle-link').count()
+    const missing = await dialog.locator('.bc-auto-bundle-missing').count()
+    const pruneBtn = await dialog.getByRole('button', { name: /清理旧诊断包/ }).count()
     await closeOverlay()
     if (rows === 0 && !empty) throw new Error('既没有记录也不是空态')
-    if (bundleNodes > 0 && bundleLinks === 0) throw new Error('诊断包路径没有下载链接')
-    return `${rows} 条记录 · ${bundleLinks} 个诊断包链接${empty ? '（空态）' : ''}`
+    if (pruneBtn === 0) throw new Error('缺少清理旧诊断包按钮')
+    if (bundleLinks + missing !== bundleNodes) throw new Error('诊断包行既有链接也有失效标记才算完整')
+    return `${rows} 条记录 · ${bundleLinks} 个有效链接 · ${missing} 个已清理${empty ? '（空态）' : ''}`
   })
 
   await soft('系统体检对话框能打开', async () => {
