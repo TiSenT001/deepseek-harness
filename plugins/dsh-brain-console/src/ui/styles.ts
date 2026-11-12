@@ -628,6 +628,41 @@ const STYLES = `
   color: var(--dsw-alias-label-primary);
 }
 
+.bc-dep-zoom {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.bc-dep-zoom-value {
+  min-width: 42px;
+  text-align: center;
+  font-size: 11px;
+  color: var(--dsw-alias-label-tertiary);
+  font-variant-numeric: tabular-nums;
+}
+.bc-dep-edge-hit {
+  fill: none;
+  stroke: transparent;
+  stroke-width: 10;
+  pointer-events: stroke;
+  cursor: pointer;
+}
+.bc-dep-edge[data-active='true'] {
+  stroke: var(--dsw-alias-label-primary);
+  stroke-width: 2;
+}
+.bc-dep-edge[data-active='true'] + .bc-dep-edge-hit {
+  stroke: transparent;
+}
+.bc-dep-node[data-active='true'] rect {
+  stroke: var(--dsw-alias-label-primary);
+  stroke-width: 1.6;
+}
+.bc-dep-row[data-active='true'] {
+  background: var(--dsw-alias-interactive-bg-hover);
+  border-radius: 4px;
+}
+
 .bc-dependency {
   display: flex;
   flex-direction: column;

@@ -2,8 +2,10 @@
  * 依赖关系拓扑：把 `/units` 里的 depends 画成图。
  *
  * 按分组纵向排列节点，箭头从「被依赖的单元」指向「依赖它的单元」；
- * 点击节点打开该单元的详情。底部另给一份依赖边清单，便于精确阅读。
+ * 悬停边或底部依赖行会高亮对应边与两端节点；支持放大/缩小/重置（viewBox）。
+ * 点击节点打开该单元的详情。
  */
+import { useState } from 'react'
 import { Button } from './primitives.ts'
 import { Dialog } from './Dialog.tsx'
 import type { Unit } from './types.ts'
@@ -22,6 +24,14 @@ const NODE_H = 30
 const COL_W = 190
 const ROW_H = 44
 const PAD = 20
+const ZOOM_MIN = 0.6
+const ZOOM_MAX = 3
+const ZOOM_STEP = 0.25
+
+/** 把缩放值夹在允许范围内。 */
+function clampZoom(value: number): number {
+  return Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, Math.round(value * 100) / 100))
+}
 
 /**
  * 渲染依赖关系对话框。
@@ -29,6 +39,10 @@ const PAD = 20
  * @returns 对话框元素
  */
 export function DependencyDialog({ units, onOpenUnit, onClose }: DependencyDialogProps): JSX.Element {
+  const [zoom, setZoom] = useState(1)
+  const [activeEdge, setActiveEdge] = useState<number | null>(null)
+  const [hoverNode, setHoverNode] = useState<string | null>(null)
+
   const groups = Array.from(new Set(units.map((unit) => unit.group)))
   const layouts = new Map<string, { x: number; y: number }>()
   for (const [column, group] of groups.entries()) {
@@ -44,13 +58,30 @@ export function DependencyDialog({ units, onOpenUnit, onClose }: DependencyDialo
   const width = PAD * 2 + Math.max(1, groups.length) * COL_W
   const height = PAD * 2 + rows * ROW_H
 
+  const nodeEdgeIndexes = hoverNode === null
+    ? []
+    : edges.map((edge, index) => (edge.from === hoverNode || edge.to === hoverNode ? index : -1)).filter((index) => index >= 0)
+  const isEdgeActive = (index: number): boolean => activeEdge === index || nodeEdgeIndexes.includes(index)
+  const activeNodeNames = new Set<string>()
+  if (activeEdge !== null) {
+    const edge = edges[activeEdge]
+    if (edge !== undefined) {
+      activeNodeNames.add(edge.from)
+      activeNodeNames.add(edge.to)
+    }
+  }
+
+  const vbWidth = width / zoom
+  const vbHeight = height / zoom
+  const viewBox = `${(width - vbWidth) / 2} ${(height - vbHeight) / 2} ${vbWidth} ${vbHeight}`
+
   return (
     <Dialog
       open
       onClose={onClose}
       title="依赖关系"
       closeLabel="关闭"
-      description="箭头指向依赖方（A 依赖 B 时画 B → A）；点击节点查看单元详情"
+      description="箭头指向依赖方（A 依赖 B 时画 B → A）；悬停边/下方清单可高亮，点击节点查看详情"
       footer={<Button size="sm" variant="ghost" onClick={onClose}>关闭</Button>}
     >
       <div className="bc-dependency">
@@ -58,9 +89,19 @@ export function DependencyDialog({ units, onOpenUnit, onClose }: DependencyDialo
           <div className="bc-backup-empty">没有单元数据。</div>
         ) : (
           <>
+            <div className="bc-dep-zoom">
+              <Button size="sm" variant="ghost" aria-label="缩小" onClick={() => setZoom((value) => clampZoom(value - ZOOM_STEP))}>
+                缩小
+              </Button>
+              <span className="bc-dep-zoom-value">{zoom.toFixed(2)}×</span>
+              <Button size="sm" variant="ghost" aria-label="放大" onClick={() => setZoom((value) => clampZoom(value + ZOOM_STEP))}>
+                放大
+              </Button>
+              <Button size="sm" variant="ghost" onClick={() => setZoom(1)}>重置</Button>
+            </div>
             <svg
               className="bc-dep-graph"
-              viewBox={`0 0 ${width} ${height}`}
+              viewBox={viewBox}
               width="100%"
               role="img"
               aria-label="服务依赖图"
@@ -79,13 +120,23 @@ export function DependencyDialog({ units, onOpenUnit, onClose }: DependencyDialo
                 const x2 = to.x
                 const y2 = to.y + NODE_H / 2
                 const bend = Math.max(24, Math.abs(x2 - x1) / 2)
+                const d = `M${x1},${y1} C${x1 + bend},${y1} ${x2 - bend},${y2} ${x2},${y2}`
                 return (
-                  <path
-                    key={`${edge.from}-${edge.to}-${index}`}
-                    className="bc-dep-edge"
-                    d={`M${x1},${y1} C${x1 + bend},${y1} ${x2 - bend},${y2} ${x2},${y2}`}
-                    markerEnd="url(#bc-dep-arrow)"
-                  />
+                  <g key={`${edge.from}-${edge.to}-${index}`}>
+                    <path
+                      className="bc-dep-edge"
+                      data-active={isEdgeActive(index) || undefined}
+                      d={d}
+                      markerEnd="url(#bc-dep-arrow)"
+                    />
+                    <path
+                      className="bc-dep-edge-hit"
+                      data-index={index}
+                      d={d}
+                      onMouseEnter={() => setActiveEdge(index)}
+                      onMouseLeave={() => setActiveEdge(null)}
+                    />
+                  </g>
                 )
               })}
               {groups.map((group, column) => (
@@ -95,14 +146,18 @@ export function DependencyDialog({ units, onOpenUnit, onClose }: DependencyDialo
                 const position = layouts.get(unit.name)
                 if (position === undefined) return null
                 const label = unit.name.length > 18 ? `${unit.name.slice(0, 17)}…` : unit.name
+                const active = activeNodeNames.has(unit.name) || hoverNode === unit.name
                 return (
                   <g
                     key={unit.name}
                     className="bc-dep-node"
                     data-running={unit.running ? 'true' : 'false'}
+                    data-active={active || undefined}
                     transform={`translate(${position.x},${position.y})`}
                     role="button"
                     tabIndex={0}
+                    onMouseEnter={() => setHoverNode(unit.name)}
+                    onMouseLeave={() => setHoverNode(null)}
                     onClick={() => onOpenUnit(unit.name)}
                     onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') onOpenUnit(unit.name) }}
                   >
@@ -115,7 +170,13 @@ export function DependencyDialog({ units, onOpenUnit, onClose }: DependencyDialo
             <div className="bc-dep-list">
               {edges.length === 0 && <div className="bc-index-note">这些单元没有声明 depends。</div>}
               {edges.slice(0, 60).map((edge, index) => (
-                <div className="bc-dep-row" key={`${edge.from}-${edge.to}-row-${index}`}>
+                <div
+                  className="bc-dep-row"
+                  key={`${edge.from}-${edge.to}-row-${index}`}
+                  data-active={activeEdge === index || undefined}
+                  onMouseEnter={() => setActiveEdge(index)}
+                  onMouseLeave={() => setActiveEdge(null)}
+                >
                   <span className="bc-dep-from">{edge.from}</span>
                   <span className="bc-dep-arrow">→</span>
                   <span className="bc-dep-to">{edge.to}</span>

@@ -266,6 +266,23 @@ export function SystemCheckupDialog({ onClose }: SystemCheckupDialogProps): JSX.
     URL.revokeObjectURL(url)
   }
 
+  const exportJson = (): void => {
+    const payload = {
+      exported_at: new Date().toISOString(),
+      count: history.length,
+      history,
+    }
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const anchorEl = document.createElement('a')
+    anchorEl.href = url
+    anchorEl.download = `brain-checkup-history-${new Date().toISOString().slice(0, 10)}.json`
+    document.body.appendChild(anchorEl)
+    anchorEl.click()
+    anchorEl.remove()
+    URL.revokeObjectURL(url)
+  }
+
   const copySummary = async (): Promise<void> => {
     try {
       await copyText(buildSummary())
@@ -418,6 +435,9 @@ export function SystemCheckupDialog({ onClose }: SystemCheckupDialogProps): JSX.
               <div className="bc-checkup-history-actions">
                 <Button size="sm" variant="ghost" disabled={history.length === 0} onClick={() => exportCsv()}>
                   导出 CSV
+                </Button>
+                <Button size="sm" variant="ghost" disabled={history.length === 0} onClick={() => exportJson()}>
+                  导出 JSON
                 </Button>
                 {armedClear ? (
                   <>
