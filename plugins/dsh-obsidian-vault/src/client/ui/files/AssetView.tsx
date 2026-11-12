@@ -34,9 +34,14 @@ export function AssetView({ t, path, onMenu }: AssetViewProps): JSX.Element {
   const [offset, setOffset] = useState({ x: 0, y: 0 })
   const [failed, setFailed] = useState(false)
   const dragRef = useRef<{ x: number; y: number; ox: number; oy: number } | null>(null)
+  const viewportRef = useRef<HTMLDivElement>(null)
+  const scaleRef = useRef(1)
+  const offsetRef = useRef({ x: 0, y: 0 })
   const id = path.slice('pur-asset:'.length)
 
   useEffect(() => {
+    scaleRef.current = 1
+    offsetRef.current = { x: 0, y: 0 }
     setScale(1)
     setOffset({ x: 0, y: 0 })
     setFailed(false)
@@ -44,7 +49,18 @@ export function AssetView({ t, path, onMenu }: AssetViewProps): JSX.Element {
 
   const onWheel = useCallback((event: React.WheelEvent<HTMLDivElement>) => {
     event.preventDefault()
-    setScale((current) => Math.min(MAX_SCALE, Math.max(MIN_SCALE, current * (event.deltaY < 0 ? 1.1 : 0.9))))
+    const rect = viewportRef.current?.getBoundingClientRect()
+    if (rect === undefined) return
+    const previous = scaleRef.current
+    const next = Math.min(MAX_SCALE, Math.max(MIN_SCALE, previous * (event.deltaY < 0 ? 1.1 : 0.9)))
+    const px = event.clientX - rect.left - rect.width / 2
+    const py = event.clientY - rect.top - rect.height / 2
+    const ox = px - ((px - offsetRef.current.x) / previous) * next
+    const oy = py - ((py - offsetRef.current.y) / previous) * next
+    scaleRef.current = next
+    offsetRef.current = { x: ox, y: oy }
+    setScale(next)
+    setOffset({ x: ox, y: oy })
   }, [])
 
   return (
@@ -71,6 +87,7 @@ export function AssetView({ t, path, onMenu }: AssetViewProps): JSX.Element {
         </button>
       </div>
       <div
+        ref={viewportRef}
         className={css.fileView}
         style={{ overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'grab' }}
         onWheel={onWheel}

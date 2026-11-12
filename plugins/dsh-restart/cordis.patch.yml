@@ -1,0 +1,4 @@
+﻿# dsh-restart bundle patch: mount the Host route and the client bundle.
+- insert:
+    - id: restart
+      name: dsh-restart
