@@ -465,6 +465,40 @@ const STYLES = `
   color: var(--dsw-alias-state-error-primary, #e35d6a);
 }
 
+.bc-settings-wide {
+  flex: 1 1 260px;
+}
+.bc-settings-input-wide {
+  flex: 1;
+  min-width: 180px;
+  padding: 3px 8px;
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--dsw-alias-label-primary);
+  font-size: 12px;
+  font-family: var(--ds-font-family-code, monospace);
+}
+.bc-settings-derived {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: 11px;
+  color: var(--dsw-alias-label-tertiary);
+}
+.bc-settings-derived-row {
+  display: flex;
+  gap: 8px;
+}
+.bc-settings-derived-row > span {
+  min-width: 72px;
+}
+.bc-settings-derived-row > code {
+  color: var(--dsw-alias-label-secondary);
+  font-family: var(--ds-font-family-code, monospace);
+  word-break: break-all;
+}
+
 .bc-settings {
   display: flex;
   flex-direction: column;

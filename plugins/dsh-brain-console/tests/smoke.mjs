@@ -463,6 +463,13 @@ try {
     const inputs = page.locator('.bc-settings-input')
     const count = await inputs.count()
     if (count !== 4) throw new Error(`设置输入框 ${count}，应为 4`)
+    const gear = await page.locator('.bc-header').getByRole('button', { name: '设置' }).count()
+    if (gear === 0) throw new Error('顶部缺少设置齿轮按钮')
+    const pathGroup = await page.locator('.bc-settings-group', { hasText: '路径' }).count()
+    if (pathGroup === 0) throw new Error('缺少路径设置组')
+    const derived = await page.locator('.bc-settings-derived').count()
+    const oldHostNote = await page.getByText('宿主路径配置暂不可用').count()
+    if (derived === 0 && oldHostNote === 0) throw new Error('路径组既没有派生信息也没有旧宿主提示')
     // 原样保存，避免改变真实阈值
     await page.getByRole('button', { name: '保存磁盘阈值' }).click()
     await page.waitForTimeout(1200)
@@ -518,7 +525,7 @@ try {
     if (logPrefs === null || !logPrefs.includes('"logLines":300') || !logPrefs.includes('"logLevel":"error"')) {
       throw new Error(`日志偏好未持久化: ${logPrefs}`)
     }
-    return `${count} 个输入 · 保存提示「${diskNotice.trim()} / ${trendNotice.trim()}」· 间隔切 10s→5s · 日志 300/错误 · 分组移动 ${orderMoved} · 返回正常`
+    return `${count} 个输入 · 齿轮入口 · 路径组 ${pathGroup}${derived > 0 ? '（已派生）' : '（旧宿主提示）'} · 保存提示「${diskNotice.trim()} / ${trendNotice.trim()}」· 间隔切 10s→5s · 日志 300/错误 · 分组移动 ${orderMoved} · 返回正常`
   })
 
   await soft('首页分组可折叠且记忆', async () => {

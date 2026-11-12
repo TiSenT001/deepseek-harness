@@ -29,6 +29,7 @@ import { AutoRecoverDialog } from './ui/AutoRecoverDialog.tsx'
 import { SystemCheckupDialog } from './ui/SystemCheckupDialog.tsx'
 import { StorageDialog } from './ui/StorageDialog.tsx'
 import { SettingsPage } from './ui/SettingsPage.tsx'
+import { SettingsIcon } from './ui/SettingsIcon.tsx'
 import { IndexHealthDialog } from './ui/IndexHealthDialog.tsx'
 import { GroupActionDialog } from './ui/GroupActionDialog.tsx'
 import { IconButton } from './ui/IconButton.tsx'
@@ -326,7 +327,7 @@ export function ConsolePage(): JSX.Element {
             )}
             <div className="bc-header-actions">
               {feed.updatedAt !== null && <span className="bc-updated">最后刷新 {feed.updatedAt}</span>}
-              <Button size="sm" variant="ghost" onClick={() => setSettingsOpen(true)}>设置</Button>
+              <IconButton label="设置" icon={SettingsIcon} onClick={() => setSettingsOpen(true)} />
               <IconButton label="刷新" icon={IconRefresh} busy={feed.refreshing} onClick={() => void feed.load(true)} />
               <MoreMenu
                 autostart={feed.autostart}
