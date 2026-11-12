@@ -4,8 +4,8 @@ export const CONTROLS_STYLE = `/* Kit toggle: hidden checkbox drives a sliding s
 .ov-kit-toggle input { position: absolute; opacity: 0; width: 0; height: 0; }
 .ov-kit-toggle-track {
   flex: 0 0 auto;
-  width: 30px;
-  height: 16px;
+  width: 32px;
+  height: 18px;
   border-radius: 999px;
   background: var(--dsw-alias-bg-layer-3, #2c2c33);
   border: 1px solid var(--dsw-alias-border-l1, #2a2a30);
@@ -16,16 +16,21 @@ export const CONTROLS_STYLE = `/* Kit toggle: hidden checkbox drives a sliding s
   position: absolute;
   top: 1px;
   left: 1px;
-  width: 12px;
-  height: 12px;
+  width: 14px;
+  height: 14px;
   border-radius: 50%;
   background: var(--dsw-alias-label-secondary, #b6b6bd);
   transition: transform .15s ease, background .15s ease;
 }
 .ov-kit-toggle[data-on="true"] .ov-kit-toggle-track {
   background: var(--dsw-alias-brand-primary, #4d6bfe);
+  border-color: transparent;
 }
-.ov-kit-toggle[data-on="true"] .ov-kit-toggle-knob { transform: translateX(14px); background: #fff; }
+/* The knob is the inverse of the track: white on/off rails need a dark knob. */
+.ov-kit-toggle[data-on="true"] .ov-kit-toggle-knob {
+  transform: translateX(14px);
+  background: var(--dsw-alias-bg-base, #0f0f11);
+}
 .ov-kit-toggle input:focus-visible + .ov-kit-toggle-track { outline: var(--dsw-focus-ring-width, 2px) solid var(--dsw-alias-brand-primary, #4d6bfe); outline-offset: 2px; }
 .ov-kit-toggle-label { color: var(--dsw-alias-label-secondary, #b6b6bd); }
 
