@@ -9,6 +9,7 @@ import { useEffect, useState } from 'react'
 import { loadStorageSummary, loadTrendThresholds, saveStorageThresholds, saveTrendThreshold } from '../api.ts'
 import { reasonOf } from './errors.ts'
 import { Button } from './primitives.ts'
+import { loadPrefs, REFRESH_OPTIONS, savePrefs } from '../prefs.ts'
 import type { StorageThresholds } from './types.ts'
 
 export interface SettingsPageProps {
@@ -32,6 +33,7 @@ export function SettingsPage({ onBack, onDiskThresholdsChanged }: SettingsPagePr
   const [saving, setSaving] = useState<'disk' | 'trend' | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
+  const [refreshSeconds, setRefreshSeconds] = useState(() => loadPrefs().refreshSeconds)
 
   useEffect(() => {
     void (async () => {
@@ -152,6 +154,27 @@ export function SettingsPage({ onBack, onDiskThresholdsChanged }: SettingsPagePr
           <Button size="sm" variant="outline" disabled={!loaded || saving !== null} onClick={() => void saveDisk()}>
             {saving === 'disk' ? '保存中…' : '保存磁盘阈值'}
           </Button>
+        </div>
+      </section>
+
+      <section className="bc-settings-group">
+        <h3>界面</h3>
+        <p>主面板自动刷新间隔。保存在本机浏览器（localStorage），不写大脑。</p>
+        <div className="bc-settings-row">
+          {REFRESH_OPTIONS.map((seconds) => (
+            <Button
+              key={seconds}
+              size="sm"
+              variant={refreshSeconds === seconds ? 'outline' : 'ghost'}
+              onClick={() => {
+                const next = savePrefs({ refreshSeconds: seconds })
+                setRefreshSeconds(next.refreshSeconds)
+                setNotice(`刷新间隔已改为 ${seconds} 秒`)
+              }}
+            >
+              {seconds} 秒
+            </Button>
+          ))}
         </div>
       </section>
 

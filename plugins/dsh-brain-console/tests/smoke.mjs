@@ -445,13 +445,24 @@ try {
     await page.getByRole('button', { name: '保存趋势阈值' }).click()
     await page.waitForTimeout(1200)
     const trendNotice = await page.locator('.bc-settings-notice').innerText().catch(() => '')
+    // 刷新间隔：切 10 秒 → 校验 localStorage → 切回 5 秒
+    await page.getByRole('button', { name: '10 秒' }).click()
+    await page.waitForTimeout(300)
+    const storedTen = await page.evaluate(() => window.localStorage.getItem('brain.console.prefs.v1'))
+    await page.getByRole('button', { name: '5 秒' }).click()
+    await page.waitForTimeout(300)
+    const storedFive = await page.evaluate(() => window.localStorage.getItem('brain.console.prefs.v1'))
+    const uiNotice = await page.locator('.bc-settings-notice').innerText().catch(() => '')
     await page.getByRole('button', { name: '返回面板' }).click()
     await page.waitForTimeout(800)
     const back = await page.locator('.bc-header').count()
     if (!diskNotice.includes('已保存')) throw new Error(`磁盘阈值保存提示: ${diskNotice}`)
     if (!trendNotice.includes('已保存')) throw new Error(`趋势阈值保存提示: ${trendNotice}`)
     if (back === 0) throw new Error('返回后面板不存在')
-    return `${count} 个输入 · 保存提示「${diskNotice.trim()} / ${trendNotice.trim()}」· 返回正常`
+    if (storedTen === null || !storedTen.includes('10')) throw new Error(`刷新间隔未持久化: ${storedTen}`)
+    if (storedFive === null || !storedFive.includes('5')) throw new Error(`刷新间隔恢复失败: ${storedFive}`)
+    if (!uiNotice.includes('刷新间隔')) throw new Error(`界面组提示: ${uiNotice}`)
+    return `${count} 个输入 · 保存提示「${diskNotice.trim()} / ${trendNotice.trim()}」· 间隔切 10s→5s · 返回正常`
   })
 
   await soft('磁盘低余量时顶部出现告警', async () => {
