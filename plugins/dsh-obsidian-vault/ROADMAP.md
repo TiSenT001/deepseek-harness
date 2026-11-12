@@ -1,3 +1,10 @@
+## 第一百三十四轮：图 worker WASM 结构逆向（2026-11-13）
+
+- **提取**：从 `sim.js` 内嵌 base64 提取 WASM，3322 字节，无导入；导出 `memory / memset / init / complete / visitCharge / visitCollide / manyBody / simulate`。
+- **反汇编**：用 `wasm2wat` 得到 1635 行 WAT。节点内存布局为每节点 5 个 f32：`x, y, vx, vy, weight`；边从 `20 * nodeCount` 开始，每条 3 个 i32：`sourceIndex, targetIndex, ?`。
+- **公式**：`simulate` 中中心力为 `vx -= center * alpha * x`；连接力为 `(distance - linkDistance)/distance * alpha * linkStrength / min(sourceWeight,targetWeight)` 并按权重分给两端；随后调用 `manyBody`，`complete` 做 velocityDecay 与位置积分。
+- **WASM oracle**：400 节点环形图 300 tick，内部精确值 `MJ(.05)=.0026 / charge 8000` 为 16944×16729；面板值直读为 2480×2527；立方/100 为 2571×2551；worker 默认 `.1/-1000` 为 3492×3779。
+- **结论**：当前插件采用 d3 + `/100` 校准，形态已接近截图；要做到逐函数一致，下一步需按 WAT 移植 `manyBody/visitCharge/visitCollide`，不能只调 charge。
 ## 第一百三十三轮：Obsidian worker 力度模型（校准）（2026-11-13）
 
 - **协议**：worker 继续使用节点/边/力度/alpha/forceNode 的会话协议；面板与 graph.json 仍是滑块位置，模拟内部再转换为 worker 力。
