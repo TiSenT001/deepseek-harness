@@ -5,7 +5,8 @@
  * 日志由页面静默轮询刷新：停在底部时自动跟随最新一行，向上翻看时保持不动。
  * 头部支持按关键词过滤（本地、大小写不敏感）与复制当前可见内容。
  */
-import { useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { LOG_LEVELS, loadPrefs, savePrefs, subscribePrefs } from '../prefs.ts'
 import { IconButton } from './IconButton.tsx'
 import { IconCheck, IconChevronDown, IconCopy, IconPause, IconPlay, IconRefresh, IconTrash } from './primitives.ts'
 
@@ -45,16 +46,26 @@ export function LogDock({
   const body = useRef<HTMLPreElement | null>(null)
   const follow = useRef(true)
   const [filter, setFilter] = useState('')
+  const [level, setLevel] = useState(loadPrefs().logLevel)
+  useEffect(() => subscribePrefs((prefs) => setLevel(prefs.logLevel)), [])
   const [copied, setCopied] = useState(false)
 
   const allLines = useMemo(() => text.split('\n'), [text])
   const shownLines = useMemo(() => {
     const needle = filter.trim().toLowerCase()
-    if (needle === '') return allLines
-    return allLines.filter((line) => line.toLowerCase().includes(needle))
-  }, [allLines, filter])
+    const errorPattern = /error|错误|traceback|exception|critical|fatal|failed|失败/i
+    const warnPattern = /warn|警告/i
+    return allLines.filter((line) => {
+      if (level !== 'all') {
+        const isError = errorPattern.test(line)
+        if (level === 'error' && !isError) return false
+        if (level === 'warn' && !isError && !warnPattern.test(line)) return false
+      }
+      return needle === '' || line.toLowerCase().includes(needle)
+    })
+  }, [allLines, filter, level])
   const shown = shownLines.join('\n')
-  const filtering = filter.trim() !== ''
+  const filtering = filter.trim() !== '' || level !== 'all'
 
   // 换单元时清掉过滤、重新贴到底部
   useLayoutEffect(() => {
@@ -101,6 +112,19 @@ export function LogDock({
           onChange={(event) => setFilter(event.target.value)}
           onKeyDown={(event) => { if (event.key === 'Escape') setFilter('') }}
         />
+        <span className="bc-dock-levels" role="group" aria-label="日志级别">
+          {LOG_LEVELS.map(([key, label]) => (
+            <button
+              key={key}
+              type="button"
+              className="bc-dock-level"
+              data-active={level === key || undefined}
+              onClick={() => { savePrefs({ logLevel: key }); setLevel(key) }}
+            >
+              {label}
+            </button>
+          ))}
+        </span>
         {filtering && <span className="bc-dock-match">{shownLines.length} / {allLines.length}</span>}
         <button type="button" className="bc-dock-lines" onClick={onCycleLines} title="切换读取行数">
           {lines} 行

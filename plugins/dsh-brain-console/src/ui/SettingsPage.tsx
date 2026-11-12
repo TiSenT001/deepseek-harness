@@ -6,10 +6,10 @@
  * 保存成功后通过回调让顶部告警立即使用新值；返回按钮回主面板。
  */
 import { useEffect, useState } from 'react'
-import { loadStorageSummary, loadTrendThresholds, saveStorageThresholds, saveTrendThreshold } from '../api.ts'
+import { jget, loadStorageSummary, loadTrendThresholds, saveStorageThresholds, saveTrendThreshold } from '../api.ts'
 import { reasonOf } from './errors.ts'
 import { Button } from './primitives.ts'
-import { loadPrefs, REFRESH_OPTIONS, savePrefs } from '../prefs.ts'
+import { LOG_LEVELS, LOG_LINE_OPTIONS, loadPrefs, REFRESH_OPTIONS, savePrefs } from '../prefs.ts'
 import type { StorageThresholds } from './types.ts'
 
 export interface SettingsPageProps {
@@ -34,6 +34,9 @@ export function SettingsPage({ onBack, onDiskThresholdsChanged }: SettingsPagePr
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
   const [refreshSeconds, setRefreshSeconds] = useState(() => loadPrefs().refreshSeconds)
+  const [logLines, setLogLines] = useState(() => loadPrefs().logLines)
+  const [logLevel, setLogLevel] = useState(() => loadPrefs().logLevel)
+  const [groupOrder, setGroupOrder] = useState<string[]>([])
 
   useEffect(() => {
     void (async () => {
@@ -48,6 +51,23 @@ export function SettingsPage({ onBack, onDiskThresholdsChanged }: SettingsPagePr
         setLoaded(true)
       } catch (e) {
         setError(reasonOf(e))
+      }
+    })()
+  }, [])
+
+  // 分组单独拉取：不阻塞阈值加载，也不被存储目录扫描拖慢
+  useEffect(() => {
+    void (async () => {
+      try {
+        const answer = await jget<{ units: { group: string }[] }>('/units')
+        const names = Array.from(new Set(answer.units.map((unit) => unit.group)))
+        const preferred = loadPrefs().groupOrder
+        setGroupOrder([
+          ...preferred.filter((name) => names.includes(name)),
+          ...names.filter((name) => !preferred.includes(name)),
+        ])
+      } catch {
+        // 管理器不可用时分组顺序留空，稍后刷新重试
       }
     })()
   }, [])
@@ -174,6 +194,92 @@ export function SettingsPage({ onBack, onDiskThresholdsChanged }: SettingsPagePr
             >
               {seconds} 秒
             </Button>
+          ))}
+        </div>
+      </section>
+
+      <section className="bc-settings-group">
+        <h3>日志</h3>
+        <p>日志 dock 的默认行数与级别过滤；打开日志时生效。</p>
+        <div className="bc-settings-row">
+          {LOG_LINE_OPTIONS.map((lines) => (
+            <Button
+              key={lines}
+              size="sm"
+              variant={logLines === lines ? 'outline' : 'ghost'}
+              onClick={() => {
+                const next = savePrefs({ logLines: lines })
+                setLogLines(next.logLines)
+                setNotice(`日志行数已改为 ${lines}`)
+              }}
+            >
+              {lines} 行
+            </Button>
+          ))}
+          {LOG_LEVELS.map(([key, label]) => (
+            <Button
+              key={key}
+              size="sm"
+              variant={logLevel === key ? 'outline' : 'ghost'}
+              onClick={() => {
+                const next = savePrefs({ logLevel: key })
+                setLogLevel(next.logLevel)
+                setNotice(`日志级别已改为 ${label}`)
+              }}
+            >
+              {label}
+            </Button>
+          ))}
+        </div>
+      </section>
+
+      <section className="bc-settings-group">
+        <h3>分组顺序</h3>
+        <p>调整首页服务分组的先后；顺序保存在本机浏览器。</p>
+        <div className="bc-settings-order">
+          {groupOrder.length === 0 && <span className="bc-index-note">还没有分组数据（管理器不可用？）</span>}
+          {groupOrder.map((name, index) => (
+            <div className="bc-settings-order-row" key={name}>
+              <span className="bc-settings-order-name">{name}</span>
+              <Button
+                size="sm"
+                variant="ghost"
+                aria-label={`上移 ${name}`}
+                disabled={index === 0}
+                onClick={() => {
+                  const next = [...groupOrder]
+                  const current = next[index]
+                  const other = next[index - 1]
+                  if (current !== undefined && other !== undefined) {
+                    next[index - 1] = current
+                    next[index] = other
+                  }
+                  setGroupOrder(savePrefs({ groupOrder: next }).groupOrder)
+                  setNotice('分组顺序已保存')
+                }}
+              >
+                ↑
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                aria-label={`下移 ${name}`}
+                disabled={index === groupOrder.length - 1}
+                onClick={() => {
+                  const next = [...groupOrder]
+                  const current = next[index]
+                  const other = next[index + 1]
+                  if (current !== undefined && other !== undefined) {
+                    next[index + 1] = current
+                    next[index] = other
+                  }
+                  setGroupOrder(savePrefs({ groupOrder: next }).groupOrder)
+                  setNotice('分组顺序已保存')
+                }}
+              >
+                ↓
+              </Button>
+            </div>
           ))}
         </div>
       </section>

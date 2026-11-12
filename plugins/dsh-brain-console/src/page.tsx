@@ -18,6 +18,7 @@ import { useConsoleActions } from './hooks/useConsoleActions.ts'
 import { useConsoleFeed } from './hooks/useConsoleFeed.ts'
 import { useHistory } from './hooks/useHistory.ts'
 import { useLogDock } from './hooks/useLogDock.ts'
+import { loadPrefs, savePrefs, subscribePrefs } from './prefs.ts'
 import { BrainConsoleIcon } from './icon.tsx'
 import { BackupDialog } from './ui/BackupDialog.tsx'
 import { CacheDialog } from './ui/CacheDialog.tsx'
@@ -72,6 +73,7 @@ export function ConsolePage(): JSX.Element {
   const [diskTotal, setDiskTotal] = useState<number | null>(null)
   const [diskThresholds, setDiskThresholds] = useState<{ warn_gb: number; critical_percent: number } | null>(null)
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [uiPrefs, setUiPrefs] = useState(() => loadPrefs())
   const [trend, setTrend] = useState<MetricKey | null>(null)
   const [detailName, setDetailName] = useState<string | null>(null)
   const [stopGroup, setStopGroup] = useState<{ group: string; names: string[] } | null>(null)
@@ -163,7 +165,20 @@ export function ConsolePage(): JSX.Element {
     document.querySelector<HTMLElement>('article.bc-card[data-abnormal="true"]')
       ?.scrollIntoView({ behavior: 'smooth', block: 'center' })
   }
-  const groups = Array.from(new Set(feed.units.map((unit) => unit.group)))
+  const rawGroups = Array.from(new Set(feed.units.map((unit) => unit.group)))
+  // 用户自定义顺序优先；新出现的分组按后端顺序追加在后面
+  const groups = [
+    ...uiPrefs.groupOrder.filter((name) => rawGroups.includes(name)),
+    ...rawGroups.filter((name) => !uiPrefs.groupOrder.includes(name)),
+  ]
+  const toggleGroupCollapsed = (group: string): void => {
+    const collapsed = uiPrefs.collapsedGroups.includes(group)
+    savePrefs({
+      collapsedGroups: collapsed
+        ? uiPrefs.collapsedGroups.filter((name) => name !== group)
+        : [...uiPrefs.collapsedGroups, group],
+    })
+  }
   const autostartOn = feed.autostart?.supported === true && feed.autostart.enabled
   // 依赖反查：brain_server 被 mcp_server 依赖 → { brain_server: ['mcp_server'] }
   const dependentsByUnit: Record<string, string[]> = {}
@@ -184,6 +199,8 @@ export function ConsolePage(): JSX.Element {
   useEffect(() => {
     if (feed.overview !== null && history === null) void refreshHistory()
   }, [feed.overview, history, refreshHistory])
+
+  useEffect(() => subscribePrefs(setUiPrefs), [])
 
   // 定时任务健康度：顶部只显示计数，详情在「索引与嵌入」里；管理器不可达时保留上一次读数
   useEffect(() => {
@@ -403,6 +420,8 @@ export function ConsolePage(): JSX.Element {
                 onToggleEnabled={(name, enabled) => void actions.setUnitEnabled(name, enabled)}
                 onAdopt={(name) => void actions.adoptUnit(name)}
                 onDetail={(name) => setDetailName(name)}
+                collapsed={uiPrefs.collapsedGroups.includes(group)}
+                onToggleCollapse={toggleGroupCollapsed}
               />
             ))
           )}
