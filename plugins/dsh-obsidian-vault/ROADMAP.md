@@ -1,3 +1,9 @@
+## 第一百三十轮：关系图箭头复刻（2026-11-12）
+
+- **设置**：`GraphSettings.display.showArrow` 新增，默认 false；`graph.json` 的 `showArrow` 读写，设置面板增加「显示箭头」开关。此前 graph.json 能读能写但没有渲染。
+- **公式**：从 `app.js` 提取箭头 alpha `linkAlpha * clamp(2*(zoom-0.3), 0, 1)` 和尺寸 `2*sqrt(lineSize)/zoom`；箭头尖端按目标节点半径后退，方向沿边，hover 时使用高亮色。
+- **复用**：公式放入 `obsidian-graph.ts` 并测试；`render/scene.ts` 只在 `showArrow` 且 zoom > 0.3 时绘制。
+- **验证**：`tsc` 0、779/779；3 节点临时 vault（graph.json `showArrow: true`）截图可见 A→B/A→C 两条箭头；主 vault 配置已恢复，临时 vault 清理。
 ## 第一百二十九轮：Obsidian 关系图物理常量与节点尺寸（2026-11-12）
 
 - **逆向来源**：从本地 `G:\Software\Obsidian\resources\obsidian.asar` 提取 `sim.js` 与 `app.js`。`sim.js` 是 d3-force + WebAssembly 的图 worker；可见 JS 回退路径给出中心力、连接力、斥力、碰撞、alpha/velocity 衰减与 tick 周期，`app.js` 给出节点 `getSize()` 公式。

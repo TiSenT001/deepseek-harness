@@ -29,7 +29,7 @@ test('a populated settings object survives a graph.json round trip', () => {
   const settings: GraphSettings = {
     filters: { query: 'alpha', tag: '#work', existingOnly: true, showTags: true, showAttachments: true, showOrphans: false },
     groups: [{ query: 'tag:#work', color: '#ff8800' }],
-    display: { colorBy: 'tag', animate: true, textFade: 0.4, nodeScale: 1.5, linkWidth: 2 },
+    display: { colorBy: 'tag', animate: true, textFade: 0.4, nodeScale: 1.5, linkWidth: 2, showArrow: true },
     forces: { center: 0.2, repel: 14, link: 0.8, linkDistance: 320 },
   }
   const patch = settingsPatchFromGraphJson(graphJsonPatch(settings))
@@ -55,7 +55,7 @@ test('maps Obsidian display and force keys', () => {
     linkStrength: 0.6,
     linkDistance: 400,
   })
-  assert.deepEqual(patch.display, { animate: true, textFade: -1.2, nodeScale: 0.7, linkWidth: 1.8 })
+  assert.deepEqual(patch.display, { animate: true, textFade: -1.2, nodeScale: 0.7, linkWidth: 1.8, showArrow: true })
   assert.equal(patch.forces?.center, 0.1)
   assert.equal(patch.forces?.repel, 18)
   assert.equal(patch.forces?.link, 0.6)

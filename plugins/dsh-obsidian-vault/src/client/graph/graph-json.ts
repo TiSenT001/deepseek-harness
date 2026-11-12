@@ -49,6 +49,8 @@ export function settingsPatchFromGraphJson(document: unknown): GraphSettingsPatc
   if (nodeScale !== undefined) display.nodeScale = nodeScale
   const linkWidth = numberOf(json['lineSizeMultiplier'])
   if (linkWidth !== undefined) display.linkWidth = linkWidth
+  const showArrow = booleanOf(json['showArrow'])
+  if (showArrow !== undefined) display.showArrow = showArrow
   // Plugin-owned key: Obsidian ignores it, and keeping it here means the choice
   // survives a reload rather than falling back to the default.
   const colorBy = textOf(json['dshColorBy'])
@@ -93,6 +95,7 @@ export function graphJsonPatch(settings: GraphSettings): Record<string, unknown>
     textFadeMultiplier: settings.display.textFade,
     nodeSizeMultiplier: settings.display.nodeScale,
     lineSizeMultiplier: settings.display.linkWidth,
+    showArrow: settings.display.showArrow,
     dshColorBy: settings.display.colorBy,
     centerStrength: settings.forces.center * CENTER_PER_UNIT,
     repelStrength: settings.forces.repel,

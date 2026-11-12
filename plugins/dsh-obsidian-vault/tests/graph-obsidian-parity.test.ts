@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import {
-  OBSIDIAN_GRAPH, obsidianLabelAlpha, obsidianLinkBias, obsidianLinkStrength, obsidianNodeRadius,
+  OBSIDIAN_GRAPH, obsidianArrowAlpha, obsidianArrowScale, obsidianLabelAlpha, obsidianLinkBias, obsidianLinkStrength, obsidianNodeRadius,
 } from '../src/client/graph/obsidian-graph.ts'
 
 test('node radius follows the extracted Obsidian getSize formula', () => {
@@ -31,4 +31,14 @@ test('label alpha keeps the Obsidian zoom fade curve', () => {
   assert.equal(obsidianLabelAlpha(1, 0), 1)
   assert.equal(obsidianLabelAlpha(0.25, 0), 0)
   assert.ok(Math.abs(obsidianLabelAlpha(1, 0.9) - 0.1) < 1e-12)
+})
+test('arrow alpha fades out below zoom 0.3 and keeps the edge alpha', () => {
+  assert.equal(obsidianArrowAlpha(1, 0.2), 0)
+  assert.equal(obsidianArrowAlpha(1, 0.8), 1)
+  assert.equal(obsidianArrowAlpha(0.5, 1), 0.5)
+})
+
+test('arrow scale follows 2 * sqrt(line size) / zoom', () => {
+  assert.equal(obsidianArrowScale(1, 1), 2)
+  assert.equal(obsidianArrowScale(2, 2), Math.sqrt(2))
 })

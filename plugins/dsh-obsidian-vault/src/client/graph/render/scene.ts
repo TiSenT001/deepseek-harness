@@ -10,6 +10,7 @@ import { groupColorOf } from './group-color.ts'
 import { colorByKey, type GraphColorBy } from './colors.ts'
 import { labelAlpha, type LabelBox } from './labels.ts'
 import { screenRadius } from './node-size.ts'
+import { obsidianArrowAlpha, obsidianArrowScale } from '../obsidian-graph.ts'
 import { LABEL_FONT, labelFont, type Palette } from './palette.ts'
 import { edgeEntrance, entranceScale, revealEntrance, revealLocal, type RevealPlan } from '../reveal.ts'
 import type { GraphStage } from './stage.ts'
@@ -174,6 +175,45 @@ export function drawScene(scene: SceneInput): SceneStats {
       ctx.moveTo(from.x, from.y)
       ctx.lineTo(to.x, to.y)
       ctx.stroke()
+    }
+  }
+
+  // --- arrows ---
+  if (settings.display.showArrow && zoom > 0.3) {
+    const arrowScale = obsidianArrowScale(settings.display.linkWidth, zoom)
+    for (const edge of edges) {
+      const entrance = edgeEntrance(reveal, thresholdOf(edge.source), thresholdOf(edge.target))
+      if (entrance < 0.02) continue
+      const from = index.get(edge.source)
+      const to = index.get(edge.target)
+      if (from === undefined || to === undefined || edgeOffscreen(from, to)) continue
+      const isNeighbour = hovering && neighbours.has(edge.source) && neighbours.has(edge.target)
+      const key = edgeKey(edge.source, edge.target)
+      const targetAlpha = hovering ? (isNeighbour ? 1 : 0.2) : 0.65
+      const base = edgeAlphas.get(key) ?? stage.edge(key, targetAlpha) * entrance
+      const alpha = obsidianArrowAlpha(base, zoom)
+      if (alpha <= 0.01) continue
+      const dx = to.x - from.x
+      const dy = to.y - from.y
+      const length = Math.hypot(dx, dy)
+      if (length < 1e-6) continue
+      const radius = screenRadius(to.radius, scale, zoom)
+      const tipX = to.x - (dx / length) * radius
+      const tipY = to.y - (dy / length) * radius
+      ctx.save()
+      ctx.translate(tipX, tipY)
+      ctx.rotate(Math.atan2(dy, dx))
+      ctx.scale(arrowScale, arrowScale)
+      ctx.globalAlpha = alpha
+      ctx.fillStyle = isNeighbour ? palette.edgeActive : palette.edge
+      ctx.beginPath()
+      ctx.moveTo(0, 0)
+      ctx.lineTo(-4, -2)
+      ctx.lineTo(-3, 0)
+      ctx.lineTo(-4, 2)
+      ctx.closePath()
+      ctx.fill()
+      ctx.restore()
     }
   }
 
