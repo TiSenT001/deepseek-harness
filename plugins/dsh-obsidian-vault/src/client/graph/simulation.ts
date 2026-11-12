@@ -42,6 +42,8 @@ export interface SimulationOptions {
   readonly forceInline?: boolean
   /** Start with continuous animation enabled. */
   readonly animate?: boolean
+  /** Synchronous ticks before the first paint (fresh graphs only). */
+  readonly warmupTicks?: number
 }
 
 /** Graph size above which the worker is worth its startup cost. */
@@ -77,12 +79,12 @@ export function startSimulation(
     }
   }
   if (options.forceInline === true || typeof Worker === 'undefined' || templates.length < WORKER_THRESHOLD) {
-    return startInline(templates, edges, forces, callbacks, options.animate === true)
+    return startInline(templates, edges, forces, callbacks, options.animate === true, options.warmupTicks ?? 0)
   }
   try {
     return startWorker(nodes, edges, forces, templates, callbacks, options.seed, options.animate === true)
   } catch {
-    return startInline(templates, edges, forces, callbacks, options.animate === true)
+    return startInline(templates, edges, forces, callbacks, options.animate === true, options.warmupTicks ?? 0)
   }
 }
 
@@ -93,9 +95,11 @@ function startInline(
   forces: LayoutForces,
   callbacks: SimulationCallbacks,
   animate: boolean,
+  warmupTicks = 0,
 ): SimulationHandle {
   const sim = new Simulation(templates, edges, forces)
   sim.setAnimate(animate)
+  for (let index = 0; index < warmupTicks && !sim.cooled; index += 1) sim.tick()
   const interval = tickIntervalMs(templates.length)
   let running = false
   let frame = 0

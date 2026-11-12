@@ -58,8 +58,10 @@ export function GraphView(props: GraphViewProps): JSX.Element {
   const data = useGraphData({ center: scope, version, onScopeChange })
   /** Refit once after the first layout settles; later force edits keep the user's camera. */
   const fitOnSettleRef = useRef(false)
+  /** A manual camera gesture wins over a late auto-fit. */
+  const userMovedRef = useRef(false)
   const onLayoutSettled = useCallback(() => {
-    if (fitOnSettleRef.current) return
+    if (fitOnSettleRef.current || userMovedRef.current) return
     fitOnSettleRef.current = true
     fitSlot.current?.(scope ?? null)
   }, [scope])
@@ -75,6 +77,13 @@ export function GraphView(props: GraphViewProps): JSX.Element {
     settledRef: layout.settledRef,
   })
   fitSlot.current = camera.fit
+
+  // A panel remount recreates the camera at its default zoom even when the
+  // node set is unchanged. Refit before the first visible frame so the graph
+  // never flashes at 100% and then appears to change size.
+  useEffect(() => {
+    if (data.visible.nodes.length > 0) fitSlot.current?.(scope ?? null)
+  }, [scope, data.visible.nodes.length])
 
   useEffect(() => {
     fitOnSettleRef.current = false

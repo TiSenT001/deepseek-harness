@@ -150,6 +150,7 @@ export function useGraphLayout({ visible, forces, animate, onSettled }: GraphLay
         // The first paint runs inline so the graph is visible immediately;
         // later restarts go to the worker.
         forceInline: !hasLayout.current,
+        warmupTicks: hasLayout.current ? 0 : 60,
         animate,
       })
     } catch {
