@@ -31,6 +31,8 @@ export interface GraphCanvasProps {
   readonly plan: { current: RevealPlan }
   readonly nodeInfo: { current: ReadonlyMap<string, GraphNodeDto> }
   readonly settings: { current: GraphSettings }
+  /** False while the layout is still moving; keeps the full frame rate. */
+  readonly settled: { current: boolean }
   /** True for the local graph, where the opened note is the centre. */
   readonly hasCenter: boolean
   readonly onHover: (path: string | undefined, clientX: number, clientY: number) => void
@@ -187,7 +189,7 @@ export function GraphCanvas(props: GraphCanvasProps): JSX.Element {
       // instead of sleeping and waiting for a wake that some interactions miss.
       // Motion keeps the full frame rate; a still scene drops to ~15 fps instead
       // of stopping completely.
-      idleFrames = stage.frameMoved() ? 0 : idleFrames + 1
+      idleFrames = !current.settled.current || stage.frameMoved() ? 0 : idleFrames + 1
       if (document.visibilityState === 'hidden') {
         running = false
         return
