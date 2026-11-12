@@ -98,6 +98,8 @@ window.__ModuleLoader__.load({
 		const pruneAutoRecoverBundles = () => postJson("/auto-recover/prune-bundles", {});
 		/** 移除指向已删除诊断包的旧自动恢复事件。 */
 		const pruneAutoRecoverEvents = () => postJson("/auto-recover/prune-events", {});
+		/** 只读统计 .brain 的目录/数据库占用。 */
+		const loadStorageSummary = () => jget("/storage/summary");
 		/** 清理代码里已不存在的僵尸心跳；返回删除的名字列表。 */
 		const pruneZombieHeartbeats = () => postJson("/crons/prune-zombies", {});
 		/** 趋势告警阈值。 */
@@ -2088,6 +2090,162 @@ window.__ModuleLoader__.load({
 			});
 		}
 		//#endregion
+		//#region src/ui/StorageDialog.tsx
+		/**
+		* 存储概览：回答「磁盘被谁吃了」。
+		*
+		* 数据来自管理器 `/storage/summary`（纯只读 stat 统计）；按大小降序展示
+		* 各目录/数据库文件的占用、文件数与最近修改时间，并给出磁盘剩余。
+		* 不提供删除动作——清理入口仍在 ⋯ 菜单的「清理备份…」「清理缓存…」。
+		*/
+		/** 字节数格式化成 B/KB/MB/GB/TB。 */
+		function human(bytes) {
+			if (bytes === null || bytes === void 0) return "—";
+			const units = [
+				"B",
+				"KB",
+				"MB",
+				"GB",
+				"TB"
+			];
+			let value = bytes;
+			let index = 0;
+			while (value >= 1024 && index < units.length - 1) {
+				value /= 1024;
+				index += 1;
+			}
+			const digits = index === 0 || value >= 100 ? 0 : 1;
+			return `${value.toFixed(digits)} ${units[index]}`;
+		}
+		/**
+		* 渲染存储概览对话框。
+		* @param props - 关闭回调
+		* @returns 对话框元素（挂载即拉一次，可刷新）
+		*/
+		function StorageDialog({ onClose }) {
+			const [summary, setSummary] = (0, react.useState)(null);
+			const [error, setError] = (0, react.useState)(null);
+			const [busy, setBusy] = (0, react.useState)(false);
+			const load = async () => {
+				setBusy(true);
+				try {
+					setSummary(await loadStorageSummary());
+					setError(null);
+				} catch (e) {
+					setError(reasonOf(e));
+				} finally {
+					setBusy(false);
+				}
+			};
+			(0, react.useEffect)(() => {
+				load();
+			}, []);
+			const items = summary?.items ?? [];
+			const largest = items.reduce((max, item) => Math.max(max, item.bytes), 0);
+			const total = summary?.total_bytes ?? 0;
+			const free = summary?.disk?.free_bytes ?? null;
+			const diskTotal = summary?.disk?.total_bytes ?? null;
+			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)(Dialog, {
+				open: true,
+				onClose,
+				title: "存储概览",
+				closeLabel: "关闭",
+				description: "只读统计：目录大小、文件数与磁盘剩余；不会删除任何文件",
+				footer: /* @__PURE__ */ (0, react_jsx_runtime.jsxs)(react_jsx_runtime.Fragment, { children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)(Button, {
+					size: "sm",
+					variant: "ghost",
+					disabled: busy,
+					onClick: () => void load(),
+					children: busy ? "统计中…" : "刷新"
+				}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)(Button, {
+					size: "sm",
+					variant: "ghost",
+					onClick: onClose,
+					children: "关闭"
+				})] }),
+				children: [
+					error !== null && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+						className: "bc-backup-error",
+						children: error
+					}),
+					summary === null && error === null && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+						className: "bc-backup-empty",
+						children: "统计中…"
+					}),
+					summary !== null && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+						className: "bc-storage",
+						children: [
+							/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+								className: "bc-storage-summary",
+								children: [
+									/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+										className: "bc-storage-total",
+										children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: "合计占用" }), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("strong", { children: human(total) })]
+									}),
+									/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+										className: "bc-storage-total",
+										children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: "磁盘可用 / 总容量" }), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("strong", {
+											className: free !== null && free < 10 * 1024 ** 3 ? "bc-index-warn" : "",
+											children: [human(free), diskTotal !== null ? ` / ${human(diskTotal)}` : ""]
+										})]
+									}),
+									/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+										className: "bc-storage-time",
+										children: ["统计于 ", summary.generated_at]
+									})
+								]
+							}),
+							items.length === 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+								className: "bc-backup-empty",
+								children: "没有可统计的目录。"
+							}),
+							items.map((item) => {
+								const share = total > 0 ? item.bytes / total * 100 : 0;
+								const width = largest > 0 ? item.bytes / largest * 100 : 0;
+								return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+									className: "bc-storage-row",
+									children: [
+										/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+											className: "bc-storage-head",
+											children: [
+												/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+													className: "bc-storage-label",
+													title: item.path,
+													children: item.label
+												}),
+												/* @__PURE__ */ (0, react_jsx_runtime.jsx)("strong", { children: human(item.bytes) }),
+												/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
+													className: "bc-storage-share",
+													children: [share.toFixed(share >= 10 ? 0 : 1), "%"]
+												})
+											]
+										}),
+										/* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+											className: "bc-storage-bar",
+											role: "img",
+											"aria-label": `${item.label} 占最大项的 ${width.toFixed(0)}%`,
+											children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+												className: "bc-storage-fill",
+												style: { width: `${width}%` }
+											})
+										}),
+										/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+											className: "bc-storage-meta",
+											children: [/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", { children: [item.files, " 个文件"] }), item.modified_at !== null && item.modified_at !== void 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", { children: ["最近修改 ", item.modified_at] })]
+										})
+									]
+								}, item.key);
+							}),
+							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+								className: "bc-storage-hint",
+								children: "清理入口在 ⋯ 菜单：「清理备份…」「清理缓存…」「自动恢复记录… → 清理旧诊断包」。"
+							})
+						]
+					})
+				]
+			});
+		}
+		//#endregion
 		//#region src/ui/IndexHealthDialog.tsx
 		/**
 		* 索引与嵌入状态：回答「知识真的进脑子了吗」，并提供补嵌 / 重建入口。
@@ -2970,7 +3128,7 @@ window.__ModuleLoader__.load({
 		* @param props - 开机启动状态、忙碌标记与各动作
 		* @returns 菜单入口（含锚定菜单）
 		*/
-		function MoreMenu({ autostart, busy, onBackup, onPrune, onCaches, onIndex, onAutoRecover, onCheckup, onDiagnostics, onToggleAutostart, onShutdown }) {
+		function MoreMenu({ autostart, busy, onBackup, onPrune, onCaches, onIndex, onAutoRecover, onCheckup, onStorage, onDiagnostics, onToggleAutostart, onShutdown }) {
 			const [open, setOpen] = (0, react.useState)(false);
 			const items = [
 				{
@@ -3008,6 +3166,11 @@ window.__ModuleLoader__.load({
 					disabled: busy !== null
 				},
 				{
+					id: "storage",
+					label: "存储概览…",
+					disabled: busy !== null
+				},
+				{
 					id: "diagnostics",
 					label: "下载诊断包",
 					disabled: busy !== null
@@ -3037,6 +3200,7 @@ window.__ModuleLoader__.load({
 				else if (id === "index") onIndex();
 				else if (id === "auto-recover") onAutoRecover();
 				else if (id === "checkup") onCheckup();
+				else if (id === "storage") onStorage();
 				else if (id === "diagnostics") onDiagnostics();
 				else if (id === "autostart") onToggleAutostart();
 				else if (id === "shutdown") onShutdown();
@@ -4458,6 +4622,90 @@ window.__ModuleLoader__.load({
   color: var(--dsw-alias-label-tertiary);
 }
 
+.bc-storage {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.bc-storage-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 10px 16px;
+  padding: 8px 10px;
+  border: 1px solid var(--dsw-alias-border-l1);
+  border-radius: 8px;
+  background: var(--dsw-alias-bg-layer-1, rgba(128, 128, 128, 0.04));
+}
+.bc-storage-total {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.bc-storage-total > span {
+  font-size: 11px;
+  color: var(--dsw-alias-label-tertiary);
+}
+.bc-storage-total > strong {
+  font-size: 15px;
+  font-variant-numeric: tabular-nums;
+  color: var(--dsw-alias-label-primary);
+}
+.bc-storage-time {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--dsw-alias-label-tertiary);
+}
+.bc-storage-row {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.bc-storage-head {
+  display: grid;
+  grid-template-columns: 1fr auto 44px;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 12px;
+}
+.bc-storage-label {
+  color: var(--dsw-alias-label-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.bc-storage-head > strong {
+  font-variant-numeric: tabular-nums;
+  color: var(--dsw-alias-label-primary);
+}
+.bc-storage-share {
+  text-align: right;
+  color: var(--dsw-alias-label-tertiary);
+  font-variant-numeric: tabular-nums;
+}
+.bc-storage-bar {
+  height: 5px;
+  border-radius: 3px;
+  background: var(--dsw-alias-border-l1);
+  overflow: hidden;
+}
+.bc-storage-fill {
+  height: 100%;
+  border-radius: 3px;
+  background: var(--dsw-alias-label-secondary);
+}
+.bc-storage-meta {
+  display: flex;
+  gap: 10px;
+  font-size: 10.5px;
+  color: var(--dsw-alias-label-tertiary);
+}
+.bc-storage-hint {
+  margin-top: 4px;
+  font-size: 11px;
+  color: var(--dsw-alias-label-tertiary);
+}
+
 .bc-checkup-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(76px, 1fr));
@@ -5754,6 +6002,7 @@ window.__ModuleLoader__.load({
 			const [cronAlerts, setCronAlerts] = (0, react.useState)(null);
 			const [autoRecoverOpen, setAutoRecoverOpen] = (0, react.useState)(false);
 			const [checkupOpen, setCheckupOpen] = (0, react.useState)(false);
+			const [storageOpen, setStorageOpen] = (0, react.useState)(false);
 			const [trend, setTrend] = (0, react.useState)(null);
 			const [detailName, setDetailName] = (0, react.useState)(null);
 			const [stopGroup, setStopGroup] = (0, react.useState)(null);
@@ -5981,6 +6230,7 @@ window.__ModuleLoader__.load({
 													onIndex: () => setIndexOpen(true),
 													onAutoRecover: () => setAutoRecoverOpen(true),
 													onCheckup: () => setCheckupOpen(true),
+													onStorage: () => setStorageOpen(true),
 													onDiagnostics: downloadDiagnostics,
 													onToggleAutostart: () => void toggleAutostart(),
 													onShutdown: () => setShutdownOpen(true)
@@ -6100,6 +6350,7 @@ window.__ModuleLoader__.load({
 					indexOpen && /* @__PURE__ */ (0, react_jsx_runtime.jsx)(IndexHealthDialog, { onClose: () => setIndexOpen(false) }),
 					autoRecoverOpen && /* @__PURE__ */ (0, react_jsx_runtime.jsx)(AutoRecoverDialog, { onClose: () => setAutoRecoverOpen(false) }),
 					checkupOpen && /* @__PURE__ */ (0, react_jsx_runtime.jsx)(SystemCheckupDialog, { onClose: () => setCheckupOpen(false) }),
+					storageOpen && /* @__PURE__ */ (0, react_jsx_runtime.jsx)(StorageDialog, { onClose: () => setStorageOpen(false) }),
 					cacheOpen && /* @__PURE__ */ (0, react_jsx_runtime.jsx)(CacheDialog, {
 						load: loadCaches,
 						prune: pruneCaches,
