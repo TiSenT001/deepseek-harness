@@ -7,8 +7,8 @@
  */
 import { useEffect, useState } from 'react'
 import {
-  jget, loadPanelConfig, loadStorageSummary, loadTrendThresholds,
-  savePanelConfig, saveStorageThresholds, saveTrendThreshold, setApiBase,
+  jget, loadCronThresholds, loadPanelConfig, loadStorageSummary, loadTrendThresholds,
+  saveCronThresholds, savePanelConfig, saveStorageThresholds, saveTrendThreshold, setApiBase,
   type PanelConfigView,
 } from '../api.ts'
 import { reasonOf } from './errors.ts'
@@ -48,6 +48,9 @@ export function SettingsPage({ onBack, onDiskThresholdsChanged }: SettingsPagePr
   const [brainRootInput, setBrainRootInput] = useState('')
   const [managerUrlInput, setManagerUrlInput] = useState('')
   const [savingPaths, setSavingPaths] = useState(false)
+  const [cronHoursInput, setCronHoursInput] = useState('')
+  const [cronFactorInput, setCronFactorInput] = useState('')
+  const [savingCron, setSavingCron] = useState(false)
 
   useEffect(() => {
     void (async () => {
@@ -81,6 +84,19 @@ export function SettingsPage({ onBack, onDiskThresholdsChanged }: SettingsPagePr
         setManagerUrlInput(config.managerUrl)
       } catch (e) {
         setConfigError(reasonOf(e))
+      }
+    })()
+  }, [])
+
+  // 定时任务过期阈值：与索引对话框共用后端配置
+  useEffect(() => {
+    void (async () => {
+      try {
+        const thresholds = await loadCronThresholds()
+        setCronHoursInput(String(thresholds.stale_hours))
+        setCronFactorInput(String(thresholds.stale_factor))
+      } catch {
+        // 管理器不可用时留空，保存按钮会提示
       }
     })()
   }, [])
@@ -124,6 +140,32 @@ export function SettingsPage({ onBack, onDiskThresholdsChanged }: SettingsPagePr
       setError(reasonOf(e))
     } finally {
       setSavingPaths(false)
+    }
+  }
+
+  const saveCron = async (): Promise<void> => {
+    setError(null)
+    setNotice(null)
+    const hours = Number(cronHoursInput)
+    const factor = Number(cronFactorInput)
+    if (!Number.isFinite(hours) || !Number.isFinite(factor)) {
+      setError('定时任务阈值必须是数字')
+      return
+    }
+    setSavingCron(true)
+    try {
+      const result = await saveCronThresholds(hours, factor)
+      if (!result.ok || result.thresholds === undefined) {
+        setError(result.error ?? '保存失败')
+        return
+      }
+      setCronHoursInput(String(result.thresholds.stale_hours))
+      setCronFactorInput(String(result.thresholds.stale_factor))
+      setNotice('定时任务过期阈值已保存')
+    } catch (e) {
+      setError(reasonOf(e))
+    } finally {
+      setSavingCron(false)
     }
   }
 
@@ -406,6 +448,37 @@ export function SettingsPage({ onBack, onDiskThresholdsChanged }: SettingsPagePr
               </Button>
             </div>
           ))}
+        </div>
+      </section>
+
+      <section className="bc-settings-group">
+        <h3>定时任务</h3>
+        <p>过期阈值 = max(兜底小时, 声明周期 × 倍数)；用于判断 cron 心跳是否过期。</p>
+        <div className="bc-settings-row">
+          <label>
+            兜底 &gt;
+            <input
+              className="bc-settings-input"
+              inputMode="decimal"
+              value={cronHoursInput}
+              onChange={(event) => setCronHoursInput(event.target.value)}
+              aria-label="定时任务过期小时"
+            />
+            小时
+          </label>
+          <label>
+            周期 ×
+            <input
+              className="bc-settings-input"
+              inputMode="decimal"
+              value={cronFactorInput}
+              onChange={(event) => setCronFactorInput(event.target.value)}
+              aria-label="定时任务周期倍数"
+            />
+          </label>
+          <Button size="sm" variant="outline" disabled={savingCron || saving !== null} onClick={() => void saveCron()}>
+            {savingCron ? '保存中…' : '保存定时任务阈值'}
+          </Button>
         </div>
       </section>
 

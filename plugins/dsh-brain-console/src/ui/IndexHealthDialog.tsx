@@ -380,7 +380,9 @@ export function IndexHealthDialog({ onClose }: IndexHealthDialogProps): JSX.Elem
                   <div className="bc-cron-alert">
                     {(health.stale_crons ?? []).length > 0 && (
                       <span className="bc-cron-alert-text bc-index-warn">
-                        {health.stale_crons?.length} 个定时任务超过 1.5 倍周期未运行
+                        {health.stale_crons?.length} 个定时任务超过
+                        {' '}{health.cron_thresholds?.stale_factor ?? 1.5} 倍周期或
+                        {' '}{health.cron_thresholds?.stale_hours ?? 72} 小时未运行
                       </span>
                     )}
                     {(health.zombie_crons ?? []).length > 0 && (

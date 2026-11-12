@@ -112,6 +112,13 @@ window.__ModuleLoader__.load({
 		const pruneZombieHeartbeats = () => postJson("/crons/prune-zombies", {});
 		/** 趋势告警阈值。 */
 		const loadTrendThresholds = () => jget("/trend/thresholds");
+		/** 读取定时任务过期阈值。 */
+		const loadCronThresholds = () => jget("/cron/thresholds");
+		/** 保存定时任务过期阈值。 */
+		const saveCronThresholds = (staleHours, staleFactor) => postJson("/cron/thresholds", {
+			stale_hours: staleHours,
+			stale_factor: staleFactor
+		});
 		/** 设置/清除某个指标的告警阈值（value 传 null 表示不画线）。 */
 		const saveTrendThreshold = (metric, value) => postJson("/trend/thresholds", {
 			metric,
@@ -2402,6 +2409,169 @@ window.__ModuleLoader__.load({
 			});
 		}
 		//#endregion
+		//#region src/ui/DependencyDialog.tsx
+		/**
+		* 依赖关系拓扑：把 `/units` 里的 depends 画成图。
+		*
+		* 按分组纵向排列节点，箭头从「被依赖的单元」指向「依赖它的单元」；
+		* 点击节点打开该单元的详情。底部另给一份依赖边清单，便于精确阅读。
+		*/
+		const NODE_W = 150;
+		const NODE_H = 30;
+		const COL_W = 190;
+		const ROW_H = 44;
+		const PAD$1 = 20;
+		/**
+		* 渲染依赖关系对话框。
+		* @param props - 单元列表、节点点击回调与关闭回调
+		* @returns 对话框元素
+		*/
+		function DependencyDialog({ units, onOpenUnit, onClose }) {
+			const groups = Array.from(new Set(units.map((unit) => unit.group)));
+			const layouts = /* @__PURE__ */ new Map();
+			for (const [column, group] of groups.entries()) units.filter((unit) => unit.group === group).forEach((unit, row) => layouts.set(unit.name, {
+				x: PAD$1 + column * COL_W,
+				y: PAD$1 + row * ROW_H
+			}));
+			const edges = units.flatMap((unit) => (unit.depends ?? []).filter((dependency) => layouts.has(dependency)).map((dependency) => ({
+				from: dependency,
+				to: unit.name
+			})));
+			const rows = Math.max(1, ...groups.map((group) => units.filter((unit) => unit.group === group).length));
+			const width = PAD$1 * 2 + Math.max(1, groups.length) * COL_W;
+			const height = PAD$1 * 2 + rows * ROW_H;
+			return /* @__PURE__ */ (0, react_jsx_runtime.jsx)(Dialog, {
+				open: true,
+				onClose,
+				title: "依赖关系",
+				closeLabel: "关闭",
+				description: "箭头指向依赖方（A 依赖 B 时画 B → A）；点击节点查看单元详情",
+				footer: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(Button, {
+					size: "sm",
+					variant: "ghost",
+					onClick: onClose,
+					children: "关闭"
+				}),
+				children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+					className: "bc-dependency",
+					children: units.length === 0 ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+						className: "bc-backup-empty",
+						children: "没有单元数据。"
+					}) : /* @__PURE__ */ (0, react_jsx_runtime.jsxs)(react_jsx_runtime.Fragment, { children: [
+						/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("svg", {
+							className: "bc-dep-graph",
+							viewBox: `0 0 ${width} ${height}`,
+							width: "100%",
+							role: "img",
+							"aria-label": "服务依赖图",
+							children: [
+								/* @__PURE__ */ (0, react_jsx_runtime.jsx)("defs", { children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)("marker", {
+									id: "bc-dep-arrow",
+									markerWidth: "8",
+									markerHeight: "8",
+									refX: "6",
+									refY: "3",
+									orient: "auto",
+									children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)("path", {
+										d: "M0,0 L6,3 L0,6 Z",
+										fill: "currentColor"
+									})
+								}) }),
+								edges.map((edge, index) => {
+									const from = layouts.get(edge.from);
+									const to = layouts.get(edge.to);
+									if (from === void 0 || to === void 0) return null;
+									const x1 = from.x + NODE_W;
+									const y1 = from.y + NODE_H / 2;
+									const x2 = to.x;
+									const y2 = to.y + NODE_H / 2;
+									const bend = Math.max(24, Math.abs(x2 - x1) / 2);
+									return /* @__PURE__ */ (0, react_jsx_runtime.jsx)("path", {
+										className: "bc-dep-edge",
+										d: `M${x1},${y1} C${x1 + bend},${y1} ${x2 - bend},${y2} ${x2},${y2}`,
+										markerEnd: "url(#bc-dep-arrow)"
+									}, `${edge.from}-${edge.to}-${index}`);
+								}),
+								groups.map((group, column) => /* @__PURE__ */ (0, react_jsx_runtime.jsx)("text", {
+									className: "bc-dep-group",
+									x: PAD$1 + column * COL_W,
+									y: 12,
+									children: group
+								}, group)),
+								units.map((unit) => {
+									const position = layouts.get(unit.name);
+									if (position === void 0) return null;
+									const label = unit.name.length > 18 ? `${unit.name.slice(0, 17)}…` : unit.name;
+									return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("g", {
+										className: "bc-dep-node",
+										"data-running": unit.running ? "true" : "false",
+										transform: `translate(${position.x},${position.y})`,
+										role: "button",
+										tabIndex: 0,
+										onClick: () => onOpenUnit(unit.name),
+										onKeyDown: (event) => {
+											if (event.key === "Enter" || event.key === " ") onOpenUnit(unit.name);
+										},
+										children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("rect", {
+											width: NODE_W,
+											height: NODE_H,
+											rx: "7"
+										}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("text", {
+											x: "10",
+											y: "19",
+											children: label
+										})]
+									}, unit.name);
+								})
+							]
+						}),
+						/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+							className: "bc-dep-list",
+							children: [edges.length === 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+								className: "bc-index-note",
+								children: "这些单元没有声明 depends。"
+							}), edges.slice(0, 60).map((edge, index) => /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+								className: "bc-dep-row",
+								children: [
+									/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+										className: "bc-dep-from",
+										children: edge.from
+									}),
+									/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+										className: "bc-dep-arrow",
+										children: "→"
+									}),
+									/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+										className: "bc-dep-to",
+										children: edge.to
+									}),
+									/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
+										className: "bc-dep-note",
+										children: [
+											edge.to,
+											" 依赖 ",
+											edge.from
+										]
+									})
+								]
+							}, `${edge.from}-${edge.to}-row-${index}`))]
+						}),
+						/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+							className: "bc-index-note",
+							children: [
+								units.length,
+								" 个单元 · ",
+								edges.length,
+								" 条依赖 · ",
+								groups.length,
+								" 个分组"
+							]
+						})
+					] })
+				})
+			});
+		}
+		//#endregion
 		//#region src/ui/SettingsPage.tsx
 		/**
 		* 设置页：面板内可编辑的部署参数集中在这里。
@@ -2435,6 +2605,9 @@ window.__ModuleLoader__.load({
 			const [brainRootInput, setBrainRootInput] = (0, react.useState)("");
 			const [managerUrlInput, setManagerUrlInput] = (0, react.useState)("");
 			const [savingPaths, setSavingPaths] = (0, react.useState)(false);
+			const [cronHoursInput, setCronHoursInput] = (0, react.useState)("");
+			const [cronFactorInput, setCronFactorInput] = (0, react.useState)("");
+			const [savingCron, setSavingCron] = (0, react.useState)(false);
 			(0, react.useEffect)(() => {
 				(async () => {
 					try {
@@ -2470,6 +2643,15 @@ window.__ModuleLoader__.load({
 			(0, react.useEffect)(() => {
 				(async () => {
 					try {
+						const thresholds = await loadCronThresholds();
+						setCronHoursInput(String(thresholds.stale_hours));
+						setCronFactorInput(String(thresholds.stale_factor));
+					} catch {}
+				})();
+			}, []);
+			(0, react.useEffect)(() => {
+				(async () => {
+					try {
 						const answer = await jget("/units");
 						const names = Array.from(new Set(answer.units.map((unit) => unit.group)));
 						const preferred = loadPrefs().groupOrder;
@@ -2499,6 +2681,31 @@ window.__ModuleLoader__.load({
 					setError(reasonOf(e));
 				} finally {
 					setSavingPaths(false);
+				}
+			};
+			const saveCron = async () => {
+				setError(null);
+				setNotice(null);
+				const hours = Number(cronHoursInput);
+				const factor = Number(cronFactorInput);
+				if (!Number.isFinite(hours) || !Number.isFinite(factor)) {
+					setError("定时任务阈值必须是数字");
+					return;
+				}
+				setSavingCron(true);
+				try {
+					const result = await saveCronThresholds(hours, factor);
+					if (!result.ok || result.thresholds === void 0) {
+						setError(result.error ?? "保存失败");
+						return;
+					}
+					setCronHoursInput(String(result.thresholds.stale_hours));
+					setCronFactorInput(String(result.thresholds.stale_factor));
+					setNotice("定时任务过期阈值已保存");
+				} catch (e) {
+					setError(reasonOf(e));
+				} finally {
+					setSavingCron(false);
 				}
 			};
 			const saveDisk = async () => {
@@ -2819,6 +3026,43 @@ window.__ModuleLoader__.load({
 										})
 									]
 								}, name))]
+							})
+						]
+					}),
+					/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("section", {
+						className: "bc-settings-group",
+						children: [
+							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("h3", { children: "定时任务" }),
+							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", { children: "过期阈值 = max(兜底小时, 声明周期 × 倍数)；用于判断 cron 心跳是否过期。" }),
+							/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+								className: "bc-settings-row",
+								children: [
+									/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("label", { children: [
+										"兜底 >",
+										/* @__PURE__ */ (0, react_jsx_runtime.jsx)("input", {
+											className: "bc-settings-input",
+											inputMode: "decimal",
+											value: cronHoursInput,
+											onChange: (event) => setCronHoursInput(event.target.value),
+											"aria-label": "定时任务过期小时"
+										}),
+										"小时"
+									] }),
+									/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("label", { children: ["周期 ×", /* @__PURE__ */ (0, react_jsx_runtime.jsx)("input", {
+										className: "bc-settings-input",
+										inputMode: "decimal",
+										value: cronFactorInput,
+										onChange: (event) => setCronFactorInput(event.target.value),
+										"aria-label": "定时任务周期倍数"
+									})] }),
+									/* @__PURE__ */ (0, react_jsx_runtime.jsx)(Button, {
+										size: "sm",
+										variant: "outline",
+										disabled: savingCron || saving !== null,
+										onClick: () => void saveCron(),
+										children: savingCron ? "保存中…" : "保存定时任务阈值"
+									})
+								]
 							})
 						]
 					}),
@@ -3340,7 +3584,16 @@ window.__ModuleLoader__.load({
 											children: [
 												(health.stale_crons ?? []).length > 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
 													className: "bc-cron-alert-text bc-index-warn",
-													children: [health.stale_crons?.length, " 个定时任务超过 1.5 倍周期未运行"]
+													children: [
+														health.stale_crons?.length,
+														" 个定时任务超过",
+														" ",
+														health.cron_thresholds?.stale_factor ?? 1.5,
+														" 倍周期或",
+														" ",
+														health.cron_thresholds?.stale_hours ?? 72,
+														" 小时未运行"
+													]
 												}),
 												(health.zombie_crons ?? []).length > 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
 													className: "bc-cron-alert-text",
@@ -3801,7 +4054,7 @@ window.__ModuleLoader__.load({
 		* @param props - 开机启动状态、忙碌标记与各动作
 		* @returns 菜单入口（含锚定菜单）
 		*/
-		function MoreMenu({ autostart, busy, onBackup, onPrune, onCaches, onIndex, onAutoRecover, onCheckup, onStorage, onDiagnostics, onToggleAutostart, onShutdown }) {
+		function MoreMenu({ autostart, busy, onBackup, onPrune, onCaches, onIndex, onAutoRecover, onCheckup, onStorage, onDependencies, onDiagnostics, onToggleAutostart, onShutdown }) {
 			const [open, setOpen] = (0, react.useState)(false);
 			const items = [
 				{
@@ -3844,6 +4097,11 @@ window.__ModuleLoader__.load({
 					disabled: busy !== null
 				},
 				{
+					id: "dependencies",
+					label: "依赖关系…",
+					disabled: busy !== null
+				},
+				{
 					id: "diagnostics",
 					label: "下载诊断包",
 					disabled: busy !== null
@@ -3874,6 +4132,7 @@ window.__ModuleLoader__.load({
 				else if (id === "auto-recover") onAutoRecover();
 				else if (id === "checkup") onCheckup();
 				else if (id === "storage") onStorage();
+				else if (id === "dependencies") onDependencies();
 				else if (id === "diagnostics") onDiagnostics();
 				else if (id === "autostart") onToggleAutostart();
 				else if (id === "shutdown") onShutdown();
@@ -5481,6 +5740,71 @@ window.__ModuleLoader__.load({
   color: var(--dsw-alias-label-primary);
 }
 
+.bc-dependency {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.bc-dep-graph {
+  display: block;
+  min-height: 120px;
+  color: var(--dsw-alias-label-tertiary);
+}
+.bc-dep-group {
+  font-size: 11px;
+  fill: var(--dsw-alias-label-tertiary);
+}
+.bc-dep-edge {
+  fill: none;
+  stroke: var(--dsw-alias-border-l2);
+  stroke-width: 1.2;
+}
+.bc-dep-node {
+  cursor: pointer;
+  color: var(--dsw-alias-label-primary);
+}
+.bc-dep-node rect {
+  fill: var(--dsw-alias-bg-layer-1, rgba(128, 128, 128, 0.08));
+  stroke: var(--dsw-alias-border-l2);
+}
+.bc-dep-node[data-running='true'] rect {
+  stroke: var(--dsw-alias-state-success-primary, #3fb950);
+}
+.bc-dep-node:hover rect {
+  fill: var(--dsw-alias-interactive-bg-hover);
+}
+.bc-dep-node text {
+  font-size: 11px;
+  fill: var(--dsw-alias-label-primary);
+}
+.bc-dep-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 180px;
+  overflow-y: auto;
+}
+.bc-dep-row {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--dsw-alias-label-secondary);
+}
+.bc-dep-from {
+  font-family: var(--ds-font-family-code, monospace);
+}
+.bc-dep-to {
+  font-family: var(--ds-font-family-code, monospace);
+  color: var(--dsw-alias-label-primary);
+}
+.bc-dep-arrow {
+  color: var(--dsw-alias-label-tertiary);
+}
+.bc-dep-note {
+  color: var(--dsw-alias-label-tertiary);
+}
+
 .bc-storage {
   display: flex;
   flex-direction: column;
@@ -6862,6 +7186,7 @@ window.__ModuleLoader__.load({
 			const [autoRecoverOpen, setAutoRecoverOpen] = (0, react.useState)(false);
 			const [checkupOpen, setCheckupOpen] = (0, react.useState)(false);
 			const [storageOpen, setStorageOpen] = (0, react.useState)(false);
+			const [dependencyOpen, setDependencyOpen] = (0, react.useState)(false);
 			const [diskFree, setDiskFree] = (0, react.useState)(null);
 			const [diskTotal, setDiskTotal] = (0, react.useState)(null);
 			const [diskThresholds, setDiskThresholds] = (0, react.useState)(null);
@@ -7145,6 +7470,7 @@ window.__ModuleLoader__.load({
 												onAutoRecover: () => setAutoRecoverOpen(true),
 												onCheckup: () => setCheckupOpen(true),
 												onStorage: () => setStorageOpen(true),
+												onDependencies: () => setDependencyOpen(true),
 												onDiagnostics: downloadDiagnostics,
 												onToggleAutostart: () => void toggleAutostart(),
 												onShutdown: () => setShutdownOpen(true)
@@ -7274,6 +7600,14 @@ window.__ModuleLoader__.load({
 					autoRecoverOpen && /* @__PURE__ */ (0, react_jsx_runtime.jsx)(AutoRecoverDialog, { onClose: () => setAutoRecoverOpen(false) }),
 					checkupOpen && /* @__PURE__ */ (0, react_jsx_runtime.jsx)(SystemCheckupDialog, { onClose: () => setCheckupOpen(false) }),
 					storageOpen && /* @__PURE__ */ (0, react_jsx_runtime.jsx)(StorageDialog, { onClose: () => setStorageOpen(false) }),
+					dependencyOpen && /* @__PURE__ */ (0, react_jsx_runtime.jsx)(DependencyDialog, {
+						units: feed.units,
+						onOpenUnit: (name) => {
+							setDependencyOpen(false);
+							setDetailName(name);
+						},
+						onClose: () => setDependencyOpen(false)
+					}),
 					cacheOpen && /* @__PURE__ */ (0, react_jsx_runtime.jsx)(CacheDialog, {
 						load: loadCaches,
 						prune: pruneCaches,

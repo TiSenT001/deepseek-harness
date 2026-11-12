@@ -159,6 +159,23 @@ export const pruneZombieHeartbeats = (): Promise<{ ok: boolean; removed: string[
 /** 趋势告警阈值。 */
 export const loadTrendThresholds = (): Promise<TrendThresholds> => jget<TrendThresholds>('/trend/thresholds')
 
+/** 定时任务过期阈值（兜底小时 / 周期倍数）。 */
+export interface CronThresholds {
+  stale_hours: number
+  stale_factor: number
+}
+
+/** 读取定时任务过期阈值。 */
+export const loadCronThresholds = (): Promise<CronThresholds> => jget<CronThresholds>('/cron/thresholds')
+
+/** 保存定时任务过期阈值。 */
+export const saveCronThresholds = (
+  staleHours: number,
+  staleFactor: number,
+): Promise<{ ok: boolean; error?: string; thresholds?: CronThresholds }> =>
+  postJson<{ ok: boolean; error?: string; thresholds?: CronThresholds }>(
+    '/cron/thresholds', { stale_hours: staleHours, stale_factor: staleFactor })
+
 /** 设置/清除某个指标的告警阈值（value 传 null 表示不画线）。 */
 export const saveTrendThreshold = (
   metric: string,

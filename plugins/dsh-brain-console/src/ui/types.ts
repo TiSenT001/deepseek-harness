@@ -327,7 +327,9 @@ export interface IndexHealth {
     age_hours: number | null
     status: 'ok' | 'warn' | 'bad' | 'unknown'
   }[]
-  /** 代码里存在但超过 1.5 倍周期未运行 */
+  /** 过期判定阈值（设置页可改） */
+  cron_thresholds?: { stale_hours: number; stale_factor: number }
+  /** 代码里存在但超过阈值未运行 */
   stale_crons?: {
     name: string
     last_run_at: string | null

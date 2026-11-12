@@ -28,6 +28,7 @@ import { FailedEdgesDialog } from './ui/FailedEdgesDialog.tsx'
 import { AutoRecoverDialog } from './ui/AutoRecoverDialog.tsx'
 import { SystemCheckupDialog } from './ui/SystemCheckupDialog.tsx'
 import { StorageDialog } from './ui/StorageDialog.tsx'
+import { DependencyDialog } from './ui/DependencyDialog.tsx'
 import { SettingsPage } from './ui/SettingsPage.tsx'
 import { SettingsIcon } from './ui/SettingsIcon.tsx'
 import { IndexHealthDialog } from './ui/IndexHealthDialog.tsx'
@@ -70,6 +71,7 @@ export function ConsolePage(): JSX.Element {
   const [autoRecoverOpen, setAutoRecoverOpen] = useState(false)
   const [checkupOpen, setCheckupOpen] = useState(false)
   const [storageOpen, setStorageOpen] = useState(false)
+  const [dependencyOpen, setDependencyOpen] = useState(false)
   const [diskFree, setDiskFree] = useState<number | null>(null)
   const [diskTotal, setDiskTotal] = useState<number | null>(null)
   const [diskThresholds, setDiskThresholds] = useState<{ warn_gb: number; critical_percent: number } | null>(null)
@@ -347,6 +349,7 @@ export function ConsolePage(): JSX.Element {
     onAutoRecover={() => setAutoRecoverOpen(true)}
     onCheckup={() => setCheckupOpen(true)}
     onStorage={() => setStorageOpen(true)}
+    onDependencies={() => setDependencyOpen(true)}
     onDiagnostics={downloadDiagnostics}
                 onToggleAutostart={() => void toggleAutostart()}
                 onShutdown={() => setShutdownOpen(true)}
@@ -466,6 +469,13 @@ export function ConsolePage(): JSX.Element {
   {autoRecoverOpen && <AutoRecoverDialog onClose={() => setAutoRecoverOpen(false)} />}
   {checkupOpen && <SystemCheckupDialog onClose={() => setCheckupOpen(false)} />}
   {storageOpen && <StorageDialog onClose={() => setStorageOpen(false)} />}
+  {dependencyOpen && (
+    <DependencyDialog
+      units={feed.units}
+      onOpenUnit={(name) => { setDependencyOpen(false); setDetailName(name) }}
+      onClose={() => setDependencyOpen(false)}
+    />
+  )}
 
       {cacheOpen && (
         <CacheDialog
