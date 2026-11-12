@@ -398,4 +398,68 @@ textarea.ov-input { resize: vertical; }
   font-size: 12px;
   line-height: 1.5;
 }
+.ov-merge-dialog {
+  width: min(760px, calc(100vw - 48px));
+  max-height: min(720px, calc(100vh - 48px));
+}
+
+.ov-merge-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 180px;
+  overflow: auto;
+  padding: 4px;
+  border: 1px solid var(--dsw-alias-border-l1, #2a2a30);
+  border-radius: 8px;
+  background: var(--dsw-alias-bg-layer-1, #1b1b1f);
+}
+
+.ov-merge-row {
+  appearance: none;
+  padding: 6px 8px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--dsw-alias-label-primary, #e8e8ea);
+  font: inherit;
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.ov-merge-row:hover {
+  background: var(--dsw-alias-bg-layer-2, #232329);
+}
+
+.ov-merge-row-active {
+  background: var(--dsw-alias-bg-layer-2, #232329);
+}
+
+.ov-merge-preview-head {
+  margin-top: 10px;
+  color: var(--dsw-alias-text-secondary);
+  font-size: 12px;
+}
+
+.ov-merge-preview {
+  max-height: 220px;
+  margin: 4px 0 0;
+  overflow: auto;
+  padding: 10px;
+  border: 1px solid var(--dsw-alias-border-l1, #2a2a30);
+  border-radius: 8px;
+  background: var(--dsw-alias-bg-layer-1, #1b1b1f);
+  color: var(--dsw-alias-label-primary, #e8e8ea);
+  font-family: var(--dsw-font-mono);
+  font-size: 12px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+
+.ov-merge-status {
+  margin: 6px 0 0;
+  color: var(--dsw-alias-text-secondary);
+  font-size: 12px;
+}
 `
