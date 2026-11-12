@@ -48,7 +48,7 @@ const clientBundle: UserConfig = {
     entryFileNames: 'client.js',
     banner: 'window.__ModuleLoader__.load({ id: ' + JSON.stringify(PLUGIN_ID) + ', factory: (require) => {',
     footer: 'return module.exports; } });',
-    intro: 'var module = { exports: {} }; var exports = module.exports;',
+    intro: 'var module = { exports: {} }; var exports = module.exports; window.__OV_REQUIRE__ = require;',
     codeSplitting: false,
   },
 }
@@ -90,4 +90,33 @@ const mermaidBundle: UserConfig = {
   outputOptions: { entryFileNames: 'mermaid.js' },
 }
 
-export default [hostBundle, clientBundle, workerBundle, obsidianBundle, mermaidBundle]
+
+/**
+ * Package-local lazy chunk for the Pur Studio pane. The module loader fetches
+ * it from the owner row's directory and materializes the registered factory.
+ */
+const purChunkBundle: UserConfig = {
+  entry: { 'client.pur': 'src/client/pur/pur-chunk.tsx' },
+  outDir: 'lib',
+  format: 'cjs',
+  platform: 'browser',
+  dts: false,
+  sourcemap: true,
+  clean: false,
+  define: {
+    'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV ?? 'production'),
+  },
+  deps: {
+    neverBundle: [...CLIENT_EXTERNALS],
+    alwaysBundle: (id: string) => !CLIENT_EXTERNALS.includes(id),
+  },
+  outputOptions: {
+    entryFileNames: 'client.pur.js',
+    banner: 'window.__ModuleLoader__.load({ id: ' + JSON.stringify(PLUGIN_ID) + ', chunk: "client.pur.js", factory: (require) => {',
+    footer: 'return module.exports; } });',
+    intro: 'var module = { exports: {} }; var exports = module.exports;',
+    codeSplitting: false,
+  },
+}
+
+export default [hostBundle, clientBundle, workerBundle, obsidianBundle, mermaidBundle, purChunkBundle]

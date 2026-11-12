@@ -12,7 +12,7 @@ import { assetUrl, fetchFile } from '../../api.ts'
 import { ErrorState, LoadingState } from '../kit/index.ts'
 import type { MenuScene } from '../menu/registry.ts'
 import { css } from '../theme.ts'
-import { PurStudioPane } from '../../pur/integration.ts'
+import { PurStudioLazy } from '../../pur/lazy.tsx'
 import { AssetView } from './AssetView.tsx'
 import { CodeView, formatBytes } from './CodeView.tsx'
 import { SourceEditor } from '../editor/SourceEditor.tsx'
@@ -83,7 +83,7 @@ export function FileView({ t, path, onReading, onSaved, onOpenPath, onMenu }: Fi
   const retry = useCallback(() => setAttempt(value => value + 1), [])
   const contextMenu = fileContextMenu(path, onMenu)
 
-  if (isPur) return <PurStudioPane t={t} path={path} {...(onOpenPath === undefined ? {} : { onOpenPath })} />
+  if (isPur) return <PurStudioLazy t={t} path={path} {...(onOpenPath === undefined ? {} : { onOpenPath })} />
   // A plugin asset is not a vault file: it has its own preview pane.
   if (path.startsWith('pur-asset:')) return <AssetView t={t} path={path} {...(onMenu === undefined ? {} : { onMenu })} />
   if (state.status === 'loading') return <LoadingState label={t('loadingFile')} />

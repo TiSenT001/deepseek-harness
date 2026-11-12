@@ -1,3 +1,10 @@
+## 第一百五十四轮：Pur Studio 客户端按需 chunk（2026-11-13）
+
+- **拆分**：Pur Studio 从主 `client.js` 移到 `lib/client.pur.js`（约 533 KB），只在打开 `.PurStudio` / `.canvas` 时通过 module loader 的 `require.async` 加载。
+- **入口**：`pur/lazy.tsx` 用 `React.lazy` 包装，FileView 不再静态 import `PurStudioPane`；`pur/integration.ts` 只保留 type re-export。
+- **加载器**：主 bundle 在 factory 内暴露 `window.__OV_REQUIRE__`；chunk 用相同插件 id + `chunk: "client.pur.js"` 注册，宿主 client-modules 自动按 rev 提供文件。
+- **效果**：主 `client.js` 从 1.25 MB 降到约 820 KB；Pūr chunk 546 KB 按需加载。
+- **验证**：`require.async('./client.pur.js')` 返回 `PurStudioPane` 函数并触发一次 chunk 请求；`tsc` 0、780/780；release-check 通过。
 ## 第一百五十三轮：缩放锚定鼠标位置（2026-11-13）
 
 - **问题**：`zoomAt` 先把 `zoomRef` 改成新 zoom，再用它反算鼠标下的世界坐标，锚点用了新比例，缩放中心漂移。
