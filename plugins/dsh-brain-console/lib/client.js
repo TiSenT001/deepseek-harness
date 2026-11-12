@@ -92,6 +92,8 @@ window.__ModuleLoader__.load({
 		const loadTableInfo = (name) => jget(`/system/table?name=${encodeURIComponent(name)}`);
 		/** 只读扫描源码里引用某张表的位置（最多 30 处）。 */
 		const loadTableUsage = (name) => jget(`/system/table/usage?name=${encodeURIComponent(name)}`);
+		/** 清空体检历史摘要文件（不动当前报告）。 */
+		const clearCheckupHistory = () => postJson("/checkup/history/clear", {});
 		/** 清理代码里已不存在的僵尸心跳；返回删除的名字列表。 */
 		const pruneZombieHeartbeats = () => postJson("/crons/prune-zombies", {});
 		/** 趋势告警阈值。 */
@@ -1647,6 +1649,8 @@ window.__ModuleLoader__.load({
 			const [openUsage, setOpenUsage] = (0, react.useState)(null);
 			const [usageBusy, setUsageBusy] = (0, react.useState)(null);
 			const [copied, setCopied] = (0, react.useState)(false);
+			const [armedClear, setArmedClear] = (0, react.useState)(false);
+			const [clearing, setClearing] = (0, react.useState)(false);
 			const run = async () => {
 				setRunning(true);
 				setError(null);
@@ -1747,6 +1751,18 @@ window.__ModuleLoader__.load({
 				lines.push(`- 耗时：${seconds(result?.elapsed_ms)}`);
 				if (previous !== null) lines.push(`- 较上次（${previous.at}）：总表 ${previous.total_tables ?? "—"} · 空表 ${previous.empty} · 膨胀 ${previous.bloated}`);
 				return lines.join("\n");
+			};
+			const clearHistory = async () => {
+				setClearing(true);
+				try {
+					await clearCheckupHistory();
+					setArmedClear(false);
+					await run();
+				} catch (e) {
+					setError(`清空失败：${reasonOf(e)}`);
+				} finally {
+					setClearing(false);
+				}
 			};
 			const copySummary = async () => {
 				try {
@@ -1963,20 +1979,50 @@ window.__ModuleLoader__.load({
 										history.length,
 										"）"
 									] }),
+									/* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+										className: "bc-checkup-history-actions",
+										children: armedClear ? /* @__PURE__ */ (0, react_jsx_runtime.jsxs)(react_jsx_runtime.Fragment, { children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)(Button, {
+											size: "sm",
+											variant: "ghost",
+											disabled: clearing,
+											onClick: () => void clearHistory(),
+											children: "确认清空"
+										}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)(Button, {
+											size: "sm",
+											variant: "ghost",
+											disabled: clearing,
+											onClick: () => setArmedClear(false),
+											children: "取消"
+										})] }) : /* @__PURE__ */ (0, react_jsx_runtime.jsx)(Button, {
+											size: "sm",
+											variant: "ghost",
+											disabled: clearing,
+											onClick: () => setArmedClear(true),
+											children: "清空历史"
+										})
+									}),
 									history.length >= 2 && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
 										className: "bc-checkup-trend",
-										children: trendRows.map((row) => /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-											className: "bc-checkup-trend-row",
-											children: [
-												/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: row.label }),
-												/* @__PURE__ */ (0, react_jsx_runtime.jsx)(Sparkline, {
-													values: row.values,
-													height: 18,
-													className: "bc-checkup-spark"
-												}),
-												/* @__PURE__ */ (0, react_jsx_runtime.jsx)("strong", { children: row.current ?? "—" })
-											]
-										}, row.label))
+										children: trendRows.map((row) => {
+											const min = row.values.length > 0 ? Math.min(...row.values) : null;
+											const max = row.values.length > 0 ? Math.max(...row.values) : null;
+											return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+												className: "bc-checkup-trend-row",
+												children: [
+													/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: row.label }),
+													/* @__PURE__ */ (0, react_jsx_runtime.jsx)(Sparkline, {
+														values: row.values,
+														height: 18,
+														className: "bc-checkup-spark"
+													}),
+													/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+														className: "bc-checkup-trend-range",
+														children: min === null ? "—" : `${min}–${max}`
+													}),
+													/* @__PURE__ */ (0, react_jsx_runtime.jsx)("strong", { children: row.current ?? "—" })
+												]
+											}, row.label);
+										})
 									}),
 									/* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
 										className: "bc-checkup-history-list",
@@ -4291,11 +4337,22 @@ window.__ModuleLoader__.load({
 }
 .bc-checkup-trend-row {
   display: grid;
-  grid-template-columns: 72px 1fr 36px;
+  grid-template-columns: 72px 1fr 56px 36px;
   align-items: center;
   gap: 8px;
   font-size: 11px;
   color: var(--dsw-alias-label-secondary);
+}
+.bc-checkup-trend-range {
+  color: var(--dsw-alias-label-tertiary);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+.bc-checkup-history-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+  margin-top: 4px;
 }
 .bc-checkup-trend-row > strong {
   text-align: right;

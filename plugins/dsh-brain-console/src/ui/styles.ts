@@ -384,11 +384,22 @@ const STYLES = `
 }
 .bc-checkup-trend-row {
   display: grid;
-  grid-template-columns: 72px 1fr 36px;
+  grid-template-columns: 72px 1fr 56px 36px;
   align-items: center;
   gap: 8px;
   font-size: 11px;
   color: var(--dsw-alias-label-secondary);
+}
+.bc-checkup-trend-range {
+  color: var(--dsw-alias-label-tertiary);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+.bc-checkup-history-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+  margin-top: 4px;
 }
 .bc-checkup-trend-row > strong {
   text-align: right;

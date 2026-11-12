@@ -6,7 +6,7 @@
  * 本对话框展示「较上次」对比与最近几次历史；膨胀表可下钻看列结构与行数。
  */
 import { useEffect, useState } from 'react'
-import { loadSystemCheckup, loadTableInfo, loadTableUsage } from '../api.ts'
+import { clearCheckupHistory, loadSystemCheckup, loadTableInfo, loadTableUsage } from '../api.ts'
 import { Sparkline } from './Sparkline.tsx'
 import { reasonOf } from './errors.ts'
 import { Button } from './primitives.ts'
@@ -134,6 +134,8 @@ export function SystemCheckupDialog({ onClose }: SystemCheckupDialogProps): JSX.
   const [openUsage, setOpenUsage] = useState<string | null>(null)
   const [usageBusy, setUsageBusy] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
+  const [armedClear, setArmedClear] = useState(false)
+  const [clearing, setClearing] = useState(false)
 
   const run = async (): Promise<void> => {
     setRunning(true)
@@ -216,6 +218,19 @@ export function SystemCheckupDialog({ onClose }: SystemCheckupDialogProps): JSX.
       lines.push(`- 较上次（${previous.at}）：总表 ${previous.total_tables ?? '—'} · 空表 ${previous.empty} · 膨胀 ${previous.bloated}`)
     }
     return lines.join('\n')
+  }
+
+  const clearHistory = async (): Promise<void> => {
+    setClearing(true)
+    try {
+      await clearCheckupHistory()
+      setArmedClear(false)
+      await run()
+    } catch (e) {
+      setError(`清空失败：${reasonOf(e)}`)
+    } finally {
+      setClearing(false)
+    }
   }
 
   const copySummary = async (): Promise<void> => {
@@ -367,15 +382,36 @@ export function SystemCheckupDialog({ onClose }: SystemCheckupDialogProps): JSX.
           {history.length > 0 && (
             <details className="bc-checkup-history">
               <summary>历史体检（{history.length}）</summary>
+              <div className="bc-checkup-history-actions">
+                {armedClear ? (
+                  <>
+                    <Button size="sm" variant="ghost" disabled={clearing} onClick={() => void clearHistory()}>
+                      确认清空
+                    </Button>
+                    <Button size="sm" variant="ghost" disabled={clearing} onClick={() => setArmedClear(false)}>
+                      取消
+                    </Button>
+                  </>
+                ) : (
+                  <Button size="sm" variant="ghost" disabled={clearing} onClick={() => setArmedClear(true)}>
+                    清空历史
+                  </Button>
+                )}
+              </div>
               {history.length >= 2 && (
                 <div className="bc-checkup-trend">
-                  {trendRows.map((row) => (
-                    <div className="bc-checkup-trend-row" key={row.label}>
-                      <span>{row.label}</span>
-                      <Sparkline values={row.values} height={18} className="bc-checkup-spark" />
-                      <strong>{row.current ?? '—'}</strong>
-                    </div>
-                  ))}
+                  {trendRows.map((row) => {
+                    const min = row.values.length > 0 ? Math.min(...row.values) : null
+                    const max = row.values.length > 0 ? Math.max(...row.values) : null
+                    return (
+                      <div className="bc-checkup-trend-row" key={row.label}>
+                        <span>{row.label}</span>
+                        <Sparkline values={row.values} height={18} className="bc-checkup-spark" />
+                        <span className="bc-checkup-trend-range">{min === null ? '—' : `${min}–${max}`}</span>
+                        <strong>{row.current ?? '—'}</strong>
+                      </div>
+                    )
+                  })}
                 </div>
               )}
               <div className="bc-checkup-history-list">
