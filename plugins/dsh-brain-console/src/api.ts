@@ -23,8 +23,62 @@ export function setApiBase(url: string): void {
   if (url !== '') apiBase = url.replace(/\/+$/, '')
 }
 
-/** 当前管理器地址（用于提示文案）。 */
+/**
+ * 当前管理器地址（用于提示文案）。
+ * @returns 管理器地址
+ */
 export const apiBaseUrl = (): string => apiBase
+
+/** 宿主下发的路径/地址配置。 */
+export interface PanelConfigView {
+  brainRoot: string
+  managerUrl: string
+  namedLauncher: string
+  launcherPath: string
+  scriptPath: string
+  logPath: string
+  namedLauncherExists: boolean
+  launcherExists: boolean
+  scriptExists: boolean
+  pythonw: string
+  configFile: string
+  sources: { brainRoot: 'file' | 'env' | 'none'; managerUrl: 'file' | 'env' | 'default' }
+}
+
+/**
+ * 读取宿主配置（同源路由，不走管理器地址）。
+ * @returns 宿主生效配置
+ */
+export const loadPanelConfig = async (): Promise<PanelConfigView> => {
+  const response = await fetch('/brain-console/api/config', { cache: 'no-store' })
+  if (!response.ok) throw new Error(`宿主配置接口不可用（${response.status}）`)
+  const data = await response.json() as Partial<PanelConfigView>
+  // 旧版宿主只返回 {managerUrl}：提示需要重启 DSH 才能配置路径
+  if (typeof data.managerUrl !== 'string' || typeof data.brainRoot !== 'string') {
+    throw new Error('宿主为旧版（仅下发 managerUrl）')
+  }
+  return data as PanelConfigView
+}
+
+/**
+ * 保存宿主配置（Brain 根目录 / 管理器地址）。
+ * @param patch - 待更新字段；空字符串表示清除并回退环境变量
+ * @returns 保存结果与新的生效配置
+ */
+export const savePanelConfig = async (
+  patch: { brainRoot?: string; managerUrl?: string },
+): Promise<{ ok: boolean; error?: string; config?: PanelConfigView }> => {
+  const response = await fetch('/brain-console/api/config', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(patch),
+  })
+  try {
+    return await response.json() as { ok: boolean; error?: string; config?: PanelConfigView }
+  } catch {
+    return { ok: false, error: `保存失败（${response.status}）` }
+  }
+}
 
 /** 单元动作的中文名。 */
 export const ACTION_LABEL: Record<UnitAction, string> = { start: '启动', stop: '停止', restart: '重启' }

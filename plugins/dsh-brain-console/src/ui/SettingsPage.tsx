@@ -6,7 +6,11 @@
  * 保存成功后通过回调让顶部告警立即使用新值；返回按钮回主面板。
  */
 import { useEffect, useState } from 'react'
-import { jget, loadStorageSummary, loadTrendThresholds, saveStorageThresholds, saveTrendThreshold } from '../api.ts'
+import {
+  jget, loadPanelConfig, loadStorageSummary, loadTrendThresholds,
+  savePanelConfig, saveStorageThresholds, saveTrendThreshold, setApiBase,
+  type PanelConfigView,
+} from '../api.ts'
 import { reasonOf } from './errors.ts'
 import { Button } from './primitives.ts'
 import { LOG_LEVELS, LOG_LINE_OPTIONS, loadPrefs, REFRESH_OPTIONS, savePrefs } from '../prefs.ts'
@@ -37,6 +41,11 @@ export function SettingsPage({ onBack, onDiskThresholdsChanged }: SettingsPagePr
   const [logLines, setLogLines] = useState(() => loadPrefs().logLines)
   const [logLevel, setLogLevel] = useState(() => loadPrefs().logLevel)
   const [groupOrder, setGroupOrder] = useState<string[]>([])
+  const [panelConfig, setPanelConfig] = useState<PanelConfigView | null>(null)
+  const [configError, setConfigError] = useState<string | null>(null)
+  const [brainRootInput, setBrainRootInput] = useState('')
+  const [managerUrlInput, setManagerUrlInput] = useState('')
+  const [savingPaths, setSavingPaths] = useState(false)
 
   useEffect(() => {
     void (async () => {
@@ -51,6 +60,20 @@ export function SettingsPage({ onBack, onDiskThresholdsChanged }: SettingsPagePr
         setLoaded(true)
       } catch (e) {
         setError(reasonOf(e))
+      }
+    })()
+  }, [])
+
+  // 宿主路径/地址配置：旧版宿主没有该路由时给出提示，不阻塞其余设置
+  useEffect(() => {
+    void (async () => {
+      try {
+        const config = await loadPanelConfig()
+        setPanelConfig(config)
+        setBrainRootInput(config.brainRoot)
+        setManagerUrlInput(config.managerUrl)
+      } catch (e) {
+        setConfigError(reasonOf(e))
       }
     })()
   }, [])
@@ -71,6 +94,31 @@ export function SettingsPage({ onBack, onDiskThresholdsChanged }: SettingsPagePr
       }
     })()
   }, [])
+
+  const savePaths = async (): Promise<void> => {
+    setError(null)
+    setNotice(null)
+    setSavingPaths(true)
+    try {
+      const result = await savePanelConfig({
+        brainRoot: brainRootInput.trim(),
+        managerUrl: managerUrlInput.trim(),
+      })
+      if (!result.ok || result.config === undefined) {
+        setError(result.error ?? '路径配置保存失败')
+        return
+      }
+      setPanelConfig(result.config)
+      setBrainRootInput(result.config.brainRoot)
+      setManagerUrlInput(result.config.managerUrl)
+      setApiBase(result.config.managerUrl)
+      setNotice('路径配置已保存：管理器地址即时生效，Brain 路径在下次启动管理器时生效')
+    } catch (e) {
+      setError(reasonOf(e))
+    } finally {
+      setSavingPaths(false)
+    }
+  }
 
   const saveDisk = async (): Promise<void> => {
     setError(null)
@@ -142,6 +190,61 @@ export function SettingsPage({ onBack, onDiskThresholdsChanged }: SettingsPagePr
 
       {error !== null && <div className="bc-backup-error">{error}</div>}
       {notice !== null && <div className="bc-settings-notice" role="status">{notice}</div>}
+
+      <section className="bc-settings-group">
+        <h3>路径</h3>
+        <p>Brain 根目录与管理器地址。其余路径（launcher / 脚本 / 日志）由根目录自动派生，不用逐个填。</p>
+        {configError !== null && (
+          <div className="bc-index-note">
+            宿主路径配置暂不可用（{configError}）。重启 DSH Web 后这里可编辑。
+          </div>
+        )}
+        <div className="bc-settings-row">
+          <label className="bc-settings-wide">
+            Brain 根目录
+            <input
+              className="bc-settings-input-wide"
+              value={brainRootInput}
+              disabled={panelConfig === null || savingPaths}
+              placeholder="留空则用 BRAIN_ROOT 环境变量"
+              onChange={(event) => setBrainRootInput(event.target.value)}
+              aria-label="Brain 根目录"
+            />
+          </label>
+          <label className="bc-settings-wide">
+            管理器地址
+            <input
+              className="bc-settings-input-wide"
+              value={managerUrlInput}
+              disabled={panelConfig === null || savingPaths}
+              placeholder="留空则用默认 http://127.0.0.1:19998"
+              onChange={(event) => setManagerUrlInput(event.target.value)}
+              aria-label="管理器地址"
+            />
+          </label>
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={panelConfig === null || savingPaths}
+            onClick={() => void savePaths()}
+          >
+            {savingPaths ? '保存中…' : '保存路径配置'}
+          </Button>
+        </div>
+        {panelConfig !== null && (
+          <div className="bc-settings-derived">
+            <span>派生路径（来源：{panelConfig.sources.brainRoot}）</span>
+            <div className="bc-settings-derived-row"><span>管理器脚本</span><code>{panelConfig.scriptPath || '—'}</code></div>
+            <div className="bc-settings-derived-row"><span>launcher</span><code>{panelConfig.launcherPath || '—'}</code></div>
+            <div className="bc-settings-derived-row"><span>pythonw</span><code>{panelConfig.pythonw}</code></div>
+            <div className="bc-settings-derived-row"><span>配置文件</span><code>{panelConfig.configFile}</code></div>
+            <div className="bc-settings-derived-row">
+              <span>检查</span>
+              <code>脚本 {panelConfig.scriptExists ? '存在' : '缺失'} · launcher {panelConfig.launcherPath !== '' && panelConfig.launcherExists ? '存在' : '缺失'}</code>
+            </div>
+          </div>
+        )}
+      </section>
 
       <section className="bc-settings-group">
         <h3>磁盘告警</h3>

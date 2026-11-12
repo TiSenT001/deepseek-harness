@@ -17,8 +17,42 @@ window.__ModuleLoader__.load({
 		function setApiBase(url) {
 			if (url !== "") apiBase = url.replace(/\/+$/, "");
 		}
-		/** 当前管理器地址（用于提示文案）。 */
+		/**
+		* 当前管理器地址（用于提示文案）。
+		* @returns 管理器地址
+		*/
 		const apiBaseUrl = () => apiBase;
+		/**
+		* 读取宿主配置（同源路由，不走管理器地址）。
+		* @returns 宿主生效配置
+		*/
+		const loadPanelConfig = async () => {
+			const response = await fetch("/brain-console/api/config", { cache: "no-store" });
+			if (!response.ok) throw new Error(`宿主配置接口不可用（${response.status}）`);
+			const data = await response.json();
+			if (typeof data.managerUrl !== "string" || typeof data.brainRoot !== "string") throw new Error("宿主为旧版（仅下发 managerUrl）");
+			return data;
+		};
+		/**
+		* 保存宿主配置（Brain 根目录 / 管理器地址）。
+		* @param patch - 待更新字段；空字符串表示清除并回退环境变量
+		* @returns 保存结果与新的生效配置
+		*/
+		const savePanelConfig = async (patch) => {
+			const response = await fetch("/brain-console/api/config", {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify(patch)
+			});
+			try {
+				return await response.json();
+			} catch {
+				return {
+					ok: false,
+					error: `保存失败（${response.status}）`
+				};
+			}
+		};
 		/** 单元动作的中文名。 */
 		const ACTION_LABEL = {
 			start: "启动",
@@ -2374,6 +2408,11 @@ window.__ModuleLoader__.load({
 			const [logLines, setLogLines] = (0, react.useState)(() => loadPrefs().logLines);
 			const [logLevel, setLogLevel] = (0, react.useState)(() => loadPrefs().logLevel);
 			const [groupOrder, setGroupOrder] = (0, react.useState)([]);
+			const [panelConfig, setPanelConfig] = (0, react.useState)(null);
+			const [configError, setConfigError] = (0, react.useState)(null);
+			const [brainRootInput, setBrainRootInput] = (0, react.useState)("");
+			const [managerUrlInput, setManagerUrlInput] = (0, react.useState)("");
+			const [savingPaths, setSavingPaths] = (0, react.useState)(false);
 			(0, react.useEffect)(() => {
 				(async () => {
 					try {
@@ -2393,6 +2432,18 @@ window.__ModuleLoader__.load({
 			(0, react.useEffect)(() => {
 				(async () => {
 					try {
+						const config = await loadPanelConfig();
+						setPanelConfig(config);
+						setBrainRootInput(config.brainRoot);
+						setManagerUrlInput(config.managerUrl);
+					} catch (e) {
+						setConfigError(reasonOf(e));
+					}
+				})();
+			}, []);
+			(0, react.useEffect)(() => {
+				(async () => {
+					try {
 						const answer = await jget("/units");
 						const names = Array.from(new Set(answer.units.map((unit) => unit.group)));
 						const preferred = loadPrefs().groupOrder;
@@ -2400,6 +2451,30 @@ window.__ModuleLoader__.load({
 					} catch {}
 				})();
 			}, []);
+			const savePaths = async () => {
+				setError(null);
+				setNotice(null);
+				setSavingPaths(true);
+				try {
+					const result = await savePanelConfig({
+						brainRoot: brainRootInput.trim(),
+						managerUrl: managerUrlInput.trim()
+					});
+					if (!result.ok || result.config === void 0) {
+						setError(result.error ?? "路径配置保存失败");
+						return;
+					}
+					setPanelConfig(result.config);
+					setBrainRootInput(result.config.brainRoot);
+					setManagerUrlInput(result.config.managerUrl);
+					setApiBase(result.config.managerUrl);
+					setNotice("路径配置已保存：管理器地址即时生效，Brain 路径在下次启动管理器时生效");
+				} catch (e) {
+					setError(reasonOf(e));
+				} finally {
+					setSavingPaths(false);
+				}
+			};
 			const saveDisk = async () => {
 				setError(null);
 				setNotice(null);
@@ -2476,6 +2551,90 @@ window.__ModuleLoader__.load({
 						className: "bc-settings-notice",
 						role: "status",
 						children: notice
+					}),
+					/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("section", {
+						className: "bc-settings-group",
+						children: [
+							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("h3", { children: "路径" }),
+							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", { children: "Brain 根目录与管理器地址。其余路径（launcher / 脚本 / 日志）由根目录自动派生，不用逐个填。" }),
+							configError !== null && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+								className: "bc-index-note",
+								children: [
+									"宿主路径配置暂不可用（",
+									configError,
+									"）。重启 DSH Web 后这里可编辑。"
+								]
+							}),
+							/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+								className: "bc-settings-row",
+								children: [
+									/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("label", {
+										className: "bc-settings-wide",
+										children: ["Brain 根目录", /* @__PURE__ */ (0, react_jsx_runtime.jsx)("input", {
+											className: "bc-settings-input-wide",
+											value: brainRootInput,
+											disabled: panelConfig === null || savingPaths,
+											placeholder: "留空则用 BRAIN_ROOT 环境变量",
+											onChange: (event) => setBrainRootInput(event.target.value),
+											"aria-label": "Brain 根目录"
+										})]
+									}),
+									/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("label", {
+										className: "bc-settings-wide",
+										children: ["管理器地址", /* @__PURE__ */ (0, react_jsx_runtime.jsx)("input", {
+											className: "bc-settings-input-wide",
+											value: managerUrlInput,
+											disabled: panelConfig === null || savingPaths,
+											placeholder: "留空则用默认 http://127.0.0.1:19998",
+											onChange: (event) => setManagerUrlInput(event.target.value),
+											"aria-label": "管理器地址"
+										})]
+									}),
+									/* @__PURE__ */ (0, react_jsx_runtime.jsx)(Button, {
+										size: "sm",
+										variant: "outline",
+										disabled: panelConfig === null || savingPaths,
+										onClick: () => void savePaths(),
+										children: savingPaths ? "保存中…" : "保存路径配置"
+									})
+								]
+							}),
+							panelConfig !== null && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+								className: "bc-settings-derived",
+								children: [
+									/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", { children: [
+										"派生路径（来源：",
+										panelConfig.sources.brainRoot,
+										"）"
+									] }),
+									/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+										className: "bc-settings-derived-row",
+										children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: "管理器脚本" }), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("code", { children: panelConfig.scriptPath || "—" })]
+									}),
+									/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+										className: "bc-settings-derived-row",
+										children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: "launcher" }), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("code", { children: panelConfig.launcherPath || "—" })]
+									}),
+									/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+										className: "bc-settings-derived-row",
+										children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: "pythonw" }), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("code", { children: panelConfig.pythonw })]
+									}),
+									/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+										className: "bc-settings-derived-row",
+										children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: "配置文件" }), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("code", { children: panelConfig.configFile })]
+									}),
+									/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+										className: "bc-settings-derived-row",
+										children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: "检查" }), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("code", { children: [
+											"脚本 ",
+											panelConfig.scriptExists ? "存在" : "缺失",
+											" · launcher ",
+											panelConfig.launcherPath !== "" && panelConfig.launcherExists ? "存在" : "缺失"
+										] })]
+									})
+								]
+							})
+						]
 					}),
 					/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("section", {
 						className: "bc-settings-group",
@@ -2664,6 +2823,31 @@ window.__ModuleLoader__.load({
 						]
 					})
 				]
+			});
+		}
+		//#endregion
+		//#region src/ui/SettingsIcon.tsx
+		/**
+		* 设置齿轮图标（内联 SVG，跟随当前文字色）。
+		* @param props - 逻辑尺寸，默认 16
+		* @returns 图标元素
+		*/
+		function SettingsIcon({ size = 16 }) {
+			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("svg", {
+				width: size,
+				height: size,
+				viewBox: "0 0 24 24",
+				fill: "none",
+				stroke: "currentColor",
+				strokeWidth: "1.7",
+				strokeLinecap: "round",
+				strokeLinejoin: "round",
+				"aria-hidden": "true",
+				children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("circle", {
+					cx: "12",
+					cy: "12",
+					r: "3.2"
+				}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("path", { d: "M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1.03 1.56V21a2 2 0 1 1-4 0v-.11a1.7 1.7 0 0 0-1.1-1.55 1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-1.55-1.03H3a2 2 0 1 1 0-4h.11a1.7 1.7 0 0 0 1.55-1.1 1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1.03-1.55V3a2 2 0 1 1 4 0v.11a1.7 1.7 0 0 0 1.03 1.55 1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.7 1.7 0 0 0-.34 1.87V9c.24.63.84 1.04 1.52 1.04H21a2 2 0 1 1 0 4h-.11a1.7 1.7 0 0 0-1.49 1z" })]
 			});
 		}
 		//#endregion
@@ -5095,6 +5279,40 @@ window.__ModuleLoader__.load({
   color: var(--dsw-alias-state-error-primary, #e35d6a);
 }
 
+.bc-settings-wide {
+  flex: 1 1 260px;
+}
+.bc-settings-input-wide {
+  flex: 1;
+  min-width: 180px;
+  padding: 3px 8px;
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--dsw-alias-label-primary);
+  font-size: 12px;
+  font-family: var(--ds-font-family-code, monospace);
+}
+.bc-settings-derived {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: 11px;
+  color: var(--dsw-alias-label-tertiary);
+}
+.bc-settings-derived-row {
+  display: flex;
+  gap: 8px;
+}
+.bc-settings-derived-row > span {
+  min-width: 72px;
+}
+.bc-settings-derived-row > code {
+  color: var(--dsw-alias-label-secondary);
+  font-family: var(--ds-font-family-code, monospace);
+  word-break: break-all;
+}
+
 .bc-settings {
   display: flex;
   flex-direction: column;
@@ -6854,11 +7072,10 @@ window.__ModuleLoader__.load({
 												className: "bc-updated",
 												children: ["最后刷新 ", feed.updatedAt]
 											}),
-											/* @__PURE__ */ (0, react_jsx_runtime.jsx)(Button, {
-												size: "sm",
-												variant: "ghost",
-												onClick: () => setSettingsOpen(true),
-												children: "设置"
+											/* @__PURE__ */ (0, react_jsx_runtime.jsx)(IconButton, {
+												label: "设置",
+												icon: SettingsIcon,
+												onClick: () => setSettingsOpen(true)
 											}),
 											/* @__PURE__ */ (0, react_jsx_runtime.jsx)(IconButton, {
 												label: "刷新",

@@ -13,6 +13,8 @@ import { closeSync, existsSync, mkdirSync, openSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 
+import { effectiveConfig, saveConfig, type PanelConfig } from './config.ts'
+
 export const name = 'dsh-brain-console'
 
 // webServer 由 web-app bundle 提供，且是异步激活的；声明 inject 让 Cordis 等它就绪后
@@ -20,13 +22,8 @@ export const name = 'dsh-brain-console'
 // （此前不声明 inject，靠装载顺序碰运气：宿主一启动就取 webServer，顺序一变就整行失败。）
 export const inject = ['webServer']
 
-// 管理器地址可由部署环境覆盖；默认本机 19998。浏览器半部经 /config 读取。
-const MANAGER_URL = process.env.BRAIN_MANAGER_URL ?? 'http://127.0.0.1:19998'
-// Machine paths come from the environment: BRAIN_ROOT (or OBSIDIAN_VAULT/.brain),
-// and PYTHONW via BRAIN_PYTHONW. An unset root yields a clear route error instead
-// of silently operating on a relative .brain directory.
-const BRAIN_ROOT = process.env.BRAIN_ROOT ?? (process.env.OBSIDIAN_VAULT ? join(process.env.OBSIDIAN_VAULT, '.brain') : '')
-const PYTHONW = process.env.BRAIN_PYTHONW ?? 'pythonw.exe'
+
+// 路径与地址来自配置（见 config.ts）：文件优先，环境变量兜底。
 
 interface RouteHost {
   /** 注册一个随插件生命周期释放的 effect。 */
@@ -43,11 +40,35 @@ interface RouteHost {
 const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms))
 
 async function managerAlive(): Promise<boolean> {
+  const config = effectiveConfig()
+  if (config.managerUrl === '') return false
   try {
-    const res = await fetch(`${MANAGER_URL}/health`, { signal: AbortSignal.timeout(1500) })
+    const res = await fetch(`${config.managerUrl}/health`, { signal: AbortSignal.timeout(1500) })
     return res.ok
   } catch {
     return false
+  }
+}
+
+/**
+ * 读取并解析 JSON 请求体（上限 8KB）。
+ * @param req - 宿主请求
+ * @returns 解析结果；空体/超限/坏 JSON 返回 {}
+ */
+async function readJsonBody(req: IncomingMessage): Promise<Record<string, unknown>> {
+  const chunks: Buffer[] = []
+  let size = 0
+  for await (const chunk of req) {
+    const buffer = Buffer.from(chunk as Buffer)
+    size += buffer.length
+    if (size > 8 * 1024) break
+    chunks.push(buffer)
+  }
+  try {
+    const parsed = JSON.parse(Buffer.concat(chunks).toString('utf8')) as unknown
+    return typeof parsed === 'object' && parsed !== null ? parsed as Record<string, unknown> : {}
+  } catch {
+    return {}
   }
 }
 
@@ -70,8 +91,9 @@ let managerStartingSince: number | null = null
 const MANAGER_START_WINDOW_MS = 120_000
 
 async function startManager(res: ServerResponse): Promise<void> {
-  if (BRAIN_ROOT.length === 0) {
-    send(res, 500, { error: 'BRAIN_ROOT is not configured: set BRAIN_ROOT or OBSIDIAN_VAULT for the dsh process' })
+  const config = effectiveConfig()
+  if (config.brainRoot === '') {
+    send(res, 500, { error: 'Brain 根目录未配置：在面板设置页填写，或设置 BRAIN_ROOT / OBSIDIAN_VAULT' })
     return
   }
   if (await managerAlive()) {
@@ -93,17 +115,19 @@ async function startManager(res: ServerResponse): Promise<void> {
 }
 
 async function spawnManager(res: ServerResponse): Promise<void> {
-  const script = join(BRAIN_ROOT, 'services', 'brain_manager.py')
+  const config = effectiveConfig()
+  const script = config.scriptPath
   // 优先用「带名字的 pythonw 副本」：任务管理器按 exe 的 FileDescription 显示进程名，
   // 直接跑 pythonw 会显示成 "Python"；副本由 tools/launcher/build_named_python.py 生成。
-  const named = join(BRAIN_ROOT, 'tools', 'launcher', 'py', 'brain_manager.exe')
-  const launcher = join(BRAIN_ROOT, 'tools', 'launcher', 'brain_manager.exe')
+  const named = config.namedLauncher
+  const launcher = config.launcherPath
+  const PYTHONW = config.pythonw
   if (!existsSync(script)) {
     send(res, 500, { error: `manager script missing (${script})` })
     return
   }
   if (existsSync(named)) {
-    const logPath = join(BRAIN_ROOT, 'logs', 'brain_manager.log')
+    const logPath = config.logPath
     mkdirSync(dirname(logPath), { recursive: true })
     const fd = openSync(logPath, 'a')
     try {
@@ -111,7 +135,7 @@ async function spawnManager(res: ServerResponse): Promise<void> {
         detached: true,
         stdio: ['ignore', fd, fd],
         windowsHide: true,
-        cwd: BRAIN_ROOT,
+        cwd: config.brainRoot,
         env: {
           ...process.env,
           PATH: `${PYTHONW.includes('\\') || PYTHONW.includes('/') ? `${dirname(PYTHONW)};` : ''}${process.env.PATH ?? ''}`,
@@ -126,7 +150,7 @@ async function spawnManager(res: ServerResponse): Promise<void> {
       detached: true,
       stdio: 'ignore',
       windowsHide: true,
-      cwd: BRAIN_ROOT,
+      cwd: config.brainRoot,
     })
     child.unref()
   } else {
@@ -153,7 +177,17 @@ export function apply(ctx: RouteHost): void {
         handler: async (req, res) => {
           const url = new URL(req.url ?? '/', 'http://localhost')
           if (url.pathname.endsWith('/config')) {
-            send(res, 200, { managerUrl: MANAGER_URL })
+            if (req.method === 'POST') {
+              const body = await readJsonBody(req)
+              const result = saveConfig({
+                brainRoot: typeof body.brainRoot === 'string' ? body.brainRoot : undefined,
+                managerUrl: typeof body.managerUrl === 'string' ? body.managerUrl : undefined,
+              })
+              send(res, result.ok ? 200 : 400, result)
+              return
+            }
+            const config: PanelConfig = effectiveConfig()
+            send(res, 200, config)
             return
           }
           if (url.pathname.endsWith('/manager/status')) {
