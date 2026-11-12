@@ -226,9 +226,16 @@ function NumberControl({ control, value, label, onChange }: {
   readonly onChange: (value: number) => void
 }): JSX.Element {
   const [draft, setDraft] = useState(String(value))
+  const [editing, setEditing] = useState(false)
   useEffect(() => {
-    setDraft(String(value))
-  }, [value])
+    if (!editing) setDraft(String(value))
+  }, [editing, value])
+  const apply = (raw: string): void => {
+    setDraft(raw)
+    const parsed = Number(raw)
+    if (raw.trim().length === 0 || !Number.isFinite(parsed)) return
+    onChange(Math.max(control.min ?? Number.NEGATIVE_INFINITY, parsed))
+  }
   const commit = (): void => {
     const parsed = Number(draft)
     if (!Number.isFinite(parsed)) {
@@ -246,8 +253,12 @@ function NumberControl({ control, value, label, onChange }: {
         min={control.min}
         step={control.step}
         value={draft}
-        onChange={(event) => setDraft(event.target.value)}
-        onBlur={commit}
+        onChange={(event) => apply(event.target.value)}
+        onFocus={() => setEditing(true)}
+        onBlur={() => {
+          setEditing(false)
+          commit()
+        }}
         onKeyDown={(event) => {
           if (event.key === 'Enter') {
             event.preventDefault()
