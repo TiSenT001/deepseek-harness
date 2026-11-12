@@ -6,7 +6,7 @@
  */
 import type {
   BackupListing, BatchRestartResult, BatchStartResult, BatchStopResult, CacheListing, CachePruneResult,
-  AutoRecoverStatus, CheckupResult, EmbedJobStatus, StorageSummary, TableInfo, TableUsage, FailedEdgesListing, HistoryListing, IndexHealth, PruneResult, RestoreResult, TrendThresholds, Unit, UnitAction,
+  AutoRecoverStatus, CheckupResult, EmbedJobStatus, StorageSummary, StorageThresholds, TableInfo, TableUsage, FailedEdgesListing, HistoryListing, IndexHealth, PruneResult, RestoreResult, TrendThresholds, Unit, UnitAction,
 } from './ui/types.ts'
 
 /** brain_manager 的 HTTP 地址。 */
@@ -79,6 +79,10 @@ export const pruneAutoRecoverEvents = (): Promise<{ ok: boolean; removed: number
 
 /** 只读统计 .brain 的目录/数据库占用。 */
 export const loadStorageSummary = (): Promise<StorageSummary> => jget<StorageSummary>('/storage/summary')
+
+/** 保存磁盘告警阈值（warn_gb / critical_percent）。 */
+export const saveStorageThresholds = (warnGb: number, criticalPercent: number): Promise<{ ok: boolean; thresholds?: StorageThresholds; error?: string }> =>
+  postJson<{ ok: boolean; thresholds?: StorageThresholds; error?: string }>('/storage/thresholds', { warn_gb: warnGb, critical_percent: criticalPercent })
 
 /** 清理代码里已不存在的僵尸心跳；返回删除的名字列表。 */
 export const pruneZombieHeartbeats = (): Promise<{ ok: boolean; removed: string[]; kept?: number; error?: string }> =>

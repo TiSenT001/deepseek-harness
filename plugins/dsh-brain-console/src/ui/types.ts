@@ -158,6 +158,12 @@ export interface StorageItem {
   modified_at: string | null
 }
 
+/** 磁盘告警阈值：可用 GB 与剩余占比。 */
+export interface StorageThresholds {
+  warn_gb: number
+  critical_percent: number
+}
+
 /** `/storage/summary` 的返回。 */
 export interface StorageSummary {
   ok: boolean
@@ -166,6 +172,7 @@ export interface StorageSummary {
   total_bytes: number
   items: StorageItem[]
   disk: { total_bytes: number | null; free_bytes: number | null }
+  thresholds?: StorageThresholds
 }
 
 /** 自愈线程记录的一条恢复尝试。 */
