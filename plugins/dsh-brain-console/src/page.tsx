@@ -68,6 +68,8 @@ export function ConsolePage(): JSX.Element {
   const [checkupOpen, setCheckupOpen] = useState(false)
   const [storageOpen, setStorageOpen] = useState(false)
   const [diskFree, setDiskFree] = useState<number | null>(null)
+  const [diskTotal, setDiskTotal] = useState<number | null>(null)
+  const [diskThresholds, setDiskThresholds] = useState<{ warn_gb: number; critical_percent: number } | null>(null)
   const [trend, setTrend] = useState<MetricKey | null>(null)
   const [detailName, setDetailName] = useState<string | null>(null)
   const [stopGroup, setStopGroup] = useState<{ group: string; names: string[] } | null>(null)
@@ -168,6 +170,9 @@ export function ConsolePage(): JSX.Element {
       dependentsByUnit[dependency] = [...(dependentsByUnit[dependency] ?? []), unit.name]
     }
   }
+  const diskPercent = diskFree !== null && diskTotal !== null && diskTotal > 0
+    ? (diskFree / diskTotal) * 100
+    : null
   const now = Date.now()
   const detailUnit = detailName === null ? undefined : feed.units.find((unit) => unit.name === detailName)
   const openLog = logDock.log
@@ -199,6 +204,8 @@ export function ConsolePage(): JSX.Element {
       try {
         const summary = await loadStorageSummary()
         setDiskFree(summary.disk?.free_bytes ?? null)
+        setDiskTotal(summary.disk?.total_bytes ?? null)
+        setDiskThresholds(summary.thresholds ?? null)
       } catch {
         // 管理器短暂不可用：保留读数，下次刷新再试
       }
@@ -286,16 +293,16 @@ export function ConsolePage(): JSX.Element {
                 {cronAlerts?.zombies} 条失效心跳
               </button>
             )}
-            {diskFree !== null && diskFree < 10 * 1024 ** 3 && (
+            {diskFree !== null && diskThresholds !== null && diskFree / 1024 ** 3 < diskThresholds.warn_gb && (
               <button
                 type="button"
                 className="bc-header-alert"
-                data-tone="warn"
+                data-tone={diskPercent !== null && diskPercent < diskThresholds.critical_percent ? 'bad' : 'warn'}
                 title="打开存储概览"
                 onClick={() => setStorageOpen(true)}
               >
                 <span className="bc-status-dot" aria-hidden="true" />
-                磁盘可用 {(diskFree / 1024 ** 3).toFixed(1)} GB
+                磁盘可用 {(diskFree / 1024 ** 3).toFixed(1)} GB{diskPercent !== null ? ` · ${diskPercent.toFixed(1)}%` : ''}
               </button>
             )}
             <div className="bc-header-actions">
@@ -418,7 +425,12 @@ export function ConsolePage(): JSX.Element {
       {indexOpen && <IndexHealthDialog onClose={() => setIndexOpen(false)} />}
   {autoRecoverOpen && <AutoRecoverDialog onClose={() => setAutoRecoverOpen(false)} />}
   {checkupOpen && <SystemCheckupDialog onClose={() => setCheckupOpen(false)} />}
-  {storageOpen && <StorageDialog onClose={() => setStorageOpen(false)} />}
+  {storageOpen && (
+    <StorageDialog
+      onClose={() => setStorageOpen(false)}
+      onThresholdsChanged={(thresholds) => setDiskThresholds(thresholds)}
+    />
+  )}
 
       {cacheOpen && (
         <CacheDialog
