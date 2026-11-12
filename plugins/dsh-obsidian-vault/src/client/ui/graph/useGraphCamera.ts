@@ -106,10 +106,8 @@ export function useGraphCamera({ positionsRef, loopRef, settledRef }: GraphCamer
 
   const zoomAt = useCallback((factor: number, clientX: number, clientY: number) => {
     const floor = Math.max(ZOOM_MIN, zoomFloorRef.current)
+    const previous = zoomRef.current
     const next = Math.min(ZOOM_MAX, Math.max(floor, zoomTargetRef.current * factor))
-    zoomTargetRef.current = next
-    zoomRef.current = next
-    setZoom(next)
     // A wheel gesture takes over from zoom-to-fit even if the surface rect is
     // temporarily collapsed; otherwise the fit target overwrites every step.
     fitRef.current = false
@@ -119,14 +117,22 @@ export function useGraphCamera({ positionsRef, loopRef, settledRef }: GraphCamer
       // A collapsed surface would compute a huge pan and push the graph
       // off-screen, so only the zoom factor changes here.
       zoomTargetRef.current = next
+      zoomRef.current = next
+      setZoom(next)
       return
     }
     const sx = clientX - rect.left - rect.width / 2
     const sy = clientY - rect.top - rect.height / 2
-    const worldX = (sx - pan.x) / zoomRef.current
-    const worldY = (sy - pan.y) / zoomRef.current
-    setPan({ x: sx - worldX * next, y: sy - worldY * next })
-  }, [pan.x, pan.y])
+    // Anchor the world point under the pointer: keep it fixed while the scale
+    // changes from `previous` to `next`.
+    setPan(current => ({
+      x: sx - ((sx - current.x) / previous) * next,
+      y: sy - ((sy - current.y) / previous) * next,
+    }))
+    zoomTargetRef.current = next
+    zoomRef.current = next
+    setZoom(next)
+  }, [])
 
   const dragBegins = useCallback(() => {
     fitRef.current = false
