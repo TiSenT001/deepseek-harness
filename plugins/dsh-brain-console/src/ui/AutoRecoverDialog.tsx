@@ -7,6 +7,7 @@
 import { useEffect, useState } from 'react'
 import { diagnosticsFileUrl, loadAutoRecover, pruneAutoRecoverBundles, pruneAutoRecoverEvents } from '../api.ts'
 import { reasonOf } from './errors.ts'
+import { useCopy } from './useCopy.ts'
 import { Button } from './primitives.ts'
 import { Dialog } from './Dialog.tsx'
 import type { AutoRecoverStatus } from './types.ts'
@@ -31,7 +32,7 @@ function when(at: number): string {
 export function AutoRecoverDialog({ onClose }: AutoRecoverDialogProps): JSX.Element {
   const [status, setStatus] = useState<AutoRecoverStatus | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [copied, setCopied] = useState(false)
+  const { copied, copy } = useCopy(1500)
   const [armed, setArmed] = useState<'bundles' | 'events' | null>(null)
   const [busy, setBusy] = useState(false)
 
@@ -70,13 +71,7 @@ export function AutoRecoverDialog({ onClose }: AutoRecoverDialogProps): JSX.Elem
   const copyBundles = async (): Promise<void> => {
     const paths = events.map((event) => event.bundle).filter((path): path is string => Boolean(path))
     if (paths.length === 0) return
-    try {
-      await navigator.clipboard.writeText(paths.join('\n'))
-      setCopied(true)
-      window.setTimeout(() => setCopied(false), 1500)
-    } catch {
-      // 剪贴板不可用时保持原样，避免误报「已复制」
-    }
+    await copy(paths.join('\n'))
   }
 
   return (

@@ -7,6 +7,8 @@
  */
 import { useEffect, useState } from 'react'
 import { clearCheckupHistory, loadSystemCheckup, loadTableInfo, loadTableUsage } from '../api.ts'
+import { downloadCsv, downloadJson, todayStamp } from './download.ts'
+import { useCopy } from './useCopy.ts'
 import { Sparkline } from './Sparkline.tsx'
 import { reasonOf } from './errors.ts'
 import { Button } from './primitives.ts'
@@ -29,26 +31,6 @@ function diff(before: number | null | undefined, after: number | null | undefine
   const delta = after - before
   if (delta === 0) return ''
   return delta > 0 ? `（+${delta}）` : `（${delta}）`
-}
-
-/** 复制文本；navigator.clipboard 无权限时退回 textarea + execCommand。 */
-async function copyText(value: string): Promise<void> {
-  try {
-    await navigator.clipboard.writeText(value)
-    return
-  } catch {
-    // 无剪贴板权限时走兼容路径
-  }
-  const area = document.createElement('textarea')
-  area.value = value
-  area.setAttribute('readonly', '')
-  area.style.position = 'fixed'
-  area.style.opacity = '0'
-  document.body.appendChild(area)
-  area.select()
-  const ok = document.execCommand('copy')
-  document.body.removeChild(area)
-  if (!ok) throw new Error('浏览器拒绝了复制')
 }
 
 /** 一条历史记录的摘要行。 */
@@ -136,7 +118,7 @@ export function SystemCheckupDialog({ onClose }: SystemCheckupDialogProps): JSX.
   const [usage, setUsage] = useState<Record<string, TableUsage>>({})
   const [openUsage, setOpenUsage] = useState<string | null>(null)
   const [usageBusy, setUsageBusy] = useState<string | null>(null)
-  const [copied, setCopied] = useState(false)
+  const { copied, copy } = useCopy()
   const [armedClear, setArmedClear] = useState(false)
   const [clearing, setClearing] = useState(false)
 
@@ -247,50 +229,24 @@ export function SystemCheckupDialog({ onClose }: SystemCheckupDialogProps): JSX.
   }
 
   const exportCsv = (): void => {
-    const header = 'at,total_tables,orphan,empty,bloated'
-    const rows = history.map((item) => [
-      item.at,
-      item.total_tables ?? '',
-      item.orphan,
-      item.empty,
-      item.bloated,
-    ].join(','))
-    const blob = new Blob([`${header}\n${rows.join('\n')}\n`], { type: 'text/csv;charset=utf-8' })
-    const url = URL.createObjectURL(blob)
-    const anchorEl = document.createElement('a')
-    anchorEl.href = url
-    anchorEl.download = `brain-checkup-${new Date().toISOString().slice(0, 10)}.csv`
-    document.body.appendChild(anchorEl)
-    anchorEl.click()
-    anchorEl.remove()
-    URL.revokeObjectURL(url)
+    downloadCsv(
+      `brain-checkup-${todayStamp()}.csv`,
+      ['at', 'total_tables', 'orphan', 'empty', 'bloated'],
+      history.map((item) => [item.at, item.total_tables ?? '', item.orphan, item.empty, item.bloated]),
+    )
   }
 
   const exportJson = (): void => {
-    const payload = {
+    downloadJson(`brain-checkup-history-${todayStamp()}.json`, {
       exported_at: new Date().toISOString(),
       count: history.length,
       history,
-    }
-    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json;charset=utf-8' })
-    const url = URL.createObjectURL(blob)
-    const anchorEl = document.createElement('a')
-    anchorEl.href = url
-    anchorEl.download = `brain-checkup-history-${new Date().toISOString().slice(0, 10)}.json`
-    document.body.appendChild(anchorEl)
-    anchorEl.click()
-    anchorEl.remove()
-    URL.revokeObjectURL(url)
+    })
   }
 
   const copySummary = async (): Promise<void> => {
-    try {
-      await copyText(buildSummary())
-      setCopied(true)
-      window.setTimeout(() => setCopied(false), 1600)
-    } catch (e) {
-      setError(`复制失败：${reasonOf(e)}`)
-    }
+    const ok = await copy(buildSummary())
+    if (!ok) setError('复制失败：浏览器拒绝了剪贴板写入')
   }
 
   return (

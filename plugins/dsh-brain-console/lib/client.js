@@ -1394,6 +1394,65 @@ window.__ModuleLoader__.load({
 			});
 		}
 		//#endregion
+		//#region src/ui/clipboard.ts
+		/**
+		* 剪贴板工具：优先 navigator.clipboard，失败时回退 textarea + execCommand。
+		*/
+		/**
+		* 复制一段文本。
+		* @param value - 待复制内容
+		* @returns 是否复制成功
+		*/
+		async function copyText(value) {
+			try {
+				await navigator.clipboard.writeText(value);
+				return true;
+			} catch {}
+			const area = document.createElement("textarea");
+			area.value = value;
+			area.setAttribute("readonly", "");
+			area.style.position = "fixed";
+			area.style.opacity = "0";
+			document.body.appendChild(area);
+			area.select();
+			let copied = false;
+			try {
+				copied = document.execCommand("copy");
+			} catch {
+				copied = false;
+			}
+			area.remove();
+			return copied;
+		}
+		//#endregion
+		//#region src/ui/useCopy.ts
+		/**
+		* 复制反馈状态：成功后在 timeout 毫秒内返回 copied=true，供按钮显示「已复制」。
+		*/
+		/**
+		* 渲染复制反馈状态。
+		* @param timeout - 「已复制」保持的毫秒数
+		* @returns copied 状态与 copy 函数
+		*/
+		function useCopy(timeout = 1600) {
+			const [copied, setCopied] = (0, react.useState)(false);
+			const timer = (0, react.useRef)(null);
+			(0, react.useEffect)(() => () => {
+				if (timer.current !== null) window.clearTimeout(timer.current);
+			}, []);
+			const copy = async (value) => {
+				if (!await copyText(value)) return false;
+				setCopied(true);
+				if (timer.current !== null) window.clearTimeout(timer.current);
+				timer.current = window.setTimeout(() => setCopied(false), timeout);
+				return true;
+			};
+			return {
+				copied,
+				copy
+			};
+		}
+		//#endregion
 		//#region src/ui/AutoRecoverDialog.tsx
 		/**
 		* 自动恢复记录：崩溃自愈线程最近 20 次尝试的时间线。
@@ -1415,7 +1474,7 @@ window.__ModuleLoader__.load({
 		function AutoRecoverDialog({ onClose }) {
 			const [status, setStatus] = (0, react.useState)(null);
 			const [error, setError] = (0, react.useState)(null);
-			const [copied, setCopied] = (0, react.useState)(false);
+			const { copied, copy } = useCopy(1500);
 			const [armed, setArmed] = (0, react.useState)(null);
 			const [busy, setBusy] = (0, react.useState)(false);
 			const load = async () => {
@@ -1449,11 +1508,7 @@ window.__ModuleLoader__.load({
 			const copyBundles = async () => {
 				const paths = events.map((event) => event.bundle).filter((path) => Boolean(path));
 				if (paths.length === 0) return;
-				try {
-					await navigator.clipboard.writeText(paths.join("\n"));
-					setCopied(true);
-					window.setTimeout(() => setCopied(false), 1500);
-				} catch {}
+				await copy(paths.join("\n"));
 			};
 			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)(Dialog, {
 				open: true,
@@ -1599,6 +1654,42 @@ window.__ModuleLoader__.load({
 			});
 		}
 		//#endregion
+		//#region src/ui/download.ts
+		/**
+		* 浏览器下载工具：统一 Blob / 直链两种下载，避免各对话框重复写 anchor 逻辑。
+		*/
+		/** 触发一次文本文件下载。 */
+		function downloadText(filename, text, mime) {
+			const blob = new Blob([text], { type: `${mime};charset=utf-8` });
+			const url = URL.createObjectURL(blob);
+			try {
+				downloadUrl(url, filename);
+			} finally {
+				URL.revokeObjectURL(url);
+			}
+		}
+		/** 触发一次 CSV 下载（自动拼接表头与行）。 */
+		function downloadCsv(filename, header, rows) {
+			downloadText(filename, `${[header.join(","), ...rows.map((row) => row.map((cell) => String(cell)).join(","))].join("\n")}\n`, "text/csv");
+		}
+		/** 触发一次 JSON 下载（两空格缩进，便于阅读）。 */
+		function downloadJson(filename, value) {
+			downloadText(filename, `${JSON.stringify(value, null, 2)}\n`, "application/json");
+		}
+		/** 用 anchor 触发下载一个 URL（blob: 或 http(s):）。 */
+		function downloadUrl(url, filename) {
+			const anchor = document.createElement("a");
+			anchor.href = url;
+			anchor.download = filename;
+			document.body.appendChild(anchor);
+			anchor.click();
+			anchor.remove();
+		}
+		/** 当前日期，格式 YYYY-MM-DD（用于文件名）。 */
+		function todayStamp() {
+			return (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
+		}
+		//#endregion
 		//#region src/ui/smooth.ts
 		/** 统一保留一位小数，减小 path 体积。 */
 		function fmt(value) {
@@ -1727,23 +1818,6 @@ window.__ModuleLoader__.load({
 			if (delta === 0) return "";
 			return delta > 0 ? `（+${delta}）` : `（${delta}）`;
 		}
-		/** 复制文本；navigator.clipboard 无权限时退回 textarea + execCommand。 */
-		async function copyText(value) {
-			try {
-				await navigator.clipboard.writeText(value);
-				return;
-			} catch {}
-			const area = document.createElement("textarea");
-			area.value = value;
-			area.setAttribute("readonly", "");
-			area.style.position = "fixed";
-			area.style.opacity = "0";
-			document.body.appendChild(area);
-			area.select();
-			const ok = document.execCommand("copy");
-			document.body.removeChild(area);
-			if (!ok) throw new Error("浏览器拒绝了复制");
-		}
 		/** 一条历史记录的摘要行。 */
 		function HistoryRow({ item }) {
 			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
@@ -1859,7 +1933,7 @@ window.__ModuleLoader__.load({
 			const [usage, setUsage] = (0, react.useState)({});
 			const [openUsage, setOpenUsage] = (0, react.useState)(null);
 			const [usageBusy, setUsageBusy] = (0, react.useState)(null);
-			const [copied, setCopied] = (0, react.useState)(false);
+			const { copied, copy } = useCopy();
 			const [armedClear, setArmedClear] = (0, react.useState)(false);
 			const [clearing, setClearing] = (0, react.useState)(false);
 			const run = async () => {
@@ -1985,48 +2059,29 @@ window.__ModuleLoader__.load({
 				}
 			};
 			const exportCsv = () => {
-				const header = "at,total_tables,orphan,empty,bloated";
-				const rows = history.map((item) => [
+				downloadCsv(`brain-checkup-${todayStamp()}.csv`, [
+					"at",
+					"total_tables",
+					"orphan",
+					"empty",
+					"bloated"
+				], history.map((item) => [
 					item.at,
 					item.total_tables ?? "",
 					item.orphan,
 					item.empty,
 					item.bloated
-				].join(","));
-				const blob = new Blob([`${header}\n${rows.join("\n")}\n`], { type: "text/csv;charset=utf-8" });
-				const url = URL.createObjectURL(blob);
-				const anchorEl = document.createElement("a");
-				anchorEl.href = url;
-				anchorEl.download = `brain-checkup-${(/* @__PURE__ */ new Date()).toISOString().slice(0, 10)}.csv`;
-				document.body.appendChild(anchorEl);
-				anchorEl.click();
-				anchorEl.remove();
-				URL.revokeObjectURL(url);
+				]));
 			};
 			const exportJson = () => {
-				const payload = {
+				downloadJson(`brain-checkup-history-${todayStamp()}.json`, {
 					exported_at: (/* @__PURE__ */ new Date()).toISOString(),
 					count: history.length,
 					history
-				};
-				const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json;charset=utf-8" });
-				const url = URL.createObjectURL(blob);
-				const anchorEl = document.createElement("a");
-				anchorEl.href = url;
-				anchorEl.download = `brain-checkup-history-${(/* @__PURE__ */ new Date()).toISOString().slice(0, 10)}.json`;
-				document.body.appendChild(anchorEl);
-				anchorEl.click();
-				anchorEl.remove();
-				URL.revokeObjectURL(url);
+				});
 			};
 			const copySummary = async () => {
-				try {
-					await copyText(buildSummary());
-					setCopied(true);
-					window.setTimeout(() => setCopied(false), 1600);
-				} catch (e) {
-					setError(`复制失败：${reasonOf(e)}`);
-				}
+				if (!await copy(buildSummary())) setError("复制失败：浏览器拒绝了剪贴板写入");
 			};
 			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)(Dialog, {
 				open: true,
@@ -2711,83 +2766,457 @@ window.__ModuleLoader__.load({
 			});
 		}
 		//#endregion
-		//#region src/ui/SettingsPage.tsx
+		//#region src/ui/settings/SettingsSection.tsx
 		/**
-		* 设置页：面板内可编辑的部署参数集中在这里。
-		*
-		* 当前两组：磁盘告警（可用 GB / 剩余占比，存大脑 data/storage_thresholds.json）
-		* 与趋势告警（失败边数 / 库大小 MB，存大脑 data/trend_thresholds.json）。
-		* 保存成功后通过回调让顶部告警立即使用新值；返回按钮回主面板。
+		* 渲染设置分组。
+		* @param props - 标题、说明与内容
+		* @returns 分组元素
+		*/
+		function SettingsSection({ title, description, children }) {
+			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("section", {
+				className: "bc-settings-group",
+				children: [
+					/* @__PURE__ */ (0, react_jsx_runtime.jsx)("h3", { children: title }),
+					description !== void 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", { children: description }),
+					children
+				]
+			});
+		}
+		//#endregion
+		//#region src/ui/settings/PathSettings.tsx
+		/**
+		* 路径设置：Brain 根目录与管理器地址，保存到宿主配置文件；
+		* launcher / 脚本 / 日志等路径由根目录自动派生，这里只读展示。
 		*/
 		/**
-		* 渲染设置页。
-		* @param props - 返回回调与磁盘阈值回传
-		* @returns 设置页元素（挂载即读当前阈值）
+		* 渲染路径设置分组。
+		* @param props - 提示回调
+		* @returns 分组元素
 		*/
-		function SettingsPage({ onBack, onDiskThresholdsChanged }) {
+		function PathSettings({ onNotice, onError }) {
+			const [config, setConfig] = (0, react.useState)(null);
+			const [configError, setConfigError] = (0, react.useState)(null);
+			const [brainRoot, setBrainRoot] = (0, react.useState)("");
+			const [managerUrl, setManagerUrl] = (0, react.useState)("");
+			const [saving, setSaving] = (0, react.useState)(false);
+			(0, react.useEffect)(() => {
+				(async () => {
+					try {
+						const answer = await loadPanelConfig();
+						setConfig(answer);
+						setBrainRoot(answer.brainRoot);
+						setManagerUrl(answer.managerUrl);
+					} catch (e) {
+						setConfigError(reasonOf(e));
+					}
+				})();
+			}, []);
+			const save = async () => {
+				setSaving(true);
+				try {
+					const result = await savePanelConfig({
+						brainRoot: brainRoot.trim(),
+						managerUrl: managerUrl.trim()
+					});
+					if (!result.ok || result.config === void 0) {
+						onError?.(result.error ?? "路径配置保存失败");
+						return;
+					}
+					setConfig(result.config);
+					setBrainRoot(result.config.brainRoot);
+					setManagerUrl(result.config.managerUrl);
+					setApiBase(result.config.managerUrl);
+					onNotice?.("路径配置已保存：管理器地址即时生效，Brain 路径在下次启动管理器时生效");
+				} catch (e) {
+					onError?.(reasonOf(e));
+				} finally {
+					setSaving(false);
+				}
+			};
+			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)(SettingsSection, {
+				title: "路径",
+				description: "Brain 根目录与管理器地址。其余路径（launcher / 脚本 / 日志）由根目录自动派生，不用逐个填。",
+				children: [
+					configError !== null && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+						className: "bc-index-note",
+						children: [
+							"宿主路径配置暂不可用（",
+							configError,
+							"）。重启 DSH Web 后这里可编辑。"
+						]
+					}),
+					/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+						className: "bc-settings-row",
+						children: [
+							/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("label", {
+								className: "bc-settings-wide",
+								children: ["Brain 根目录", /* @__PURE__ */ (0, react_jsx_runtime.jsx)("input", {
+									className: "bc-settings-input-wide",
+									value: brainRoot,
+									disabled: config === null || saving,
+									placeholder: "留空则用 BRAIN_ROOT 环境变量",
+									onChange: (event) => setBrainRoot(event.target.value),
+									"aria-label": "Brain 根目录"
+								})]
+							}),
+							/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("label", {
+								className: "bc-settings-wide",
+								children: ["管理器地址", /* @__PURE__ */ (0, react_jsx_runtime.jsx)("input", {
+									className: "bc-settings-input-wide",
+									value: managerUrl,
+									disabled: config === null || saving,
+									placeholder: "留空则用默认 http://127.0.0.1:19998",
+									onChange: (event) => setManagerUrl(event.target.value),
+									"aria-label": "管理器地址"
+								})]
+							}),
+							/* @__PURE__ */ (0, react_jsx_runtime.jsx)(Button, {
+								size: "sm",
+								variant: "outline",
+								disabled: config === null || saving,
+								onClick: () => void save(),
+								children: saving ? "保存中…" : "保存路径配置"
+							})
+						]
+					}),
+					config !== null && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+						className: "bc-settings-derived",
+						children: [
+							/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", { children: [
+								"派生路径（来源：",
+								config.sources.brainRoot,
+								"）"
+							] }),
+							/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+								className: "bc-settings-derived-row",
+								children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: "管理器脚本" }), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("code", { children: config.scriptPath || "—" })]
+							}),
+							/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+								className: "bc-settings-derived-row",
+								children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: "launcher" }), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("code", { children: config.launcherPath || "—" })]
+							}),
+							/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+								className: "bc-settings-derived-row",
+								children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: "pythonw" }), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("code", { children: config.pythonw })]
+							}),
+							/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+								className: "bc-settings-derived-row",
+								children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: "配置文件" }), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("code", { children: config.configFile })]
+							}),
+							/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+								className: "bc-settings-derived-row",
+								children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: "检查" }), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("code", { children: [
+									"脚本 ",
+									config.scriptExists ? "存在" : "缺失",
+									" · launcher ",
+									config.launcherPath !== "" && config.launcherExists ? "存在" : "缺失"
+								] })]
+							})
+						]
+					})
+				]
+			});
+		}
+		//#endregion
+		//#region src/ui/settings/ThresholdSettings.tsx
+		/**
+		* 阈值设置：磁盘告警、定时任务过期、趋势告警三组，读写大脑侧配置。
+		* 磁盘阈值保存后通过回调通知页面刷新顶部告警。
+		*/
+		/**
+		* 渲染阈值设置分组。
+		* @param props - 磁盘阈值回调与提示回调
+		* @returns 分组元素
+		*/
+		function ThresholdSettings({ onDiskThresholdsChanged, onNotice, onError }) {
 			const [warnInput, setWarnInput] = (0, react.useState)("");
 			const [criticalInput, setCriticalInput] = (0, react.useState)("");
 			const [failureInput, setFailureInput] = (0, react.useState)("");
 			const [dbInput, setDbInput] = (0, react.useState)("");
-			const [loaded, setLoaded] = (0, react.useState)(false);
-			const [saving, setSaving] = (0, react.useState)(null);
-			const [error, setError] = (0, react.useState)(null);
-			const [notice, setNotice] = (0, react.useState)(null);
-			const [refreshSeconds, setRefreshSeconds] = (0, react.useState)(() => loadPrefs().refreshSeconds);
-			const [logLines, setLogLines] = (0, react.useState)(() => loadPrefs().logLines);
-			const [logLevel, setLogLevel] = (0, react.useState)(() => loadPrefs().logLevel);
-			const [lastLogUnit, setLastLogUnit] = (0, react.useState)(() => loadPrefs().lastLogUnit);
-			const [logDockOpen, setLogDockOpen] = (0, react.useState)(() => loadPrefs().logDockOpen);
-			const [groupOrder, setGroupOrder] = (0, react.useState)([]);
-			const [panelConfig, setPanelConfig] = (0, react.useState)(null);
-			const [configError, setConfigError] = (0, react.useState)(null);
-			const [brainRootInput, setBrainRootInput] = (0, react.useState)("");
-			const [managerUrlInput, setManagerUrlInput] = (0, react.useState)("");
-			const [savingPaths, setSavingPaths] = (0, react.useState)(false);
 			const [cronHoursInput, setCronHoursInput] = (0, react.useState)("");
 			const [cronFactorInput, setCronFactorInput] = (0, react.useState)("");
-			const [savingCron, setSavingCron] = (0, react.useState)(false);
+			const [loaded, setLoaded] = (0, react.useState)(false);
+			const [saving, setSaving] = (0, react.useState)(null);
 			(0, react.useEffect)(() => {
 				(async () => {
 					try {
-						const [summary, trend] = await Promise.all([loadStorageSummary(), loadTrendThresholds()]);
+						const [summary, trend, cron] = await Promise.all([
+							loadStorageSummary(),
+							loadTrendThresholds(),
+							loadCronThresholds()
+						]);
 						setWarnInput(String(summary.thresholds?.warn_gb ?? ""));
 						setCriticalInput(String(summary.thresholds?.critical_percent ?? ""));
 						const failure = trend.thresholds.failure_edges ?? trend.defaults.failure_edges;
 						const db = trend.thresholds.db_size_mb ?? trend.defaults.db_size_mb;
 						setFailureInput(failure === null || failure === void 0 ? "" : String(failure));
 						setDbInput(db === null || db === void 0 ? "" : String(db));
+						setCronHoursInput(String(cron.stale_hours));
+						setCronFactorInput(String(cron.stale_factor));
 						setLoaded(true);
 					} catch (e) {
-						setError(reasonOf(e));
+						onError?.(reasonOf(e));
 					}
 				})();
 			}, []);
+			const saveDisk = async () => {
+				const warn = Number(warnInput);
+				const critical = Number(criticalInput);
+				if (!Number.isFinite(warn) || !Number.isFinite(critical)) {
+					onError?.("磁盘阈值必须是数字");
+					return;
+				}
+				setSaving("disk");
+				try {
+					const result = await saveStorageThresholds(warn, critical);
+					if (!result.ok) {
+						onError?.(result.error ?? "保存失败");
+						return;
+					}
+					if (result.thresholds !== void 0) {
+						setWarnInput(String(result.thresholds.warn_gb));
+						setCriticalInput(String(result.thresholds.critical_percent));
+						onDiskThresholdsChanged?.(result.thresholds);
+					}
+					onNotice?.("磁盘告警阈值已保存");
+				} catch (e) {
+					onError?.(reasonOf(e));
+				} finally {
+					setSaving(null);
+				}
+			};
+			const saveCron = async () => {
+				const hours = Number(cronHoursInput);
+				const factor = Number(cronFactorInput);
+				if (!Number.isFinite(hours) || !Number.isFinite(factor)) {
+					onError?.("定时任务阈值必须是数字");
+					return;
+				}
+				setSaving("cron");
+				try {
+					const result = await saveCronThresholds(hours, factor);
+					if (!result.ok || result.thresholds === void 0) {
+						onError?.(result.error ?? "保存失败");
+						return;
+					}
+					setCronHoursInput(String(result.thresholds.stale_hours));
+					setCronFactorInput(String(result.thresholds.stale_factor));
+					onNotice?.("定时任务过期阈值已保存");
+				} catch (e) {
+					onError?.(reasonOf(e));
+				} finally {
+					setSaving(null);
+				}
+			};
+			const saveTrend = async () => {
+				const failure = Number(failureInput);
+				const db = Number(dbInput);
+				if (!Number.isFinite(failure) || !Number.isFinite(db)) {
+					onError?.("趋势阈值必须是数字");
+					return;
+				}
+				setSaving("trend");
+				try {
+					const first = await saveTrendThreshold("failure_edges", failure);
+					if (!first.ok) {
+						onError?.(first.error ?? "保存失败");
+						return;
+					}
+					const second = await saveTrendThreshold("db_size_mb", db);
+					if (!second.ok) {
+						onError?.(second.error ?? "保存失败");
+						return;
+					}
+					onNotice?.("趋势告警阈值已保存");
+				} catch (e) {
+					onError?.(reasonOf(e));
+				} finally {
+					setSaving(null);
+				}
+			};
+			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)(react_jsx_runtime.Fragment, { children: [
+				/* @__PURE__ */ (0, react_jsx_runtime.jsx)(SettingsSection, {
+					title: "磁盘告警",
+					description: "可用空间低于 N GB 时顶部显示黄色提示；剩余占比低于 M% 时标红。",
+					children: /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+						className: "bc-settings-row",
+						children: [
+							/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("label", { children: [
+								"可用 <",
+								/* @__PURE__ */ (0, react_jsx_runtime.jsx)("input", {
+									className: "bc-settings-input",
+									inputMode: "decimal",
+									value: warnInput,
+									disabled: !loaded,
+									onChange: (event) => setWarnInput(event.target.value),
+									"aria-label": "磁盘可用 GB 阈值"
+								}),
+								"GB"
+							] }),
+							/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("label", { children: [
+								"占比 <",
+								/* @__PURE__ */ (0, react_jsx_runtime.jsx)("input", {
+									className: "bc-settings-input",
+									inputMode: "decimal",
+									value: criticalInput,
+									disabled: !loaded,
+									onChange: (event) => setCriticalInput(event.target.value),
+									"aria-label": "磁盘剩余占比阈值"
+								}),
+								"%"
+							] }),
+							/* @__PURE__ */ (0, react_jsx_runtime.jsx)(Button, {
+								size: "sm",
+								variant: "outline",
+								disabled: !loaded || saving !== null,
+								onClick: () => void saveDisk(),
+								children: saving === "disk" ? "保存中…" : "保存磁盘阈值"
+							})
+						]
+					})
+				}),
+				/* @__PURE__ */ (0, react_jsx_runtime.jsx)(SettingsSection, {
+					title: "定时任务",
+					description: "过期阈值 = max(兜底小时, 声明周期 × 倍数)；用于判断 cron 心跳是否过期。",
+					children: /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+						className: "bc-settings-row",
+						children: [
+							/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("label", { children: [
+								"兜底 >",
+								/* @__PURE__ */ (0, react_jsx_runtime.jsx)("input", {
+									className: "bc-settings-input",
+									inputMode: "decimal",
+									value: cronHoursInput,
+									disabled: !loaded,
+									onChange: (event) => setCronHoursInput(event.target.value),
+									"aria-label": "定时任务过期小时"
+								}),
+								"小时"
+							] }),
+							/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("label", { children: ["周期 ×", /* @__PURE__ */ (0, react_jsx_runtime.jsx)("input", {
+								className: "bc-settings-input",
+								inputMode: "decimal",
+								value: cronFactorInput,
+								disabled: !loaded,
+								onChange: (event) => setCronFactorInput(event.target.value),
+								"aria-label": "定时任务周期倍数"
+							})] }),
+							/* @__PURE__ */ (0, react_jsx_runtime.jsx)(Button, {
+								size: "sm",
+								variant: "outline",
+								disabled: !loaded || saving !== null,
+								onClick: () => void saveCron(),
+								children: saving === "cron" ? "保存中…" : "保存定时任务阈值"
+							})
+						]
+					})
+				}),
+				/* @__PURE__ */ (0, react_jsx_runtime.jsx)(SettingsSection, {
+					title: "趋势告警",
+					description: "趋势图超过阈值时画告警线：失败边数与数据库大小（MB）。",
+					children: /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+						className: "bc-settings-row",
+						children: [
+							/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("label", { children: ["失败边 ≥", /* @__PURE__ */ (0, react_jsx_runtime.jsx)("input", {
+								className: "bc-settings-input",
+								inputMode: "numeric",
+								value: failureInput,
+								disabled: !loaded,
+								onChange: (event) => setFailureInput(event.target.value),
+								"aria-label": "失败边数阈值"
+							})] }),
+							/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("label", { children: [
+								"库大小 ≥",
+								/* @__PURE__ */ (0, react_jsx_runtime.jsx)("input", {
+									className: "bc-settings-input",
+									inputMode: "numeric",
+									value: dbInput,
+									disabled: !loaded,
+									onChange: (event) => setDbInput(event.target.value),
+									"aria-label": "数据库大小阈值"
+								}),
+								"MB"
+							] }),
+							/* @__PURE__ */ (0, react_jsx_runtime.jsx)(Button, {
+								size: "sm",
+								variant: "outline",
+								disabled: !loaded || saving !== null,
+								onClick: () => void saveTrend(),
+								children: saving === "trend" ? "保存中…" : "保存趋势阈值"
+							})
+						]
+					})
+				})
+			] });
+		}
+		//#endregion
+		//#region src/ui/settings/LogSettings.tsx
+		/**
+		* 日志设置：默认行数、默认级别、启动时是否展开上次日志（均存 localStorage）。
+		*/
+		/**
+		* 渲染日志设置分组。
+		* @param props - 提示回调
+		* @returns 分组元素
+		*/
+		function LogSettings({ onNotice }) {
+			const [logLines, setLogLines] = (0, react.useState)(() => loadPrefs().logLines);
+			const [logLevel, setLogLevel] = (0, react.useState)(() => loadPrefs().logLevel);
+			const [lastLogUnit, setLastLogUnit] = (0, react.useState)(() => loadPrefs().lastLogUnit);
+			const [logDockOpen, setLogDockOpen] = (0, react.useState)(() => loadPrefs().logDockOpen);
 			(0, react.useEffect)(() => subscribePrefs((prefs) => {
 				setLastLogUnit(prefs.lastLogUnit);
 				setLogDockOpen(prefs.logDockOpen);
 			}), []);
-			(0, react.useEffect)(() => {
-				(async () => {
-					try {
-						const config = await loadPanelConfig();
-						setPanelConfig(config);
-						setBrainRootInput(config.brainRoot);
-						setManagerUrlInput(config.managerUrl);
-					} catch (e) {
-						setConfigError(reasonOf(e));
-					}
-				})();
-			}, []);
-			(0, react.useEffect)(() => {
-				(async () => {
-					try {
-						const thresholds = await loadCronThresholds();
-						setCronHoursInput(String(thresholds.stale_hours));
-						setCronFactorInput(String(thresholds.stale_factor));
-					} catch {}
-				})();
-			}, []);
+			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)(SettingsSection, {
+				title: "日志",
+				description: "日志 dock 的默认行数与级别过滤；打开日志时生效。",
+				children: [/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+					className: "bc-settings-row",
+					children: [LOG_LINE_OPTIONS.map((lines) => /* @__PURE__ */ (0, react_jsx_runtime.jsxs)(Button, {
+						size: "sm",
+						variant: logLines === lines ? "outline" : "ghost",
+						onClick: () => {
+							setLogLines(savePrefs({ logLines: lines }).logLines);
+							onNotice?.(`日志行数已改为 ${lines}`);
+						},
+						children: [lines, " 行"]
+					}, lines)), LOG_LEVELS.map(([key, label]) => /* @__PURE__ */ (0, react_jsx_runtime.jsx)(Button, {
+						size: "sm",
+						variant: logLevel === key ? "outline" : "ghost",
+						onClick: () => {
+							setLogLevel(savePrefs({ logLevel: key }).logLevel);
+							onNotice?.(`日志级别已改为 ${label}`);
+						},
+						children: label
+					}, key))]
+				}), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+					className: "bc-settings-row",
+					children: [/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", { children: ["启动时展开上次日志：", lastLogUnit !== "" ? lastLogUnit : "（还没有记录）"] }), /* @__PURE__ */ (0, react_jsx_runtime.jsx)(Button, {
+						size: "sm",
+						variant: logDockOpen ? "outline" : "ghost",
+						onClick: () => {
+							const next = savePrefs({ logDockOpen: !logDockOpen });
+							setLogDockOpen(next.logDockOpen);
+							onNotice?.(next.logDockOpen ? "启动时会自动展开上次日志" : "启动时不再自动展开日志");
+						},
+						children: logDockOpen ? "已开启" : "已关闭"
+					})]
+				})]
+			});
+		}
+		//#endregion
+		//#region src/ui/settings/GroupOrderSettings.tsx
+		/**
+		* 分组顺序：按 /units 返回的分组拉列表，↑↓ 调整后存 localStorage。
+		*/
+		/**
+		* 渲染分组顺序设置分组。
+		* @param props - 提示回调
+		* @returns 分组元素
+		*/
+		function GroupOrderSettings({ onNotice }) {
+			const [groupOrder, setGroupOrder] = (0, react.useState)([]);
 			(0, react.useEffect)(() => {
 				(async () => {
 					try {
@@ -2798,110 +3227,76 @@ window.__ModuleLoader__.load({
 					} catch {}
 				})();
 			}, []);
-			const savePaths = async () => {
-				setError(null);
-				setNotice(null);
-				setSavingPaths(true);
-				try {
-					const result = await savePanelConfig({
-						brainRoot: brainRootInput.trim(),
-						managerUrl: managerUrlInput.trim()
-					});
-					if (!result.ok || result.config === void 0) {
-						setError(result.error ?? "路径配置保存失败");
-						return;
-					}
-					setPanelConfig(result.config);
-					setBrainRootInput(result.config.brainRoot);
-					setManagerUrlInput(result.config.managerUrl);
-					setApiBase(result.config.managerUrl);
-					setNotice("路径配置已保存：管理器地址即时生效，Brain 路径在下次启动管理器时生效");
-				} catch (e) {
-					setError(reasonOf(e));
-				} finally {
-					setSavingPaths(false);
-				}
+			const move = (index, offset) => {
+				const target = index + offset;
+				const next = [...groupOrder];
+				const current = next[index];
+				const other = next[target];
+				if (current === void 0 || other === void 0) return;
+				next[target] = current;
+				next[index] = other;
+				setGroupOrder(savePrefs({ groupOrder: next }).groupOrder);
+				onNotice?.("分组顺序已保存");
 			};
-			const saveCron = async () => {
+			return /* @__PURE__ */ (0, react_jsx_runtime.jsx)(SettingsSection, {
+				title: "分组顺序",
+				description: "调整首页服务分组的先后；顺序保存在本机浏览器。",
+				children: /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+					className: "bc-settings-order",
+					children: [groupOrder.length === 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+						className: "bc-index-note",
+						children: "还没有分组数据（管理器不可用？）"
+					}), groupOrder.map((name, index) => /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+						className: "bc-settings-order-row",
+						children: [
+							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+								className: "bc-settings-order-name",
+								children: name
+							}),
+							/* @__PURE__ */ (0, react_jsx_runtime.jsx)(Button, {
+								size: "sm",
+								variant: "ghost",
+								"aria-label": `上移 ${name}`,
+								disabled: index === 0,
+								onClick: () => move(index, -1),
+								children: "↑"
+							}),
+							/* @__PURE__ */ (0, react_jsx_runtime.jsx)(Button, {
+								size: "sm",
+								variant: "ghost",
+								"aria-label": `下移 ${name}`,
+								disabled: index === groupOrder.length - 1,
+								onClick: () => move(index, 1),
+								children: "↓"
+							})
+						]
+					}, name))]
+				})
+			});
+		}
+		//#endregion
+		//#region src/ui/SettingsPage.tsx
+		/**
+		* 设置页：阈值、路径、界面、日志、分组顺序的入口。
+		*
+		* 各分组做成自包含组件（自己加载/保存），本页只负责布局、全局提示与返回。
+		*/
+		/**
+		* 渲染设置页。
+		* @param props - 返回回调与磁盘阈值回传
+		* @returns 设置页元素
+		*/
+		function SettingsPage({ onBack, onDiskThresholdsChanged }) {
+			const [error, setError] = (0, react.useState)(null);
+			const [notice, setNotice] = (0, react.useState)(null);
+			const [refreshSeconds, setRefreshSeconds] = (0, react.useState)(() => loadPrefs().refreshSeconds);
+			const notify = (message) => {
 				setError(null);
-				setNotice(null);
-				const hours = Number(cronHoursInput);
-				const factor = Number(cronFactorInput);
-				if (!Number.isFinite(hours) || !Number.isFinite(factor)) {
-					setError("定时任务阈值必须是数字");
-					return;
-				}
-				setSavingCron(true);
-				try {
-					const result = await saveCronThresholds(hours, factor);
-					if (!result.ok || result.thresholds === void 0) {
-						setError(result.error ?? "保存失败");
-						return;
-					}
-					setCronHoursInput(String(result.thresholds.stale_hours));
-					setCronFactorInput(String(result.thresholds.stale_factor));
-					setNotice("定时任务过期阈值已保存");
-				} catch (e) {
-					setError(reasonOf(e));
-				} finally {
-					setSavingCron(false);
-				}
+				setNotice(message);
 			};
-			const saveDisk = async () => {
-				setError(null);
+			const fail = (message) => {
 				setNotice(null);
-				const warn = Number(warnInput);
-				const critical = Number(criticalInput);
-				if (!Number.isFinite(warn) || !Number.isFinite(critical)) {
-					setError("磁盘阈值必须是数字");
-					return;
-				}
-				setSaving("disk");
-				try {
-					const result = await saveStorageThresholds(warn, critical);
-					if (!result.ok) {
-						setError(result.error ?? "保存失败");
-						return;
-					}
-					if (result.thresholds !== void 0) {
-						setWarnInput(String(result.thresholds.warn_gb));
-						setCriticalInput(String(result.thresholds.critical_percent));
-						onDiskThresholdsChanged?.(result.thresholds);
-					}
-					setNotice("磁盘告警阈值已保存");
-				} catch (e) {
-					setError(reasonOf(e));
-				} finally {
-					setSaving(null);
-				}
-			};
-			const saveTrend = async () => {
-				setError(null);
-				setNotice(null);
-				const failure = Number(failureInput);
-				const db = Number(dbInput);
-				if (!Number.isFinite(failure) || !Number.isFinite(db)) {
-					setError("趋势阈值必须是数字");
-					return;
-				}
-				setSaving("trend");
-				try {
-					const first = await saveTrendThreshold("failure_edges", failure);
-					if (!first.ok) {
-						setError(first.error ?? "保存失败");
-						return;
-					}
-					const second = await saveTrendThreshold("db_size_mb", db);
-					if (!second.ok) {
-						setError(second.error ?? "保存失败");
-						return;
-					}
-					setNotice("趋势告警阈值已保存");
-				} catch (e) {
-					setError(reasonOf(e));
-				} finally {
-					setSaving(null);
-				}
+				setError(message);
 			};
 			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
 				className: "bc-settings",
@@ -2924,326 +3319,33 @@ window.__ModuleLoader__.load({
 						role: "status",
 						children: notice
 					}),
-					/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("section", {
-						className: "bc-settings-group",
-						children: [
-							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("h3", { children: "路径" }),
-							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", { children: "Brain 根目录与管理器地址。其余路径（launcher / 脚本 / 日志）由根目录自动派生，不用逐个填。" }),
-							configError !== null && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-								className: "bc-index-note",
-								children: [
-									"宿主路径配置暂不可用（",
-									configError,
-									"）。重启 DSH Web 后这里可编辑。"
-								]
-							}),
-							/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-								className: "bc-settings-row",
-								children: [
-									/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("label", {
-										className: "bc-settings-wide",
-										children: ["Brain 根目录", /* @__PURE__ */ (0, react_jsx_runtime.jsx)("input", {
-											className: "bc-settings-input-wide",
-											value: brainRootInput,
-											disabled: panelConfig === null || savingPaths,
-											placeholder: "留空则用 BRAIN_ROOT 环境变量",
-											onChange: (event) => setBrainRootInput(event.target.value),
-											"aria-label": "Brain 根目录"
-										})]
-									}),
-									/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("label", {
-										className: "bc-settings-wide",
-										children: ["管理器地址", /* @__PURE__ */ (0, react_jsx_runtime.jsx)("input", {
-											className: "bc-settings-input-wide",
-											value: managerUrlInput,
-											disabled: panelConfig === null || savingPaths,
-											placeholder: "留空则用默认 http://127.0.0.1:19998",
-											onChange: (event) => setManagerUrlInput(event.target.value),
-											"aria-label": "管理器地址"
-										})]
-									}),
-									/* @__PURE__ */ (0, react_jsx_runtime.jsx)(Button, {
-										size: "sm",
-										variant: "outline",
-										disabled: panelConfig === null || savingPaths,
-										onClick: () => void savePaths(),
-										children: savingPaths ? "保存中…" : "保存路径配置"
-									})
-								]
-							}),
-							panelConfig !== null && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-								className: "bc-settings-derived",
-								children: [
-									/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", { children: [
-										"派生路径（来源：",
-										panelConfig.sources.brainRoot,
-										"）"
-									] }),
-									/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-										className: "bc-settings-derived-row",
-										children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: "管理器脚本" }), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("code", { children: panelConfig.scriptPath || "—" })]
-									}),
-									/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-										className: "bc-settings-derived-row",
-										children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: "launcher" }), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("code", { children: panelConfig.launcherPath || "—" })]
-									}),
-									/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-										className: "bc-settings-derived-row",
-										children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: "pythonw" }), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("code", { children: panelConfig.pythonw })]
-									}),
-									/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-										className: "bc-settings-derived-row",
-										children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: "配置文件" }), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("code", { children: panelConfig.configFile })]
-									}),
-									/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-										className: "bc-settings-derived-row",
-										children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: "检查" }), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("code", { children: [
-											"脚本 ",
-											panelConfig.scriptExists ? "存在" : "缺失",
-											" · launcher ",
-											panelConfig.launcherPath !== "" && panelConfig.launcherExists ? "存在" : "缺失"
-										] })]
-									})
-								]
-							})
-						]
+					/* @__PURE__ */ (0, react_jsx_runtime.jsx)(PathSettings, {
+						onNotice: notify,
+						onError: fail
 					}),
-					/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("section", {
-						className: "bc-settings-group",
-						children: [
-							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("h3", { children: "磁盘告警" }),
-							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", { children: "可用空间低于 N GB 时顶部显示黄色提示；剩余占比低于 M% 时标红。" }),
-							/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-								className: "bc-settings-row",
-								children: [
-									/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("label", { children: [
-										"可用 <",
-										/* @__PURE__ */ (0, react_jsx_runtime.jsx)("input", {
-											className: "bc-settings-input",
-											inputMode: "decimal",
-											value: warnInput,
-											disabled: !loaded,
-											onChange: (event) => setWarnInput(event.target.value),
-											"aria-label": "磁盘可用 GB 阈值"
-										}),
-										"GB"
-									] }),
-									/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("label", { children: [
-										"占比 <",
-										/* @__PURE__ */ (0, react_jsx_runtime.jsx)("input", {
-											className: "bc-settings-input",
-											inputMode: "decimal",
-											value: criticalInput,
-											disabled: !loaded,
-											onChange: (event) => setCriticalInput(event.target.value),
-											"aria-label": "磁盘剩余占比阈值"
-										}),
-										"%"
-									] }),
-									/* @__PURE__ */ (0, react_jsx_runtime.jsx)(Button, {
-										size: "sm",
-										variant: "outline",
-										disabled: !loaded || saving !== null,
-										onClick: () => void saveDisk(),
-										children: saving === "disk" ? "保存中…" : "保存磁盘阈值"
-									})
-								]
-							})
-						]
+					/* @__PURE__ */ (0, react_jsx_runtime.jsx)(ThresholdSettings, {
+						onDiskThresholdsChanged,
+						onNotice: notify,
+						onError: fail
 					}),
-					/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("section", {
-						className: "bc-settings-group",
-						children: [
-							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("h3", { children: "界面" }),
-							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", { children: "主面板自动刷新间隔。保存在本机浏览器（localStorage），不写大脑。" }),
-							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
-								className: "bc-settings-row",
-								children: REFRESH_OPTIONS.map((seconds) => /* @__PURE__ */ (0, react_jsx_runtime.jsxs)(Button, {
-									size: "sm",
-									variant: refreshSeconds === seconds ? "outline" : "ghost",
-									onClick: () => {
-										setRefreshSeconds(savePrefs({ refreshSeconds: seconds }).refreshSeconds);
-										setNotice(`刷新间隔已改为 ${seconds} 秒`);
-									},
-									children: [seconds, " 秒"]
-								}, seconds))
-							})
-						]
+					/* @__PURE__ */ (0, react_jsx_runtime.jsx)(SettingsSection, {
+						title: "界面",
+						description: "主面板自动刷新间隔。保存在本机浏览器（localStorage），不写大脑。",
+						children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+							className: "bc-settings-row",
+							children: REFRESH_OPTIONS.map((seconds) => /* @__PURE__ */ (0, react_jsx_runtime.jsxs)(Button, {
+								size: "sm",
+								variant: refreshSeconds === seconds ? "outline" : "ghost",
+								onClick: () => {
+									setRefreshSeconds(savePrefs({ refreshSeconds: seconds }).refreshSeconds);
+									notify(`刷新间隔已改为 ${seconds} 秒`);
+								},
+								children: [seconds, " 秒"]
+							}, seconds))
+						})
 					}),
-					/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("section", {
-						className: "bc-settings-group",
-						children: [
-							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("h3", { children: "日志" }),
-							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", { children: "日志 dock 的默认行数与级别过滤；打开日志时生效。" }),
-							/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-								className: "bc-settings-row",
-								children: [LOG_LINE_OPTIONS.map((lines) => /* @__PURE__ */ (0, react_jsx_runtime.jsxs)(Button, {
-									size: "sm",
-									variant: logLines === lines ? "outline" : "ghost",
-									onClick: () => {
-										setLogLines(savePrefs({ logLines: lines }).logLines);
-										setNotice(`日志行数已改为 ${lines}`);
-									},
-									children: [lines, " 行"]
-								}, lines)), LOG_LEVELS.map(([key, label]) => /* @__PURE__ */ (0, react_jsx_runtime.jsx)(Button, {
-									size: "sm",
-									variant: logLevel === key ? "outline" : "ghost",
-									onClick: () => {
-										setLogLevel(savePrefs({ logLevel: key }).logLevel);
-										setNotice(`日志级别已改为 ${label}`);
-									},
-									children: label
-								}, key))]
-							}),
-							/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-								className: "bc-settings-row",
-								children: [/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", { children: ["启动时展开上次日志：", lastLogUnit !== "" ? lastLogUnit : "（还没有记录）"] }), /* @__PURE__ */ (0, react_jsx_runtime.jsx)(Button, {
-									size: "sm",
-									variant: logDockOpen ? "outline" : "ghost",
-									onClick: () => {
-										const next = savePrefs({ logDockOpen: !logDockOpen });
-										setLogDockOpen(next.logDockOpen);
-										setNotice(next.logDockOpen ? "启动时会自动展开上次日志" : "启动时不再自动展开日志");
-									},
-									children: logDockOpen ? "已开启" : "已关闭"
-								})]
-							})
-						]
-					}),
-					/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("section", {
-						className: "bc-settings-group",
-						children: [
-							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("h3", { children: "分组顺序" }),
-							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", { children: "调整首页服务分组的先后；顺序保存在本机浏览器。" }),
-							/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-								className: "bc-settings-order",
-								children: [groupOrder.length === 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-									className: "bc-index-note",
-									children: "还没有分组数据（管理器不可用？）"
-								}), groupOrder.map((name, index) => /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-									className: "bc-settings-order-row",
-									children: [
-										/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-											className: "bc-settings-order-name",
-											children: name
-										}),
-										/* @__PURE__ */ (0, react_jsx_runtime.jsx)(Button, {
-											size: "sm",
-											variant: "ghost",
-											"aria-label": `上移 ${name}`,
-											disabled: index === 0,
-											onClick: () => {
-												const next = [...groupOrder];
-												const current = next[index];
-												const other = next[index - 1];
-												if (current !== void 0 && other !== void 0) {
-													next[index - 1] = current;
-													next[index] = other;
-												}
-												setGroupOrder(savePrefs({ groupOrder: next }).groupOrder);
-												setNotice("分组顺序已保存");
-											},
-											children: "↑"
-										}),
-										/* @__PURE__ */ (0, react_jsx_runtime.jsx)(Button, {
-											size: "sm",
-											variant: "ghost",
-											"aria-label": `下移 ${name}`,
-											disabled: index === groupOrder.length - 1,
-											onClick: () => {
-												const next = [...groupOrder];
-												const current = next[index];
-												const other = next[index + 1];
-												if (current !== void 0 && other !== void 0) {
-													next[index + 1] = current;
-													next[index] = other;
-												}
-												setGroupOrder(savePrefs({ groupOrder: next }).groupOrder);
-												setNotice("分组顺序已保存");
-											},
-											children: "↓"
-										})
-									]
-								}, name))]
-							})
-						]
-					}),
-					/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("section", {
-						className: "bc-settings-group",
-						children: [
-							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("h3", { children: "定时任务" }),
-							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", { children: "过期阈值 = max(兜底小时, 声明周期 × 倍数)；用于判断 cron 心跳是否过期。" }),
-							/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-								className: "bc-settings-row",
-								children: [
-									/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("label", { children: [
-										"兜底 >",
-										/* @__PURE__ */ (0, react_jsx_runtime.jsx)("input", {
-											className: "bc-settings-input",
-											inputMode: "decimal",
-											value: cronHoursInput,
-											onChange: (event) => setCronHoursInput(event.target.value),
-											"aria-label": "定时任务过期小时"
-										}),
-										"小时"
-									] }),
-									/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("label", { children: ["周期 ×", /* @__PURE__ */ (0, react_jsx_runtime.jsx)("input", {
-										className: "bc-settings-input",
-										inputMode: "decimal",
-										value: cronFactorInput,
-										onChange: (event) => setCronFactorInput(event.target.value),
-										"aria-label": "定时任务周期倍数"
-									})] }),
-									/* @__PURE__ */ (0, react_jsx_runtime.jsx)(Button, {
-										size: "sm",
-										variant: "outline",
-										disabled: savingCron || saving !== null,
-										onClick: () => void saveCron(),
-										children: savingCron ? "保存中…" : "保存定时任务阈值"
-									})
-								]
-							})
-						]
-					}),
-					/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("section", {
-						className: "bc-settings-group",
-						children: [
-							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("h3", { children: "趋势告警" }),
-							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", { children: "趋势图超过阈值时画告警线：失败边数与数据库大小（MB）。" }),
-							/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-								className: "bc-settings-row",
-								children: [
-									/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("label", { children: ["失败边 ≥", /* @__PURE__ */ (0, react_jsx_runtime.jsx)("input", {
-										className: "bc-settings-input",
-										inputMode: "numeric",
-										value: failureInput,
-										disabled: !loaded,
-										onChange: (event) => setFailureInput(event.target.value),
-										"aria-label": "失败边数阈值"
-									})] }),
-									/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("label", { children: [
-										"库大小 ≥",
-										/* @__PURE__ */ (0, react_jsx_runtime.jsx)("input", {
-											className: "bc-settings-input",
-											inputMode: "numeric",
-											value: dbInput,
-											disabled: !loaded,
-											onChange: (event) => setDbInput(event.target.value),
-											"aria-label": "数据库大小阈值"
-										}),
-										"MB"
-									] }),
-									/* @__PURE__ */ (0, react_jsx_runtime.jsx)(Button, {
-										size: "sm",
-										variant: "outline",
-										disabled: !loaded || saving !== null,
-										onClick: () => void saveTrend(),
-										children: saving === "trend" ? "保存中…" : "保存趋势阈值"
-									})
-								]
-							})
-						]
-					})
+					/* @__PURE__ */ (0, react_jsx_runtime.jsx)(LogSettings, { onNotice: notify }),
+					/* @__PURE__ */ (0, react_jsx_runtime.jsx)(GroupOrderSettings, { onNotice: notify })
 				]
 			});
 		}
@@ -7374,10 +7476,7 @@ window.__ModuleLoader__.load({
 			const [clearLogOpen, setClearLogOpen] = (0, react.useState)(false);
 			const [shutdownOpen, setShutdownOpen] = (0, react.useState)(false);
 			const downloadDiagnostics = () => {
-				const anchor = document.createElement("a");
-				anchor.href = diagnosticsBundleUrl();
-				anchor.rel = "noopener";
-				anchor.click();
+				downloadUrl(diagnosticsBundleUrl(), "brain-diagnostics.zip");
 			};
 			const [workingBusy, setWorkingBusy] = (0, react.useState)(null);
 			const toggleAutostart = async () => {
