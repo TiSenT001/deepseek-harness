@@ -3,6 +3,7 @@
  * @module dsh-obsidian-vault/graph/render/labels
  */
 import type { SimNode } from '../layout.ts'
+import { obsidianLabelAlpha } from '../obsidian-graph.ts'
 
 /** One label ready to draw. */
 export interface LabelBox {
@@ -42,7 +43,7 @@ export function labelThreshold(textFade: number): number {
  * out across 0.5–1.
  */
 export function labelAlpha(zoom: number, textFade: number): number {
-  return Math.max(0, Math.min(1, Math.log2(zoom) + 1 - textFade))
+  return obsidianLabelAlpha(zoom, textFade)
 }
 
 /**

@@ -1,3 +1,10 @@
+## 第一百二十九轮：Obsidian 关系图物理常量与节点尺寸（2026-11-12）
+
+- **逆向来源**：从本地 `G:\Software\Obsidian\resources\obsidian.asar` 提取 `sim.js` 与 `app.js`。`sim.js` 是 d3-force + WebAssembly 的图 worker；可见 JS 回退路径给出中心力、连接力、斥力、碰撞、alpha/velocity 衰减与 tick 周期，`app.js` 给出节点 `getSize()` 公式。
+- **抽模块**：新增 `client/graph/obsidian-graph.ts`，集中 `OBSIDIAN_GRAPH` 常量、`obsidianNodeRadius`、`obsidianLinkStrength/Bias`、`obsidianLabelAlpha`；`layout-types`、`layout`、`quadtree`、`layout-seed`、`render/labels` 改为复用，不再各写一份。
+- **节点尺寸**：`radius = max(8, min(3*sqrt(degree+1), 30))`，与 Obsidian 节点公式一致；低度数节点统一为 8，高度数节点按 sqrt 增长、上限 30。
+- **保留配置优先**：vault 的 `graph.json` 仍覆盖 center/repel/link/distance 与 display 参数；模块只提供默认值与公式。
+- **验证**：`tsc` 0、777/777；新增 4 条公式常量测试；全库图 400 节点截图正常，节点尺寸随度数增大。
 ## 第一百二十八轮：Mermaid 按需拆分（2026-11-12）
 
 - **拆分**：Mermaid 不再进入主 client bundle，改为独立 `lib/mermaid.js`（IIFE，压缩后约 3.24 MB）；宿主新增 `GET /obsidian/api/mermaid.js`，与 `worker.js` 共用 `serveBundleScript` 读取 `lib/` 文件。

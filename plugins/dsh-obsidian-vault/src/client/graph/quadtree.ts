@@ -3,6 +3,7 @@
  * collide. Positions carry velocities; both forces add into `vx`/`vy`.
  * @module dsh-obsidian-vault/client/graph/quadtree
  */
+import { OBSIDIAN_GRAPH } from './obsidian-graph.ts'
 
 /** A point the quadtree forces can act on. */
 export interface VelocityNode {
@@ -13,9 +14,9 @@ export interface VelocityNode {
 }
 
 /** Barnes-Hut opening angle, squared (d3 default theta 0.9). */
-const THETA2 = 0.81
+const THETA2 = OBSIDIAN_GRAPH.theta * OBSIDIAN_GRAPH.theta
 /** Closest approach for the repulsion falloff, squared (Obsidian: 30). */
-const DISTANCE_MIN2 = 30 * 30
+const DISTANCE_MIN2 = OBSIDIAN_GRAPH.distanceMin * OBSIDIAN_GRAPH.distanceMin
 /** Subdivision never goes deeper, so coincident points always terminate. */
 const MAX_DEPTH = 32
 

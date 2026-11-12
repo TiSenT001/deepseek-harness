@@ -5,6 +5,7 @@
  */
 import { WORLD } from './layout-types.ts'
 import type { GraphEdgeInput, GraphNodeInput, LayoutSeed, SimNode } from './layout-types.ts'
+import { obsidianNodeRadius } from './obsidian-graph.ts'
 
 /**
  * Deterministic jitter for coincident points, replacing d3's jiggle(random).
@@ -65,9 +66,7 @@ export function seedPositions(
   const placed = new Map<string, { x: number; y: number }>()
   return nodes.map((node, index) => {
     const degree = inbound.get(node.path) ?? 0
-    // Radius grows with degree like Obsidian's hubs; tiny local graphs need
-    // bigger dots or they read as empty.
-    const radius = (nodes.length <= 10 ? 6.5 : 2.8) + Math.min(14, Math.pow(degree, 0.7) * 2.4)
+    const radius = obsidianNodeRadius(degree)
     const place = (x: number, y: number): SimNode => {
       placed.set(node.path, { x, y })
       return { ...node, x, y, vx: 0, vy: 0, fx: null, fy: null, degree, radius }

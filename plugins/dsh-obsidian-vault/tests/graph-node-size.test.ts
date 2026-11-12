@@ -14,7 +14,7 @@ function seedOf(): ReturnType<typeof seedPositions> {
     { path: 'hub.md', title: 'hub', depth: 0 },
     { path: 'leaf.md', title: 'leaf', depth: 1 },
   ]
-  const edges = Array.from({ length: 5 }, (_, index) => ({
+  const edges = Array.from({ length: 12 }, (_, index) => ({
     source: `n${index}.md`,
     target: 'hub.md',
   }))
