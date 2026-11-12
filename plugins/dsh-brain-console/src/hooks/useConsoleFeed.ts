@@ -1,17 +1,15 @@
 /**
  * 面板数据源：轮询管理器（单元列表 / 概览 / 开机启动状态）。
  *
- * 5 秒一次；手动刷新时额外触发一次外部回调（趋势历史也顺手刷新）。
+ * 默认 5 秒一次（设置页可改 5/10/30/60 秒）；手动刷新时额外触发一次外部回调（趋势历史也顺手刷新）。
  * 连接失败只记录错误、保留上一份数据，避免面板闪成空白。
  */
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { jget } from '../api.ts'
+import { loadPrefs, subscribePrefs } from '../prefs.ts'
 import { reasonOf } from '../ui/errors.ts'
 import { formatClock } from '../ui/format.ts'
 import type { Overview, Unit } from '../ui/types.ts'
-
-/** 自动刷新间隔（毫秒）。 */
-const POLL_MS = 5000
 
 /** 开机启动状态（不支持时为 supported=false）。 */
 export interface AutostartState {
@@ -47,6 +45,7 @@ export function useConsoleFeed(onManualRefresh?: () => void): ConsoleFeed {
   const [refreshing, setRefreshing] = useState(false)
   const [connectionError, setConnectionError] = useState<string | null>(null)
   const [updatedAt, setUpdatedAt] = useState<string | null>(null)
+  const [refreshSeconds, setRefreshSeconds] = useState(() => loadPrefs().refreshSeconds)
   // 回调放 ref：load 的引用必须稳定，否则轮询用的 effect 每帧重建、变成请求风暴
   const manualRefresh = useRef(onManualRefresh)
   manualRefresh.current = onManualRefresh
@@ -73,11 +72,16 @@ export function useConsoleFeed(onManualRefresh?: () => void): ConsoleFeed {
     }
   }, [])
 
+  useEffect(() => subscribePrefs((next) => setRefreshSeconds(next.refreshSeconds)), [])
+
   useEffect(() => {
     void load()
-    const timer = setInterval(() => void load(), POLL_MS)
-    return () => clearInterval(timer)
   }, [load])
+
+  useEffect(() => {
+    const timer = setInterval(() => void load(), refreshSeconds * 1000)
+    return () => clearInterval(timer)
+  }, [load, refreshSeconds])
 
   return { units, overview, autostart, loaded, refreshing, connectionError, updatedAt, load }
 }

@@ -312,6 +312,60 @@ window.__ModuleLoader__.load({
 			};
 		}
 		//#endregion
+		//#region src/prefs.ts
+		/** 可选的刷新间隔（秒）。 */
+		const REFRESH_OPTIONS = [
+			5,
+			10,
+			30,
+			60
+		];
+		/** 默认偏好。 */
+		const DEFAULT_PREFS = { refreshSeconds: 5 };
+		const STORAGE_KEY = "brain.console.prefs.v1";
+		const listeners = /* @__PURE__ */ new Set();
+		/**
+		* 读取偏好；损坏或非法值回退默认值。
+		* @returns 当前偏好
+		*/
+		function loadPrefs() {
+			try {
+				const raw = window.localStorage.getItem(STORAGE_KEY);
+				if (raw !== null) {
+					const seconds = JSON.parse(raw).refreshSeconds;
+					if (typeof seconds === "number" && REFRESH_OPTIONS.includes(seconds)) return { refreshSeconds: seconds };
+				}
+			} catch {}
+			return { ...DEFAULT_PREFS };
+		}
+		/**
+		* 合并并保存偏好，随后通知订阅者。
+		* @param patch - 要更新的字段
+		* @returns 保存后的完整偏好
+		*/
+		function savePrefs(patch) {
+			const next = {
+				...loadPrefs(),
+				...patch
+			};
+			try {
+				window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+			} catch {}
+			for (const listener of listeners) listener(next);
+			return next;
+		}
+		/**
+		* 订阅偏好变化。
+		* @param listener - 收到新偏好时调用
+		* @returns 取消订阅
+		*/
+		function subscribePrefs(listener) {
+			listeners.add(listener);
+			return () => {
+				listeners.delete(listener);
+			};
+		}
+		//#endregion
 		//#region src/ui/format.ts
 		/**
 		* 展示层格式化：计数、容量的千分位与单位、时刻、相对时间、运行时长。
@@ -406,11 +460,9 @@ window.__ModuleLoader__.load({
 		/**
 		* 面板数据源：轮询管理器（单元列表 / 概览 / 开机启动状态）。
 		*
-		* 5 秒一次；手动刷新时额外触发一次外部回调（趋势历史也顺手刷新）。
+		* 默认 5 秒一次（设置页可改 5/10/30/60 秒）；手动刷新时额外触发一次外部回调（趋势历史也顺手刷新）。
 		* 连接失败只记录错误、保留上一份数据，避免面板闪成空白。
 		*/
-		/** 自动刷新间隔（毫秒）。 */
-		const POLL_MS = 5e3;
 		/**
 		* 轮询管理器状态。
 		* @param onManualRefresh - 手动刷新时的额外回调（例如刷新趋势历史）
@@ -424,6 +476,7 @@ window.__ModuleLoader__.load({
 			const [refreshing, setRefreshing] = (0, react.useState)(false);
 			const [connectionError, setConnectionError] = (0, react.useState)(null);
 			const [updatedAt, setUpdatedAt] = (0, react.useState)(null);
+			const [refreshSeconds, setRefreshSeconds] = (0, react.useState)(() => loadPrefs().refreshSeconds);
 			const manualRefresh = (0, react.useRef)(onManualRefresh);
 			manualRefresh.current = onManualRefresh;
 			const load = (0, react.useCallback)(async (manual = false) => {
@@ -447,11 +500,14 @@ window.__ModuleLoader__.load({
 					if (manual) setRefreshing(false);
 				}
 			}, []);
+			(0, react.useEffect)(() => subscribePrefs((next) => setRefreshSeconds(next.refreshSeconds)), []);
 			(0, react.useEffect)(() => {
 				load();
-				const timer = setInterval(() => void load(), POLL_MS);
-				return () => clearInterval(timer);
 			}, [load]);
+			(0, react.useEffect)(() => {
+				const timer = setInterval(() => void load(), refreshSeconds * 1e3);
+				return () => clearInterval(timer);
+			}, [load, refreshSeconds]);
 			return {
 				units,
 				overview,
@@ -2279,6 +2335,7 @@ window.__ModuleLoader__.load({
 			const [saving, setSaving] = (0, react.useState)(null);
 			const [error, setError] = (0, react.useState)(null);
 			const [notice, setNotice] = (0, react.useState)(null);
+			const [refreshSeconds, setRefreshSeconds] = (0, react.useState)(() => loadPrefs().refreshSeconds);
 			(0, react.useEffect)(() => {
 				(async () => {
 					try {
@@ -2412,6 +2469,25 @@ window.__ModuleLoader__.load({
 										children: saving === "disk" ? "保存中…" : "保存磁盘阈值"
 									})
 								]
+							})
+						]
+					}),
+					/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("section", {
+						className: "bc-settings-group",
+						children: [
+							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("h3", { children: "界面" }),
+							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", { children: "主面板自动刷新间隔。保存在本机浏览器（localStorage），不写大脑。" }),
+							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+								className: "bc-settings-row",
+								children: REFRESH_OPTIONS.map((seconds) => /* @__PURE__ */ (0, react_jsx_runtime.jsxs)(Button, {
+									size: "sm",
+									variant: refreshSeconds === seconds ? "outline" : "ghost",
+									onClick: () => {
+										setRefreshSeconds(savePrefs({ refreshSeconds: seconds }).refreshSeconds);
+										setNotice(`刷新间隔已改为 ${seconds} 秒`);
+									},
+									children: [seconds, " 秒"]
+								}, seconds))
 							})
 						]
 					}),
