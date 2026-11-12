@@ -65,6 +65,10 @@ export const loadTableInfo = (name: string): Promise<TableInfo> =>
 export const loadTableUsage = (name: string): Promise<TableUsage> =>
   jget<TableUsage>(`/system/table/usage?name=${encodeURIComponent(name)}`)
 
+/** 清空体检历史摘要文件（不动当前报告）。 */
+export const clearCheckupHistory = (): Promise<{ ok: boolean; removed: number; error?: string }> =>
+  postJson<{ ok: boolean; removed: number; error?: string }>('/checkup/history/clear', {})
+
 /** 清理代码里已不存在的僵尸心跳；返回删除的名字列表。 */
 export const pruneZombieHeartbeats = (): Promise<{ ok: boolean; removed: string[]; kept?: number; error?: string }> =>
   postJson<{ ok: boolean; removed: string[]; kept?: number; error?: string }>('/crons/prune-zombies', {})

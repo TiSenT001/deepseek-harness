@@ -364,9 +364,21 @@ try {
       const history = await dialog.locator('.bc-checkup-history').count()
       const rows = await dialog.locator('.bc-checkup-row-btn').count()
       extra = ` · 历史 ${history} · 膨胀表 ${rows}`
+      if (history > 0) {
+        // 清空按钮在折叠 details 里：展开后 getByRole 才能进入可访问性树
+        await dialog.locator('.bc-checkup-history > summary').click()
+        await page.waitForTimeout(300)
+      }
       const historyRows = await dialog.locator('.bc-checkup-history-row').count()
       const trends = await dialog.locator('.bc-checkup-trend-row').count()
       if (historyRows >= 2 && trends !== 3) throw new Error(`趋势行 ${trends}，应为 3`)
+      if (trends > 0) {
+        const ranges = await dialog.locator('.bc-checkup-trend-range').count()
+        if (ranges !== trends) throw new Error(`趋势范围标签 ${ranges}，应为 ${trends}`)
+      }
+      if ((await dialog.getByRole('button', { name: '清空历史' }).count()) === 0) {
+        throw new Error('缺少清空历史按钮')
+      }
       const copyBtn = dialog.getByRole('button', { name: /复制摘要|已复制/ })
       if ((await copyBtn.count()) === 0) throw new Error('缺少复制摘要按钮')
       await copyBtn.click()
