@@ -94,6 +94,10 @@ window.__ModuleLoader__.load({
 		const loadTableUsage = (name) => jget(`/system/table/usage?name=${encodeURIComponent(name)}`);
 		/** 清空体检历史摘要文件（不动当前报告）。 */
 		const clearCheckupHistory = () => postJson("/checkup/history/clear", {});
+		/** 只保留最近若干份自动诊断包。 */
+		const pruneAutoRecoverBundles = () => postJson("/auto-recover/prune-bundles", {});
+		/** 移除指向已删除诊断包的旧自动恢复事件。 */
+		const pruneAutoRecoverEvents = () => postJson("/auto-recover/prune-events", {});
 		/** 清理代码里已不存在的僵尸心跳；返回删除的名字列表。 */
 		const pruneZombieHeartbeats = () => postJson("/crons/prune-zombies", {});
 		/** 趋势告警阈值。 */
@@ -1261,6 +1265,8 @@ window.__ModuleLoader__.load({
 			const [status, setStatus] = (0, react.useState)(null);
 			const [error, setError] = (0, react.useState)(null);
 			const [copied, setCopied] = (0, react.useState)(false);
+			const [armed, setArmed] = (0, react.useState)(null);
+			const [busy, setBusy] = (0, react.useState)(false);
 			const load = async () => {
 				try {
 					setStatus(await loadAutoRecover());
@@ -1273,8 +1279,22 @@ window.__ModuleLoader__.load({
 				load();
 			}, []);
 			const events = [...status?.events ?? []].reverse();
+			const missingCount = events.filter((event) => event.bundle && event.bundle_exists === false).length;
 			const counters = Object.entries(status?.counters ?? {}).filter(([, n]) => n > 0);
 			const summary = counters.length === 0 ? "还没有发生过自动恢复" : counters.map(([unit, n]) => `${unit} × ${n}`).join(" · ");
+			const runPrune = async (kind) => {
+				setBusy(true);
+				try {
+					if (kind === "bundles") await pruneAutoRecoverBundles();
+					else await pruneAutoRecoverEvents();
+					setArmed(null);
+					await load();
+				} catch (e) {
+					setError(`清理失败：${reasonOf(e)}`);
+				} finally {
+					setBusy(false);
+				}
+			};
 			const copyBundles = async () => {
 				const paths = events.map((event) => event.bundle).filter((path) => Boolean(path));
 				if (paths.length === 0) return;
@@ -1295,6 +1315,35 @@ window.__ModuleLoader__.load({
 					600
 				]).join(" / ")} 秒`,
 				footer: /* @__PURE__ */ (0, react_jsx_runtime.jsxs)(react_jsx_runtime.Fragment, { children: [
+					armed !== null ? /* @__PURE__ */ (0, react_jsx_runtime.jsxs)(react_jsx_runtime.Fragment, { children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)(Button, {
+						size: "sm",
+						variant: "ghost",
+						disabled: busy,
+						onClick: () => void runPrune(armed),
+						children: armed === "bundles" ? "确认清理旧包" : `确认清理 ${missingCount} 条`
+					}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)(Button, {
+						size: "sm",
+						variant: "ghost",
+						disabled: busy,
+						onClick: () => setArmed(null),
+						children: "取消"
+					})] }) : /* @__PURE__ */ (0, react_jsx_runtime.jsxs)(react_jsx_runtime.Fragment, { children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)(Button, {
+						size: "sm",
+						variant: "ghost",
+						disabled: busy,
+						onClick: () => setArmed("bundles"),
+						children: "清理旧诊断包…"
+					}), missingCount > 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)(Button, {
+						size: "sm",
+						variant: "ghost",
+						disabled: busy,
+						onClick: () => setArmed("events"),
+						children: [
+							"清理失效记录（",
+							missingCount,
+							"）"
+						]
+					})] }),
 					events.some((event) => event.bundle) && /* @__PURE__ */ (0, react_jsx_runtime.jsx)(Button, {
 						size: "sm",
 						variant: "ghost",
@@ -1380,7 +1429,10 @@ window.__ModuleLoader__.load({
 										event.bundle !== null && event.bundle !== void 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
 											className: "bc-auto-bundle",
 											title: event.bundle,
-											children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)("a", {
+											children: event.bundle_exists === false ? /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
+												className: "bc-auto-bundle-missing",
+												children: ["诊断包已清理 · ", event.bundle]
+											}) : /* @__PURE__ */ (0, react_jsx_runtime.jsx)("a", {
 												className: "bc-auto-bundle-link",
 												href: diagnosticsFileUrl(event.bundle.split(/[\\/]/).pop() ?? event.bundle),
 												download: true,
@@ -4480,6 +4532,12 @@ window.__ModuleLoader__.load({
   font-size: 12px;
   color: var(--dsw-alias-label-secondary);
   font-variant-numeric: tabular-nums;
+}
+
+.bc-auto-bundle-missing {
+  font-size: 11px;
+  color: var(--dsw-alias-label-tertiary);
+  text-decoration: line-through;
 }
 
 .bc-auto-summary {

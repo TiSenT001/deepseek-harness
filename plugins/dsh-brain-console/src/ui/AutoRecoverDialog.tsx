@@ -5,7 +5,7 @@
  * 不做任何操作。每条记录带单元名、尝试序号、结果、退出码与诊断包路径。
  */
 import { useEffect, useState } from 'react'
-import { diagnosticsFileUrl, loadAutoRecover } from '../api.ts'
+import { diagnosticsFileUrl, loadAutoRecover, pruneAutoRecoverBundles, pruneAutoRecoverEvents } from '../api.ts'
 import { reasonOf } from './errors.ts'
 import { Button } from './primitives.ts'
 import { Dialog } from './Dialog.tsx'
@@ -32,6 +32,8 @@ export function AutoRecoverDialog({ onClose }: AutoRecoverDialogProps): JSX.Elem
   const [status, setStatus] = useState<AutoRecoverStatus | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
+  const [armed, setArmed] = useState<'bundles' | 'events' | null>(null)
+  const [busy, setBusy] = useState(false)
 
   const load = async (): Promise<void> => {
     try {
@@ -45,10 +47,25 @@ export function AutoRecoverDialog({ onClose }: AutoRecoverDialogProps): JSX.Elem
   useEffect(() => { void load() }, [])
 
   const events = [...(status?.events ?? [])].reverse()
+  const missingCount = events.filter((event) => event.bundle && event.bundle_exists === false).length
   const counters = Object.entries(status?.counters ?? {}).filter(([, n]) => n > 0)
   const summary = counters.length === 0
     ? '还没有发生过自动恢复'
     : counters.map(([unit, n]) => `${unit} × ${n}`).join(' · ')
+
+  const runPrune = async (kind: 'bundles' | 'events'): Promise<void> => {
+    setBusy(true)
+    try {
+      if (kind === 'bundles') await pruneAutoRecoverBundles()
+      else await pruneAutoRecoverEvents()
+      setArmed(null)
+      await load()
+    } catch (e) {
+      setError(`清理失败：${reasonOf(e)}`)
+    } finally {
+      setBusy(false)
+    }
+  }
 
   const copyBundles = async (): Promise<void> => {
     const paths = events.map((event) => event.bundle).filter((path): path is string => Boolean(path))
@@ -71,6 +88,27 @@ export function AutoRecoverDialog({ onClose }: AutoRecoverDialogProps): JSX.Elem
       description={`每小时最多 ${status?.max_per_hour ?? 3} 次 · 退避 ${(status?.backoff_s ?? [30, 120, 600]).join(' / ')} 秒`}
       footer={(
         <>
+          {armed !== null ? (
+            <>
+              <Button size="sm" variant="ghost" disabled={busy} onClick={() => void runPrune(armed)}>
+                {armed === 'bundles' ? '确认清理旧包' : `确认清理 ${missingCount} 条`}
+              </Button>
+              <Button size="sm" variant="ghost" disabled={busy} onClick={() => setArmed(null)}>
+                取消
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button size="sm" variant="ghost" disabled={busy} onClick={() => setArmed('bundles')}>
+                清理旧诊断包…
+              </Button>
+              {missingCount > 0 && (
+                <Button size="sm" variant="ghost" disabled={busy} onClick={() => setArmed('events')}>
+                  清理失效记录（{missingCount}）
+                </Button>
+              )}
+            </>
+          )}
           {events.some((event) => event.bundle) && (
             <Button size="sm" variant="ghost" onClick={() => void copyBundles()}>
               {copied ? '已复制' : '复制诊断包路径'}
@@ -109,13 +147,17 @@ export function AutoRecoverDialog({ onClose }: AutoRecoverDialogProps): JSX.Elem
                 </div>
                 {event.bundle !== null && event.bundle !== undefined && (
                   <div className="bc-auto-bundle" title={event.bundle}>
-                    <a
-                      className="bc-auto-bundle-link"
-                      href={diagnosticsFileUrl(event.bundle.split(/[\\/]/).pop() ?? event.bundle)}
-                      download
-                    >
-                      {event.bundle}
-                    </a>
+                    {event.bundle_exists === false ? (
+                      <span className="bc-auto-bundle-missing">诊断包已清理 · {event.bundle}</span>
+                    ) : (
+                      <a
+                        className="bc-auto-bundle-link"
+                        href={diagnosticsFileUrl(event.bundle.split(/[\\/]/).pop() ?? event.bundle)}
+                        download
+                      >
+                        {event.bundle}
+                      </a>
+                    )}
                   </div>
                 )}
               </li>

@@ -69,6 +69,14 @@ export const loadTableUsage = (name: string): Promise<TableUsage> =>
 export const clearCheckupHistory = (): Promise<{ ok: boolean; removed: number; error?: string }> =>
   postJson<{ ok: boolean; removed: number; error?: string }>('/checkup/history/clear', {})
 
+/** 只保留最近若干份自动诊断包。 */
+export const pruneAutoRecoverBundles = (): Promise<{ ok: boolean; kept: number; removed: string[]; errors: string[] }> =>
+  postJson<{ ok: boolean; kept: number; removed: string[]; errors: string[] }>('/auto-recover/prune-bundles', {})
+
+/** 移除指向已删除诊断包的旧自动恢复事件。 */
+export const pruneAutoRecoverEvents = (): Promise<{ ok: boolean; removed: number; kept: number; error?: string }> =>
+  postJson<{ ok: boolean; removed: number; kept: number; error?: string }>('/auto-recover/prune-events', {})
+
 /** 清理代码里已不存在的僵尸心跳；返回删除的名字列表。 */
 export const pruneZombieHeartbeats = (): Promise<{ ok: boolean; removed: string[]; kept?: number; error?: string }> =>
   postJson<{ ok: boolean; removed: string[]; kept?: number; error?: string }>('/crons/prune-zombies', {})
