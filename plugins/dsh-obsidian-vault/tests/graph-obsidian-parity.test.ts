@@ -44,10 +44,10 @@ test('arrow scale follows 2 * sqrt(line size) / zoom', () => {
   assert.equal(obsidianArrowScale(1, 1), 2)
   assert.equal(obsidianArrowScale(2, 2), Math.sqrt(2))
 })
-test('slider positions convert through Obsidian MJ and calibrated charge', () => {
+test('slider positions convert through Obsidian MJ and cube charge', () => {
   assert.ok(Math.abs(obsidianSliderForce(0.518713248970312) - 0.1) < 1e-12)
   assert.ok(Math.abs(obsidianSliderForce(0.05) - 0.0026154081999410854) < 1e-12)
   assert.equal(obsidianSliderForce(1), 1)
-  assert.equal(obsidianCharge(10), 10)
-  assert.equal(obsidianCharge(20), 80)
+  assert.equal(obsidianCharge(10), 1000)
+  assert.equal(obsidianCharge(20), 8000)
 })

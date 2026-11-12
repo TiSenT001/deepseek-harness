@@ -36,8 +36,8 @@ export const OBSIDIAN_GRAPH = {
   collideStrength: 0.5,
   /** Worker tick timer: 1000 / 60 ms. */
   tickMs: 1000 / 60,
-  /** Calibration divisor for the cubed repel slider (see obsidianCharge). */
-  chargeDivisor: 100,
+  /** Charge divisor; 1 keeps Obsidian's exact cube. */
+  chargeDivisor: 1,
 } as const
 
 /**
@@ -111,8 +111,8 @@ export function obsidianSliderForce(position: number): number {
 
 /**
  * Repulsion charge for the graph. Obsidian cubes the slider before sending it
- * to the worker; the divisor keeps the resulting layout inside a readable
- * camera range for this d3 implementation (the WASM worker's scale differs).
+ * to the worker; the simulation's speed cap absorbs the scale difference from
+ * the WASM implementation.
  * @param slider - repel slider value 0…20.
  * @returns positive charge magnitude.
  */
