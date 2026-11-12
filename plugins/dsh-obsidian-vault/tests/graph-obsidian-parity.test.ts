@@ -21,6 +21,8 @@ test('worker constants match the extracted values', () => {
   assert.equal(OBSIDIAN_GRAPH.linkDistance, 250)
   assert.equal(OBSIDIAN_GRAPH.collideRadius, 60)
   assert.equal(OBSIDIAN_GRAPH.collideStrength, 0.5)
+  assert.equal(OBSIDIAN_GRAPH.linkAlpha, 0.2)
+  assert.equal(OBSIDIAN_GRAPH.linkHighlightAlpha, 1)
   assert.equal(OBSIDIAN_GRAPH.velocityDecay, 0.6)
   assert.equal(OBSIDIAN_GRAPH.theta, 0.9)
   assert.equal(OBSIDIAN_GRAPH.distanceMin, 30)

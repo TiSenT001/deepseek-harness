@@ -20,6 +20,10 @@ export const OBSIDIAN_GRAPH = {
   linkStrength: 1,
   /** forceLink resting distance at the neutral graph setting. */
   linkDistance: 250,
+  /** Base edge opacity (Q in the renderer). */
+  linkAlpha: 0.2,
+  /** Edge opacity while a hovered node is active. */
+  linkHighlightAlpha: 1,
   /** forceManyBody charge at the worker default. */
   chargeStrength: -1000,
   /** forceManyBody distanceMin. */

@@ -10,7 +10,7 @@ import { groupColorOf } from './group-color.ts'
 import { colorByKey, type GraphColorBy } from './colors.ts'
 import { labelAlpha, type LabelBox } from './labels.ts'
 import { screenRadius } from './node-size.ts'
-import { obsidianArrowAlpha, obsidianArrowScale } from '../obsidian-graph.ts'
+import { OBSIDIAN_GRAPH, obsidianArrowAlpha, obsidianArrowScale } from '../obsidian-graph.ts'
 import { LABEL_FONT, labelFont, type Palette } from './palette.ts'
 import { edgeEntrance, entranceScale, revealEntrance, revealLocal, type RevealPlan } from '../reveal.ts'
 import type { GraphStage } from './stage.ts'
@@ -163,7 +163,7 @@ export function drawScene(scene: SceneInput): SceneStats {
       if (from === undefined || to === undefined) continue
       if (edgeOffscreen(from, to)) continue
       const isNeighbour = hovering && neighbours.has(edge.source) && neighbours.has(edge.target)
-      const target = hovering ? (isNeighbour ? 1 : 0.2) : 0.65
+      const target = hovering ? (isNeighbour ? OBSIDIAN_GRAPH.linkHighlightAlpha : OBSIDIAN_GRAPH.linkAlpha) : OBSIDIAN_GRAPH.linkAlpha
       const alpha = stage.edge(edgeKey(edge.source, edge.target), target) * entrance
       if (alpha <= 0.01) continue
       stats.drawnEdges += 1
@@ -189,7 +189,7 @@ export function drawScene(scene: SceneInput): SceneStats {
       if (from === undefined || to === undefined || edgeOffscreen(from, to)) continue
       const isNeighbour = hovering && neighbours.has(edge.source) && neighbours.has(edge.target)
       const key = edgeKey(edge.source, edge.target)
-      const targetAlpha = hovering ? (isNeighbour ? 1 : 0.2) : 0.65
+      const targetAlpha = hovering ? (isNeighbour ? OBSIDIAN_GRAPH.linkHighlightAlpha : OBSIDIAN_GRAPH.linkAlpha) : OBSIDIAN_GRAPH.linkAlpha
       const base = edgeAlphas.get(key) ?? stage.edge(key, targetAlpha) * entrance
       const alpha = obsidianArrowAlpha(base, zoom)
       if (alpha <= 0.01) continue
@@ -205,7 +205,7 @@ export function drawScene(scene: SceneInput): SceneStats {
       ctx.rotate(Math.atan2(dy, dx))
       ctx.scale(arrowScale, arrowScale)
       ctx.globalAlpha = alpha
-      ctx.fillStyle = isNeighbour ? palette.edgeActive : palette.edge
+      ctx.fillStyle = palette.arrow
       ctx.beginPath()
       ctx.moveTo(0, 0)
       ctx.lineTo(-4, -2)
