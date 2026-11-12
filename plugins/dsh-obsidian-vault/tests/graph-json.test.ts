@@ -29,7 +29,7 @@ test('a populated settings object survives a graph.json round trip', () => {
   const settings: GraphSettings = {
     filters: { query: 'alpha', tag: '#work', existingOnly: true, showTags: true, showAttachments: true, showOrphans: false },
     groups: [{ query: 'tag:#work', color: '#ff8800' }],
-    display: { colorBy: 'tag', animate: true, textFade: 0.4, nodeScale: 1.5, linkWidth: 2, showArrow: true },
+    display: { colorBy: 'tag', animate: true, textFade: 0.4, nodeScale: 1.5, linkWidth: 2, linkOpacity: 0.2, showArrow: true },
     forces: { center: 0.2, repel: 14, link: 0.8, linkDistance: 320 },
   }
   const patch = settingsPatchFromGraphJson(graphJsonPatch(settings))

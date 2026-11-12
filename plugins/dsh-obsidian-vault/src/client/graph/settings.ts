@@ -31,6 +31,8 @@ export interface GraphSettings {
     readonly textFade: number
     readonly nodeScale: number
     readonly linkWidth: number
+    /** Edge opacity, 0…1. */
+    readonly linkOpacity: number
     readonly showArrow: boolean
   }
   readonly forces: {
@@ -58,6 +60,7 @@ export const DEFAULT_GRAPH_SETTINGS: GraphSettings = {
     textFade: 0,
     nodeScale: 1,
     linkWidth: 1,
+    linkOpacity: 0.2,
     showArrow: false,
   },
   forces: {

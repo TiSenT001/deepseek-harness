@@ -172,6 +172,7 @@ export const ZH = {
   textFade: '文字淡出阈值',
   nodeSize: '节点大小',
   linkWidth: '连线粗细',
+  linkOpacity: '线不透明度',
   forces: '力',
   centerForce: '中心力',
   repelForce: '斥力',
