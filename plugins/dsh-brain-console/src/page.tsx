@@ -12,7 +12,7 @@
  */
 import { useEffect, useState } from 'react'
 import {
-  DIAGNOSTICS_URL, loadBackups, loadCaches, loadFailedEdges, loadIndexHealth, loadStorageSummary, postManager, pruneBackups, pruneCaches, restoreBackup,
+  apiBaseUrl, diagnosticsBundleUrl, loadBackups, loadCaches, loadFailedEdges, loadIndexHealth, loadStorageSummary, postManager, pruneBackups, pruneCaches, restoreBackup,
 } from './api.ts'
 import { useConsoleActions } from './hooks/useConsoleActions.ts'
 import { useConsoleFeed } from './hooks/useConsoleFeed.ts'
@@ -85,7 +85,7 @@ export function ConsolePage(): JSX.Element {
   // 诊断包：19998 的响应带 Content-Disposition，锚点点击即下载，不需要页面内预览
   const downloadDiagnostics = (): void => {
     const anchor = document.createElement('a')
-    anchor.href = DIAGNOSTICS_URL
+    anchor.href = diagnosticsBundleUrl()
     anchor.rel = 'noopener'
     anchor.click()
   }
@@ -355,7 +355,7 @@ export function ConsolePage(): JSX.Element {
           {feed.connectionError !== null && (
             <div className="bc-notice" data-kind="connection" role="status">
               <div className="bc-notice-body">
-                <span className="bc-notice-title">无法连接 brain_manager（127.0.0.1:19998）</span>
+                <span className="bc-notice-title">无法连接 brain_manager（{apiBaseUrl()}）</span>
                 <span className="bc-notice-text">
                   {feed.connectionError}。面板是管理器的前端，管理器没跑时无法启停单元，可由宿主代为拉起
                 </span>

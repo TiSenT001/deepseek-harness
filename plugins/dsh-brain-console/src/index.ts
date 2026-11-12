@@ -20,7 +20,8 @@ export const name = 'dsh-brain-console'
 // （此前不声明 inject，靠装载顺序碰运气：宿主一启动就取 webServer，顺序一变就整行失败。）
 export const inject = ['webServer']
 
-const MANAGER_URL = 'http://127.0.0.1:19998'
+// 管理器地址可由部署环境覆盖；默认本机 19998。浏览器半部经 /config 读取。
+const MANAGER_URL = process.env.BRAIN_MANAGER_URL ?? 'http://127.0.0.1:19998'
 // Machine paths come from the environment: BRAIN_ROOT (or OBSIDIAN_VAULT/.brain),
 // and PYTHONW via BRAIN_PYTHONW. An unset root yields a clear route error instead
 // of silently operating on a relative .brain directory.
@@ -151,6 +152,10 @@ export function apply(ctx: RouteHost): void {
         path: '/brain-console/api',
         handler: async (req, res) => {
           const url = new URL(req.url ?? '/', 'http://localhost')
+          if (url.pathname.endsWith('/config')) {
+            send(res, 200, { managerUrl: MANAGER_URL })
+            return
+          }
           if (url.pathname.endsWith('/manager/status')) {
             send(res, 200, { running: await managerAlive() })
             return
