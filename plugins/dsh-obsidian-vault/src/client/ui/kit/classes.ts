@@ -292,6 +292,7 @@ export const css = {
   mergePreview: 'ov-merge-preview',
   mergeStatus: 'ov-merge-status',
   splitList: 'ov-split-list',
+  splitDialog: 'ov-split-dialog',
   historyLayout: 'ov-history-layout',
   historyList: 'ov-history-list',
   historyRow: 'ov-history-row',

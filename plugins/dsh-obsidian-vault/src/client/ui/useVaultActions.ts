@@ -45,6 +45,10 @@ export interface VaultActionInput {
   readonly collapseRef: { current: (() => void) | null }
   /** Add or remove one file's bookmark. */
   readonly toggleBookmark: (path: string) => void
+  /** Open the active note's history, merge or split dialog. */
+  readonly openHistory: () => void
+  readonly openMerge: () => void
+  readonly openSplit: () => void
   /** In-app text prompt; embedded webviews block the native one. */
   readonly askText: (title: string, initial?: string) => Promise<string | null>
   /** In-app confirmation, for the same reason. */
@@ -63,7 +67,7 @@ export function useVaultActions(input: VaultActionInput): MenuActions {
     t, openPath, createTarget, mapTabs, reload, setError, closeTab, closeOthers, closeAllTabs, pinTab,
     splitPane, closePane,
     setView, setTreeOpen, setRailOpen, setRail, setFilter, openQuickSwitcher, newTabPending, collapseRef,
-    toggleBookmark, askText, askConfirm, addEmptyTab,
+    toggleBookmark, askText, askConfirm, addEmptyTab, openHistory, openMerge, openSplit,
   } = input
 
   return useMemo<MenuActions>(() => {
@@ -178,6 +182,9 @@ export function useVaultActions(input: VaultActionInput): MenuActions {
       setRail,
       filterTag: tag => setFilter(`#${tag}`),
       toggleBookmark,
+      openHistory,
+      openMerge,
+      openSplit,
     }
   }, [
     addEmptyTab, collapseRef, closeAllTabs, closeOthers, closeTab, createTarget, mapTabs, newTabPending, openPath,

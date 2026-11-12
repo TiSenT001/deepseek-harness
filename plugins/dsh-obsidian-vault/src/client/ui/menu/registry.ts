@@ -151,6 +151,13 @@ function sceneGroups(scene: MenuScene, { t, actions, folders, bookmarks, tabs, p
           leaf('copy-path', t('copyPath'), () => actions.copy(scene.path)),
           leaf('copy-link', t('copyWikilink'), () => actions.copy(wikilink(scene.path))),
         ],
+        scene.path.toLowerCase().endsWith('.md')
+          ? [
+              leaf('note-history', t('fileHistory'), actions.openHistory),
+              leaf('note-merge', t('mergeNotes'), actions.openMerge),
+              leaf('note-split', t('splitNotes'), actions.openSplit),
+            ]
+          : [],
         [
           leaf('graph', t('openInGraph'), () => actions.openGraph(scene.path), { icon: 'graph' }),
           leaf('refresh', t('refresh'), actions.reload, { icon: 'refresh' }),

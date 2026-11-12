@@ -34,6 +34,9 @@ function actions(log: string[]): MenuActions {
     setRail: rail => log.push(`setRail:${rail}`),
     filterTag: noop,
     toggleBookmark: path => log.push(`toggleBookmark:${path}`),
+    openHistory: noop,
+    openMerge: noop,
+    openSplit: noop,
   }
 }
 
