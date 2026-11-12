@@ -1,5 +1,7 @@
 /**
- * brain_manager HTTP 客户端：面板只通过它读写管理器（127.0.0.1:19998）。
+ * brain_manager HTTP 客户端：面板只通过它读写管理器。
+ * 地址默认本机 19998，可由宿主插件用 BRAIN_MANAGER_URL 覆盖并经
+ * /brain-console/api/config 下发给浏览器（启动时 setApiBase）。
  *
  * 这里同时放几个模块级常量加载函数（备份/缓存/失败边/历史）——引用稳定，
  * 对话框只在挂载时拉一次列表，不会因为父组件重渲染而反复请求。
@@ -10,7 +12,19 @@ import type {
 } from './ui/types.ts'
 
 /** brain_manager 的 HTTP 地址。 */
-export const API = 'http://127.0.0.1:19998'
+/** 管理器默认地址；宿主未下发配置时使用。 */
+let apiBase = 'http://127.0.0.1:19998'
+
+/**
+ * 覆盖管理器地址（去掉结尾斜杠）。
+ * @param url - 完整 http(s) 地址
+ */
+export function setApiBase(url: string): void {
+  if (url !== '') apiBase = url.replace(/\/+$/, '')
+}
+
+/** 当前管理器地址（用于提示文案）。 */
+export const apiBaseUrl = (): string => apiBase
 
 /** 单元动作的中文名。 */
 export const ACTION_LABEL: Record<UnitAction, string> = { start: '启动', stop: '停止', restart: '重启' }
@@ -25,14 +39,14 @@ export function busyActionOf(busy: string | null, name: string): UnitAction | nu
 
 /** GET 并解析 JSON（失败抛 HTTP 状态）。 */
 export async function jget<T>(path: string): Promise<T> {
-  const res = await fetch(`${API}${path}`, { cache: 'no-store' })
+  const res = await fetch(`${apiBase}${path}`, { cache: 'no-store' })
   if (!res.ok) throw new Error(`HTTP ${res.status}`)
   return (await res.json()) as T
 }
 
 /** POST 并解析 JSON 应答（清理备份要读回删了哪些、释放多少）。 */
 export async function postJson<T>(path: string, body?: unknown): Promise<T> {
-  const res = await fetch(`${API}${path}`, {
+  const res = await fetch(`${apiBase}${path}`, {
     method: 'POST',
     headers: body === undefined ? undefined : { 'Content-Type': 'application/json' },
     body: body === undefined ? undefined : JSON.stringify(body),
@@ -129,11 +143,12 @@ export const cancelEmbed = (): Promise<{ ok: boolean; status?: EmbedJobStatus }>
   postJson<{ ok: boolean; status?: EmbedJobStatus }>('/embed/cancel', {})
 
 /** 诊断包下载地址（zip：状态 + 单元 + 趋势 + 各单元日志尾部）。 */
-export const DIAGNOSTICS_URL = `${API}/diagnostics/bundle`
+/** 诊断包下载地址（按当前管理器地址实时拼）。 */
+export const diagnosticsBundleUrl = (): string => `${apiBase}/diagnostics/bundle`
 
 /** 已落盘诊断包的下载地址（自愈记录里点路径即下载）。 */
 export const diagnosticsFileUrl = (name: string): string =>
-  `${API}/diagnostics/file?name=${encodeURIComponent(name)}`
+  `${apiBase}/diagnostics/file?name=${encodeURIComponent(name)}`
 
 /** 指标趋势：一次取满一年，对话框里再按 7/30/90/365 天切窗口。 */
 export const loadHistory = (): Promise<HistoryListing> => jget<HistoryListing>('/status/history?days=365')

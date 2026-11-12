@@ -14,7 +14,7 @@ import { dirname, join } from "node:path";
 */
 const name = "dsh-brain-console";
 const inject = ["webServer"];
-const MANAGER_URL = "http://127.0.0.1:19998";
+const MANAGER_URL = process.env.BRAIN_MANAGER_URL ?? "http://127.0.0.1:19998";
 const BRAIN_ROOT = process.env.BRAIN_ROOT ?? (process.env.OBSIDIAN_VAULT ? join(process.env.OBSIDIAN_VAULT, ".brain") : "");
 const PYTHONW = process.env.BRAIN_PYTHONW ?? "pythonw.exe";
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -127,6 +127,10 @@ function apply(ctx) {
 		path: "/brain-console/api",
 		handler: async (req, res) => {
 			const url = new URL(req.url ?? "/", "http://localhost");
+			if (url.pathname.endsWith("/config")) {
+				send(res, 200, { managerUrl: MANAGER_URL });
+				return;
+			}
 			if (url.pathname.endsWith("/manager/status")) {
 				send(res, 200, { running: await managerAlive() });
 				return;

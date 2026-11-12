@@ -211,6 +211,20 @@ try {
     return '已展开 · 错误级别过滤生效'
   })
 
+  await soft('宿主下发管理器地址配置', async () => {
+    const origin = new URL(page.url()).origin
+    const response = await page.request.get(`${origin}/brain-console/api/config`)
+    if (response.status() === 404) {
+      return '宿主为旧版（404）· 浏览器回退默认地址'
+    }
+    if (!response.ok()) throw new Error(`config 状态 ${response.status()}`)
+    const data = await response.json()
+    if (typeof data.managerUrl !== 'string' || data.managerUrl === '') {
+      throw new Error('config 缺 managerUrl')
+    }
+    return `managerUrl=${data.managerUrl}`
+  })
+
   await soft('失败边明细对话框能打开', async () => {
     // 入口是两跳：失败边 KPI → 趋势对话框 → 「查看失败边明细」
     const kpi = page.locator('.bc-kpi-action', { hasText: '失败边' }).first()

@@ -24,27 +24,32 @@
   只打印将要做什么（旧进程列表、端口状态、启动命令），不杀不启动。
 
 .EXAMPLE
-  powershell -NoProfile -ExecutionPolicy Bypass -File G:\Software\deepseek-harness\scripts\restart-dsh.ps1
+  powershell -NoProfile -ExecutionPolicy Bypass -File scripts\restart-dsh.ps1
 #>
 [CmdletBinding()]
 param(
   # 知识库根目录：给宿主插件的 BRAIN_ROOT 用；空字符串表示不设置
-  [string]$BrainRoot = 'G:\个人知识库\.brain',
+  # 知识库根目录；默认取环境变量 BRAIN_ROOT，空字符串表示不设置
+  [string]$BrainRoot = $env:BRAIN_ROOT,
   [switch]$NoKill,
   [switch]$DryRun,
   # GUI 终端的默认起始目录。DSH 的终端控制器优先读这个环境变量；
   # 不设时退回会话工作目录（本会话是 worktree，会出现"终端打开位置变了"）。
-  [string]$TerminalCwd = 'G:\'
+  # GUI 终端默认起始目录；默认取环境变量 DSH_TERMINAL_CWD
+  [string]$TerminalCwd = $env:DSH_TERMINAL_CWD
 )
 
 $ErrorActionPreference = 'SilentlyContinue'
 
-$Repo = 'G:\Software\deepseek-harness'
-$OutDir = 'G:\Documents\dsh-temp'
+$Repo = Split-Path $PSScriptRoot -Parent
+$DocumentsDir = [Environment]::GetFolderPath('MyDocuments')
+$OutDir = if ($env:DSH_RESTART_OUT) { $env:DSH_RESTART_OUT } elseif ($DocumentsDir) { Join-Path $DocumentsDir 'dsh-temp' } else { Join-Path (Get-Location) 'dsh-temp' }
 $LogFile = Join-Path $OutDir 'dsh-restart.log'
 $UrlFile = Join-Path $OutDir 'dsh-url.txt'
-$NodeDir = 'G:\Software\Node'
-$PnpmDir = 'C:\Users\Administrator\AppData\Roaming\npm'
+$nodeExe = (Get-Command node -ErrorAction SilentlyContinue).Source
+$NodeDir = if ($nodeExe) { Split-Path -Parent $nodeExe } else { '' }
+$pnpmCmd = (Get-Command pnpm -ErrorAction SilentlyContinue).Source
+$PnpmDir = if ($pnpmCmd) { Split-Path -Parent $pnpmCmd } else { '' }
 
 function Write-Log([string]$Message) {
   $line = '[{0:HH:mm:ss}] {1}' -f (Get-Date), $Message
@@ -109,7 +114,8 @@ if (Test-Port 3080) {
 Write-Log 'port 3080 free, starting server'
 
 # 3) 拉起新服务器并等 URL
-$env:PATH = $NodeDir + ';' + $PnpmDir + ';' + $env:PATH
+$pathParts = @($NodeDir, $PnpmDir) | Where-Object { $_ -ne '' }
+$env:PATH = (@($pathParts) + @($env:PATH)) -join ';'
 # GUI 终端默认起在 $TerminalCwd（终端控制器优先读这个变量）
 # 宿主插件 dsh-brain-console 靠 BRAIN_ROOT 定位 .brain（面板的「启动管理器」路由）；
 # 从别的 shell / 调度器重启时这个变量常常不在，统一在脚本里兜住。

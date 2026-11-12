@@ -4,52 +4,21 @@ window.__ModuleLoader__.load({
 		var module = { exports: {} };
 		var exports = module.exports;
 		Object.defineProperty(exports, Symbol.toStringTag, { value: "Module" });
-		let react_jsx_runtime = require("react/jsx-runtime");
 		let react = require("react");
-		//#region src/icon.tsx
-		function BrainConsoleIcon({ size = 16, title = "TiSenT Brain" }) {
-			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("svg", {
-				width: size,
-				height: size,
-				viewBox: "0 0 24 24",
-				role: "img",
-				"aria-label": title,
-				fill: "none",
-				stroke: "currentColor",
-				strokeWidth: 1.6,
-				strokeLinecap: "round",
-				strokeLinejoin: "round",
-				children: [
-					/* @__PURE__ */ (0, react_jsx_runtime.jsx)("circle", {
-						cx: "12",
-						cy: "4.5",
-						r: "2.5"
-					}),
-					/* @__PURE__ */ (0, react_jsx_runtime.jsx)("path", { d: "m10.2 6.3-3.9 3.9" }),
-					/* @__PURE__ */ (0, react_jsx_runtime.jsx)("circle", {
-						cx: "4.5",
-						cy: "12",
-						r: "2.5"
-					}),
-					/* @__PURE__ */ (0, react_jsx_runtime.jsx)("path", { d: "M7 12h10" }),
-					/* @__PURE__ */ (0, react_jsx_runtime.jsx)("circle", {
-						cx: "19.5",
-						cy: "12",
-						r: "2.5"
-					}),
-					/* @__PURE__ */ (0, react_jsx_runtime.jsx)("path", { d: "m13.8 17.7 3.9-3.9" }),
-					/* @__PURE__ */ (0, react_jsx_runtime.jsx)("circle", {
-						cx: "12",
-						cy: "19.5",
-						r: "2.5"
-					})
-				]
-			});
-		}
-		//#endregion
+		let react_jsx_runtime = require("react/jsx-runtime");
 		//#region src/api.ts
 		/** brain_manager 的 HTTP 地址。 */
-		const API = "http://127.0.0.1:19998";
+		/** 管理器默认地址；宿主未下发配置时使用。 */
+		let apiBase = "http://127.0.0.1:19998";
+		/**
+		* 覆盖管理器地址（去掉结尾斜杠）。
+		* @param url - 完整 http(s) 地址
+		*/
+		function setApiBase(url) {
+			if (url !== "") apiBase = url.replace(/\/+$/, "");
+		}
+		/** 当前管理器地址（用于提示文案）。 */
+		const apiBaseUrl = () => apiBase;
 		/** 单元动作的中文名。 */
 		const ACTION_LABEL = {
 			start: "启动",
@@ -65,13 +34,13 @@ window.__ModuleLoader__.load({
 		}
 		/** GET 并解析 JSON（失败抛 HTTP 状态）。 */
 		async function jget(path) {
-			const res = await fetch(`${API}${path}`, { cache: "no-store" });
+			const res = await fetch(`${apiBase}${path}`, { cache: "no-store" });
 			if (!res.ok) throw new Error(`HTTP ${res.status}`);
 			return await res.json();
 		}
 		/** POST 并解析 JSON 应答（清理备份要读回删了哪些、释放多少）。 */
 		async function postJson(path, body) {
-			const res = await fetch(`${API}${path}`, {
+			const res = await fetch(`${apiBase}${path}`, {
 				method: "POST",
 				headers: body === void 0 ? void 0 : { "Content-Type": "application/json" },
 				body: body === void 0 ? void 0 : JSON.stringify(body)
@@ -134,14 +103,56 @@ window.__ModuleLoader__.load({
 		/** 请求取消当前任务（当前笔记处理完即停）。 */
 		const cancelEmbed = () => postJson("/embed/cancel", {});
 		/** 诊断包下载地址（zip：状态 + 单元 + 趋势 + 各单元日志尾部）。 */
-		const DIAGNOSTICS_URL = `${API}/diagnostics/bundle`;
+		/** 诊断包下载地址（按当前管理器地址实时拼）。 */
+		const diagnosticsBundleUrl = () => `${apiBase}/diagnostics/bundle`;
 		/** 已落盘诊断包的下载地址（自愈记录里点路径即下载）。 */
-		const diagnosticsFileUrl = (name) => `${API}/diagnostics/file?name=${encodeURIComponent(name)}`;
+		const diagnosticsFileUrl = (name) => `${apiBase}/diagnostics/file?name=${encodeURIComponent(name)}`;
 		/** 指标趋势：一次取满一年，对话框里再按 7/30/90/365 天切窗口。 */
 		const loadHistory = () => jget("/status/history?days=365");
 		/** 缓存对话框的回调同样模块级（引用稳定）。 */
 		const loadCaches = () => jget("/actions/caches");
 		const pruneCaches = (ids) => postJson("/actions/caches/prune", { ids });
+		//#endregion
+		//#region src/icon.tsx
+		function BrainConsoleIcon({ size = 16, title = "TiSenT Brain" }) {
+			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("svg", {
+				width: size,
+				height: size,
+				viewBox: "0 0 24 24",
+				role: "img",
+				"aria-label": title,
+				fill: "none",
+				stroke: "currentColor",
+				strokeWidth: 1.6,
+				strokeLinecap: "round",
+				strokeLinejoin: "round",
+				children: [
+					/* @__PURE__ */ (0, react_jsx_runtime.jsx)("circle", {
+						cx: "12",
+						cy: "4.5",
+						r: "2.5"
+					}),
+					/* @__PURE__ */ (0, react_jsx_runtime.jsx)("path", { d: "m10.2 6.3-3.9 3.9" }),
+					/* @__PURE__ */ (0, react_jsx_runtime.jsx)("circle", {
+						cx: "4.5",
+						cy: "12",
+						r: "2.5"
+					}),
+					/* @__PURE__ */ (0, react_jsx_runtime.jsx)("path", { d: "M7 12h10" }),
+					/* @__PURE__ */ (0, react_jsx_runtime.jsx)("circle", {
+						cx: "19.5",
+						cy: "12",
+						r: "2.5"
+					}),
+					/* @__PURE__ */ (0, react_jsx_runtime.jsx)("path", { d: "m13.8 17.7 3.9-3.9" }),
+					/* @__PURE__ */ (0, react_jsx_runtime.jsx)("circle", {
+						cx: "12",
+						cy: "19.5",
+						r: "2.5"
+					})
+				]
+			});
+		}
 		//#endregion
 		//#region src/ui/errors.ts
 		/**
@@ -6608,7 +6619,7 @@ window.__ModuleLoader__.load({
 			const [shutdownOpen, setShutdownOpen] = (0, react.useState)(false);
 			const downloadDiagnostics = () => {
 				const anchor = document.createElement("a");
-				anchor.href = DIAGNOSTICS_URL;
+				anchor.href = diagnosticsBundleUrl();
 				anchor.rel = "noopener";
 				anchor.click();
 			};
@@ -6882,9 +6893,13 @@ window.__ModuleLoader__.load({
 									role: "status",
 									children: [/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
 										className: "bc-notice-body",
-										children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+										children: [/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
 											className: "bc-notice-title",
-											children: "无法连接 brain_manager（127.0.0.1:19998）"
+											children: [
+												"无法连接 brain_manager（",
+												apiBaseUrl(),
+												"）"
+											]
 										}), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
 											className: "bc-notice-text",
 											children: [feed.connectionError, "。面板是管理器的前端，管理器没跑时无法启停单元，可由宿主代为拉起"]
@@ -7079,9 +7094,41 @@ window.__ModuleLoader__.load({
 		}
 		//#endregion
 		//#region src/client.tsx
+		/**
+		* Browser half: 把「TiSenT Brain」注册为左侧栏入口 + 主面板页面。
+		*
+		* 与 dsh-obsidian-vault 同一套 slots 契约：
+		*   sidebar.panellist（左侧栏入口，带图标） + main（面板页面本体）
+		* 两个贡献都先 inject 再 register，激活顺序无关。
+		*/
 		/** Services the browser half reads. */
 		const inject = ["slots"];
 		const PANEL_ID = "brain-console";
+		/**
+		* 页面外壳：先向宿主读管理器地址，再挂载真实面板。
+		* 宿主路由不可用时回退 api.ts 的默认地址，不阻塞面板。
+		*/
+		function ConsoleRoot() {
+			const [ready, setReady] = (0, react.useState)(false);
+			(0, react.useEffect)(() => {
+				(async () => {
+					try {
+						const response = await fetch("/brain-console/api/config", { cache: "no-store" });
+						if (response.ok) {
+							const data = await response.json();
+							if (typeof data.managerUrl === "string" && data.managerUrl !== "") setApiBase(data.managerUrl);
+						}
+					} catch {} finally {
+						setReady(true);
+					}
+				})();
+			}, []);
+			if (!ready) return /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+				className: "bc-loading",
+				children: "读取管理器配置…"
+			});
+			return /* @__PURE__ */ (0, react_jsx_runtime.jsx)(ConsolePage, {});
+		}
 		function apply(ctx) {
 			ctx.effect(() => ctx.slots.inject("sidebar.panellist", () => ctx.slots.register({
 				name: "sidebar.panellist",
@@ -7092,7 +7139,7 @@ window.__ModuleLoader__.load({
 			ctx.effect(() => ctx.slots.inject("main", () => ctx.slots.register({
 				name: "main",
 				key: PANEL_ID
-			}, ConsolePage)), "brain-console: page");
+			}, ConsoleRoot)), "brain-console: page");
 		}
 		//#endregion
 		exports.apply = apply;
