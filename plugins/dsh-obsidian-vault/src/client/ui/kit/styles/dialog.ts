@@ -462,4 +462,13 @@ textarea.ov-input { resize: vertical; }
   color: var(--dsw-alias-text-secondary);
   font-size: 12px;
 }
-`
+
+.ov-split-list {
+  max-height: 96px;
+  margin: 6px 0 0;
+  padding-left: 20px;
+  overflow: auto;
+  color: var(--dsw-alias-label-secondary, #b6b6bd);
+  font-size: 12px;
+  line-height: 1.6;
+}`
