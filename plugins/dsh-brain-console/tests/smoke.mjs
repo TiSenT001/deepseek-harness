@@ -275,6 +275,21 @@ try {
     const nodes = await dialog.locator('.bc-dep-node').count()
     const edges = await dialog.locator('.bc-dep-edge').count()
     if (nodes === 0) throw new Error('依赖图没有节点')
+    let interaction = ''
+    if (edges > 0) {
+      await dialog.locator('.bc-dep-edge-hit').first().hover()
+      await page.waitForTimeout(300)
+      const activeEdges = await dialog.locator('.bc-dep-edge[data-active="true"]').count()
+      if (activeEdges === 0) throw new Error('边悬停没有高亮')
+      const zoomBefore = await dialog.locator('.bc-dep-graph').getAttribute('viewBox')
+      await dialog.getByRole('button', { name: '放大' }).click()
+      await dialog.getByRole('button', { name: '放大' }).click()
+      await page.waitForTimeout(200)
+      const zoomAfter = await dialog.locator('.bc-dep-graph').getAttribute('viewBox')
+      if (zoomBefore === zoomAfter) throw new Error('缩放没有改变 viewBox')
+      await dialog.getByRole('button', { name: '重置' }).click()
+      interaction = ` · 悬停高亮 ${activeEdges} 边 · 缩放生效`
+    }
     await dialog.locator('.bc-dep-node').first().click()
     await page.waitForTimeout(700)
     const detail = await page.locator('.bc-detail-list').count()
@@ -283,7 +298,7 @@ try {
     await page.keyboard.press('Escape')
     await page.waitForTimeout(300)
     if (detail === 0) throw new Error('点击节点没有打开单元详情')
-    return `${nodes} 个节点 · ${edges} 条依赖 · 点节点打开详情`
+    return `${nodes} 个节点 · ${edges} 条依赖 · 点节点打开详情${interaction}`
   })
 
   await soft('单元 ⋯ 菜单能打开', async () => {
@@ -450,6 +465,19 @@ try {
         throw new Error(`CSV 文件名异常: ${csvName}`)
       }
       extra += ` · CSV ${csvName}`
+      // 导出全量 JSON
+      const jsonBtn = dialog.getByRole('button', { name: '导出 JSON' })
+      if ((await jsonBtn.count()) === 0) throw new Error('缺少导出 JSON 按钮')
+      const [jsonDownload] = await Promise.all([
+        page.waitForEvent('download', { timeout: 10000 }).catch(() => null),
+        jsonBtn.first().click(),
+      ])
+      if (jsonDownload === null) throw new Error('导出 JSON 没有触发下载')
+      const jsonName = jsonDownload.suggestedFilename()
+      if (!jsonName.startsWith('brain-checkup-history-') || !jsonName.endsWith('.json')) {
+        throw new Error(`JSON 文件名异常: ${jsonName}`)
+      }
+      extra += ` · JSON ${jsonName}`
       const copyBtn = dialog.getByRole('button', { name: /复制摘要|已复制/ })
       if ((await copyBtn.count()) === 0) throw new Error('缺少复制摘要按钮')
       await copyBtn.click()

@@ -2003,6 +2003,22 @@ window.__ModuleLoader__.load({
 				anchorEl.remove();
 				URL.revokeObjectURL(url);
 			};
+			const exportJson = () => {
+				const payload = {
+					exported_at: (/* @__PURE__ */ new Date()).toISOString(),
+					count: history.length,
+					history
+				};
+				const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json;charset=utf-8" });
+				const url = URL.createObjectURL(blob);
+				const anchorEl = document.createElement("a");
+				anchorEl.href = url;
+				anchorEl.download = `brain-checkup-history-${(/* @__PURE__ */ new Date()).toISOString().slice(0, 10)}.json`;
+				document.body.appendChild(anchorEl);
+				anchorEl.click();
+				anchorEl.remove();
+				URL.revokeObjectURL(url);
+			};
 			const copySummary = async () => {
 				try {
 					await copyText(buildSummary());
@@ -2222,31 +2238,41 @@ window.__ModuleLoader__.load({
 									] }),
 									/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
 										className: "bc-checkup-history-actions",
-										children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)(Button, {
-											size: "sm",
-											variant: "ghost",
-											disabled: history.length === 0,
-											onClick: () => exportCsv(),
-											children: "导出 CSV"
-										}), armedClear ? /* @__PURE__ */ (0, react_jsx_runtime.jsxs)(react_jsx_runtime.Fragment, { children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)(Button, {
-											size: "sm",
-											variant: "ghost",
-											disabled: clearing,
-											onClick: () => void clearHistory(),
-											children: "确认清空"
-										}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)(Button, {
-											size: "sm",
-											variant: "ghost",
-											disabled: clearing,
-											onClick: () => setArmedClear(false),
-											children: "取消"
-										})] }) : /* @__PURE__ */ (0, react_jsx_runtime.jsx)(Button, {
-											size: "sm",
-											variant: "ghost",
-											disabled: clearing,
-											onClick: () => setArmedClear(true),
-											children: "清空历史"
-										})]
+										children: [
+											/* @__PURE__ */ (0, react_jsx_runtime.jsx)(Button, {
+												size: "sm",
+												variant: "ghost",
+												disabled: history.length === 0,
+												onClick: () => exportCsv(),
+												children: "导出 CSV"
+											}),
+											/* @__PURE__ */ (0, react_jsx_runtime.jsx)(Button, {
+												size: "sm",
+												variant: "ghost",
+												disabled: history.length === 0,
+												onClick: () => exportJson(),
+												children: "导出 JSON"
+											}),
+											armedClear ? /* @__PURE__ */ (0, react_jsx_runtime.jsxs)(react_jsx_runtime.Fragment, { children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)(Button, {
+												size: "sm",
+												variant: "ghost",
+												disabled: clearing,
+												onClick: () => void clearHistory(),
+												children: "确认清空"
+											}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)(Button, {
+												size: "sm",
+												variant: "ghost",
+												disabled: clearing,
+												onClick: () => setArmedClear(false),
+												children: "取消"
+											})] }) : /* @__PURE__ */ (0, react_jsx_runtime.jsx)(Button, {
+												size: "sm",
+												variant: "ghost",
+												disabled: clearing,
+												onClick: () => setArmedClear(true),
+												children: "清空历史"
+											})
+										]
 									}),
 									dailyHistory.length >= 2 && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
 										className: "bc-checkup-trend",
@@ -2459,19 +2485,30 @@ window.__ModuleLoader__.load({
 		* 依赖关系拓扑：把 `/units` 里的 depends 画成图。
 		*
 		* 按分组纵向排列节点，箭头从「被依赖的单元」指向「依赖它的单元」；
-		* 点击节点打开该单元的详情。底部另给一份依赖边清单，便于精确阅读。
+		* 悬停边或底部依赖行会高亮对应边与两端节点；支持放大/缩小/重置（viewBox）。
+		* 点击节点打开该单元的详情。
 		*/
 		const NODE_W = 150;
 		const NODE_H = 30;
 		const COL_W = 190;
 		const ROW_H = 44;
 		const PAD$1 = 20;
+		const ZOOM_MIN = .6;
+		const ZOOM_MAX = 3;
+		const ZOOM_STEP = .25;
+		/** 把缩放值夹在允许范围内。 */
+		function clampZoom(value) {
+			return Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, Math.round(value * 100) / 100));
+		}
 		/**
 		* 渲染依赖关系对话框。
 		* @param props - 单元列表、节点点击回调与关闭回调
 		* @returns 对话框元素
 		*/
 		function DependencyDialog({ units, onOpenUnit, onClose }) {
+			const [zoom, setZoom] = (0, react.useState)(1);
+			const [activeEdge, setActiveEdge] = (0, react.useState)(null);
+			const [hoverNode, setHoverNode] = (0, react.useState)(null);
 			const groups = Array.from(new Set(units.map((unit) => unit.group)));
 			const layouts = /* @__PURE__ */ new Map();
 			for (const [column, group] of groups.entries()) units.filter((unit) => unit.group === group).forEach((unit, row) => layouts.set(unit.name, {
@@ -2485,12 +2522,25 @@ window.__ModuleLoader__.load({
 			const rows = Math.max(1, ...groups.map((group) => units.filter((unit) => unit.group === group).length));
 			const width = PAD$1 * 2 + Math.max(1, groups.length) * COL_W;
 			const height = PAD$1 * 2 + rows * ROW_H;
+			const nodeEdgeIndexes = hoverNode === null ? [] : edges.map((edge, index) => edge.from === hoverNode || edge.to === hoverNode ? index : -1).filter((index) => index >= 0);
+			const isEdgeActive = (index) => activeEdge === index || nodeEdgeIndexes.includes(index);
+			const activeNodeNames = /* @__PURE__ */ new Set();
+			if (activeEdge !== null) {
+				const edge = edges[activeEdge];
+				if (edge !== void 0) {
+					activeNodeNames.add(edge.from);
+					activeNodeNames.add(edge.to);
+				}
+			}
+			const vbWidth = width / zoom;
+			const vbHeight = height / zoom;
+			const viewBox = `${(width - vbWidth) / 2} ${(height - vbHeight) / 2} ${vbWidth} ${vbHeight}`;
 			return /* @__PURE__ */ (0, react_jsx_runtime.jsx)(Dialog, {
 				open: true,
 				onClose,
 				title: "依赖关系",
 				closeLabel: "关闭",
-				description: "箭头指向依赖方（A 依赖 B 时画 B → A）；点击节点查看单元详情",
+				description: "箭头指向依赖方（A 依赖 B 时画 B → A）；悬停边/下方清单可高亮，点击节点查看详情",
 				footer: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(Button, {
 					size: "sm",
 					variant: "ghost",
@@ -2503,9 +2553,38 @@ window.__ModuleLoader__.load({
 						className: "bc-backup-empty",
 						children: "没有单元数据。"
 					}) : /* @__PURE__ */ (0, react_jsx_runtime.jsxs)(react_jsx_runtime.Fragment, { children: [
+						/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+							className: "bc-dep-zoom",
+							children: [
+								/* @__PURE__ */ (0, react_jsx_runtime.jsx)(Button, {
+									size: "sm",
+									variant: "ghost",
+									"aria-label": "缩小",
+									onClick: () => setZoom((value) => clampZoom(value - ZOOM_STEP)),
+									children: "缩小"
+								}),
+								/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
+									className: "bc-dep-zoom-value",
+									children: [zoom.toFixed(2), "×"]
+								}),
+								/* @__PURE__ */ (0, react_jsx_runtime.jsx)(Button, {
+									size: "sm",
+									variant: "ghost",
+									"aria-label": "放大",
+									onClick: () => setZoom((value) => clampZoom(value + ZOOM_STEP)),
+									children: "放大"
+								}),
+								/* @__PURE__ */ (0, react_jsx_runtime.jsx)(Button, {
+									size: "sm",
+									variant: "ghost",
+									onClick: () => setZoom(1),
+									children: "重置"
+								})
+							]
+						}),
 						/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("svg", {
 							className: "bc-dep-graph",
-							viewBox: `0 0 ${width} ${height}`,
+							viewBox,
 							width: "100%",
 							role: "img",
 							"aria-label": "服务依赖图",
@@ -2531,11 +2610,19 @@ window.__ModuleLoader__.load({
 									const x2 = to.x;
 									const y2 = to.y + NODE_H / 2;
 									const bend = Math.max(24, Math.abs(x2 - x1) / 2);
-									return /* @__PURE__ */ (0, react_jsx_runtime.jsx)("path", {
+									const d = `M${x1},${y1} C${x1 + bend},${y1} ${x2 - bend},${y2} ${x2},${y2}`;
+									return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("g", { children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("path", {
 										className: "bc-dep-edge",
-										d: `M${x1},${y1} C${x1 + bend},${y1} ${x2 - bend},${y2} ${x2},${y2}`,
+										"data-active": isEdgeActive(index) || void 0,
+										d,
 										markerEnd: "url(#bc-dep-arrow)"
-									}, `${edge.from}-${edge.to}-${index}`);
+									}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("path", {
+										className: "bc-dep-edge-hit",
+										"data-index": index,
+										d,
+										onMouseEnter: () => setActiveEdge(index),
+										onMouseLeave: () => setActiveEdge(null)
+									})] }, `${edge.from}-${edge.to}-${index}`);
 								}),
 								groups.map((group, column) => /* @__PURE__ */ (0, react_jsx_runtime.jsx)("text", {
 									className: "bc-dep-group",
@@ -2547,12 +2634,16 @@ window.__ModuleLoader__.load({
 									const position = layouts.get(unit.name);
 									if (position === void 0) return null;
 									const label = unit.name.length > 18 ? `${unit.name.slice(0, 17)}…` : unit.name;
+									const active = activeNodeNames.has(unit.name) || hoverNode === unit.name;
 									return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("g", {
 										className: "bc-dep-node",
 										"data-running": unit.running ? "true" : "false",
+										"data-active": active || void 0,
 										transform: `translate(${position.x},${position.y})`,
 										role: "button",
 										tabIndex: 0,
+										onMouseEnter: () => setHoverNode(unit.name),
+										onMouseLeave: () => setHoverNode(null),
 										onClick: () => onOpenUnit(unit.name),
 										onKeyDown: (event) => {
 											if (event.key === "Enter" || event.key === " ") onOpenUnit(unit.name);
@@ -2577,6 +2668,9 @@ window.__ModuleLoader__.load({
 								children: "这些单元没有声明 depends。"
 							}), edges.slice(0, 60).map((edge, index) => /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
 								className: "bc-dep-row",
+								"data-active": activeEdge === index || void 0,
+								onMouseEnter: () => setActiveEdge(index),
+								onMouseLeave: () => setActiveEdge(null),
 								children: [
 									/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
 										className: "bc-dep-from",
@@ -5783,6 +5877,41 @@ window.__ModuleLoader__.load({
 .bc-settings-order-name {
   flex: 1;
   color: var(--dsw-alias-label-primary);
+}
+
+.bc-dep-zoom {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.bc-dep-zoom-value {
+  min-width: 42px;
+  text-align: center;
+  font-size: 11px;
+  color: var(--dsw-alias-label-tertiary);
+  font-variant-numeric: tabular-nums;
+}
+.bc-dep-edge-hit {
+  fill: none;
+  stroke: transparent;
+  stroke-width: 10;
+  pointer-events: stroke;
+  cursor: pointer;
+}
+.bc-dep-edge[data-active='true'] {
+  stroke: var(--dsw-alias-label-primary);
+  stroke-width: 2;
+}
+.bc-dep-edge[data-active='true'] + .bc-dep-edge-hit {
+  stroke: transparent;
+}
+.bc-dep-node[data-active='true'] rect {
+  stroke: var(--dsw-alias-label-primary);
+  stroke-width: 1.6;
+}
+.bc-dep-row[data-active='true'] {
+  background: var(--dsw-alias-interactive-bg-hover);
+  border-radius: 4px;
 }
 
 .bc-dependency {
