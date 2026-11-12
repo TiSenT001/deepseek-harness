@@ -184,6 +184,12 @@ export function useGraphCamera({ positionsRef, loopRef, settledRef }: GraphCamer
             (rect.height - padding * 2) / Math.max(1, maxY - minY),
           )
           const target = Math.max(ZOOM_MIN, Math.min(1, fitZoom))
+          // Follow the growing bounding box without the damping lag; node radii
+          // stay screen-constant, so this reads as the camera backing out.
+          if (Math.abs(zoomRef.current - target) > 1e-6) {
+            zoomRef.current = target
+            setZoom(target)
+          }
           zoomTargetRef.current = target
           // A local graph centres on its focus node; the global graph centres
           // on the bounding box.
@@ -192,7 +198,9 @@ export function useGraphCamera({ positionsRef, loopRef, settledRef }: GraphCamer
             : nodes.find(node => node.path === focusRef.current)
           const centerX = focus === undefined ? (minX + maxX) / 2 : focus.x
           const centerY = focus === undefined ? (minY + maxY) / 2 : focus.y
-          panTargetRef.current = { x: -centerX * target, y: -centerY * target }
+          const panX = -centerX * target
+          const panY = -centerY * target
+          panTargetRef.current = { x: panX, y: panY }
         }
       }
 

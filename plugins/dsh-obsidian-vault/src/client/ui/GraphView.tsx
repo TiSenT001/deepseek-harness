@@ -82,7 +82,14 @@ export function GraphView(props: GraphViewProps): JSX.Element {
   // node set is unchanged. Refit before the first visible frame so the graph
   // never flashes at 100% and then appears to change size.
   useEffect(() => {
-    if (data.visible.nodes.length > 0) fitSlot.current?.(scope ?? null)
+    if (data.visible.nodes.length === 0) return undefined
+    fitSlot.current?.(scope ?? null)
+    // Continuous animation never cools, so refit once after the initial wave
+    // has spread instead of freezing on the seed bounding box.
+    const timer = window.setTimeout(() => {
+      if (!userMovedRef.current) fitSlot.current?.(scope ?? null)
+    }, 1200)
+    return () => window.clearTimeout(timer)
   }, [scope, data.visible.nodes.length])
 
   useEffect(() => {
