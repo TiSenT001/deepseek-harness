@@ -6,17 +6,15 @@
  * 不提供删除动作——清理入口仍在 ⋯ 菜单的「清理备份…」「清理缓存…」。
  */
 import { useEffect, useState } from 'react'
-import { loadStorageSummary, saveStorageThresholds } from '../api.ts'
+import { loadStorageSummary } from '../api.ts'
 import { reasonOf } from './errors.ts'
 import { Button } from './primitives.ts'
 import { Dialog } from './Dialog.tsx'
-import type { StorageSummary, StorageThresholds } from './types.ts'
+import type { StorageSummary } from './types.ts'
 
 export interface StorageDialogProps {
   /** 关闭对话框。 */
   onClose: () => void
-  /** 阈值保存成功后通知页面刷新顶部告警。 */
-  onThresholdsChanged?: (thresholds: StorageThresholds) => void
 }
 
 /** 字节数格式化成 B/KB/MB/GB/TB。 */
@@ -38,14 +36,10 @@ function human(bytes: number | null | undefined): string {
  * @param props - 关闭回调
  * @returns 对话框元素（挂载即拉一次，可刷新）
  */
-export function StorageDialog({ onClose, onThresholdsChanged }: StorageDialogProps): JSX.Element {
+export function StorageDialog({ onClose }: StorageDialogProps): JSX.Element {
   const [summary, setSummary] = useState<StorageSummary | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
-  const [warnInput, setWarnInput] = useState('')
-  const [criticalInput, setCriticalInput] = useState('')
-  const [saving, setSaving] = useState(false)
-  const [thresholdError, setThresholdError] = useState<string | null>(null)
 
   const load = async (): Promise<void> => {
     setBusy(true)
@@ -61,40 +55,6 @@ export function StorageDialog({ onClose, onThresholdsChanged }: StorageDialogPro
 
   useEffect(() => { void load() }, [])
 
-  // 首次拿到阈值后填进输入框；之后不覆盖用户正在编辑的值
-  useEffect(() => {
-    if (summary?.thresholds === undefined) return
-    setWarnInput((current) => current === '' ? String(summary.thresholds?.warn_gb ?? '') : current)
-    setCriticalInput((current) => current === '' ? String(summary.thresholds?.critical_percent ?? '') : current)
-  }, [summary])
-
-  const saveThresholds = async (): Promise<void> => {
-    setThresholdError(null)
-    const warn = Number(warnInput)
-    const critical = Number(criticalInput)
-    if (!Number.isFinite(warn) || !Number.isFinite(critical)) {
-      setThresholdError('阈值必须是数字')
-      return
-    }
-    setSaving(true)
-    try {
-      const result = await saveStorageThresholds(warn, critical)
-      if (!result.ok) {
-        setThresholdError(result.error ?? '保存失败')
-        return
-      }
-      if (result.thresholds !== undefined) {
-        setSummary((prev) => prev === null ? prev : { ...prev, thresholds: result.thresholds })
-        onThresholdsChanged?.(result.thresholds)
-        setWarnInput(String(result.thresholds.warn_gb))
-        setCriticalInput(String(result.thresholds.critical_percent))
-      }
-    } catch (e) {
-      setThresholdError(reasonOf(e))
-    } finally {
-      setSaving(false)
-    }
-  }
 
   const items = summary?.items ?? []
   const largest = items.reduce((max, item) => Math.max(max, item.bytes), 0)
@@ -136,36 +96,6 @@ export function StorageDialog({ onClose, onThresholdsChanged }: StorageDialogPro
             <div className="bc-storage-time">统计于 {summary.generated_at}</div>
           </div>
 
-          <div className="bc-storage-threshold">
-            <span>告警阈值</span>
-            <label>
-              可用 &lt;
-              <input
-                className="bc-storage-input"
-                inputMode="decimal"
-                value={warnInput}
-                onChange={(event) => setWarnInput(event.target.value)}
-                aria-label="可用 GB 阈值"
-              />
-              GB
-            </label>
-            <label>
-              占比 &lt;
-              <input
-                className="bc-storage-input"
-                inputMode="decimal"
-                value={criticalInput}
-                onChange={(event) => setCriticalInput(event.target.value)}
-                aria-label="剩余占比阈值"
-              />
-              %
-            </label>
-            <Button size="sm" variant="ghost" disabled={saving} onClick={() => void saveThresholds()}>
-              {saving ? '保存中…' : '保存'}
-            </Button>
-          </div>
-          {thresholdError !== null && <div className="bc-backup-error">{thresholdError}</div>}
-
           {items.length === 0 && <div className="bc-backup-empty">没有可统计的目录。</div>}
           {items.map((item) => {
             const share = total > 0 ? (item.bytes / total) * 100 : 0
@@ -189,7 +119,7 @@ export function StorageDialog({ onClose, onThresholdsChanged }: StorageDialogPro
           })}
 
           <div className="bc-storage-hint">
-            当前阈值：可用低于 {summary.thresholds?.warn_gb ?? '—'} GB 黄色 · 剩余占比低于 {summary.thresholds?.critical_percent ?? '—'}% 红色。
+            阈值（当前 可用 &lt; {summary.thresholds?.warn_gb ?? '—'} GB / 占比 &lt; {summary.thresholds?.critical_percent ?? '—'}%）在顶部「设置」页调整。
             清理入口在 ⋯ 菜单：「清理备份…」「清理缓存…」「自动恢复记录… → 清理旧诊断包」。
           </div>
         </div>

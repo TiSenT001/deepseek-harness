@@ -459,36 +459,81 @@ const STYLES = `
   color: var(--dsw-alias-label-tertiary);
 }
 
-.bc-storage-threshold {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
-  font-size: 11.5px;
-  color: var(--dsw-alias-label-secondary);
-}
-.bc-storage-threshold > span {
-  color: var(--dsw-alias-label-tertiary);
-}
-.bc-storage-threshold label {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-}
-.bc-storage-input {
-  width: 52px;
-  padding: 2px 6px;
-  border: 1px solid var(--dsw-alias-border-l2);
-  border-radius: 6px;
-  background: transparent;
-  color: var(--dsw-alias-label-primary);
-  font-size: 11.5px;
-  font-variant-numeric: tabular-nums;
-}
 .bc-header-alert[data-tone='bad'] {
   border-color: color-mix(in srgb, var(--dsw-alias-state-error-primary, #e35d6a) 45%, transparent);
   background: color-mix(in srgb, var(--dsw-alias-state-error-primary, #e35d6a) 10%, transparent);
   color: var(--dsw-alias-state-error-primary, #e35d6a);
+}
+
+.bc-settings {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 4px 0 16px;
+}
+.bc-settings-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+.bc-settings-head h2 {
+  margin: 0 0 4px;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--dsw-alias-label-primary);
+}
+.bc-settings-head p,
+.bc-settings-group p {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--dsw-alias-label-tertiary);
+}
+.bc-settings-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--dsw-alias-border-l1);
+  border-radius: 10px;
+  background: var(--dsw-alias-bg-layer-1, rgba(128, 128, 128, 0.04));
+}
+.bc-settings-group h3 {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--dsw-alias-label-primary);
+}
+.bc-settings-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  font-size: 12px;
+  color: var(--dsw-alias-label-secondary);
+}
+.bc-settings-row label {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.bc-settings-input {
+  width: 64px;
+  padding: 3px 8px;
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--dsw-alias-label-primary);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.bc-settings-notice {
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--dsw-alias-state-success-primary, #3fb950) 12%, transparent);
+  color: var(--dsw-alias-state-success-primary, #3fb950);
+  font-size: 12px;
 }
 
 .bc-storage {
