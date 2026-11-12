@@ -56,13 +56,29 @@ export function GraphView(props: GraphViewProps): JSX.Element {
   }, [])
 
   const data = useGraphData({ center: scope, version, onScopeChange })
-  const layout = useGraphLayout({ visible: data.visible, forces: data.settings.forces, animate: data.settings.display.animate })
+  /** Refit once after the first layout settles; later force edits keep the user's camera. */
+  const fitOnSettleRef = useRef(false)
+  const onLayoutSettled = useCallback(() => {
+    if (fitOnSettleRef.current) return
+    fitOnSettleRef.current = true
+    fitSlot.current?.(scope ?? null)
+  }, [scope])
+  const layout = useGraphLayout({
+    visible: data.visible,
+    forces: data.settings.forces,
+    animate: data.settings.display.animate,
+    onSettled: onLayoutSettled,
+  })
   const camera = useGraphCamera({
     positionsRef: layout.positionsRef,
     loopRef: layout.loopRef,
     settledRef: layout.settledRef,
   })
   fitSlot.current = camera.fit
+
+  useEffect(() => {
+    fitOnSettleRef.current = false
+  }, [scope, data.visible.nodes.length])
 
   // Settings (palette, widths, forces) and the visible node set change without
   // touching the stage, so they must wake the canvas loop.

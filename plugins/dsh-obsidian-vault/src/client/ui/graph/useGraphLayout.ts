@@ -42,6 +42,8 @@ export interface GraphLayoutInput {
   readonly forces: GraphSettings['forces']
   /** Keep the simulation warm so the graph animates continuously. */
   readonly animate: boolean
+  /** Called once when a running layout cools. */
+  readonly onSettled?: () => void
 }
 
 /** Positions and the verbs the canvas needs to draw and drag them. */
@@ -73,7 +75,9 @@ export interface GraphLayout {
  * @param input - the visible graph and current force values.
  * @returns positions, the refs the canvas reads, and drag verbs.
  */
-export function useGraphLayout({ visible, forces, animate }: GraphLayoutInput): GraphLayout {
+export function useGraphLayout({ visible, forces, animate, onSettled }: GraphLayoutInput): GraphLayout {
+  const onSettledRef = useRef(onSettled)
+  onSettledRef.current = onSettled
   const [positions, setPositions] = useState<readonly SimNode[]>([])
   const [replayToken, setReplayToken] = useState(0)
   const positionsRef = useRef<readonly SimNode[]>([])
@@ -139,6 +143,7 @@ export function useGraphLayout({ visible, forces, animate }: GraphLayoutInput): 
         },
         onCooled: () => {
           settledRef.current = true
+          onSettledRef.current?.()
         },
       }, {
         ...(seed === undefined ? {} : { seed }),
