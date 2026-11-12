@@ -2127,14 +2127,10 @@ window.__ModuleLoader__.load({
 		* @param props - 关闭回调
 		* @returns 对话框元素（挂载即拉一次，可刷新）
 		*/
-		function StorageDialog({ onClose, onThresholdsChanged }) {
+		function StorageDialog({ onClose }) {
 			const [summary, setSummary] = (0, react.useState)(null);
 			const [error, setError] = (0, react.useState)(null);
 			const [busy, setBusy] = (0, react.useState)(false);
-			const [warnInput, setWarnInput] = (0, react.useState)("");
-			const [criticalInput, setCriticalInput] = (0, react.useState)("");
-			const [saving, setSaving] = (0, react.useState)(false);
-			const [thresholdError, setThresholdError] = (0, react.useState)(null);
 			const load = async () => {
 				setBusy(true);
 				try {
@@ -2149,41 +2145,6 @@ window.__ModuleLoader__.load({
 			(0, react.useEffect)(() => {
 				load();
 			}, []);
-			(0, react.useEffect)(() => {
-				if (summary?.thresholds === void 0) return;
-				setWarnInput((current) => current === "" ? String(summary.thresholds?.warn_gb ?? "") : current);
-				setCriticalInput((current) => current === "" ? String(summary.thresholds?.critical_percent ?? "") : current);
-			}, [summary]);
-			const saveThresholds = async () => {
-				setThresholdError(null);
-				const warn = Number(warnInput);
-				const critical = Number(criticalInput);
-				if (!Number.isFinite(warn) || !Number.isFinite(critical)) {
-					setThresholdError("阈值必须是数字");
-					return;
-				}
-				setSaving(true);
-				try {
-					const result = await saveStorageThresholds(warn, critical);
-					if (!result.ok) {
-						setThresholdError(result.error ?? "保存失败");
-						return;
-					}
-					if (result.thresholds !== void 0) {
-						setSummary((prev) => prev === null ? prev : {
-							...prev,
-							thresholds: result.thresholds
-						});
-						onThresholdsChanged?.(result.thresholds);
-						setWarnInput(String(result.thresholds.warn_gb));
-						setCriticalInput(String(result.thresholds.critical_percent));
-					}
-				} catch (e) {
-					setThresholdError(reasonOf(e));
-				} finally {
-					setSaving(false);
-				}
-			};
 			const items = summary?.items ?? [];
 			const largest = items.reduce((max, item) => Math.max(max, item.bytes), 0);
 			const total = summary?.total_bytes ?? 0;
@@ -2239,45 +2200,6 @@ window.__ModuleLoader__.load({
 									})
 								]
 							}),
-							/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-								className: "bc-storage-threshold",
-								children: [
-									/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: "告警阈值" }),
-									/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("label", { children: [
-										"可用 <",
-										/* @__PURE__ */ (0, react_jsx_runtime.jsx)("input", {
-											className: "bc-storage-input",
-											inputMode: "decimal",
-											value: warnInput,
-											onChange: (event) => setWarnInput(event.target.value),
-											"aria-label": "可用 GB 阈值"
-										}),
-										"GB"
-									] }),
-									/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("label", { children: [
-										"占比 <",
-										/* @__PURE__ */ (0, react_jsx_runtime.jsx)("input", {
-											className: "bc-storage-input",
-											inputMode: "decimal",
-											value: criticalInput,
-											onChange: (event) => setCriticalInput(event.target.value),
-											"aria-label": "剩余占比阈值"
-										}),
-										"%"
-									] }),
-									/* @__PURE__ */ (0, react_jsx_runtime.jsx)(Button, {
-										size: "sm",
-										variant: "ghost",
-										disabled: saving,
-										onClick: () => void saveThresholds(),
-										children: saving ? "保存中…" : "保存"
-									})
-								]
-							}),
-							thresholdError !== null && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
-								className: "bc-backup-error",
-								children: thresholdError
-							}),
 							items.length === 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
 								className: "bc-backup-empty",
 								children: "没有可统计的目录。"
@@ -2322,11 +2244,212 @@ window.__ModuleLoader__.load({
 							/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
 								className: "bc-storage-hint",
 								children: [
-									"当前阈值：可用低于 ",
+									"阈值（当前 可用 < ",
 									summary.thresholds?.warn_gb ?? "—",
-									" GB 黄色 · 剩余占比低于 ",
+									" GB / 占比 < ",
 									summary.thresholds?.critical_percent ?? "—",
-									"% 红色。 清理入口在 ⋯ 菜单：「清理备份…」「清理缓存…」「自动恢复记录… → 清理旧诊断包」。"
+									"%）在顶部「设置」页调整。 清理入口在 ⋯ 菜单：「清理备份…」「清理缓存…」「自动恢复记录… → 清理旧诊断包」。"
+								]
+							})
+						]
+					})
+				]
+			});
+		}
+		//#endregion
+		//#region src/ui/SettingsPage.tsx
+		/**
+		* 设置页：面板内可编辑的部署参数集中在这里。
+		*
+		* 当前两组：磁盘告警（可用 GB / 剩余占比，存大脑 data/storage_thresholds.json）
+		* 与趋势告警（失败边数 / 库大小 MB，存大脑 data/trend_thresholds.json）。
+		* 保存成功后通过回调让顶部告警立即使用新值；返回按钮回主面板。
+		*/
+		/**
+		* 渲染设置页。
+		* @param props - 返回回调与磁盘阈值回传
+		* @returns 设置页元素（挂载即读当前阈值）
+		*/
+		function SettingsPage({ onBack, onDiskThresholdsChanged }) {
+			const [warnInput, setWarnInput] = (0, react.useState)("");
+			const [criticalInput, setCriticalInput] = (0, react.useState)("");
+			const [failureInput, setFailureInput] = (0, react.useState)("");
+			const [dbInput, setDbInput] = (0, react.useState)("");
+			const [loaded, setLoaded] = (0, react.useState)(false);
+			const [saving, setSaving] = (0, react.useState)(null);
+			const [error, setError] = (0, react.useState)(null);
+			const [notice, setNotice] = (0, react.useState)(null);
+			(0, react.useEffect)(() => {
+				(async () => {
+					try {
+						const [summary, trend] = await Promise.all([loadStorageSummary(), loadTrendThresholds()]);
+						setWarnInput(String(summary.thresholds?.warn_gb ?? ""));
+						setCriticalInput(String(summary.thresholds?.critical_percent ?? ""));
+						const failure = trend.thresholds.failure_edges ?? trend.defaults.failure_edges;
+						const db = trend.thresholds.db_size_mb ?? trend.defaults.db_size_mb;
+						setFailureInput(failure === null || failure === void 0 ? "" : String(failure));
+						setDbInput(db === null || db === void 0 ? "" : String(db));
+						setLoaded(true);
+					} catch (e) {
+						setError(reasonOf(e));
+					}
+				})();
+			}, []);
+			const saveDisk = async () => {
+				setError(null);
+				setNotice(null);
+				const warn = Number(warnInput);
+				const critical = Number(criticalInput);
+				if (!Number.isFinite(warn) || !Number.isFinite(critical)) {
+					setError("磁盘阈值必须是数字");
+					return;
+				}
+				setSaving("disk");
+				try {
+					const result = await saveStorageThresholds(warn, critical);
+					if (!result.ok) {
+						setError(result.error ?? "保存失败");
+						return;
+					}
+					if (result.thresholds !== void 0) {
+						setWarnInput(String(result.thresholds.warn_gb));
+						setCriticalInput(String(result.thresholds.critical_percent));
+						onDiskThresholdsChanged?.(result.thresholds);
+					}
+					setNotice("磁盘告警阈值已保存");
+				} catch (e) {
+					setError(reasonOf(e));
+				} finally {
+					setSaving(null);
+				}
+			};
+			const saveTrend = async () => {
+				setError(null);
+				setNotice(null);
+				const failure = Number(failureInput);
+				const db = Number(dbInput);
+				if (!Number.isFinite(failure) || !Number.isFinite(db)) {
+					setError("趋势阈值必须是数字");
+					return;
+				}
+				setSaving("trend");
+				try {
+					const first = await saveTrendThreshold("failure_edges", failure);
+					if (!first.ok) {
+						setError(first.error ?? "保存失败");
+						return;
+					}
+					const second = await saveTrendThreshold("db_size_mb", db);
+					if (!second.ok) {
+						setError(second.error ?? "保存失败");
+						return;
+					}
+					setNotice("趋势告警阈值已保存");
+				} catch (e) {
+					setError(reasonOf(e));
+				} finally {
+					setSaving(null);
+				}
+			};
+			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+				className: "bc-settings",
+				children: [
+					/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+						className: "bc-settings-head",
+						children: [/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", { children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("h2", { children: "设置" }), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", { children: "阈值保存在大脑侧，改完立即生效，不需要重启服务。" })] }), /* @__PURE__ */ (0, react_jsx_runtime.jsx)(Button, {
+							size: "sm",
+							variant: "ghost",
+							onClick: onBack,
+							children: "返回面板"
+						})]
+					}),
+					error !== null && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+						className: "bc-backup-error",
+						children: error
+					}),
+					notice !== null && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+						className: "bc-settings-notice",
+						role: "status",
+						children: notice
+					}),
+					/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("section", {
+						className: "bc-settings-group",
+						children: [
+							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("h3", { children: "磁盘告警" }),
+							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", { children: "可用空间低于 N GB 时顶部显示黄色提示；剩余占比低于 M% 时标红。" }),
+							/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+								className: "bc-settings-row",
+								children: [
+									/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("label", { children: [
+										"可用 <",
+										/* @__PURE__ */ (0, react_jsx_runtime.jsx)("input", {
+											className: "bc-settings-input",
+											inputMode: "decimal",
+											value: warnInput,
+											disabled: !loaded,
+											onChange: (event) => setWarnInput(event.target.value),
+											"aria-label": "磁盘可用 GB 阈值"
+										}),
+										"GB"
+									] }),
+									/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("label", { children: [
+										"占比 <",
+										/* @__PURE__ */ (0, react_jsx_runtime.jsx)("input", {
+											className: "bc-settings-input",
+											inputMode: "decimal",
+											value: criticalInput,
+											disabled: !loaded,
+											onChange: (event) => setCriticalInput(event.target.value),
+											"aria-label": "磁盘剩余占比阈值"
+										}),
+										"%"
+									] }),
+									/* @__PURE__ */ (0, react_jsx_runtime.jsx)(Button, {
+										size: "sm",
+										variant: "outline",
+										disabled: !loaded || saving !== null,
+										onClick: () => void saveDisk(),
+										children: saving === "disk" ? "保存中…" : "保存磁盘阈值"
+									})
+								]
+							})
+						]
+					}),
+					/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("section", {
+						className: "bc-settings-group",
+						children: [
+							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("h3", { children: "趋势告警" }),
+							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", { children: "趋势图超过阈值时画告警线：失败边数与数据库大小（MB）。" }),
+							/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+								className: "bc-settings-row",
+								children: [
+									/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("label", { children: ["失败边 ≥", /* @__PURE__ */ (0, react_jsx_runtime.jsx)("input", {
+										className: "bc-settings-input",
+										inputMode: "numeric",
+										value: failureInput,
+										disabled: !loaded,
+										onChange: (event) => setFailureInput(event.target.value),
+										"aria-label": "失败边数阈值"
+									})] }),
+									/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("label", { children: [
+										"库大小 ≥",
+										/* @__PURE__ */ (0, react_jsx_runtime.jsx)("input", {
+											className: "bc-settings-input",
+											inputMode: "numeric",
+											value: dbInput,
+											disabled: !loaded,
+											onChange: (event) => setDbInput(event.target.value),
+											"aria-label": "数据库大小阈值"
+										}),
+										"MB"
+									] }),
+									/* @__PURE__ */ (0, react_jsx_runtime.jsx)(Button, {
+										size: "sm",
+										variant: "outline",
+										disabled: !loaded || saving !== null,
+										onClick: () => void saveTrend(),
+										children: saving === "trend" ? "保存中…" : "保存趋势阈值"
+									})
 								]
 							})
 						]
@@ -4717,36 +4840,81 @@ window.__ModuleLoader__.load({
   color: var(--dsw-alias-label-tertiary);
 }
 
-.bc-storage-threshold {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
-  font-size: 11.5px;
-  color: var(--dsw-alias-label-secondary);
-}
-.bc-storage-threshold > span {
-  color: var(--dsw-alias-label-tertiary);
-}
-.bc-storage-threshold label {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-}
-.bc-storage-input {
-  width: 52px;
-  padding: 2px 6px;
-  border: 1px solid var(--dsw-alias-border-l2);
-  border-radius: 6px;
-  background: transparent;
-  color: var(--dsw-alias-label-primary);
-  font-size: 11.5px;
-  font-variant-numeric: tabular-nums;
-}
 .bc-header-alert[data-tone='bad'] {
   border-color: color-mix(in srgb, var(--dsw-alias-state-error-primary, #e35d6a) 45%, transparent);
   background: color-mix(in srgb, var(--dsw-alias-state-error-primary, #e35d6a) 10%, transparent);
   color: var(--dsw-alias-state-error-primary, #e35d6a);
+}
+
+.bc-settings {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 4px 0 16px;
+}
+.bc-settings-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+.bc-settings-head h2 {
+  margin: 0 0 4px;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--dsw-alias-label-primary);
+}
+.bc-settings-head p,
+.bc-settings-group p {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--dsw-alias-label-tertiary);
+}
+.bc-settings-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--dsw-alias-border-l1);
+  border-radius: 10px;
+  background: var(--dsw-alias-bg-layer-1, rgba(128, 128, 128, 0.04));
+}
+.bc-settings-group h3 {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--dsw-alias-label-primary);
+}
+.bc-settings-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  font-size: 12px;
+  color: var(--dsw-alias-label-secondary);
+}
+.bc-settings-row label {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.bc-settings-input {
+  width: 64px;
+  padding: 3px 8px;
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--dsw-alias-label-primary);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.bc-settings-notice {
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--dsw-alias-state-success-primary, #3fb950) 12%, transparent);
+  color: var(--dsw-alias-state-success-primary, #3fb950);
+  font-size: 12px;
 }
 
 .bc-storage {
@@ -6133,6 +6301,7 @@ window.__ModuleLoader__.load({
 			const [diskFree, setDiskFree] = (0, react.useState)(null);
 			const [diskTotal, setDiskTotal] = (0, react.useState)(null);
 			const [diskThresholds, setDiskThresholds] = (0, react.useState)(null);
+			const [settingsOpen, setSettingsOpen] = (0, react.useState)(false);
 			const [trend, setTrend] = (0, react.useState)(null);
 			const [detailName, setDetailName] = (0, react.useState)(null);
 			const [stopGroup, setStopGroup] = (0, react.useState)(null);
@@ -6278,125 +6447,133 @@ window.__ModuleLoader__.load({
 						className: "bc-scroll",
 						children: /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
 							className: "bc-inner",
-							children: [
-								/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("header", {
-									className: "bc-header",
-									children: [
-										/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-											className: "bc-logo",
-											"aria-hidden": "true",
-											children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(BrainConsoleIcon, {
-												size: 18,
-												title: "TiSenT Brain"
-											})
-										}),
-										/* @__PURE__ */ (0, react_jsx_runtime.jsx)("h1", {
-											className: "bc-title",
-											children: "TiSenT Brain"
-										}),
-										/* @__PURE__ */ (0, react_jsx_runtime.jsx)(Tooltip, {
-											label: autostartOn ? "开机启动：已开启（⋯ 菜单里可关）" : "开机启动：未开启（⋯ 菜单里可开）",
-											side: "bottom",
-											delayMs: 150,
-											portal: true,
-											disabled: feed.autostart === null || !feed.autostart.supported,
-											children: /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
-												className: "bc-count",
-												"data-tone": feed.units.length > 0 && running === feed.units.length ? "all" : void 0,
-												"data-autostart": autostartOn ? "on" : "off",
-												children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { className: "bc-count-dot" }), feed.units.length === 0 ? "—" : `${running} / ${feed.units.length} 运行中`]
-											})
-										}),
-										abnormalCount > 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("button", {
-											type: "button",
-											className: "bc-header-alert",
-											title: "定位到第一个异常单元",
-											onClick: focusAbnormal,
-											children: [
-												/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-													className: "bc-status-dot",
-													"aria-hidden": "true"
-												}),
-												abnormalCount,
-												" 个异常"
-											]
-										}),
-										(cronAlerts?.stale ?? 0) > 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("button", {
-											type: "button",
-											className: "bc-header-alert",
-											title: "查看过期的定时任务",
-											onClick: () => setIndexOpen(true),
-											children: [
-												/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-													className: "bc-status-dot",
-													"aria-hidden": "true"
-												}),
-												cronAlerts?.stale,
-												" 个定时任务过期"
-											]
-										}),
-										(cronAlerts?.stale ?? 0) === 0 && (cronAlerts?.zombies ?? 0) > 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("button", {
-											type: "button",
-											className: "bc-header-alert",
-											title: "查看并清理失效心跳",
-											onClick: () => setIndexOpen(true),
-											children: [
-												/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-													className: "bc-status-dot",
-													"aria-hidden": "true"
-												}),
-												cronAlerts?.zombies,
-												" 条失效心跳"
-											]
-										}),
-										diskFree !== null && diskThresholds !== null && diskFree / 1024 ** 3 < diskThresholds.warn_gb && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("button", {
-											type: "button",
-											className: "bc-header-alert",
-											"data-tone": diskPercent !== null && diskPercent < diskThresholds.critical_percent ? "bad" : "warn",
-											title: "打开存储概览",
-											onClick: () => setStorageOpen(true),
-											children: [
-												/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-													className: "bc-status-dot",
-													"aria-hidden": "true"
-												}),
-												"磁盘可用 ",
-												(diskFree / 1024 ** 3).toFixed(1),
-												" GB",
-												diskPercent !== null ? ` · ${diskPercent.toFixed(1)}%` : ""
-											]
-										}),
-										/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-											className: "bc-header-actions",
-											children: [
-												feed.updatedAt !== null && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
-													className: "bc-updated",
-													children: ["最后刷新 ", feed.updatedAt]
-												}),
-												/* @__PURE__ */ (0, react_jsx_runtime.jsx)(IconButton, {
-													label: "刷新",
-													icon: IconRefresh,
-													busy: feed.refreshing,
-													onClick: () => void feed.load(true)
-												}),
-												/* @__PURE__ */ (0, react_jsx_runtime.jsx)(MoreMenu, {
-													autostart: feed.autostart,
-													busy,
-													onBackup: () => void actions.backup(),
-													onPrune: () => setBackupOpen(true),
-													onCaches: () => setCacheOpen(true),
-													onIndex: () => setIndexOpen(true),
-													onAutoRecover: () => setAutoRecoverOpen(true),
-													onCheckup: () => setCheckupOpen(true),
-													onStorage: () => setStorageOpen(true),
-													onDiagnostics: downloadDiagnostics,
-													onToggleAutostart: () => void toggleAutostart(),
-													onShutdown: () => setShutdownOpen(true)
-												})
-											]
+							children: [/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("header", {
+								className: "bc-header",
+								children: [
+									/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+										className: "bc-logo",
+										"aria-hidden": "true",
+										children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(BrainConsoleIcon, {
+											size: 18,
+											title: "TiSenT Brain"
 										})
-									]
-								}),
+									}),
+									/* @__PURE__ */ (0, react_jsx_runtime.jsx)("h1", {
+										className: "bc-title",
+										children: "TiSenT Brain"
+									}),
+									/* @__PURE__ */ (0, react_jsx_runtime.jsx)(Tooltip, {
+										label: autostartOn ? "开机启动：已开启（⋯ 菜单里可关）" : "开机启动：未开启（⋯ 菜单里可开）",
+										side: "bottom",
+										delayMs: 150,
+										portal: true,
+										disabled: feed.autostart === null || !feed.autostart.supported,
+										children: /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
+											className: "bc-count",
+											"data-tone": feed.units.length > 0 && running === feed.units.length ? "all" : void 0,
+											"data-autostart": autostartOn ? "on" : "off",
+											children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { className: "bc-count-dot" }), feed.units.length === 0 ? "—" : `${running} / ${feed.units.length} 运行中`]
+										})
+									}),
+									abnormalCount > 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("button", {
+										type: "button",
+										className: "bc-header-alert",
+										title: "定位到第一个异常单元",
+										onClick: focusAbnormal,
+										children: [
+											/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+												className: "bc-status-dot",
+												"aria-hidden": "true"
+											}),
+											abnormalCount,
+											" 个异常"
+										]
+									}),
+									(cronAlerts?.stale ?? 0) > 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("button", {
+										type: "button",
+										className: "bc-header-alert",
+										title: "查看过期的定时任务",
+										onClick: () => setIndexOpen(true),
+										children: [
+											/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+												className: "bc-status-dot",
+												"aria-hidden": "true"
+											}),
+											cronAlerts?.stale,
+											" 个定时任务过期"
+										]
+									}),
+									(cronAlerts?.stale ?? 0) === 0 && (cronAlerts?.zombies ?? 0) > 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("button", {
+										type: "button",
+										className: "bc-header-alert",
+										title: "查看并清理失效心跳",
+										onClick: () => setIndexOpen(true),
+										children: [
+											/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+												className: "bc-status-dot",
+												"aria-hidden": "true"
+											}),
+											cronAlerts?.zombies,
+											" 条失效心跳"
+										]
+									}),
+									diskFree !== null && diskThresholds !== null && diskFree / 1024 ** 3 < diskThresholds.warn_gb && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("button", {
+										type: "button",
+										className: "bc-header-alert",
+										"data-tone": diskPercent !== null && diskPercent < diskThresholds.critical_percent ? "bad" : "warn",
+										title: "打开存储概览",
+										onClick: () => setStorageOpen(true),
+										children: [
+											/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+												className: "bc-status-dot",
+												"aria-hidden": "true"
+											}),
+											"磁盘可用 ",
+											(diskFree / 1024 ** 3).toFixed(1),
+											" GB",
+											diskPercent !== null ? ` · ${diskPercent.toFixed(1)}%` : ""
+										]
+									}),
+									/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+										className: "bc-header-actions",
+										children: [
+											feed.updatedAt !== null && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
+												className: "bc-updated",
+												children: ["最后刷新 ", feed.updatedAt]
+											}),
+											/* @__PURE__ */ (0, react_jsx_runtime.jsx)(Button, {
+												size: "sm",
+												variant: "ghost",
+												onClick: () => setSettingsOpen(true),
+												children: "设置"
+											}),
+											/* @__PURE__ */ (0, react_jsx_runtime.jsx)(IconButton, {
+												label: "刷新",
+												icon: IconRefresh,
+												busy: feed.refreshing,
+												onClick: () => void feed.load(true)
+											}),
+											/* @__PURE__ */ (0, react_jsx_runtime.jsx)(MoreMenu, {
+												autostart: feed.autostart,
+												busy,
+												onBackup: () => void actions.backup(),
+												onPrune: () => setBackupOpen(true),
+												onCaches: () => setCacheOpen(true),
+												onIndex: () => setIndexOpen(true),
+												onAutoRecover: () => setAutoRecoverOpen(true),
+												onCheckup: () => setCheckupOpen(true),
+												onStorage: () => setStorageOpen(true),
+												onDiagnostics: downloadDiagnostics,
+												onToggleAutostart: () => void toggleAutostart(),
+												onShutdown: () => setShutdownOpen(true)
+											})
+										]
+									})
+								]
+							}), settingsOpen ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)(SettingsPage, {
+								onBack: () => setSettingsOpen(false),
+								onDiskThresholdsChanged: (thresholds) => setDiskThresholds(thresholds)
+							}) : /* @__PURE__ */ (0, react_jsx_runtime.jsxs)(react_jsx_runtime.Fragment, { children: [
 								feed.connectionError !== null && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
 									className: "bc-notice",
 									"data-kind": "connection",
@@ -6480,7 +6657,7 @@ window.__ModuleLoader__.load({
 									onAdopt: (name) => void actions.adoptUnit(name),
 									onDetail: (name) => setDetailName(name)
 								}, group))
-							]
+							] })]
 						})
 					}),
 					backupOpen && /* @__PURE__ */ (0, react_jsx_runtime.jsx)(BackupDialog, {
@@ -6508,10 +6685,7 @@ window.__ModuleLoader__.load({
 					indexOpen && /* @__PURE__ */ (0, react_jsx_runtime.jsx)(IndexHealthDialog, { onClose: () => setIndexOpen(false) }),
 					autoRecoverOpen && /* @__PURE__ */ (0, react_jsx_runtime.jsx)(AutoRecoverDialog, { onClose: () => setAutoRecoverOpen(false) }),
 					checkupOpen && /* @__PURE__ */ (0, react_jsx_runtime.jsx)(SystemCheckupDialog, { onClose: () => setCheckupOpen(false) }),
-					storageOpen && /* @__PURE__ */ (0, react_jsx_runtime.jsx)(StorageDialog, {
-						onClose: () => setStorageOpen(false),
-						onThresholdsChanged: (thresholds) => setDiskThresholds(thresholds)
-					}),
+					storageOpen && /* @__PURE__ */ (0, react_jsx_runtime.jsx)(StorageDialog, { onClose: () => setStorageOpen(false) }),
 					cacheOpen && /* @__PURE__ */ (0, react_jsx_runtime.jsx)(CacheDialog, {
 						load: loadCaches,
 						prune: pruneCaches,

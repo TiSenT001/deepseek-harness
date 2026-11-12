@@ -426,11 +426,32 @@ try {
     await page.waitForSelector('.bc-storage-row, .bc-backup-empty, .bc-backup-error', { timeout: 15000 }).catch(() => {})
     const rows = await dialog.locator('.bc-storage-row').count()
     const text = await dialog.innerText()
-    const editor = await dialog.locator('.bc-storage-threshold').count()
     await closeOverlay()
     if (rows === 0 && !text.includes('没有可统计')) throw new Error('既没有存储项也不是空态')
-    if (editor === 0) throw new Error('缺少阈值编辑器')
-    return `${rows} 项${text.includes('合计占用') ? ' · 有合计' : ''} · 阈值编辑器 ${editor}`
+    if (!text.includes('设置')) throw new Error('存储概览没提示去设置页调阈值')
+    return `${rows} 项${text.includes('合计占用') ? ' · 有合计' : ''} · 阈值提示指向设置`
+  })
+
+  await soft('设置页面能打开并保存阈值', async () => {
+    await page.locator('.bc-header').getByRole('button', { name: '设置' }).click()
+    await page.waitForSelector('.bc-settings', { timeout: 10000 })
+    const inputs = page.locator('.bc-settings-input')
+    const count = await inputs.count()
+    if (count !== 4) throw new Error(`设置输入框 ${count}，应为 4`)
+    // 原样保存，避免改变真实阈值
+    await page.getByRole('button', { name: '保存磁盘阈值' }).click()
+    await page.waitForTimeout(1200)
+    const diskNotice = await page.locator('.bc-settings-notice').innerText().catch(() => '')
+    await page.getByRole('button', { name: '保存趋势阈值' }).click()
+    await page.waitForTimeout(1200)
+    const trendNotice = await page.locator('.bc-settings-notice').innerText().catch(() => '')
+    await page.getByRole('button', { name: '返回面板' }).click()
+    await page.waitForTimeout(800)
+    const back = await page.locator('.bc-header').count()
+    if (!diskNotice.includes('已保存')) throw new Error(`磁盘阈值保存提示: ${diskNotice}`)
+    if (!trendNotice.includes('已保存')) throw new Error(`趋势阈值保存提示: ${trendNotice}`)
+    if (back === 0) throw new Error('返回后面板不存在')
+    return `${count} 个输入 · 保存提示「${diskNotice.trim()} / ${trendNotice.trim()}」· 返回正常`
   })
 
   await soft('磁盘低余量时顶部出现告警', async () => {

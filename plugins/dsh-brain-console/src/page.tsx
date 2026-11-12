@@ -27,6 +27,7 @@ import { FailedEdgesDialog } from './ui/FailedEdgesDialog.tsx'
 import { AutoRecoverDialog } from './ui/AutoRecoverDialog.tsx'
 import { SystemCheckupDialog } from './ui/SystemCheckupDialog.tsx'
 import { StorageDialog } from './ui/StorageDialog.tsx'
+import { SettingsPage } from './ui/SettingsPage.tsx'
 import { IndexHealthDialog } from './ui/IndexHealthDialog.tsx'
 import { GroupActionDialog } from './ui/GroupActionDialog.tsx'
 import { IconButton } from './ui/IconButton.tsx'
@@ -70,6 +71,7 @@ export function ConsolePage(): JSX.Element {
   const [diskFree, setDiskFree] = useState<number | null>(null)
   const [diskTotal, setDiskTotal] = useState<number | null>(null)
   const [diskThresholds, setDiskThresholds] = useState<{ warn_gb: number; critical_percent: number } | null>(null)
+  const [settingsOpen, setSettingsOpen] = useState(false)
   const [trend, setTrend] = useState<MetricKey | null>(null)
   const [detailName, setDetailName] = useState<string | null>(null)
   const [stopGroup, setStopGroup] = useState<{ group: string; names: string[] } | null>(null)
@@ -307,6 +309,7 @@ export function ConsolePage(): JSX.Element {
             )}
             <div className="bc-header-actions">
               {feed.updatedAt !== null && <span className="bc-updated">最后刷新 {feed.updatedAt}</span>}
+              <Button size="sm" variant="ghost" onClick={() => setSettingsOpen(true)}>设置</Button>
               <IconButton label="刷新" icon={IconRefresh} busy={feed.refreshing} onClick={() => void feed.load(true)} />
               <MoreMenu
                 autostart={feed.autostart}
@@ -325,6 +328,13 @@ export function ConsolePage(): JSX.Element {
             </div>
           </header>
 
+          {settingsOpen ? (
+            <SettingsPage
+              onBack={() => setSettingsOpen(false)}
+              onDiskThresholdsChanged={(thresholds) => setDiskThresholds(thresholds)}
+            />
+          ) : (
+          <>
           {feed.connectionError !== null && (
             <div className="bc-notice" data-kind="connection" role="status">
               <div className="bc-notice-body">
@@ -396,6 +406,8 @@ export function ConsolePage(): JSX.Element {
               />
             ))
           )}
+          </>
+          )}
         </div>
       </div>
 
@@ -425,12 +437,7 @@ export function ConsolePage(): JSX.Element {
       {indexOpen && <IndexHealthDialog onClose={() => setIndexOpen(false)} />}
   {autoRecoverOpen && <AutoRecoverDialog onClose={() => setAutoRecoverOpen(false)} />}
   {checkupOpen && <SystemCheckupDialog onClose={() => setCheckupOpen(false)} />}
-  {storageOpen && (
-    <StorageDialog
-      onClose={() => setStorageOpen(false)}
-      onThresholdsChanged={(thresholds) => setDiskThresholds(thresholds)}
-    />
-  )}
+  {storageOpen && <StorageDialog onClose={() => setStorageOpen(false)} />}
 
       {cacheOpen && (
         <CacheDialog
