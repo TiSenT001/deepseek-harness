@@ -1,3 +1,8 @@
+## 第一百三十五轮：关系图首次冷却自动适配视野（2026-11-13）
+
+- **问题**：力度模型改成 worker 内部转换后，初始 seed 与冷却后的实际包围盒差异变大；不点「重置视图」时节点可能跑出视口。
+- **实现**：`useGraphLayout` 新增 `onSettled` 回调；`GraphView` 在首次冷却时调用 `camera.fit(scope)`，同一 scope/节点数只做一次，之后用户缩放不再被覆盖。
+- **验证**：`tsc` 0、780/780；400 节点全库图打开后自动铺满画布，无需手动点适应视图；截图确认。
 ## 第一百三十四轮：图 worker WASM 结构逆向（2026-11-13）
 
 - **提取**：从 `sim.js` 内嵌 base64 提取 WASM，3322 字节，无导入；导出 `memory / memset / init / complete / visitCharge / visitCollide / manyBody / simulate`。
