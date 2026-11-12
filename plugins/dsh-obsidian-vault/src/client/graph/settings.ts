@@ -31,6 +31,7 @@ export interface GraphSettings {
     readonly textFade: number
     readonly nodeScale: number
     readonly linkWidth: number
+    readonly showArrow: boolean
   }
   readonly forces: {
     readonly center: number
@@ -57,6 +58,7 @@ export const DEFAULT_GRAPH_SETTINGS: GraphSettings = {
     textFade: 0,
     nodeScale: 1,
     linkWidth: 1,
+    showArrow: false,
   },
   forces: {
     center: 0.1,

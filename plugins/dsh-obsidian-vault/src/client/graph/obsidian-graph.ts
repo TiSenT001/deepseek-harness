@@ -73,3 +73,23 @@ export function obsidianLinkBias(sourceDegree: number, targetDegree: number): nu
 export function obsidianLabelAlpha(zoom: number, textFade: number): number {
   return Math.max(0, Math.min(1, Math.log2(zoom) + 1 - textFade))
 }
+/**
+ * Arrow opacity from Obsidian's renderer: the edge alpha multiplied by
+ * `clamp(2 * (zoom - 0.3), 0, 1)`, so arrows disappear when zoomed out.
+ * @param linkAlpha - current edge opacity.
+ * @param zoom - camera zoom.
+ * @returns arrow opacity in `[0, 1]`.
+ */
+export function obsidianArrowAlpha(linkAlpha: number, zoom: number): number {
+  return linkAlpha * Math.max(0, Math.min(1, 2 * (zoom - 0.3)))
+}
+
+/**
+ * Arrow size factor from Obsidian's renderer: `2 * sqrt(lineSize) / zoom`.
+ * @param linkWidth - display link-size multiplier.
+ * @param zoom - camera zoom.
+ * @returns world-space multiplier for the arrow polygon.
+ */
+export function obsidianArrowScale(linkWidth: number, zoom: number): number {
+  return (2 * Math.sqrt(linkWidth)) / zoom
+}
