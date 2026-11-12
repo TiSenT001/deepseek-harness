@@ -1,3 +1,9 @@
+## 第一百二十八轮：Mermaid 按需拆分（2026-11-12）
+
+- **拆分**：Mermaid 不再进入主 client bundle，改为独立 `lib/mermaid.js`（IIFE，压缩后约 3.24 MB）；宿主新增 `GET /obsidian/api/mermaid.js`，与 `worker.js` 共用 `serveBundleScript` 读取 `lib/` 文件。
+- **按需加载**：`enhanceMermaid` 只在发现 Mermaid 代码块时注入脚本；脚本通过 `window.__OV_MERMAID__` 暴露 renderer，客户端不再静态或动态 import Mermaid。主包从约 8.25 MB 回落到约 1.18 MB。
+- **复用**：路由的脚本服务逻辑抽成 `serveBundleScript(response, name)`，worker 与 mermaid 共用。
+- **验证**：`tsc` 0、773/773；浏览器中先打开无图笔记，`mermaid.js` 请求数 0；再打开含 `flowchart LR` 的笔记，请求数 1，生成 1 个 SVG、0 个失败回退；两份 fixture 已清理。
 ## 第一百二十七轮：Mermaid 阅读渲染（2026-11-12）
 
 - **对标 Obsidian Mermaid**：阅读视图识别 `mermaid` 代码块，懒加载 Mermaid 后渲染为 SVG；按源码缓存 SVG，主题使用 dark，`securityLevel: strict`；渲染失败或空源码时保留原文并显示「Mermaid 渲染失败」。

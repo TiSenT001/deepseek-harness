@@ -44,6 +44,20 @@ import type { Settings } from './settings.ts'
 const POPOUT_BUNDLE = join(PACKAGE_ROOT, 'lib', 'popout.js')
 export type { RouteHost } from './routes-shared.ts'
 
+/**
+ * Serve one browser bundle shipped in `lib/` as JavaScript.
+ * @param response - the open response.
+ * @param name - file name inside `lib/`.
+ */
+async function serveBundleScript(response: ServerResponse, name: string): Promise<void> {
+  const source = await readFile(join(PACKAGE_ROOT, 'lib', name), 'utf8')
+  response.writeHead(200, {
+    'content-type': 'text/javascript; charset=utf-8',
+    'cache-control': 'no-cache',
+  })
+  response.end(source)
+}
+
 
 /**
  * Mount the vault API on the Web carrier.
@@ -110,12 +124,13 @@ async function dispatch(
     case 'worker.js': {
       // The layout worker lives beside the host bundle and is served as its own
       // script so the browser can construct a real Worker from it.
-      const source = await readFile(new URL('./worker.js', import.meta.url), 'utf8')
-      response.writeHead(200, {
-        'content-type': 'text/javascript; charset=utf-8',
-        'cache-control': 'no-cache',
-      })
-      response.end(source)
+      await serveBundleScript(response, 'worker.js')
+      return
+    }
+    case 'mermaid.js': {
+      // The Mermaid bundle is several megabytes; the reading view injects it
+      // only after finding a diagram.
+      await serveBundleScript(response, 'mermaid.js')
       return
     }
     case 'status':
