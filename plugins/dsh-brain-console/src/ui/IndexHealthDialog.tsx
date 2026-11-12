@@ -1,8 +1,10 @@
 /**
  * 索引与嵌入状态：回答「知识真的进脑子了吗」，并提供补嵌 / 重建入口。
  *
- * 只读部分展示三条链路的最新覆盖；动作部分触发管理器里的后台任务，
- * 运行期间每秒轮询一次进度（完成数 / 总数 / 当前笔记 / 失败 / ETA）。
+ * 内容按关注点拆成四个标签页：概览（向量 + 领域 + 重试队列）、分块、定时任务
+ * （心跳与失效心跳清理）、手动补嵌（动作与任务进度）。只读部分展示三条链路
+ * 的最新覆盖；动作部分触发管理器里的后台任务，运行期间每秒轮询一次进度
+ * （完成数 / 总数 / 当前笔记 / 失败 / ETA）。上次停留的标签会被记住。
  */
 import { useEffect, useRef, useState } from 'react'
 import { cancelEmbed, loadEmbedStatus, loadIndexHealth, pruneZombieHeartbeats, startEmbed } from '../api.ts'
@@ -16,12 +18,38 @@ export interface IndexHealthDialogProps {
   onClose: () => void
 }
 
+/** 四个标签页的稳定键。 */
+const TAB_KEYS = ['overview', 'chunks', 'crons', 'embed'] as const
+type TabKey = typeof TAB_KEYS[number]
+
+/** 标签文案。 */
+const TAB_LABELS: Record<TabKey, string> = {
+  overview: '概览',
+  chunks: '分块',
+  crons: '定时任务',
+  embed: '手动补嵌',
+}
+
+/** localStorage 里记住上次标签的键。 */
+const TAB_STORAGE_KEY = 'brain.index.tab.v1'
+
+/** 读取上次停留的标签；没有记录或读取失败时回到概览。 */
+function readStoredTab(): TabKey {
+  try {
+    const raw = window.localStorage.getItem(TAB_STORAGE_KEY)
+    if (raw !== null && (TAB_KEYS as readonly string[]).includes(raw)) return raw as TabKey
+  } catch {
+    // localStorage 被禁用（隐私模式/权限）时用默认页
+  }
+  return 'overview'
+}
+
 /** 把可能为空的数值格式化成「—」。 */
 function num(value: number | null | undefined, suffix = ''): string {
   return value === null || value === undefined ? '—' : `${value}${suffix}`
 }
 
-/** 覆盖率进度条（0–100）。 */
+/** 覆盖率进度条（0—100）。 */
 function Coverage({ percent }: { percent: number | null }): JSX.Element {
   const width = percent === null ? 0 : Math.max(0, Math.min(100, percent))
   return (
@@ -81,6 +109,7 @@ export function IndexHealthDialog({ onClose }: IndexHealthDialogProps): JSX.Elem
   const [armedPrune, setArmedPrune] = useState(false)
   const [cronQuery, setCronQuery] = useState('')
   const [cronBucket, setCronBucket] = useState<'all' | 'ok' | 'stale' | 'zombie'>('all')
+  const [tab, setTab] = useState<TabKey>(() => readStoredTab())
   const timer = useRef<number | null>(null)
 
   const load = async (): Promise<void> => {
@@ -128,6 +157,15 @@ export function IndexHealthDialog({ onClose }: IndexHealthDialogProps): JSX.Elem
       if (timer.current !== null) window.clearInterval(timer.current)
     }
   }, [])
+
+  // 记住标签：下次打开直接回到上次关注的那一页
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(TAB_STORAGE_KEY, tab)
+    } catch {
+      // 隐私模式下写入失败不影响本次使用
+    }
+  }, [tab])
 
   const run = async (mode: string): Promise<void> => {
     setBusy(true)
@@ -182,6 +220,7 @@ export function IndexHealthDialog({ onClose }: IndexHealthDialogProps): JSX.Elem
     : null
   const stale = health?.chunks.stale_days
   const running = job?.state === 'running'
+  const cronAlerts = (health?.stale_crons ?? []).length + (health?.zombie_crons ?? []).length
 
   return (
     <Dialog open onClose={onClose} title="索引与嵌入" closeLabel="关闭"
@@ -195,236 +234,283 @@ export function IndexHealthDialog({ onClose }: IndexHealthDialogProps): JSX.Elem
       {error !== null && <div className="bc-backup-error">{error}</div>}
       {health === null && error === null && <div className="bc-backup-empty">读取中…</div>}
       {health !== null && (
-        <div className="bc-index-health">
-          <details className="bc-index-section" open>
-            <summary><h4>笔记向量 <span className="bc-index-note">vec_cache</span></h4></summary>
-            <div className="bc-index-row">
-              <span>已向量 / 总笔记</span>
-              <strong>{num(health.vec.total)} / {num(health.notes)}</strong>
-            </div>
-            <Coverage percent={percent} />
-            <div className="bc-index-row">
-              <span>缺少向量</span>
-              <strong className={health.vec.missing ? 'bc-index-warn' : ''}>
-                {num(health.vec.missing)} 篇
-                {(health.vec.missing_sample ?? []).length > 0 && (
-                  <span className="bc-index-sample" title={(health.vec.missing_sample ?? []).join('\n')}>
-                    （如 {health.vec.missing_sample[0]}）
-                  </span>
-                )}
-              </strong>
-            </div>
-            {(health.vec.empty ?? 0) > 0 && (
-              <div className="bc-index-row">
-                <span>空笔记（0 字节，不需向量）</span>
-                <strong>{num(health.vec.empty)} 篇</strong>
-              </div>
-            )}
-            <div className="bc-index-row">
-              <span>最近 24h 更新</span>
-              <strong>{num(health.vec.fresh_24h)} 篇</strong>
-            </div>
-            <div className="bc-index-row">
-              <span>最后写入</span>
-              <strong>{health.vec.last_indexed_at ?? '—'}</strong>
-            </div>
-            <div className="bc-index-row">
-              <span>孤儿向量（笔记已删）</span>
-              <strong>{num(health.vec.orphans)}</strong>
-            </div>
-          </details>
-
-          <details className="bc-index-section" open>
-            <summary><h4>分块索引 <span className="bc-index-note">chunk_index</span></h4></summary>
-            <div className="bc-index-row">
-              <span>已分块笔记 / 总笔记</span>
-              <strong>{num(health.chunks.notes)} / {num(health.notes)}</strong>
-            </div>
-            {(health.chunks.empty ?? 0) > 0 && (
-              <div className="bc-index-row">
-                <span>空笔记（0 字节，不需分块）</span>
-                <strong>{num(health.chunks.empty)} 篇</strong>
-              </div>
-            )}
-            <div className="bc-index-row">
-              <span>分块总数</span>
-              <strong>{num(health.chunks.rows)}</strong>
-            </div>
-            <div className="bc-index-row">
-              <span>最后索引</span>
-              <strong>
-                {health.chunks.last_indexed_at ?? '—'}
-                {stale !== null && stale !== undefined && (
-                  <span className="bc-index-sample"> · 最后内容变化 {stale} 天前</span>
-                )}
-              </strong>
-            </div>
-          </details>
-
-          <details className="bc-index-section">
-            <summary><h4>按领域覆盖 <span className="bc-index-note">向量 / 笔记</span></h4></summary>
-            {(health.by_domain ?? []).length === 0 && (
-              <div className="bc-index-row"><span>暂无领域数据</span><strong>—</strong></div>
-            )}
-            {(health.by_domain ?? []).map((bucket) => {
-              const percent = bucket.total > 0 ? (bucket.covered / bucket.total) * 100 : 0
-              return (
-                <div className="bc-index-domain-row" key={bucket.name}>
-                  <span className="bc-index-domain-name" title={bucket.name}>{bucket.name}</span>
-                  <div className="bc-index-domain-bar"><div style={{ width: `${percent}%` }} /></div>
-                  <span className={bucket.missing > 0 ? 'bc-index-warn' : ''}>
-                    {bucket.covered} / {bucket.total}
-                  </span>
-                </div>
-              )
-            })}
-          </details>
-
-          <details className="bc-index-section" open>
-            <summary><h4>管道心跳 <span className="bc-index-note">cron 是否按时跑</span></h4></summary>
-            {(health.crons ?? []).length === 0 && (
-              <div className="bc-index-row"><span>暂无心跳数据</span><strong>—</strong></div>
-            )}
-            {((health.stale_crons ?? []).length > 0 || (health.zombie_crons ?? []).length > 0) && (
-              <div className="bc-cron-alert">
-                {(health.stale_crons ?? []).length > 0 && (
-                  <span className="bc-cron-alert-text bc-index-warn">
-                    {health.stale_crons?.length} 个定时任务超过 1.5 倍周期未运行
-                  </span>
-                )}
-                {(health.zombie_crons ?? []).length > 0 && (
-                  <span className="bc-cron-alert-text">
-                    {health.zombie_crons?.length} 条失效心跳（代码里已无此任务）
-                  </span>
-                )}
-                {(health.zombie_crons ?? []).length > 0 && (
-                  armedPrune ? (
-                    <span className="bc-cron-alert-actions">
-                      <Button size="sm" variant="ghost" disabled={busy} onClick={() => void pruneZombies()}>
-                        确认清理 {health.zombie_crons?.length} 条
-                      </Button>
-                      <Button size="sm" variant="ghost" disabled={busy} onClick={() => setArmedPrune(false)}>
-                        取消
-                      </Button>
-                    </span>
-                  ) : (
-                    <Button size="sm" variant="ghost" disabled={busy} onClick={() => setArmedPrune(true)}>
-                      清理失效心跳…
-                    </Button>
-                  )
-                )}
-              </div>
-            )}
-            {(health.crons ?? []).map((cron) => (
-              <div className="bc-cron-row" key={cron.name} data-status={cron.status}>
-                <span className="bc-cron-dot" aria-hidden="true" />
-                <span className="bc-cron-name">{cron.name}</span>
-                <span className="bc-cron-age">
-                  {cron.age_hours === null ? '从未运行' : `${cron.age_hours} 小时前`}
-                </span>
-                <span className="bc-cron-interval">每 {cron.interval_h} 小时</span>
-              </div>
+        <div className="bc-index-health" data-tab={tab}>
+          <div className="bc-tabs" role="tablist" aria-label="索引与嵌入分区">
+            {TAB_KEYS.map((key) => (
+              <button
+                key={key}
+                type="button"
+                role="tab"
+                aria-selected={tab === key}
+                className="bc-tab"
+                data-active={tab === key || undefined}
+                onClick={() => setTab(key)}
+              >
+                {TAB_LABELS[key]}
+                {key === 'crons' && cronAlerts > 0 && <span className="bc-tab-dot" data-tone="warn" aria-hidden="true" />}
+                {key === 'embed' && running && <span className="bc-tab-dot" aria-hidden="true" />}
+              </button>
             ))}
-            {allCrons.length > 0 && (
-              <details className="bc-cron-all" open={cronFilterActive || undefined}>
-                <summary>
-                  全部定时任务（{allCrons.length}）
-                  {cronFilterActive && <span className="bc-cron-filter-count"> · 筛选 {filteredCrons.length}</span>}
-                </summary>
-                <div className="bc-cron-filter">
-                  <input
-                    className="bc-cron-filter-input"
-                    value={cronQuery}
-                    placeholder="筛选任务名"
-                    onChange={(event) => setCronQuery(event.target.value)}
-                  />
-                  {([
-                    ['all', '全部'],
-                    ['ok', '正常'],
-                    ['stale', '过期'],
-                    ['zombie', '失效'],
-                  ] as const).map(([bucket, label]) => (
-                    <Button
-                      key={bucket}
-                      size="sm"
-                      variant={cronBucket === bucket ? 'outline' : 'ghost'}
-                      onClick={() => setCronBucket(bucket)}
-                    >
-                      {label}
-                    </Button>
-                  ))}
+          </div>
+
+          {tab === 'overview' && (
+            <div className="bc-tab-panel" role="tabpanel" aria-label="概览">
+              <section className="bc-tab-section">
+                <h4>笔记向量 <span className="bc-index-note">vec_cache</span></h4>
+                <div className="bc-index-row">
+                  <span>已向量 / 总笔记</span>
+                  <strong>{num(health.vec.total)} / {num(health.notes)}</strong>
                 </div>
-                <div className="bc-cron-all-list">
-                  {filteredCrons.map((cron) => {
-                      const zombie = zombieNames.has(cron.name)
-                      return (
-                        <div
-                          className="bc-cron-row"
-                          key={`all-${cron.name}`}
-                          data-status={cron.status}
-                          data-zombie={zombie ? 'true' : undefined}
-                        >
-                          <span className="bc-cron-dot" aria-hidden="true" />
-                          <span className="bc-cron-name">
-                            {cron.name}
-                            {zombie && <span className="bc-cron-flag">已失效</span>}
-                          </span>
-                          <span className="bc-cron-age">
-                            {cron.age_hours === null ? '从未运行' : `${cron.age_hours} 小时前`}
-                          </span>
-                          <span className="bc-cron-interval">{cron.last_run_at ?? '—'}</span>
-                        </div>
+                <Coverage percent={percent} />
+                <div className="bc-index-row">
+                  <span>缺少向量</span>
+                  <strong className={health.vec.missing ? 'bc-index-warn' : ''}>
+                    {num(health.vec.missing)} 篇
+                    {(health.vec.missing_sample ?? []).length > 0 && (
+                      <span className="bc-index-sample" title={(health.vec.missing_sample ?? []).join('\n')}>
+                        （如 {health.vec.missing_sample[0]}）
+                      </span>
+                    )}
+                  </strong>
+                </div>
+                {(health.vec.empty ?? 0) > 0 && (
+                  <div className="bc-index-row">
+                    <span>空笔记（0 字节，不需向量）</span>
+                    <strong>{num(health.vec.empty)} 篇</strong>
+                  </div>
+                )}
+                <div className="bc-index-row">
+                  <span>最近 24h 更新</span>
+                  <strong>{num(health.vec.fresh_24h)} 篇</strong>
+                </div>
+                <div className="bc-index-row">
+                  <span>最后写入</span>
+                  <strong>{health.vec.last_indexed_at ?? '—'}</strong>
+                </div>
+                <div className="bc-index-row">
+                  <span>孤儿向量（笔记已删）</span>
+                  <strong>{num(health.vec.orphans)}</strong>
+                </div>
+              </section>
+
+              <section className="bc-tab-section">
+                <h4>按领域覆盖 <span className="bc-index-note">向量 / 笔记</span></h4>
+                {(health.by_domain ?? []).length === 0 && (
+                  <div className="bc-index-row"><span>暂无领域数据</span><strong>—</strong></div>
+                )}
+                {(health.by_domain ?? []).map((bucket) => {
+                  const bucketPercent = bucket.total > 0 ? (bucket.covered / bucket.total) * 100 : 0
+                  return (
+                    <div className="bc-index-domain-row" key={bucket.name}>
+                      <span className="bc-index-domain-name" title={bucket.name}>{bucket.name}</span>
+                      <div className="bc-index-domain-bar"><div style={{ width: `${bucketPercent}%` }} /></div>
+                      <span className={bucket.missing > 0 ? 'bc-index-warn' : ''}>
+                        {bucket.covered} / {bucket.total}
+                      </span>
+                    </div>
+                  )
+                })}
+              </section>
+
+              <section className="bc-tab-section">
+                <h4>重试队列</h4>
+                <div className="bc-index-row">
+                  <span>embed_pending</span>
+                  <strong>{num(health.pending)} 篇</strong>
+                </div>
+                <div className="bc-index-row">
+                  <span>库大小</span>
+                  <strong>{num(health.db_size_mb, ' MB')}</strong>
+                </div>
+              </section>
+            </div>
+          )}
+
+          {tab === 'chunks' && (
+            <div className="bc-tab-panel" role="tabpanel" aria-label="分块">
+              <section className="bc-tab-section">
+                <h4>分块索引 <span className="bc-index-note">chunk_index</span></h4>
+                <div className="bc-index-row">
+                  <span>已分块笔记 / 总笔记</span>
+                  <strong>{num(health.chunks.notes)} / {num(health.notes)}</strong>
+                </div>
+                {(health.chunks.empty ?? 0) > 0 && (
+                  <div className="bc-index-row">
+                    <span>空笔记（0 字节，不需分块）</span>
+                    <strong>{num(health.chunks.empty)} 篇</strong>
+                  </div>
+                )}
+                <div className="bc-index-row">
+                  <span>缺少分块</span>
+                  <strong className={health.chunks.missing ? 'bc-index-warn' : ''}>
+                    {num(health.chunks.missing)} 篇
+                    {(health.chunks.missing_sample ?? []).length > 0 && (
+                      <span className="bc-index-sample" title={(health.chunks.missing_sample ?? []).join('\n')}>
+                        （如 {(health.chunks.missing_sample ?? [])[0]}）
+                      </span>
+                    )}
+                  </strong>
+                </div>
+                <div className="bc-index-row">
+                  <span>分块总数</span>
+                  <strong>{num(health.chunks.rows)}</strong>
+                </div>
+                <div className="bc-index-row">
+                  <span>最后索引</span>
+                  <strong>
+                    {health.chunks.last_indexed_at ?? '—'}
+                    {stale !== null && stale !== undefined && (
+                      <span className="bc-index-sample"> · 最后内容变化 {stale} 天前</span>
+                    )}
+                  </strong>
+                </div>
+              </section>
+              <div className="bc-tab-hint">补分块缺失、增量/强制重建在「手动补嵌」页。</div>
+            </div>
+          )}
+
+          {tab === 'crons' && (
+            <div className="bc-tab-panel" role="tabpanel" aria-label="定时任务">
+              <section className="bc-tab-section">
+                <h4>管道心跳 <span className="bc-index-note">cron 是否按时跑</span></h4>
+                {(health.crons ?? []).length === 0 && (
+                  <div className="bc-index-row"><span>暂无心跳数据</span><strong>—</strong></div>
+                )}
+                {((health.stale_crons ?? []).length > 0 || (health.zombie_crons ?? []).length > 0) && (
+                  <div className="bc-cron-alert">
+                    {(health.stale_crons ?? []).length > 0 && (
+                      <span className="bc-cron-alert-text bc-index-warn">
+                        {health.stale_crons?.length} 个定时任务超过 1.5 倍周期未运行
+                      </span>
+                    )}
+                    {(health.zombie_crons ?? []).length > 0 && (
+                      <span className="bc-cron-alert-text">
+                        {health.zombie_crons?.length} 条失效心跳（代码里已无此任务）
+                      </span>
+                    )}
+                    {(health.zombie_crons ?? []).length > 0 && (
+                      armedPrune ? (
+                        <span className="bc-cron-alert-actions">
+                          <Button size="sm" variant="ghost" disabled={busy} onClick={() => void pruneZombies()}>
+                            确认清理 {health.zombie_crons?.length} 条
+                          </Button>
+                          <Button size="sm" variant="ghost" disabled={busy} onClick={() => setArmedPrune(false)}>
+                            取消
+                          </Button>
+                        </span>
+                      ) : (
+                        <Button size="sm" variant="ghost" disabled={busy} onClick={() => setArmedPrune(true)}>
+                          清理失效心跳…
+                        </Button>
                       )
-                    })}
-                  {filteredCrons.length === 0 && (
-                    <div className="bc-index-row"><span>没有匹配的任务</span><strong>0</strong></div>
+                    )}
+                  </div>
+                )}
+                {(health.crons ?? []).map((cron) => (
+                  <div className="bc-cron-row" key={cron.name} data-status={cron.status}>
+                    <span className="bc-cron-dot" aria-hidden="true" />
+                    <span className="bc-cron-name">{cron.name}</span>
+                    <span className="bc-cron-age">
+                      {cron.age_hours === null ? '从未运行' : `${cron.age_hours} 小时前`}
+                    </span>
+                    <span className="bc-cron-interval">每 {cron.interval_h} 小时</span>
+                  </div>
+                ))}
+                {allCrons.length > 0 && (
+                  <details className="bc-cron-all" open={cronFilterActive || undefined}>
+                    <summary>
+                      全部定时任务（{allCrons.length}）
+                      {cronFilterActive && <span className="bc-cron-filter-count"> · 筛选 {filteredCrons.length}</span>}
+                    </summary>
+                    <div className="bc-cron-filter">
+                      <input
+                        className="bc-cron-filter-input"
+                        value={cronQuery}
+                        placeholder="筛选任务名"
+                        onChange={(event) => setCronQuery(event.target.value)}
+                      />
+                      {([
+                        ['all', '全部'],
+                        ['ok', '正常'],
+                        ['stale', '过期'],
+                        ['zombie', '失效'],
+                      ] as const).map(([bucket, label]) => (
+                        <Button
+                          key={bucket}
+                          size="sm"
+                          variant={cronBucket === bucket ? 'outline' : 'ghost'}
+                          onClick={() => setCronBucket(bucket)}
+                        >
+                          {label}
+                        </Button>
+                      ))}
+                    </div>
+                    <div className="bc-cron-all-list">
+                      {filteredCrons.map((cron) => {
+                        const zombie = zombieNames.has(cron.name)
+                        return (
+                          <div
+                            className="bc-cron-row"
+                            key={`all-${cron.name}`}
+                            data-status={cron.status}
+                            data-zombie={zombie ? 'true' : undefined}
+                          >
+                            <span className="bc-cron-dot" aria-hidden="true" />
+                            <span className="bc-cron-name">
+                              {cron.name}
+                              {zombie && <span className="bc-cron-flag">已失效</span>}
+                            </span>
+                            <span className="bc-cron-age">
+                              {cron.age_hours === null ? '从未运行' : `${cron.age_hours} 小时前`}
+                            </span>
+                            <span className="bc-cron-interval">{cron.last_run_at ?? '—'}</span>
+                          </div>
+                        )
+                      })}
+                      {filteredCrons.length === 0 && (
+                        <div className="bc-index-row"><span>没有匹配的任务</span><strong>0</strong></div>
+                      )}
+                    </div>
+                  </details>
+                )}
+              </section>
+            </div>
+          )}
+
+          {tab === 'embed' && (
+            <div className="bc-tab-panel" role="tabpanel" aria-label="手动补嵌">
+              <section className="bc-tab-section">
+                <h4>手动补嵌</h4>
+                <div className="bc-embed-actions">
+                  <Button size="sm" variant="ghost" disabled={busy || running || (health.vec.missing ?? 0) === 0}
+                    onClick={() => void run('vec:fill')}>
+                    补向量缺失（{num(health.vec.missing)} 篇）
+                  </Button>
+                  <Button size="sm" variant="ghost" disabled={busy || running}
+                    onClick={() => void run('vec:rebuild')}>
+                    全量重建向量（{num(health.notes)} 篇）
+                  </Button>
+                  <Button size="sm" variant="ghost" disabled={busy || running}
+                    onClick={() => void run('chunk:rebuild')}>
+                    分块增量重建（{num(health.notes)} 篇）
+                  </Button>
+                  <Button size="sm" variant="ghost" disabled={busy || running}
+                    title="忽略内容哈希，逐篇重建全部分块（会重写数万分块行）；数十秒到数分钟，期间可取消"
+                    onClick={() => void run('chunk:force')}>
+                    分块全量重建（强制）
+                  </Button>
+                  {(health.chunks.missing ?? 0) > 0 && (
+                    <Button size="sm" variant="ghost" disabled={busy || running}
+                      onClick={() => void run('chunk:fill')}>
+                      补分块缺失（{num(health.chunks.missing)} 篇）
+                    </Button>
                   )}
                 </div>
-              </details>
-            )}
-          </details>
-
-          <details className="bc-index-section">
-            <summary><h4>重试队列</h4></summary>
-            <div className="bc-index-row">
-              <span>embed_pending</span>
-              <strong>{num(health.pending)} 篇</strong>
+                {job !== null && job.state !== 'idle' && <JobProgress job={job} onCancel={() => void cancel()} />}
+                <div className="bc-tab-hint">任务在管理器后台跑，关掉面板也会继续；进度每秒刷新。</div>
+              </section>
             </div>
-            <div className="bc-index-row">
-              <span>库大小</span>
-              <strong>{num(health.db_size_mb, ' MB')}</strong>
-            </div>
-          </details>
-
-          <details className="bc-index-section" open>
-            <summary><h4>手动补嵌</h4></summary>
-            <div className="bc-embed-actions">
-              <Button size="sm" variant="ghost" disabled={busy || running || (health.vec.missing ?? 0) === 0}
-                onClick={() => void run('vec:fill')}>
-                补向量缺失（{num(health.vec.missing)} 篇）
-              </Button>
-              <Button size="sm" variant="ghost" disabled={busy || running}
-                onClick={() => void run('vec:rebuild')}>
-                全量重建向量（{num(health.notes)} 篇）
-              </Button>
-              <Button size="sm" variant="ghost" disabled={busy || running}
-                onClick={() => void run('chunk:rebuild')}>
-                分块增量重建（{num(health.notes)} 篇）
-              </Button>
-              <Button size="sm" variant="ghost" disabled={busy || running}
-                title="忽略内容哈希，逐篇重建全部分块（会重写数万分块行）；数十秒到数分钟，期间可取消"
-                onClick={() => void run('chunk:force')}>
-                分块全量重建（强制）
-              </Button>
-              {(health.chunks.missing ?? 0) > 0 && (
-                <Button size="sm" variant="ghost" disabled={busy || running}
-                  onClick={() => void run('chunk:fill')}>
-                  补分块缺失（{num(health.chunks.missing)} 篇）
-                </Button>
-              )}
-            </div>
-            {job !== null && job.state !== 'idle' && <JobProgress job={job} onCancel={() => void cancel()} />}
-          </details>
+          )}
         </div>
       )}
     </Dialog>

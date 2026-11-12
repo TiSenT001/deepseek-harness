@@ -266,37 +266,49 @@ try {
     await page.waitForTimeout(1500)
     const dialog = page.getByRole('dialog')
     if (!(await dialog.count())) throw new Error('对话框没打开')
-    const text = await dialog.innerText()
-    const need = ['笔记向量', '分块索引', '手动补嵌', '管道心跳']
-    const missing = need.filter((k) => !text.includes(k))
+    const tabs = await dialog.locator('.bc-tab').count()
+    if (tabs !== 4) throw new Error(`标签数 ${tabs}，应为 4`)
+    // 概览页
+    await dialog.getByRole('tab', { name: '概览' }).click()
+    await page.waitForTimeout(300)
     const rows = await dialog.locator('.bc-index-row').count()
+    if (!(await dialog.innerText()).includes('笔记向量')) throw new Error('概览页缺笔记向量')
+    if (rows === 0) throw new Error('概览页没有任何行')
+    // 分块页
+    await dialog.getByRole('tab', { name: '分块' }).click()
+    await page.waitForTimeout(300)
+    if (!(await dialog.innerText()).includes('分块索引')) throw new Error('分块页缺分块索引')
+    // 定时任务页 + 筛选
+    await dialog.getByRole('tab', { name: '定时任务' }).click()
+    await page.waitForTimeout(300)
+    if (!(await dialog.innerText()).includes('管道心跳')) throw new Error('定时任务页缺管道心跳')
     const crons = await dialog.locator('.bc-cron-row').count()
-    const allCrons = await dialog.locator('.bc-cron-all').count()
-    // 全量列表筛选：展开后输入 backup，确认行数收敛，再清空
+    if (crons === 0) throw new Error('没有管道心跳行')
     await dialog.locator('.bc-cron-all > summary').click()
-    await page.waitForTimeout(400)
+    await page.waitForTimeout(300)
     const filterInput = dialog.locator('.bc-cron-filter-input')
     const allBefore = await dialog.locator('.bc-cron-all-list .bc-cron-row').count()
     await filterInput.fill('backup')
-    await page.waitForTimeout(400)
+    await page.waitForTimeout(300)
     const allAfter = await dialog.locator('.bc-cron-all-list .bc-cron-row').count()
     await filterInput.fill('')
+    if (allBefore > 0 && (allAfter === 0 || allAfter >= allBefore)) {
+      throw new Error(`筛选未生效: ${allBefore} → ${allAfter}`)
+    }
+    // 手动补嵌页
+    await dialog.getByRole('tab', { name: '手动补嵌' }).click()
     await page.waitForTimeout(300)
-    // 窄屏不溢出：缩到 760x800 复测弹窗高度，随后恢复视口
+    if (!(await dialog.innerText()).includes('补向量缺失')) throw new Error('手动补嵌页缺操作按钮')
+    const buttons = await dialog.locator('.bc-embed-actions button').count()
+    // 窄屏不溢出
     await page.setViewportSize({ width: 760, height: 800 })
-    await page.waitForTimeout(500)
+    await page.waitForTimeout(400)
     const narrowBox = await dialog.boundingBox()
     await page.setViewportSize({ width: 1440, height: 900 })
     await page.waitForTimeout(300)
     await closeOverlay()
-    if (missing.length) throw new Error(`缺 ${missing.join('/')}`)
-    if (rows === 0) throw new Error('没有任何覆盖行')
-    if (crons === 0) throw new Error('没有管道心跳行')
     if (!narrowBox || narrowBox.height > 780) throw new Error('窄屏下弹窗超出视口')
-    if (allBefore > 0 && (allAfter === 0 || allAfter >= allBefore)) {
-      throw new Error(`筛选未生效: ${allBefore} → ${allAfter}`)
-    }
-    return `${rows} 行覆盖 · ${crons} 条心跳 · 全量列表 ${allCrons} · 筛选 ${allBefore}→${allAfter} · 窄屏高 ${Math.round(narrowBox.height)}px`
+    return `标签 ${tabs} · 概览 ${rows} 行 · 心跳 ${crons} 条 · 筛选 ${allBefore}→${allAfter} · 补嵌按钮 ${buttons} · 窄屏高 ${Math.round(narrowBox.height)}px`
   })
 
   await soft('趋势图含 24h 变化与告警线', async () => {
